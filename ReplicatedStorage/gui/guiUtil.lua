@@ -1,0 +1,144 @@
+--!strict
+
+--eval 9.21
+
+--2022 centralize to this game's ui style.
+
+local module = {}
+
+--get a tl, put it into parent with padding, return inner thing for further work
+module.getTl = function(
+	name: string,
+	size: UDim2,
+	padding: number,
+	parent: Frame | ScrollingFrame,
+	bgcolor: Color3,
+	borderSizePixel: number?
+): TextLabel
+	local tl = Instance.new("TextLabel")
+	tl.ZIndex = 1
+	tl.TextTransparency = 1
+	tl.Size = size
+	tl.Parent = parent
+	tl.Name = name
+	tl.BackgroundColor3 = bgcolor
+	tl.BorderMode = Enum.BorderMode.Inset
+	tl.BorderSizePixel = 1
+	if borderSizePixel ~= nil then
+		tl.BorderSizePixel = borderSizePixel
+		tl.BorderMode = Enum.BorderMode.Outline
+	end
+
+	local innerTl = Instance.new("TextLabel")
+	innerTl.Parent = tl
+	innerTl.TextScaled = true
+	innerTl.ZIndex = 2
+	innerTl.Name = "Inner"
+	innerTl.Font = Enum.Font.Gotham
+	innerTl.Size = UDim2.new(1, -2 * padding, 1, -2 * padding)
+	innerTl.Position = UDim2.new(0, padding, 0, padding)
+	innerTl.BackgroundColor3 = bgcolor
+	innerTl.BorderSizePixel = 0
+
+	return innerTl
+end
+
+--todo deprecate
+module.getTbSimple = function(): TextButton
+	local tl = Instance.new("TextButton")
+	tl.TextScaled = true
+	tl.Font = Enum.Font.Gotham
+	tl.Size = UDim2.new(1, 0, 1, 0)
+	tl.BorderMode = Enum.BorderMode.Outline
+	tl.BorderSizePixel = 1
+	return tl
+end
+
+module.getTb = function(
+	name: string,
+	size: UDim2,
+	padding: number,
+	parent: Frame | ScrollingFrame,
+	bgcolor: Color3,
+	borderSizePixel: number?
+): TextButton
+	local tl = Instance.new("TextLabel")
+	tl.ZIndex = 1
+	tl.TextTransparency = 1
+	tl.Size = size
+	tl.Parent = parent
+	tl.Name = name
+	tl.BackgroundColor3 = bgcolor
+	tl.BorderMode = Enum.BorderMode.Inset
+	tl.BorderSizePixel = 1
+	if borderSizePixel ~= nil then
+		tl.BorderSizePixel = borderSizePixel
+		tl.BorderMode = Enum.BorderMode.Outline
+	end
+	local innerTl = Instance.new("TextButton")
+	innerTl.Parent = tl
+	innerTl.TextScaled = true
+	innerTl.ZIndex = 2
+	innerTl.Name = "Inner"
+	innerTl.Font = Enum.Font.Gotham
+	innerTl.Size = UDim2.new(1, -2 * padding, 1, -2 * padding)
+	innerTl.Position = UDim2.new(0, padding, 0, padding)
+	innerTl.BackgroundColor3 = bgcolor
+	innerTl.BorderSizePixel = 0
+	innerTl.BorderMode = Enum.BorderMode.Inset
+	return innerTl
+end
+
+--kill a sgui with an invisible textbutton on top of it.
+--shrinkYScale is to leave room for a warper or other button at the bottom.
+--IS used for runresults, not used for find
+module.setupKillOnClick = function(sgui: ScreenGui, excludeElementName: string?, actualExcludedFrame: Frame?)
+	local invisibleCloseModalButton = Instance.new("TextButton")
+	local mainFrame = sgui:FindFirstChildOfClass("Frame")
+	assert(mainFrame)
+	invisibleCloseModalButton.Position = mainFrame.Position
+	local additionalYScaleReduction = 0
+	local additionalYOffsetReduction = 0
+
+	if excludeElementName and excludeElementName ~= "" then
+		assert(excludeElementName)
+		local excluded: Frame
+		excluded = sgui:FindFirstChild(excludeElementName) :: Frame
+		if excluded then
+			additionalYScaleReduction += excluded.Size.Height.Scale
+			warn("yscale.")
+			--2022 apparently this never happens
+		end
+	end
+	if actualExcludedFrame then
+		additionalYScaleReduction += actualExcludedFrame.Size.Height.Scale * mainFrame.Size.Height.Scale
+		additionalYOffsetReduction += actualExcludedFrame.Size.Height.Offset
+	end
+	local newYScale = mainFrame.Size.Y.Scale - additionalYScaleReduction - additionalYOffsetReduction
+
+	if newYScale < 0 then
+		warn("bad scale.")
+	end
+	invisibleCloseModalButton.Size =
+		UDim2.new(mainFrame.Size.X.Scale, mainFrame.Size.X.Offset, newYScale, mainFrame.Size.Y.Offset)
+	invisibleCloseModalButton.Name = "invisibleCloseModalButton"
+	invisibleCloseModalButton.Transparency = 1.0
+	invisibleCloseModalButton.Text = "kill but can't see"
+	invisibleCloseModalButton.TextScaled = true
+	invisibleCloseModalButton.Parent = sgui
+	invisibleCloseModalButton.Activated:Connect(function()
+		sgui:Destroy()
+	end)
+end
+
+--pixel-sized udim creator
+module.p = function(xpixel: number, ypixel: number): UDim2
+	return UDim2.new(0, xpixel, 0, ypixel)
+end
+
+--scaled udim creator
+module.s = function(xscale: number, yscale: number): UDim2
+	return UDim2.new(xscale, 0, yscale, 0)
+end
+
+return module
