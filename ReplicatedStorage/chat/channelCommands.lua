@@ -126,7 +126,8 @@ end
 
 module.missingWrs = function(speaker: Player, to: string, signId: number, channel): boolean
 	local signName = tpUtil.signId2signName(signId)
-	sm(channel, "NonWR races " .. to .. " " .. signName .. " for: " .. speaker.Name)
+	local totext = to and "to" or "from"
+	sm(channel, "NonWR races " .. totext .. " " .. signName .. " for: " .. speaker.Name)
 	local data: tt.getNonTop10RacesByUser =
 		playerdata.getNonWRsByToSignIdAndUserId(to, signId, speaker.UserId, "nonwr_command")
 	for _, runDesc in ipairs(data.raceDescriptions) do

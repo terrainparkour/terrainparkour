@@ -1,10 +1,8 @@
 --!strict
 
---eval 9.21
-
 local module = {}
 
-module.gameVersion = "1.183.os September 25 2022"
+module.gameVersion = "1.184 September 25 2022"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {

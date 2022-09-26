@@ -89,4 +89,23 @@ module.serializeTable = function(tbl: any)
 	end
 end
 
+--coalesce remaining string keys >=start into a space-separated single string.
+module.coalesceFrom = function(tbl: any, start: number): string
+	local combined = ""
+	for index, el in ipairs(tbl) do
+		if index < start then
+			continue
+		end
+		if el == nil then
+			continue
+		end
+		if combined == "" then
+			combined = el
+		else
+			combined = combined .. " " .. el
+		end
+	end
+	return combined
+end
+
 return module

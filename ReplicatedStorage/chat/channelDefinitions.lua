@@ -195,22 +195,25 @@ local function DataAdminFunc(speakerName: string, message: string, channelName: 
 	if verb == "nonwrs" then
 		local to: string
 		local signId: number = 0
+		local signName: string = ""
 		if parts[2] == "to" then
+			signName = textUtil.coalesceFrom(parts, 3)
 			to = "true"
 		elseif parts[2] == "from" then
+			signName = textUtil.coalesceFrom(parts, 3)
 			to = "false"
 		else
-			--both to and from
-			signId = tpUtil.looseSignName2SignId(parts[2])
+			signName = textUtil.coalesceFrom(parts, 2)
 			to = "both"
 		end
 
-		if signId == 0 then
-			signId = tpUtil.looseSignName2SignId(parts[3])
-			if not signId then
-				return false
-			end
+		signId = tpUtil.looseSignName2SignId(signName)
+
+		if not signId then
+			warn("no sign." .. signName)
+			return false
 		end
+
 		return channelCommands.missingWrs(speaker, to, signId, channel)
 	end
 
