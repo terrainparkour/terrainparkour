@@ -15,7 +15,7 @@ https://www.youtube.com/channel/UCYHNKGBpKHcangeKLHEJGNw
 How this code and game works:
 =====================
 
-* see this youtube video <todo>
+* see this youtube video <todo> here
 
 
 What you can do with this
