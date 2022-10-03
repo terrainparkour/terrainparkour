@@ -192,7 +192,7 @@ local function makePopRowFrame(
 	return fr
 end
 
-local function getPopularContents(player: Player, userIds: { number })
+local function getPopularContents(player: Player, userIds: { number }): ScreenGui
 	local popResults: { PopularResponseTypes.popularRaceResult } = getNewRunsFunction:InvokeServer(userIds)
 
 	local sg = Instance.new("ScreenGui")

@@ -9,6 +9,7 @@ local mt = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonT
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 
 local localPlayer = game:GetService("Players").LocalPlayer
+local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 
 local doAnnotation = false
 local function annotate(s): nil
@@ -228,12 +229,11 @@ module.getMarathonInnerTiles = function(desc: mt.marathonDescriptor, lbFrameSize
 	par.Parent = fake
 	--what is this? why can't i set parent to nil
 	table.insert(res, nameTile.Parent)
-	local toolTip = require(game.ReplicatedStorage.gui.toolTip)
+
 	toolTip.setupToolTip(localPlayer, nameTile, desc.hint, toolTip.enum.toolTipSize.NormalText)
 
 	getComponentTilesForKind(desc, res, lbFrameSize)
 
-	-- annotate("getMarathonInnerTiles.end." .. desc.kind)
 	return res
 end
 

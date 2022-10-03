@@ -1,6 +1,9 @@
 --!strict
 --eval 9.25.22
 
+--RemoteDb Wrappers
+--ideally all things which require direct network calls should have sensible normal layers here incl caching
+
 local PlayersService = game:GetService("Players")
 
 local textUtil = require(game.ReplicatedStorage.util.textUtil)

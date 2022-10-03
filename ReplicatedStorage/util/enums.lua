@@ -2,7 +2,17 @@
 
 local module = {}
 
-module.gameVersion = "1.184 September 25 2022"
+module.gameVersion = "1.185 October 2 2022"
+
+local releaseNotes: { [number]: string } = {
+	[185] = [[* fix challenge for long sign names
+* move marathon configuration to an easier new button, removed from settings
+* mouseovers for leaderboard headers
+* fixed marathon timing to be more exact
+* fixed settings "hide leaderboard" function
+]],
+}
+module.releaseNotes = releaseNotes
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {

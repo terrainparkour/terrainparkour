@@ -34,6 +34,7 @@ module.unblockWarping = function(msg: string)
 end
 
 --call other local deps registered methods, mark use runable to warp, warp from server, then unlock deps and mark free
+--signid 0 means just cancel race, don't actually warp, that will be done on server.
 module.requestWarpToSign = function(signId: number)
 	innerIsWarping = true
 	for _, cb in ipairs(warpStartCallbacks) do

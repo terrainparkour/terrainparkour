@@ -9,7 +9,6 @@ local TweenService = game:GetService("TweenService")
 local PlayersService = game:GetService("Players")
 local leaderboardActions = require(game.StarterPlayer.StarterCharacterScripts.leaderboardActions)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
-local config = require(game.ReplicatedStorage.config)
 local localPlayer = PlayersService.LocalPlayer
 local StarterPlayer = game:GetService("StarterPlayer")
 local rs = game:GetService("ReplicatedStorage")
@@ -20,6 +19,10 @@ local thumbnails = require(game.ReplicatedStorage.thumbnails)
 local mt = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonTypes)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
+local toolTip = require(game.ReplicatedStorage.gui.toolTip)
+local marathonClient = require(StarterPlayer.StarterCharacterScripts.marathon.marathonClient)
+local mds = require(game.ReplicatedStorage.marathonDescriptors)
+
 local lbIsEnabled = true
 
 local doAnnotation = localPlayer.UserId == enums.objects.TerrainParkour and false
@@ -61,21 +64,82 @@ local userLbRowCellWidth = 43
 local lbwidth = 0
 
 --descriptors used for user-LB rows for which the later ones, updates come up from server.
-type lbUserCellDescriptorType = { name: string, num: number, width: number, userFacingName: string }
+type lbUserCellDescriptorType = { name: string, num: number, width: number, userFacingName: string, tooltip: string }
 
+--use num to artificially keep them separated
 local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
-	{ name = "portrait", num = 1, width = lbPlayerRowY, userFacingName = "" },
-	{ name = "username", num = 3, width = 90, userFacingName = "" },
-	{ name = "awardCount", num = 5, width = userLbRowCellWidth, userFacingName = "awards" },
-	{ name = "userTix", num = 7, width = userLbRowCellWidth, userFacingName = "tix" },
-	{ name = "userTotalFindCount", num = 9, width = userLbRowCellWidth, userFacingName = "finds" },
-	{ name = "findRank", num = 13, width = userLbRowCellWidth, userFacingName = "rank" },
-	{ name = "userCompetitiveWRCount", num = 14, width = userLbRowCellWidth, userFacingName = "cwrs" },
-	{ name = "userTotalWRCount", num = 15, width = userLbRowCellWidth, userFacingName = "wrs" },
-	{ name = "top10s", num = 18, width = userLbRowCellWidth, userFacingName = "top10s" },
-	{ name = "races", num = 23, width = userLbRowCellWidth, userFacingName = "races" },
-	{ name = "runs", num = 26, width = userLbRowCellWidth, userFacingName = "runs" },
-	{ name = "badgeCount", num = 31, width = userLbRowCellWidth, userFacingName = "badges" },
+	{ name = "portrait", num = 1, width = lbPlayerRowY, userFacingName = "", tooltip = "" },
+	{ name = "username", num = 3, width = 90, userFacingName = "", tooltip = "" },
+	{
+		name = "awardCount",
+		num = 5,
+		width = userLbRowCellWidth,
+		userFacingName = "awards",
+		tooltip = "How many special awards you've earned from contests or other achievements.",
+	},
+	{
+		name = "userTix",
+		num = 7,
+		width = userLbRowCellWidth,
+		userFacingName = "tix",
+		tooltip = "How many tix you've earned from your runs and finds and records.",
+	},
+	{
+		name = "userTotalFindCount",
+		num = 9,
+		width = userLbRowCellWidth,
+		userFacingName = "finds",
+		tooltip = "How many signs you've found!",
+	},
+	{
+		name = "findRank",
+		num = 13,
+		width = userLbRowCellWidth,
+		userFacingName = "rank",
+		tooltip = "Your rank of how many signs you've found.",
+	},
+	{
+		name = "userCompetitiveWRCount",
+		num = 14,
+		width = userLbRowCellWidth,
+		userFacingName = "cwrs",
+		tooltip = "How many World records you hold in races with 10+ runners in them!",
+	},
+	{
+		name = "userTotalWRCount",
+		num = 15,
+		width = userLbRowCellWidth,
+		userFacingName = "wrs",
+		tooltip = "How many World Records you hold right now.",
+	},
+	{
+		name = "top10s",
+		num = 18,
+		width = userLbRowCellWidth,
+		userFacingName = "top10s",
+		tooltip = "How many of your runs are still in the top10.",
+	},
+	{
+		name = "races",
+		num = 23,
+		width = userLbRowCellWidth,
+		userFacingName = "races",
+		tooltip = "How many distinct runs you've done.",
+	},
+	{
+		name = "runs",
+		num = 26,
+		width = userLbRowCellWidth,
+		userFacingName = "runs",
+		tooltip = "How many runs you've done in total.",
+	},
+	{
+		name = "badgeCount",
+		num = 31,
+		width = userLbRowCellWidth,
+		userFacingName = "badges",
+		tooltip = "Total game badges you have won.",
+	},
 }
 
 --cells which need updating in a user-lb-row.
@@ -92,7 +156,7 @@ local function makeLBHeaderRowFrame(): Frame
 	headerFrame.Parent = lbframe
 	headerFrame.BorderMode = Enum.BorderMode.Inset
 	headerFrame.BorderSizePixel = 0
-	headerFrame.Name = "00000000-headerframe"
+	headerFrame.Name = "00000000-lb-headerframe"
 	headerFrame.Size = UDim2.new(1, 0, 0, lbHeaderY)
 	local uu = Instance.new("UIListLayout")
 	uu.FillDirection = Enum.FillDirection.Horizontal
@@ -101,15 +165,16 @@ local function makeLBHeaderRowFrame(): Frame
 	--create initial tiles for top of LB
 	for _, lbUserCellDescriptor: lbUserCellDescriptorType in pairs(lbUserCellDescriptors) do
 		local el = guiUtil.getTl(
-			string.format("%02d.header", lbUserCellDescriptor.num),
+			string.format("%02d.header.%s", lbUserCellDescriptor.num, lbUserCellDescriptor.userFacingName),
 			UDim2.new(0, lbUserCellDescriptor.width, 1, 0),
 			2,
 			headerFrame,
 			colors.defaultGrey,
 			1
 		)
-		-- el.Parent.BorderMode = Enum.BorderMode.Outline
-		-- el.Parent.BorderSizePixel = 0
+		if lbUserCellDescriptor.tooltip ~= "" then
+			toolTip.setupToolTip(localPlayer, el, lbUserCellDescriptor.tooltip, UDim2.fromOffset(300, 40), false)
+		end
 		el.Text = lbUserCellDescriptor.userFacingName
 		el.ZIndex = lbUserCellDescriptor.num
 		el.TextXAlignment = Enum.TextXAlignment.Center
@@ -118,17 +183,19 @@ local function makeLBHeaderRowFrame(): Frame
 	return headerFrame
 end
 
+--problem: we also need to artificially trigger a user 'rejoin' to do this right.
+--this basically works, except if you toggle the setting we do not know to re-send/reload in-server players.
 local function completelyResetUserLB()
 	--make initial row only. then as things happen (people join, or updates come in, apply them in-place)
-	if not lbIsEnabled then
-		print("skipping")
-		return
-	end
+
 	local pgui: PlayerGui = PlayersService.LocalPlayer:WaitForChild("PlayerGui")
 	local oldLbSgui: ScreenGui? = pgui:FindFirstChild("LeaderboardScreenGui")
 	if oldLbSgui ~= nil then
-		-- annotate("setupEmptyLBUserRow.destroyingOld")
 		oldLbSgui:Destroy()
+	end
+	if not lbIsEnabled then
+		annotate("reset lb and it's disabled now so just end.")
+		return
 	end
 	local lbSgui: ScreenGui = Instance.new("ScreenGui")
 	lbSgui.Name = "LeaderboardScreenGui"
@@ -137,7 +204,6 @@ local function completelyResetUserLB()
 	lbframe.BorderMode = Enum.BorderMode.Inset
 	lbframe.BorderSizePixel = 0
 	lbframe.Parent = lbSgui
-	-- annotate("setupEmptyLBHeader.created.LBFrame")
 	lbframe.Size = UDim2.new(0, 0.2, 0, 0)
 	lbframe.Position = UDim2.new(1, -1 * lbwidth - 10, 0.0, 0)
 	lbframe.Name = "LeaderboardFrame"
@@ -149,17 +215,17 @@ local function completelyResetUserLB()
 	lbRowCount = 0
 	resetLbHeight()
 
-	-- annotate("setupEmptyLBUserRow.making header for user.")
 	local headerFrame = makeLBHeaderRowFrame()
 	headerFrame.Parent = lbframe
 
-	-- annotate("setupEmptyLBHeader.done")
+	leaderboardActions.initActionButtons(lbframe, localPlayer)
+
+	marathonClient.ReInitActiveMarathons()
 end
 
 --important to use all lbUserCellParams here to make the row complete
 --even if an update comes before the initial loading of full stats.
 local function addUserToLB(userId: number): rowFrameType?
-	-- annotate("makeNewUserLBRowFrame.start for:" .. userId)
 
 	local rowplayer = PlayersService:GetPlayerByUserId(userId)
 	if rowplayer == nil then
@@ -231,7 +297,6 @@ local function addUserToLB(userId: number): rowFrameType?
 			end
 		end
 	end
-	-- annotate("makeNewUserLBRowFrame.end" .. userId)
 	return rowFrame
 end
 
@@ -268,6 +333,9 @@ end
 --q: what happens if you receive multiple of these at the same time? how to debounce this?
 --a: just let it happen. most significant ones won't collide.
 local function receivedLBUpdateForUser(userData: userData, initial: boolean): nil
+	if not lbIsEnabled then
+		return
+	end
 	local userId = userData.userId
 	--check if this client's user has any lbframe.
 	if userId == nil then
@@ -275,13 +343,10 @@ local function receivedLBUpdateForUser(userData: userData, initial: boolean): ni
 		warn(userData)
 		return
 	end
-	-- annotate("redrawUserLBRow.start target:" .. userId)
 
 	if lbframe == nil then
-		-- annotate("redrawUserLBRow.lbframe nil so setupEmptyLBHeader")
 		completelyResetUserLB()
 	elseif lbframe.Parent == nil then
-		-- annotate("redrawUserLBRow.lbframe parent nil so setupEmptyLBHeader")
 		completelyResetUserLB()
 	end
 
@@ -297,15 +362,12 @@ local function receivedLBUpdateForUser(userData: userData, initial: boolean): ni
 	local rowFrame: rowFrameType = userId2rowframe[userId]
 	if rowFrame == nil or rowFrame.frame.Parent == nil then
 		if rowFrame == nil then
-			-- annotate("redrawUserLBRow.rowframe was nil, recreating ")
 		else
 			rowFrame.frame:Destroy()
-			-- annotate("redrawUserLBRow.rowframe.Parent was nil, recreating")
 		end
 		userId2rowframe[userId] = nil
 		local candidateRowFrame = addUserToLB(userId)
 		if candidateRowFrame == nil then --case when the user is gone already.
-			-- annotate("user disappeared. rowframe nil")
 			return
 		end
 		rowFrame = candidateRowFrame :: rowFrameType
@@ -313,7 +375,6 @@ local function receivedLBUpdateForUser(userData: userData, initial: boolean): ni
 		resetLbHeight()
 		userId2rowframe[userId] = candidateRowFrame :: rowFrameType
 		rowFrame.frame.Parent = lbframe
-		-- annotate("redrawUserLBRow.rowframe fix done")
 	end
 
 	local bgcolor = colors.grey
@@ -335,7 +396,6 @@ local function receivedLBUpdateForUser(userData: userData, initial: boolean): ni
 		--if we receive a tix update, update rowframe.
 		if change.key == "userTix" then
 			local newName = tostring(bignum - change.newValue) .. localPlayer.Name
-			-- annotate("changing name: " .. rowFrame.frame.Name .. " to " .. newName)
 			rowFrame.frame.Name = newName
 		end
 
@@ -419,7 +479,9 @@ local function receivedLBUpdateForUser(userData: userData, initial: boolean): ni
 end
 
 local function removeUserLBRow(userId: number)
-	-- annotate("removeUserLBRow.start" .. tostring(userId))
+	if not lbIsEnabled then
+		return
+	end
 	local row: rowFrameType = userId2rowframe[userId]
 	userId2rowframe[userId] = nil
 	lbUserData[userId] = nil
@@ -428,7 +490,6 @@ local function removeUserLBRow(userId: number)
 		lbRowCount = lbRowCount - 1
 	end
 	resetLbHeight()
-	-- annotate("removeUserLBRow.end" .. tostring(userId))
 end
 
 --data is a list of kvs for update data. if any change, redraw the row (and highlight that cell.)
@@ -436,10 +497,6 @@ end
 local function clientReceiveNewLeaderboardData(userData: userData)
 	userData.userId = tonumber(userData.userId)
 
-	if config.isInStudio() then
-		-- print("receive lb update about: " .. tostring(userData.kind))
-		-- print(userData)
-	end
 	if userData.kind == "leave" then
 		lbUserData[userData.userId] = nil
 		removeUserLBRow(userData.userId)
@@ -459,26 +516,20 @@ local function clientReceiveNewLeaderboardData(userData: userData)
 	receivedLBUpdateForUser(userData, initial)
 end
 
-local marathonClient = require(StarterPlayer.StarterCharacterScripts.marathon.marathonClient)
-local mds = require(game.ReplicatedStorage.marathonDescriptors)
-
 --user changed marathon settings in UI - uses registration to monitor it.
+--note there is an init call here so user initial settings _will_ show up here and we should
+--be careful not to mistakenly reinit LB needlessly.
 local function handleUserSettingChanged(player: Player, setting: tt.userSettingValue)
 	if setting.name == "hide leaderboard" then
 		if setting.value then
-			print("Hiding LB")
 			lbIsEnabled = false
-			local lb = player.PlayerGui:FindFirstChild("LeaderboardScreenGui")
-			if lb == nil then
-				print("should be null lb")
-			else
-				lb:Destroy()
-			end
+			marathonClient.CloseAllMarathons()
+			completelyResetUserLB()
 		else
-			if lbIsEnabled == false then
-				completelyResetUserLB()
+			if not lbIsEnabled then
 				lbIsEnabled = true
-				--if it somehow got disabled, try to heal it.
+				completelyResetUserLB()
+
 			end
 		end
 	end
@@ -493,17 +544,13 @@ local function handleUserSettingChanged(player: Player, setting: tt.userSettingV
 		return
 	end
 	if setting.value then
-		-- annotate("turning on " .. targetMarathon.humanName)
 		marathonClient.InitMarathon(targetMarathon, true)
 	else
-		-- annotate("turning off " .. targetMarathon.humanName)
 		marathonClient.DisableMarathon(targetMarathon)
 	end
 end
 
 local function init()
-	--calculate width.
-	-- annotate("init.start")
 	game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 	game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
 
@@ -519,7 +566,7 @@ local function init()
 
 	--listen to racestart, raceendevent
 
-	marathonClient.Init(lbframe)
+	marathonClient.Init()
 	local userSettingsFunction: RemoteFunction = remotes.getRemoteFunction("GetUserSettingsFunction")
 	local userSettings: { tt.userSettingValue } = userSettingsFunction:InvokeServer()
 
@@ -533,9 +580,6 @@ local function init()
 	-- local randomRace = randomMarathon.CreateRandomRaceInMarathonUI("A", "Mazatlan")
 	-- marathonClient.InitMarathon(randomRace, true)
 
-	leaderboardActions.initActionButtons(lbframe, localPlayer)
-
-	-- annotate("init.end")
 end
 
 local localFunctions = require(game.ReplicatedStorage.localFunctions)

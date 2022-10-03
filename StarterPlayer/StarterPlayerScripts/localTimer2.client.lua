@@ -157,7 +157,7 @@ local function clientTouchedSign(humanoid: Humanoid, sign: BasePart, signId: num
 	--hit is valid.
 
 	--notify marathon ui
-	marathonClient.receiveHit(sign.Name, 0)
+	marathonClient.receiveHit(sign.Name, touchTimeTick)
 
 	----NEW HIT AREA START, RETURNED--------
 	if currentRunSignName == "" then

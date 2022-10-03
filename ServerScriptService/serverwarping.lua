@@ -102,6 +102,8 @@ module.WarpToUsername = function(player, username: string)
 		return false
 	end
 
+	--tell client to cancel runs
+	serverWantsWarpFunction:InvokeClient(player, 0)
 	return InnerWarp(player, pos, false)
 end
 
@@ -111,14 +113,15 @@ module.WarpToSignName = function(player, signName: string)
 		return false
 	end
 	serverWantsWarpFunction:InvokeClient(player, signId)
-	-- return module.WarpToSignId(player, signId)
 end
 
 --make this also warpable to signNumber
 module.WarpToSignId = function(player: Player, signId: number, hasLock: boolean): boolean
+	if signId == 0 then
+		--do nothing, this was a reflected playerwarp
+		return false
+	end
 	local pos = tpUtil.signId2Position(signId)
-	-- local signname = tpUtil.signId2signName(signId)
-	-- local sign: Part = game.Workspace:FindFirstChild("Signs"):FindFirstChild(signname)
 	if not pos then
 		return false
 	end

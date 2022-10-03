@@ -1,6 +1,7 @@
 --!strict
 
 --eval 9.25.22
+--the lower right S hamburger
 
 local PlayersService = game:GetService("Players")
 
@@ -10,7 +11,7 @@ local menu = require(game.ReplicatedStorage.gui.menu.menu)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 
 local badgeButton = require(game.ReplicatedStorage.gui.menu.badgeButton)
-local marathonSettingsButton = require(game.ReplicatedStorage.gui.menu.marathonSettingsButton)
+
 local surveyButton = require(game.ReplicatedStorage.gui.menu.surveyButton)
 local howToPlayButton = require(game.ReplicatedStorage.gui.menu.howToPlayButton)
 
@@ -19,7 +20,6 @@ local userSettingsButton = require(game.ReplicatedStorage.gui.menu.userSettingsB
 local buttons: { gt.button } = {
 	howToPlayButton.howToPlayButton,
 	badgeButton.badgeButton,
-	marathonSettingsButton.marathonSettingsButton,
 	surveyButton.surveySettingsButton,
 	userSettingsButton.userSettingsButton,
 }

@@ -137,9 +137,14 @@ local getSettingsModal = function(localPlayer: Player): ScreenGui
 	return sg
 end
 
-local marathonSettingsButton: gt.button = {
+local marathonSettingsButton: gt.actionButton = {
 	name = "Marathon Settings",
 	contentsGetter = getSettingsModal,
+	hoverHint = "Configure Marathons",
+	shortName = "+ Marathon",
+	getActive = function()
+		return true
+	end,
 }
 
 module.marathonSettingsButton = marathonSettingsButton

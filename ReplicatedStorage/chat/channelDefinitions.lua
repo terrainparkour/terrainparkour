@@ -24,7 +24,6 @@ local module = {}
 --looks like this is a way to shuffle around pointers to actual channel objects.
 local channelsFromExternal = nil
 module.sendChannels = function(channels)
-	-- print("received channels.")
 	channelsFromExternal = channels
 end
 
@@ -50,24 +49,12 @@ local function CheckInternalAdminCmd(speaker, message)
 		if #parts == 1 then
 			object = ""
 		end
-		if #parts >= 2 then
-			object = parts[2]
-		end
 
-		--coalesc later parts.
-		for index, el in ipairs(parts) do
-			if index == 1 or index == 2 then
-				continue
-			end
-			if el == nil then
-				continue
-			end
-			object = object .. " " .. el
-		end
+		object = textUtil.coalesceFrom(parts, 2)
 
 		if cmd == "rw" then
 			local rndSign: string = rdb.getRandomSignName()
-			local res = serverwarping.WarpToSignName(speaker, rndSign)
+			serverwarping.WarpToSignName(speaker, rndSign)
 			return true
 		end
 
@@ -98,9 +85,10 @@ local function DataAdminFunc(speakerName: string, message: string, channelName: 
 	--i should look up the channel. doh.
 	if channelName == "All" then
 		channel = channels.All
-	end
-	if channelName == "Data" then
+	elseif channelName == "Data" then
 		channel = channels.Data
+	else
+		warn("unset chnnnel.")
 	end
 
 	message = string.sub(message, 2)

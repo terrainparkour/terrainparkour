@@ -12,8 +12,7 @@ local colors = require(game.ReplicatedStorage.util.colors)
 
 local marathonstatic = require(game.StarterPlayer.StarterCharacterScripts.marathon["marathon.static"])
 local warper = require(game.ReplicatedStorage.warper)
---global storage for user's lbframe
-local lbframe: Frame
+
 local lbMarathonRowY = 18
 local rf = require(game.ReplicatedStorage.util.remotes)
 
@@ -33,12 +32,24 @@ local function annotate(s): nil
 	end
 end
 
+--just re-get the outer lbframe by name.
+local function getLbFrame(): Frame
+	local pl = PlayersService.LocalPlayer:WaitForChild("PlayerGui")
+	local ret = pl:FindFirstChild("LeaderboardFrame", true)
+	if ret == nil then
+		warn("no lb")
+	end
+	return ret
+end
+
 local function startMarathonRunTimer(desc: mt.marathonDescriptor, baseTime: number)
 	desc.startTime = baseTime
 	if desc.runningTimeTileUpdater then
 		-- annotate("runtimer.not start for." .. desc.kind)
 		return
 	end
+
+	--loop spawn to measure timing for a marathon
 	spawn(function()
 		-- annotate("runtimer.start for." .. desc.kind)
 		desc.runningTimeTileUpdater = true
@@ -68,13 +79,10 @@ local function stopTimerForKind(desc: mt.marathonDescriptor): boolean
 	while true do
 		ii += 1
 		wait(1 / 25.1)
-		-- annotate("stopTimerForKind.looping." .. desc.kind)
 		if not desc.runningTimeTileUpdater then
-			-- annotate("stopTimerForKind.inner break" .. desc.kind)
 			return true
 		end
 		if ii > 20 then --TODO this is a hack.
-			-- annotate("stopTimerForKind.assuming timer stopped." .. desc.kind)
 			desc.runningTimeTileUpdater = false
 			return true
 		end
@@ -82,7 +90,7 @@ local function stopTimerForKind(desc: mt.marathonDescriptor): boolean
 end
 
 local function resetMarathonProgress(desc: mt.marathonDescriptor)
-	local stopped = stopTimerForKind(desc)
+	stopTimerForKind(desc)
 	module.InitMarathonVisually(desc)
 	desc.startTime = nil
 	desc.killTimerSemaphore = false
@@ -94,11 +102,13 @@ local function resetMarathonProgress(desc: mt.marathonDescriptor)
 end
 
 --get or create frame; swap out the tiles with new ones.
+--does it do deduplication?
 module.InitMarathonVisually = function(desc: mt.marathonDescriptor)
-	-- annotate("initMarathonVisually.start." .. desc.highLevelType .. "_" .. desc.sequenceNumber)
+	annotate("initMarathonVisually.start." .. desc.highLevelType .. "_" .. desc.sequenceNumber)
 
 	local frameName = marathonstatic.getMarathonKindFrameName(desc)
-	local exi: Frame = lbframe:FindFirstChild(frameName)
+	annotate("init visual marathon: " .. frameName)
+	local exi: Frame = getLbFrame():FindFirstChild(frameName)
 	if exi == nil then
 		--this happens the first time you start a marathon from client-side.
 		exi = Instance.new("Frame")
@@ -106,10 +116,10 @@ module.InitMarathonVisually = function(desc: mt.marathonDescriptor)
 		exi.BorderSizePixel = 0
 		exi.Name = frameName
 		exi.Size = UDim2.new(1, 0, 0, lbMarathonRowY)
-		exi.Parent = lbframe
+		exi.Parent = getLbFrame()
 	end
 	--swap out tiles
-	local tiles = marathonstatic.getMarathonInnerTiles(desc, lbframe.AbsoluteSize)
+	local tiles = marathonstatic.getMarathonInnerTiles(desc, getLbFrame().AbsoluteSize)
 	for _, tile in ipairs(tiles) do
 		local exiTile = exi:FindFirstChild(tile.Name)
 		if exiTile ~= nil then
@@ -129,11 +139,24 @@ module.InitMarathonVisually = function(desc: mt.marathonDescriptor)
 	end)
 	resetTile.Parent = exi
 
-	exi.Parent = lbframe
+	exi.Parent = getLbFrame()
+end
+
+--restore tile to marathon finish time.
+local function updateTimeTileForKindToCompletion(runMilliseconds: number, timeTile: TextLabel)
+	timeTile.Text = string.format("%0.3f", runMilliseconds / 1000.0)
+	timeTile.BackgroundColor3 = colors.blueDone
+end
+
+--kill the ongoing update timer.  set  the final time and background blue.
+local function finishMarathonVisually(desc: mt.marathonDescriptor, runMilliseconds: number, marathonRow: Frame)
+	-- annotate("finishMarathonVisually.start." .. desc.kind)
+	stopTimerForKind(desc)
+	updateTimeTileForKindToCompletion(runMilliseconds, desc.timeTile)
+	-- annotate("finishMarathonVisually.end." .. desc.kind)
 end
 
 --handle the juggling of marathonKindFinds keys and stuff.
-
 local function tellDescAboutFind(desc: mt.marathonDescriptor, signName: string): mt.userFoundSignResult
 	if desc.addDebounce[signName] then
 		return { added = false, marathonDone = false, started = false }
@@ -158,20 +181,6 @@ local function tellDescAboutFind(desc: mt.marathonDescriptor, signName: string):
 	return ret
 end
 
-local function updateTimeTileForKindToCompletion(runMilliseconds: number, timeTile: TextLabel)
-	--restrore tile to marathon finish time.
-	timeTile.Text = string.format("%0.3f", runMilliseconds / 1000.0)
-	timeTile.BackgroundColor3 = colors.blueDone
-end
-
---kill the ongoing update timer.  set  the final time and background blue.
-local function finishMarathonVisually(desc: mt.marathonDescriptor, runMilliseconds: number, marathonRow: Frame)
-	-- annotate("finishMarathonVisually.start." .. desc.kind)
-	stopTimerForKind(desc)
-	updateTimeTileForKindToCompletion(runMilliseconds, desc.timeTile)
-	-- annotate("finishMarathonVisually.end." .. desc.kind)
-end
-
 local function reportEphemeralMarathonResults(desc: mt.marathonDescriptor, runMilliseconds)
 	local orderedSignIds = desc.SummarizeResults(desc)
 	local joined = table.concat(orderedSignIds, ",")
@@ -186,8 +195,8 @@ end
 --look in the datastores and figure out something to upload to the endpoint.
 --can require munging aound
 local function reportMarathonResults(desc: mt.marathonDescriptor, runMilliseconds)
-	local orderedSignIds = desc.SummarizeResults(desc)
-	local joined = table.concat(orderedSignIds, ",")
+	local reportingSignIds = desc.SummarizeResults(desc)
+	local joined = table.concat(reportingSignIds, ",")
 	local s, e = pcall(function()
 		marathonCompleteEvent:FireServer(desc.kind, joined, runMilliseconds)
 	end)
@@ -196,7 +205,8 @@ local function reportMarathonResults(desc: mt.marathonDescriptor, runMillisecond
 	end
 end
 
-local function innerReceiveHit(desc: mt.marathonDescriptor, signName: string)
+--receive a touch on a sign for a given marathon.
+local function innerReceiveHit(desc: mt.marathonDescriptor, signName: string, innerTick: number)
 	local res = tellDescAboutFind(desc, signName)
 	if res == nil then
 		warn("NIL")
@@ -211,7 +221,7 @@ local function innerReceiveHit(desc: mt.marathonDescriptor, signName: string)
 	-- annotate("innerReceiveHit.started?" .. tostring(res.started))
 
 	local frameName = marathonstatic.getMarathonKindFrameName(desc)
-	local marathonRow: Frame = lbframe:FindFirstChild(frameName)
+	local marathonRow: Frame = getLbFrame():FindFirstChild(frameName)
 
 	--NOTE: Why do this here, separated, not above in evaluateFind?
 	desc.UpdateRow(desc, marathonRow, signName)
@@ -219,13 +229,13 @@ local function innerReceiveHit(desc: mt.marathonDescriptor, signName: string)
 
 	if res.started then
 		-- annotate("innerReceiveHit.res-started.start")
-		startMarathonRunTimer(desc, tick())
+		startMarathonRunTimer(desc, innerTick)
 		-- annotate("innerReceiveHit.res-started.end")
 	end
 
 	if res.marathonDone then
 		-- annotate("innerReceiveHit.marathonDone.start")
-		local completionTime = tick() - desc.startTime
+		local completionTime = innerTick - desc.startTime
 		local runMilliseconds = math.round(completionTime * 1000)
 		finishMarathonVisually(desc, runMilliseconds, marathonRow)
 		if desc.highLevelType == "randomrace" then
@@ -241,8 +251,9 @@ end
 --blocker to confirm the user has completed warp
 local canDoAnything = true
 
-module.receiveHit = function(signName: string, _: number)
+module.receiveHit = function(signName: string, innerTick: number)
 	-- annotate("marathon receive hit ." .. signName)
+
 	if not canDoAnything then
 		-- annotate("can't do anything while warping so skipping.")
 		return
@@ -253,20 +264,17 @@ module.receiveHit = function(signName: string, _: number)
 			break
 		end
 		-- annotate("receiveHit " .. desc.kind .. signName)
-		innerReceiveHit(desc, signName)
+		innerReceiveHit(desc, signName, innerTick)
 	end
 end
 
 local function onWarpStart()
 	canDoAnything = false
-	-- annotate("init.callback.warped.start")
-	-- annotate("reset all marathon.")
 	for _, desc: mt.marathonDescriptor in ipairs(joinableMarathonKinds) do
 		spawn(function()
 			resetMarathonProgress(desc)
 		end)
 	end
-	-- annotate("init.callback.warped.end")
 end
 
 local function onWarpEnd()
@@ -274,21 +282,15 @@ local function onWarpEnd()
 end
 
 -- when user warps, kill outstanding marathons.
-module.Init = function(lbframeInput: Frame): nil
-	if lbframeInput == nil then
-		warn("nil lbframe ")
-		return
-	end
-	lbframe = lbframeInput
-	-- local warpedEvent: RemoteEvent = game.ReplicatedStorage:WaitForChild("RemoteEvents"):WaitForChild("WarpedEvent")
+module.Init = function(): nil
 	warper.addCallbackToWarpStart(onWarpStart)
 	warper.addCallbackToWarpEnd(onWarpEnd)
-	-- warpedEvent.OnClientEvent:Connect(onWarp)
 end
 
+--BOTH tell the system that the setting value is this, AND init it visually.
 module.InitMarathon = function(desc: mt.marathonDescriptor, forceDisplay: boolean)
 	local intable = false
-	for ii, joinable in ipairs(joinableMarathonKinds) do
+	for _, joinable in ipairs(joinableMarathonKinds) do
 		if joinable.humanName == desc.humanName then
 			intable = true
 			break
@@ -305,6 +307,7 @@ module.InitMarathon = function(desc: mt.marathonDescriptor, forceDisplay: boolea
 	end
 end
 
+--disable from the UI
 module.DisableMarathon = function(desc: mt.marathonDescriptor)
 	local target = 0
 	for ii, d in pairs(joinableMarathonKinds) do
@@ -319,12 +322,32 @@ module.DisableMarathon = function(desc: mt.marathonDescriptor)
 	end
 	resetMarathonProgress(desc)
 	local frameName = marathonstatic.getMarathonKindFrameName(desc)
-	local exi: Frame = lbframe:FindFirstChild(frameName)
+	local exi: Frame = getLbFrame():FindFirstChild(frameName)
 	if exi ~= nil then
 		exi:Destroy()
 	end
 
 	table.remove(joinableMarathonKinds, target)
+end
+
+local disabledMarathons = {}
+module.CloseAllMarathons = function()
+	while #joinableMarathonKinds > 0 do
+		local item = joinableMarathonKinds[1]
+		module.DisableMarathon(item)
+		table.insert(disabledMarathons, item)
+		--hold marathons enabled from settings in here, so that when lb is reenabled, they show up again.
+	end
+end
+
+--this should reinit marathons based on active current settings.
+module.ReInitActiveMarathons = function()
+	--restore the holder from settings
+	joinableMarathonKinds = disabledMarathons
+	disabledMarathons = {}
+	for _, joinable in ipairs(joinableMarathonKinds) do
+		module.InitMarathonVisually(joinable)
+	end
 end
 
 return module

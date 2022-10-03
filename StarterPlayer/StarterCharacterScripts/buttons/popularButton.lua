@@ -276,7 +276,7 @@ end
 local popularButton: gt.actionButton = {
 	name = "Popular Button",
 	contentsGetter = getPopularContents,
-	hoverHint = "Show top popular  runs",
+	hoverHint = "Show top popular runs",
 	shortName = "Popular",
 	getActive = function()
 		return true

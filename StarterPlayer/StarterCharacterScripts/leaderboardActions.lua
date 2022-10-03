@@ -15,8 +15,10 @@ local popularButton = require(game.StarterPlayer.StarterCharacterScripts.buttons
 local newButton = require(game.StarterPlayer.StarterCharacterScripts.buttons.newButton)
 local contestButtonGetter = require(game.StarterPlayer.StarterCharacterScripts.buttons.contestButtonGetter)
 local contestButtons = contestButtonGetter.getContestButtons({ localPlayer.UserId })
+local marathonSettingsButton = require(game.ReplicatedStorage.gui.menu.marathonSettingsButton)
 
 local actionButtons: { gt.actionButton } = {
+	marathonSettingsButton.marathonSettingsButton,
 	popularButton.popularButton,
 	newButton.newButton,
 }

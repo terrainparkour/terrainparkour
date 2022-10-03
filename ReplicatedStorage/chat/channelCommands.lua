@@ -242,16 +242,17 @@ end
 
 module.version = function(speaker: Player, channel: any): boolean
 	local doNotCheckInGameIdentifier = require(game.ReplicatedStorage:FindFirstChild("doNotCheckInGameIdentifier"))
-	local tt = ""
+	local testMessage = ""
 	if doNotCheckInGameIdentifier.useTestDb() then
-		tt = " TEST VERSION, db will be wiped"
+		testMessage = " TEST VERSION, db will be wiped"
 	end
 
-	local message = string.format("Terrain Parkour - Version %s%s", enums.gameVersion, tt)
+	local message = string.format("Terrain Parkour - Version %s%s", enums.gameVersion, testMessage)
 	sm(channel, message)
 	GrandUndocumentedCommandBadge(speaker.UserId)
 	return true
 end
+
 local bootTime = tick()
 
 module.uptime = function(speaker: Player, channel: any): boolean
@@ -290,7 +291,8 @@ module.today = function(speaker: Player, channel): boolean
 end
 
 module.meta = function(speaker: Player, channel): boolean
-	local res = "Principles of Terrain Parkour:\n\tNo Invisible Walls\n\tJust One More Race"
+	local res =
+		"Principles of Terrain Parkour:\n\tNo Invisible Walls\n\tJust One More Race\n\tNo Dying\n\tRewards always happen\n\tFairness"
 	sm(channel, res)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
@@ -307,10 +309,6 @@ module.closest = function(speaker: Player, channel): boolean
 	local bestdist = nil
 	for _, sign: Part in ipairs(workspace:WaitForChild("Signs"):GetChildren()) do
 		local signId = tpUtil.looseSignName2SignId(sign.Name)
-		if signId == nil then
-			warn("bad.")
-			continue
-		end
 		if not rdb.hasUserFoundSign(speaker.UserId, signId :: number) then
 			continue
 		end

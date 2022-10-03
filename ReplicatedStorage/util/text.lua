@@ -11,12 +11,14 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local enums = require(game.ReplicatedStorage.util.enums)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local PlayersService = game:GetService("Players")
+local textUtil = require(game.ReplicatedStorage.util.textUtil)
 
 local module = {}
 
 --describe the find status of a specific sign for everyone in the server.
 module.describeChallenge = function(parts): string
-	local signId = tpUtil.looseSignName2SignId(parts[2])
+	local toUse = textUtil.coalesceFrom(parts, 2)
+	local signId = tpUtil.looseSignName2SignId(toUse)
 	if not signId then
 		return ""
 	end
