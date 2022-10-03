@@ -176,10 +176,11 @@ module.getSettingsForUser = function(userId: number)
 	return remoteDbInternal.remoteGet("getSettingsForUser", { userId = userId })
 end
 
-module.updateSettingForUser = function(userId: number, value: boolean, settingName: string, domain: string)
+module.updateSettingForUser = function(userId: number, value: boolean?, settingName: string, domain: string)
+	local useValue: string = tostring(value)
 	return remoteDbInternal.remoteGet(
 		"updateSettingForUser",
-		{ userId = userId, settingName = settingName, domain = domain, value = value }
+		{ userId = userId, settingName = settingName, domain = domain, value = useValue }
 	)
 end
 
@@ -233,7 +234,10 @@ module.dynamicRunFrom = function(userId: number, startSignId: number, targetSign
 			p.timeMs = tonumber(p.timeMs)
 			p.userId = tonumber(p.userId)
 			frame.places[tonumber(place)] = p
-			frame.places[tostring(place)] = nil --its not actually a number at this point
+
+			-- its not actually a number at this point
+			-- this is rdb cleanup.  TODO find a way to deserialize into a class type.
+			frame.places[tostring(place)] = nil
 		end
 	end
 

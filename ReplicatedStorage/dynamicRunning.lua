@@ -81,7 +81,6 @@ module.startDynamic = function(player: Player, signName: string, startTick: numb
 	end)
 end
 
-
 local bbguiMaxDist = 190
 
 local function makeDynamicUI(from: string, to: string): TextLabel
@@ -232,7 +231,7 @@ local function setupDynamicVisualization(from: string, frame: tt.DynamicRunFrame
 		if text == "" then
 			conn:Disconnect()
 		end
-		tl.Text = text -- .. string.format("\n%0.1f", dist)
+		tl.Text = text
 		tl.TextColor3 = color
 	end)
 end

@@ -29,6 +29,9 @@ local userSizedColumns = maxUsersToDisplayInContest + 2
 
 local lastCanvasPosition = Vector2.new(0, 0)
 
+--display multiple significant digits in contest lb
+local shortenContestDigitDisplay = false
+
 local function getPlaceByUsername(ss: { ContestResponseTypes.Runner }, username: string): ContestResponseTypes.Runner
 	for ii, el in ipairs(ss) do
 		if el.username == username then
@@ -127,35 +130,24 @@ local function makeContestRow(
 		local num = string.format("%02d", 3 + pos)
 
 		if guy == nil then --there isn't even an maxth runner at ALL
-			local posTl = guiUtil.getTl(
-				num,
-				UDim2.new(widths.leads / userSizedColumns, 0, 1, 0),
-				1,
-				fr,
-				colors.lightGrey
-			)
+			local posTl =
+				guiUtil.getTl(num, UDim2.new(widths.leads / userSizedColumns, 0, 1, 0), 1, fr, colors.lightGrey)
 			posTl.Text = ""
 		else
 			local theRun = getPlaceByUsername(race.runners, guy.username)
 
 			if theRun == nil then
-				local posTl = guiUtil.getTl(
-					num,
-					UDim2.new(widths.leads / userSizedColumns, 0, 1, 0),
-					7,
-					fr,
-					colors.lightGrey
-				)
+				local posTl =
+					guiUtil.getTl(num, UDim2.new(widths.leads / userSizedColumns, 0, 1, 0), 7, fr, colors.lightGrey)
 				posTl.Text = missingRunPlaceholder
 			else
-				local posTl = guiUtil.getTl(
-					num,
-					UDim2.new(widths.leads / userSizedColumns, 0, 1, 0),
-					1,
-					fr,
-					colors.defaultGrey
-				)
-				posTl.Text = string.format("%0.1fs", theRun.timeMs / 1000)
+				local posTl =
+					guiUtil.getTl(num, UDim2.new(widths.leads / userSizedColumns, 0, 1, 0), 1, fr, colors.defaultGrey)
+				if shortenContestDigitDisplay then
+					posTl.Text = string.format("%0.0fs", theRun.timeMs / 1000)
+				else
+					posTl.Text = string.format("%0.1fs", theRun.timeMs / 1000)
+				end
 			end
 		end
 		pos += 1
@@ -429,5 +421,20 @@ module.getContestButtons = function(userIds: { number }): { gt.actionButton }
 
 	return res
 end
+
+local function handleUserSettingChanged(player: Player, setting: tt.userSettingValue)
+	if setting.name == "shorten contest digit display" then
+		if setting.value then
+			shortenContestDigitDisplay = true
+		else
+			shortenContestDigitDisplay = false
+		end
+	end
+end
+
+local localFunctions = require(game.ReplicatedStorage.localFunctions)
+localFunctions.registerSettingChangeReceiver(function(player: Player, item)
+	return handleUserSettingChanged(player, item)
+end, "shorten contest digit display")
 
 return module

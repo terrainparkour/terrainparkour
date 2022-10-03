@@ -7,6 +7,7 @@ local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local rf = require(game.ReplicatedStorage.util.remotes)
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
 local PlayersService = game:GetService("Players")
 
@@ -15,54 +16,80 @@ local userSettingsChangedFunction = rf.getRemoteFunction("UserSettingsChangedFun
 
 local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, n: number): Frame
 	local fr = Instance.new("Frame")
-	fr.Name = string.format("33-%04d", n) .. "setting." .. setting.name
+	fr.Name = string.format("33-settingRow-%04d", n) .. "setting." .. setting.name
 	fr.Size = UDim2.new(1, 0, 0, 30)
 	local vv = Instance.new("UIListLayout")
 	vv.FillDirection = Enum.FillDirection.Horizontal
 	vv.SortOrder = Enum.SortOrder.Name
 	vv.Parent = fr
-	local label = guiUtil.getTl("0", UDim2.new(0.2, 0, 1, 0), 4, fr, colors.defaultGrey, 1)
+	local label = guiUtil.getTl("00-Domain", UDim2.new(0.2, 0, 1, 0), 4, fr, colors.defaultGrey, 1)
 	label.TextScaled = false
 	label.Text = setting.domain
 	label.FontSize = Enum.FontSize.Size18
 	label.TextXAlignment = Enum.TextXAlignment.Center
 	label.TextYAlignment = Enum.TextYAlignment.Center
 
-	local tl = guiUtil.getTl("1", UDim2.new(0.5, 0, 1, 0), 4, fr, colors.defaultGrey, 1)
+	local tl = guiUtil.getTl("01-SettingName", UDim2.new(0.5, 0, 1, 0), 4, fr, colors.defaultGrey, 1)
 	tl.Text = setting.name
 	tl.TextXAlignment = Enum.TextXAlignment.Left
-	local usecolor: Color3
-	if setting.value then
-		usecolor = colors.greenGo
+	local noButton = guiUtil.getTb("02-No." .. setting.name, UDim2.new(0.1, -3, 1, 0), 2, fr, colors.defaultGrey, 1)
+	noButton.Text = "No"
+	local unsetButton =
+		guiUtil.getTb("03-Unset-" .. setting.name, UDim2.new(0.1, -4, 1, 0), 2, fr, colors.defaultGrey, 1)
+	unsetButton.Text = "-"
+	local yesButton = guiUtil.getTb("04-Yes-" .. setting.name, UDim2.new(0.1, -3, 1, 0), 2, fr, colors.defaultGrey, 1)
+	yesButton.Text = "Yes"
+	local nowValue = nil
+
+	if setting.value == false then
+		noButton.BackgroundColor3 = colors.redStop
+		nowValue = false
+	elseif setting.value == true then
+		yesButton.BackgroundColor3 = colors.greenGo
+		nowValue = true
 	else
-		usecolor = colors.redStop
-	end
-	local toggleButton = guiUtil.getTb("SettingToggle" .. setting.name, UDim2.new(0.3, 0, 1, 0), 2, fr, usecolor, 1)
-	if setting.value then
-		toggleButton.Text = "Yes"
-	else
-		toggleButton.Text = "No"
+		nowValue = nil
 	end
 
 	local localFunctions = require(game.ReplicatedStorage.localFunctions)
-	toggleButton.Activated:Connect(function()
-		if toggleButton.Text == "No" then
-			toggleButton.Text = "Yes"
-			toggleButton.BackgroundColor3 = colors.greenGo
-			local par = toggleButton.Parent :: TextLabel
-			par.BackgroundColor3 = colors.greenGo
-			setting.value = true
-			localFunctions.notifySettingChange(player, setting)
-			userSettingsChangedFunction:InvokeServer(setting)
-		else
-			toggleButton.Text = "No"
-			toggleButton.BackgroundColor3 = colors.redStop
-			local par = toggleButton.Parent :: TextLabel
-			par.BackgroundColor3 = colors.redStop
-			setting.value = false
+	noButton.Activated:Connect(function()
+		if nowValue == false then
+			nowValue = nil
+			noButton.BackgroundColor3 = colors.defaultGrey
+		elseif nowValue == nil or nowValue == true then
+			nowValue = false
+			noButton.BackgroundColor3 = colors.redStop
+			yesButton.BackgroundColor3 = colors.defaultGrey
+		end
+		setting.value = nowValue
+		localFunctions.notifySettingChange(player, setting)
+		userSettingsChangedFunction:InvokeServer(setting)
+	end)
+
+	unsetButton.Activated:Connect(function()
+		if nowValue == false or nowValue == true then
+			nowValue = nil
+			noButton.BackgroundColor3 = colors.defaultGrey
+			yesButton.BackgroundColor3 = colors.defaultGrey
+			setting.value = nowValue
 			localFunctions.notifySettingChange(player, setting)
 			userSettingsChangedFunction:InvokeServer(setting)
 		end
+	end)
+
+	yesButton.Activated:Connect(function()
+		if nowValue == false or nowValue == nil then
+			nowValue = true
+			noButton.BackgroundColor3 = colors.defaultGrey
+			yesButton.BackgroundColor3 = colors.greenGo
+		elseif nowValue == true then
+			nowValue = nil
+			noButton.BackgroundColor3 = colors.defaultGrey
+			yesButton.BackgroundColor3 = colors.defaultGrey
+		end
+		setting.value = nowValue
+		localFunctions.notifySettingChange(player, setting)
+		userSettingsChangedFunction:InvokeServer(setting)
 	end)
 
 	return fr
@@ -87,22 +114,22 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 
 	local headerFrame = Instance.new("Frame")
 	headerFrame.Parent = outerFrame
-	headerFrame.Name = "1"
+	headerFrame.Name = "01SurveySettingsHeader"
 	headerFrame.Size = UDim2.new(1, 0, 0, 20)
 	local vv = Instance.new("UIListLayout")
 	vv.FillDirection = Enum.FillDirection.Horizontal
 	vv.Parent = headerFrame
-	local tl = guiUtil.getTl("1", UDim2.new(0.2, 0, 0, 20), 4, headerFrame, colors.blueDone, 1)
+	local tl = guiUtil.getTl("01Type", UDim2.new(0.2, 0, 0, 20), 4, headerFrame, colors.blueDone, 1)
 	tl.Text = "Type"
 
-	local tl = guiUtil.getTl("2", UDim2.new(0.5, 0, 0, 20), 4, headerFrame, colors.blueDone, 1)
+	local tl = guiUtil.getTl("02Name", UDim2.new(0.5, 0, 0, 20), 4, headerFrame, colors.blueDone, 1)
 	tl.Text = "Name"
 
-	local tl = guiUtil.getTl("3", UDim2.new(0.3, 0, 0, 20), 4, headerFrame, colors.blueDone, 1)
+	local tl = guiUtil.getTl("03Value", UDim2.new(0.3, 0, 0, 20), 4, headerFrame, colors.blueDone, 1)
 	tl.Text = "Value"
 
 	--scrolling setting frame
-	local frameName = "SettingsModal"
+	local frameName = "02SettingsModal"
 	local scrollingFrame = Instance.new("ScrollingFrame")
 	scrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scrollingFrame.ScrollBarThickness = 10
@@ -118,7 +145,7 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 
 	local player: Player = PlayersService:GetPlayerByUserId(userId)
 	for ii, setting in ipairs(userSettings) do
-		if setting.domain ~= "Surveys" then
+		if setting.domain ~= settingEnums.settingDomains.Surveys then
 			continue
 		end
 		local rowFrame = makeSurveyRowFrame(setting, player, ii)
@@ -127,7 +154,7 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 
 	local tb = guiUtil.getTbSimple()
 	tb.Text = "Close"
-	tb.Name = "ZZZMarathonSettingsCloseButton"
+	tb.Name = "03ZZZMarathonSettingsCloseButton"
 	tb.Size = UDim2.new(1, 0, 0, 40)
 	tb.BackgroundColor3 = colors.redStop
 	tb.Parent = outerFrame

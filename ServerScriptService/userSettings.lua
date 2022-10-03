@@ -1,8 +1,11 @@
 --!strict
 --eval 9.25.22
 
+--settings lookup on server
+
 local rdb = require(game.ServerScriptService.rdb)
 local tt = require(game.ReplicatedStorage.types.gametypes)
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
 local module = {}
 
@@ -22,53 +25,66 @@ module.getUserSettings = function(player: Player, domain: string): any
 	local userId = player.UserId
 
 	local settings: { tt.userSettingValue } = {
-		{ name = "enable alphafree", domain = "Marathons", value = false },
-		{ name = "enable alphaordered", domain = "Marathons", value = false },
-		{ name = "enable alphareverse", domain = "Marathons", value = false },
-		{ name = "enable alphabeticalallletters", domain = "Marathons", value = false },
+		{ name = "enable alphafree", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable alphaordered", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable alphareverse", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable alphabeticalallletters", domain = settingEnums.settingDomains.Marathons },
 
-		{ name = "enable find4", domain = "Marathons", value = false },
-		{ name = "enable find10", domain = "Marathons", value = false },
-		{ name = "enable find20", domain = "Marathons", value = false },
-		{ name = "enable find40", domain = "Marathons", value = false },
-		{ name = "enable find100", domain = "Marathons", value = false },
-		{ name = "enable find200", domain = "Marathons", value = false },
-		{ name = "enable find300", domain = "Marathons", value = false },
-		{ name = "enable find380", domain = "Marathons", value = false },
-		{ name = "enable find10s", domain = "Marathons", value = false },
-		{ name = "enable find10t", domain = "Marathons", value = false },
-		{ name = "enable exactly40letters", domain = "Marathons", value = false },
-		{ name = "enable exactly100letters", domain = "Marathons", value = false },
-		{ name = "enable exactly200letters", domain = "Marathons", value = false },
-		{ name = "enable exactly500letters", domain = "Marathons", value = false },
-		{ name = "enable exactly1000letters", domain = "Marathons", value = false },
-		{ name = "enable signsofeverylength", domain = "Marathons", value = false },
-		{ name = "enable findsetevolution", domain = "Marathons", value = false },
-		{ name = "enable findsetsingleletter", domain = "Marathons", value = false },
-		{ name = "enable findsetfirstcontest", domain = "Marathons", value = false },
-		{ name = "enable findsetlegacy", domain = "Marathons", value = false },
-		{ name = "enable findsetcave", domain = "Marathons", value = false },
-		{ name = "enable findsetaofb", domain = "Marathons", value = false },
-		{ name = "enable findsetthreeletter", domain = "Marathons", value = false },
+		{ name = "enable find4", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable find10", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable find20", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable find40", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable find100", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable find200", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable find300", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable find380", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable find10s", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable find10t", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable exactly40letters", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable exactly100letters", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable exactly200letters", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable exactly500letters", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable exactly1000letters", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable signsofeverylength", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable findsetevolution", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable findsetsingleletter", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable findsetfirstcontest", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable findsetlegacy", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable findsetcave", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable findsetaofb", domain = settingEnums.settingDomains.Marathons },
+		{ name = "enable findsetthreeletter", domain = settingEnums.settingDomains.Marathons },
 
-		{ name = "have you played trackmania", domain = "Surveys", value = false },
-		{ name = "have you played roblox for more than 5 years", domain = "Surveys", value = false },
-		{ name = "should the game have more badges", domain = "Surveys", value = false },
-		{ name = "have you found the chomik", domain = "Surveys", value = false },
-		{ name = "should the game have more signs", domain = "Surveys", value = false },
-		{ name = "should the game have more new areas", domain = "Surveys", value = false },
-		{ name = "should the game have more marathons", domain = "Surveys", value = false },
-		{ name = "should the game have more water areas", domain = "Surveys", value = false },
-		{ name = "should the game have more surveys", domain = "Surveys", value = false },
-		{ name = "should the game have more settings", domain = "Surveys", value = false },
-		{ name = "should the game disable popups of other user activity", domain = "Surveys", value = false },
-		{ name = "do you play find the chomiks", domain = "Surveys", value = false },
-		{ name = "do you play jtoh", domain = "Surveys", value = false },
-		{ name = "do you know who shedletsky is", domain = "Surveys", value = false },
-		{ name = "blame john", domain = "Surveys", value = false },
-		{ name = "birb", domain = "Surveys", value = false },
-		{ name = "cold mold on a slate plate", domain = "Surveys", value = false },
-		{ name = "hide leaderboard", domain = "UserSettings", value = false },
+		{ name = "have you played trackmania", domain = settingEnums.settingDomains.Surveys },
+		{
+			name = "have you played roblox for more than 5 years",
+			domain = settingEnums.settingDomains.Surveys,
+		},
+		{ name = "should the game have more badges", domain = settingEnums.settingDomains.Surveys },
+		{ name = "have you found the chomik", domain = settingEnums.settingDomains.Surveys },
+		{ name = "should the game have more signs", domain = settingEnums.settingDomains.Surveys },
+		{ name = "should the game have more new areas", domain = settingEnums.settingDomains.Surveys },
+		{ name = "should the game have more marathons", domain = settingEnums.settingDomains.Surveys },
+		{ name = "should the game have more water areas", domain = settingEnums.settingDomains.Surveys },
+		{ name = "should the game have more surveys", domain = settingEnums.settingDomains.Surveys },
+		{ name = "should the game have more settings", domain = settingEnums.settingDomains.Surveys },
+		{
+			name = "should the game disable popups of other user activity",
+			domain = settingEnums.settingDomains.Surveys,
+		},
+		{ name = "do you play find the chomiks", domain = settingEnums.settingDomains.Surveys },
+		{ name = "do you play jtoh", domain = settingEnums.settingDomains.Surveys },
+		{ name = "do you know who shedletsky is", domain = settingEnums.settingDomains.Surveys },
+		{ name = "blame john", domain = settingEnums.settingDomains.Surveys },
+		{ name = "birb", domain = settingEnums.settingDomains.Surveys },
+		{ name = "cold mold on a slate plate", domain = settingEnums.settingDomains.Surveys },
+		{ name = "have you played for more than a year", domain = settingEnums.settingDomains.Surveys },
+		{ name = "have you played among us", domain = settingEnums.settingDomains.Surveys },
+		{ name = "have you played factorio", domain = settingEnums.settingDomains.Surveys },
+		{ name = "have you played slay the spire", domain = settingEnums.settingDomains.Surveys },
+
+		--a real impactful user setting
+		{ name = "hide leaderboard", domain = settingEnums.settingDomains.UserSettings },
+		{ name = "shorten contest digit display", domain = settingEnums.settingDomains.UserSettings, value = true },
 	}
 
 	--if missing, one-time get.

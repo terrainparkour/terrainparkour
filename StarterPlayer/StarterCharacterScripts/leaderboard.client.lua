@@ -226,7 +226,6 @@ end
 --important to use all lbUserCellParams here to make the row complete
 --even if an update comes before the initial loading of full stats.
 local function addUserToLB(userId: number): rowFrameType?
-
 	local rowplayer = PlayersService:GetPlayerByUserId(userId)
 	if rowplayer == nil then
 		return nil
@@ -529,7 +528,6 @@ local function handleUserSettingChanged(player: Player, setting: tt.userSettingV
 			if not lbIsEnabled then
 				lbIsEnabled = true
 				completelyResetUserLB()
-
 			end
 		end
 	end
@@ -579,7 +577,6 @@ local function init()
 	-- local randomMarathon = require(StarterPlayer.StarterCharacterScripts.marathon.randomMarathon)
 	-- local randomRace = randomMarathon.CreateRandomRaceInMarathonUI("A", "Mazatlan")
 	-- marathonClient.InitMarathon(randomRace, true)
-
 end
 
 local localFunctions = require(game.ReplicatedStorage.localFunctions)

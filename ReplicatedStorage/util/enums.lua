@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.185 October 2 2022"
+module.gameVersion = "1.186 October 2 2022"
 
 local releaseNotes: { [number]: string } = {
 	[185] = [[* fix challenge for long sign names
@@ -10,6 +10,10 @@ local releaseNotes: { [number]: string } = {
 * mouseovers for leaderboard headers
 * fixed marathon timing to be more exact
 * fixed settings "hide leaderboard" function
+]],
+	[186] = [[* make surveys have 3 possible answers: yes, unset, no.
+* make a new setting to shorten digit display in contest window
+* some improvements to make settings better in the future
 ]],
 }
 module.releaseNotes = releaseNotes
