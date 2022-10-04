@@ -12,12 +12,7 @@ local rf = require(game.ReplicatedStorage.util.remotes)
 
 local dynamicRunningFunction = rf.getRemoteFunction("DynamicRunningFunction") :: RemoteFunction
 local dynamicRunningEvent = rf.getRemoteEvent("DynamicRunningEvent") :: RemoteEvent
-local a = 4
-
-local running = {}
-
 local function getPositionByUserId(userId: number): Vector3?
-	-- print("server looping for " .. tostring(userId))
 	local player = PlayersService:GetPlayerByUserId(userId)
 	if player == nil then
 		return nil
@@ -79,8 +74,6 @@ end
 local function dynamicControlServer(userId: number, input: tt.dynamicRunningControlType)
 	if input.action == "start" then
 		local thisLoopMonitor = { active = true }
-		--put this out of the fork
-		running[userId] = thisLoopMonitor
 
 		spawn(function()
 			local sentSignIds: { [number]: boolean } = {}
@@ -119,9 +112,6 @@ local function dynamicControlServer(userId: number, input: tt.dynamicRunningCont
 				wait(5)
 			end
 		end)
-	end
-	if input.action == "stop" then --signid is unnecessary for stop calls.
-		running[userId] = nil
 	end
 end
 

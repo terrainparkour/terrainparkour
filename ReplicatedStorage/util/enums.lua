@@ -2,21 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.186 October 2 2022"
-
-local releaseNotes: { [number]: string } = {
-	[185] = [[* fix challenge for long sign names
-* move marathon configuration to an easier new button, removed from settings
-* mouseovers for leaderboard headers
-* fixed marathon timing to be more exact
-* fixed settings "hide leaderboard" function
-]],
-	[186] = [[* make surveys have 3 possible answers: yes, unset, no.
-* make a new setting to shorten digit display in contest window
-* some improvements to make settings better in the future
-]],
-}
-module.releaseNotes = releaseNotes
+module.gameVersion = "1.187 October 2 2022"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -646,5 +632,23 @@ module.objects = objects
 
 --amount of time to do green 'something changed' ui
 module.greenTime = 14
+
+local releaseNotes: { [number]: string } = {
+	[185] = [[* fix challenge for long sign names
+* move marathon configuration to an easier new button, removed from settings
+* mouseovers for leaderboard headers
+* fixed marathon timing to be more exact
+* fixed settings "hide leaderboard" function
+]],
+	[186] = [[* make surveys have 3 possible answers: yes, unset, no.
+* make a new setting to shorten digit display in contest window
+* some improvements to make settings better in the future
+]],
+	[187] = [[* make dynamic running into a setting.
+* fixed internal sign representation
+* fix live-application of settings and marathon configurations when you reset character
+]],
+}
+module.releaseNotes = releaseNotes
 
 return module

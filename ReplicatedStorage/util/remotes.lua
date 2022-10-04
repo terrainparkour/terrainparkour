@@ -28,6 +28,7 @@ module.getRemoteFunction = function(name: string): RemoteFunction
 	if exi == nil then
 		error("no such remote function: " .. name)
 	end
+
 	return exi :: RemoteFunction
 end
 

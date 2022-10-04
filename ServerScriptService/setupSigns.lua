@@ -151,16 +151,62 @@ module.touchedSign = function(player: Player, sign: Part, theHitTick: number)
 	--ah, the hits are still being processed when this rolls out!
 end
 
-local function visualSetupSign(part: Part)
+--dump this into command bar to fix all edit-time signs.
+if false then
+	for _, part: Part in ipairs(game.Workspace:FindFirstChild("Signs"):GetChildren()) do
+		part.Material = Enum.Material.Granite
+		part.Color = Color3.fromRGB(255, 89, 89)
+		local sguiName = "SignGui_" .. part.Name
+		local sGui = part:FindFirstChild(sguiName)
+		if sGui == nil then
+			sGui = Instance.new("SurfaceGui")
+			sGui.Name = sguiName
+			sGui.Parent = part
+		end
+
+		local canvasSize = Vector2.new(part.Size.Z * 30, part.Size.X * 30)
+		sGui.CanvasSize = canvasSize
+		sGui.Face = Enum.NormalId.Top
+		sGui.Brightness = 1.5
+
+		sGui.Parent.TopSurface = Enum.SurfaceType.Smooth
+		sGui.Parent.BottomSurface = Enum.SurfaceType.Smooth
+		sGui.Parent.LeftSurface = Enum.SurfaceType.Smooth
+		sGui.Parent.RightSurface = Enum.SurfaceType.Smooth
+		sGui.Parent.FrontSurface = Enum.SurfaceType.Smooth
+		sGui.Parent.BackSurface = Enum.SurfaceType.Smooth
+
+		local textLabel = part:FindFirstChild(part.Name)
+		if textLabel == nil then
+			textLabel = Instance.new("TextLabel")
+			textLabel.Parent = sGui
+		end
+
+		textLabel.AutoLocalize = false
+		textLabel.Text = part.Name
+		textLabel.Font = Enum.Font.Gotham
+		textLabel.BackgroundTransparency = 1
+		textLabel.Size = UDim2.new(1, 0, 1, 0)
+		textLabel.TextScaled = true
+		textLabel.RichText = true
+		textLabel.TextColor3 =  Color3.fromRGB(255, 240, 241)
+		part.Anchored = true
+	end
+end
+
+local function SetupSignVisually(part: Part)
 	part.Material = Enum.Material.Granite
-	part.Color = colors.signColor
-	local sGui = Instance.new("SurfaceGui")
-	sGui.Name = "SignGui_" .. part.Name
-	sGui.Parent = part
+	part.Color = Color3.fromRGB(255, 89, 89)
+	local sguiName = "SignGui_" .. part.Name
+	local sGui = part:FindFirstChild(sguiName)
+	if sGui == nil then
+		sGui = Instance.new("SurfaceGui")
+		sGui.Name = sguiName
+		sGui.Parent = part
+	end
 
 	local canvasSize = Vector2.new(part.Size.Z * 30, part.Size.X * 30)
 	sGui.CanvasSize = canvasSize
-	-- sGui.AlwaysOnTop = true
 	sGui.Face = Enum.NormalId.Top
 	sGui.Brightness = 1.5
 
@@ -196,7 +242,7 @@ local setupSignMovement = {}
 --setupSigns
 module.init = function()
 	for _, sign: Part in ipairs(game.Workspace:WaitForChild("Signs"):GetChildren()) do
-		visualSetupSign(sign)
+		SetupSignVisually(sign)
 		local signId = enums.name2signId[sign.Name]
 		if signId == nil then
 			warn("bad" .. tostring(sign.Name))

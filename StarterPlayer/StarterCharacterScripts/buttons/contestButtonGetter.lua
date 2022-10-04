@@ -16,6 +16,7 @@ local enums = require(game.ReplicatedStorage.util.enums)
 local rf = require(game.ReplicatedStorage.util.remotes)
 
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
 local getContestsFunction = rf.getRemoteFunction("GetContestsFunction")
 local getSingleContestFunction = rf.getRemoteFunction("GetSingleContestFunction")
@@ -422,8 +423,8 @@ module.getContestButtons = function(userIds: { number }): { gt.actionButton }
 	return res
 end
 
-local function handleUserSettingChanged(player: Player, setting: tt.userSettingValue)
-	if setting.name == "shorten contest digit display" then
+local function handleUserSettingChanged(setting: tt.userSettingValue)
+	if setting.name == settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY then
 		if setting.value then
 			shortenContestDigitDisplay = true
 		else
@@ -432,9 +433,20 @@ local function handleUserSettingChanged(player: Player, setting: tt.userSettingV
 	end
 end
 
-local localFunctions = require(game.ReplicatedStorage.localFunctions)
-localFunctions.registerSettingChangeReceiver(function(player: Player, item)
-	return handleUserSettingChanged(player, item)
-end, "shorten contest digit display")
+local function init()
+	-- common pattern - what is this?
+	-- first, set up listening so if another ui changes a setting value, we notice.
+	-- second, get the initial value.
+	-- TODO obviously this still duplicates a lot of logic.
+	local localFunctions = require(game.ReplicatedStorage.localFunctions)
+	localFunctions.registerLocalSettingChangeReceiver(function(item: tt.userSettingValue)
+		return handleUserSettingChanged(item)
+	end, settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY)
+
+	local sval = localFunctions.getSettingByName(settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY)
+	handleUserSettingChanged(sval)
+end
+
+init()
 
 return module

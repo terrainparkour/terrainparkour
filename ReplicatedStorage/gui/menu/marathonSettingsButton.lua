@@ -6,12 +6,11 @@ local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
-local rf = require(game.ReplicatedStorage.util.remotes)
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
 local PlayersService = game:GetService("Players")
 
 local module = {}
-local userSettingsChangedFunction = rf.getRemoteFunction("UserSettingsChangedFunction") :: RemoteFunction
 
 local function makeSettingRowFrame(setting: tt.userSettingValue, player: Player, n: number): Frame
 	local fr = Instance.new("Frame")
@@ -52,16 +51,17 @@ local function makeSettingRowFrame(setting: tt.userSettingValue, player: Player,
 			local par = toggleButton.Parent :: TextLabel
 			par.BackgroundColor3 = colors.greenGo
 			setting.value = true
-			localFunctions.notifySettingChange(player, setting)
-			userSettingsChangedFunction:InvokeServer(setting)
+			-- localFunctions.notifySettingChange(player, setting)
+			-- userSettingsChangedFunction:InvokeServer(setting)
+			localFunctions.setSetting(setting)
 		else
 			toggleButton.Text = "No"
 			toggleButton.BackgroundColor3 = colors.redStop
 			local par = toggleButton.Parent :: TextLabel
 			par.BackgroundColor3 = colors.redStop
 			setting.value = false
-			localFunctions.notifySettingChange(player, setting)
-			userSettingsChangedFunction:InvokeServer(setting)
+			-- localFunctions.notifySettingChange(player, setting)
+			localFunctions.setSetting(setting)
 		end
 	end)
 
@@ -74,8 +74,10 @@ local getSettingsModal = function(localPlayer: Player): ScreenGui
 	local sg = Instance.new("ScreenGui")
 	sg.Name = "SettingsSgui"
 
-	local userSettingsFunction: RemoteFunction = rf.getRemoteFunction("GetUserSettingsFunction")
-	local userSettings: { tt.userSettingValue } = userSettingsFunction:InvokeServer("Marathon")
+	local localFunctions = require(game.ReplicatedStorage.localFunctions)
+	--just get marathon settings.
+	local userSettings: { [string]: tt.userSettingValue } =
+		localFunctions.getSettingByDomain(settingEnums.settingDomains.MARATHONS)
 
 	local outerFrame = Instance.new("Frame")
 	outerFrame.Parent = sg
@@ -117,12 +119,11 @@ local getSettingsModal = function(localPlayer: Player): ScreenGui
 	vv.Parent = scrollingFrame
 
 	local player: Player = PlayersService:GetPlayerByUserId(userId)
-	for ii, setting in ipairs(userSettings) do
-		if setting.domain ~= "Marathons" then
-			continue
-		end
+	local ii = 1
+	for _, setting in pairs(userSettings) do
 		local rowFrame = makeSettingRowFrame(setting, player, ii)
 		rowFrame.Parent = scrollingFrame
+		ii += 1
 	end
 
 	local tb = guiUtil.getTbSimple()

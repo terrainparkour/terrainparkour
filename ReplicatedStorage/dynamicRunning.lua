@@ -2,38 +2,44 @@
 
 -- 9.05.22 start
 -- draw a ui which appends uis on nearby found sign statuses
+
+--used on client to kick off sending loops
 --eval 9.24.22
 
 local colors = require(game.ReplicatedStorage.util.colors)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local RunService = game:GetService("RunService")
 
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local PlayersService = game:GetService("Players")
 local localPlayer: Player = PlayersService.LocalPlayer
 
---control settings.
+--control settings, default start. modifiable by a setting.
 local dynamicRunningEnabled = false
 
-local module = {}
 local rf = require(game.ReplicatedStorage.util.remotes)
 local dynamicRunningFunction = rf.getRemoteFunction("DynamicRunningFunction") :: RemoteFunction
 local dynamicRunningEvent = rf.getRemoteEvent("DynamicRunningEvent") :: RemoteEvent
 
 local dynamicStartTick: number = 0
 
+local bbguiMaxDist = 190
+
+local module = {}
+
 --signName => ui outer frame
 local targetSignUis: { [string]: TextLabel } = {}
 
 local startDynamicDebounce = false
 --destroy all UIs and nuke the pointer dict to them
-module.endDynamic = function(player: Player)
-	if not dynamicRunningEnabled then
+module.endDynamic = function(force: boolean?)
+	if not (force or dynamicRunningEnabled) then
 		return
 	end
 	startDynamicDebounce = true
-	local data: tt.dynamicRunningControlType = { action = "stop", fromSignId = 0, userId = player.UserId }
+	local data: tt.dynamicRunningControlType = { action = "stop", fromSignId = 0, userId = localPlayer.UserId }
 	for k, v in pairs(targetSignUis) do
 		local par = v.Parent
 		assert(par)
@@ -59,7 +65,7 @@ module.startDynamic = function(player: Player, signName: string, startTick: numb
 	if not dynamicRunningEnabled then
 		return
 	end
-	module.endDynamic(player)
+	module.endDynamic()
 	spawn(function()
 		local waited = 0
 		while startDynamicDebounce do
@@ -80,8 +86,6 @@ module.startDynamic = function(player: Player, signName: string, startTick: numb
 		startDynamicDebounce = false
 	end)
 end
-
-local bbguiMaxDist = 190
 
 local function makeDynamicUI(from: string, to: string): TextLabel
 	local bbgui = Instance.new("BillboardGui")
@@ -237,6 +241,9 @@ local function setupDynamicVisualization(from: string, frame: tt.DynamicRunFrame
 end
 
 local function handleNewDynamicFrames(updates: tt.dynamicRunFromData)
+	if not dynamicRunningEnabled then
+		return
+	end
 	for _, frame in ipairs(updates.frames) do
 		-- singleTextUpdate(updates.fromSignName, frame)
 		-- print("setup dynamic " .. updates.fromSignName .. frame.targetSignName)
@@ -244,11 +251,40 @@ local function handleNewDynamicFrames(updates: tt.dynamicRunFromData)
 	end
 end
 
-if dynamicRunningEnabled then
+local function handleUserSettingChanged(setting: tt.userSettingValue)
+	if setting.name == settingEnums.settingNames.ENABLE_DYNAMIC_RUNNING then
+		if setting.value then
+			if not dynamicRunningEnabled then
+				dynamicRunningEnabled = true
+				print("enabled dynamic running.")
+			end
+		elseif setting.value == false then
+			if dynamicRunningEnabled then
+				--also destroy them all.
+				dynamicRunningEnabled = false
+				module.endDynamic(true)
+				print("disabled dynamic running.")
+			end
+		end
+	end
+end
+
+local init = function()
 	dynamicRunningEvent.OnClientEvent:Connect(function(updates: tt.dynamicRunFromData)
 		--frames are showing up in A!
 		handleNewDynamicFrames(updates)
 	end)
+	local localFunctions = require(game.ReplicatedStorage.localFunctions)
+
+	--in addition to this, needs to get the original setting to set it locally too.
+	localFunctions.registerLocalSettingChangeReceiver(function(item)
+		return handleUserSettingChanged(item)
+	end, settingEnums.settingNames.ENABLE_DYNAMIC_RUNNING)
+
+	local dynset = localFunctions.getSettingByName(settingEnums.settingNames.ENABLE_DYNAMIC_RUNNING)
+	handleUserSettingChanged(dynset)
 end
+
+init()
 
 return module

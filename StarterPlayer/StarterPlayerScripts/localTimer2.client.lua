@@ -3,6 +3,7 @@
 -- 4.29.2022 redo to trust client
 --eval 9.25.22
 -- completely locally track times and then just hit the endpoint with what they are
+-- What is this: the guy who does local tracking of the time for a run.
 
 local enums = require(game.ReplicatedStorage.util.enums)
 local colors = require(game.ReplicatedStorage.util.colors)
@@ -60,7 +61,7 @@ local function killClientRun(context: string)
 	if sgui ~= nil then
 		sgui:Destroy()
 	end
-	dynamicRunning.endDynamic(localPlayer)
+	dynamicRunning.endDynamic()
 end
 
 --the one in the lower left, where you can cancel out of a race.
@@ -133,6 +134,7 @@ local function clientTouchedSign(humanoid: Humanoid, sign: BasePart, signId: num
 		annotate("blocked til warp done.")
 		return
 	end
+	annotate("hit")
 	if newMovement then
 		speedEvents.addEvent({ timems = tick(), type = movementEnums.SpeedEventName2Id.TOUCHSIGN })
 	end
@@ -200,7 +202,7 @@ local function clientTouchedSign(humanoid: Humanoid, sign: BasePart, signId: num
 
 				local tl = nnsgui:FindFirstChild("RaceRunningButton") :: TextLabel
 				tl.Text = racingText
-				annotate("roll through checking loop")
+				-- annotate("roll through checking loop")
 			end
 		end)
 		annotate("started.run from " .. currentRunSignName)
@@ -221,7 +223,7 @@ local function clientTouchedSign(humanoid: Humanoid, sign: BasePart, signId: num
 	--hit is valid and ends run.
 	local gapTick = touchTimeTick - currentRunStartTick
 	annotate(string.format("telling server user finished %s %s in %0.3f", currentRunSignName, sign.Name, gapTick))
-	dynamicRunning.endDynamic(localPlayer)
+	dynamicRunning.endDynamic()
 	clientControlledRunEndEvent:FireServer(currentRunSignName, sign.Name, math.floor(gapTick * 1000))
 	currentRunSignName = ""
 	currentRunStartTick = 0
@@ -231,50 +233,56 @@ local function clientTouchedSign(humanoid: Humanoid, sign: BasePart, signId: num
 	clientTouchDebounce[pn] = false
 end
 
+local function setupCharacter()
+	annotate("localtimer init start CA")
+	canDoAnything = true
+
+	local char: Model = localPlayer.Character
+	local hum: Humanoid = char:WaitForChild("Humanoid", 5) :: Humanoid
+
+	hum.Died:Connect(function()
+		warper.blockWarping("died")
+	end)
+
+	hum.Touched:Connect(function(hit)
+		annotate("hit ")
+		if hit.ClassName == "Terrain" then
+			return
+		end
+		if hit.ClassName == "SpawnLocation" then
+			return
+		end
+		if hit.ClassName == "Part" or hit.ClassName == "MeshPart" then
+			local signId = enums.name2signId[hit.Name]
+			if signId == nil then
+				return
+			end
+			clientTouchedSign(hum, hit, signId)
+		end
+	end)
+	warper.unblockWarping("new char unblock")
+end
+
 local function init()
 	--client-side setup touch listening for this player.
 	--assume this sees all signs.
+	annotate("localtimer init start")
+	local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	setupCharacter()
+	localPlayer.CharacterAdded:Connect(setupCharacter)
 	localPlayer.CharacterRemoving:Connect(function(character)
 		warper.blockWarping("char removing")
-	end)
-
-	localPlayer.CharacterAdded:Connect(function()
-		canDoAnything = true
-
-		local char: Model = localPlayer.Character
-		local hum: Humanoid = char:WaitForChild("Humanoid", 5) :: Humanoid
-
-		hum.Died:Connect(function()
-			warper.blockWarping("died")
-		end)
-
-		hum.Touched:Connect(function(hit)
-			if hit.ClassName == "Terrain" then
-				return
-			end
-			if hit.ClassName == "SpawnLocation" then
-				return
-			end
-			if hit.ClassName == "Part" or hit.ClassName == "MeshPart" then
-				local signId = enums.name2signId[hit.Name]
-				if signId == nil then
-					return
-				end
-				clientTouchedSign(hum, hit, signId)
-			end
-		end)
-		warper.unblockWarping("new char unblock")
 	end)
 
 	--when the user warps, kill active runs
 	warper.addCallbackToWarpStart(function()
 		-- annotate("locked run due to warping")
 		canDoAnything = false
-		killClientRun("warping.")
+		killClientRun("warping event received.")
 	end)
 
 	warper.addCallbackToWarpEnd(function()
-		annotate("unlocked")
+		-- annotate("unlocked")
 		-- print("warp end callback re-enabling doing anything.")
 		canDoAnything = true
 	end)

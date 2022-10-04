@@ -6,13 +6,12 @@ local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
-local rf = require(game.ReplicatedStorage.util.remotes)
+
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
 local PlayersService = game:GetService("Players")
 
 local module = {}
-local userSettingsChangedFunction = rf.getRemoteFunction("UserSettingsChangedFunction") :: RemoteFunction
 
 local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, n: number): Frame
 	local fr = Instance.new("Frame")
@@ -62,8 +61,7 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 			yesButton.BackgroundColor3 = colors.defaultGrey
 		end
 		setting.value = nowValue
-		localFunctions.notifySettingChange(player, setting)
-		userSettingsChangedFunction:InvokeServer(setting)
+		localFunctions.setSetting(setting)
 	end)
 
 	unsetButton.Activated:Connect(function()
@@ -72,8 +70,7 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 			noButton.BackgroundColor3 = colors.defaultGrey
 			yesButton.BackgroundColor3 = colors.defaultGrey
 			setting.value = nowValue
-			localFunctions.notifySettingChange(player, setting)
-			userSettingsChangedFunction:InvokeServer(setting)
+			localFunctions.setSetting(setting)
 		end
 	end)
 
@@ -88,8 +85,7 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 			yesButton.BackgroundColor3 = colors.defaultGrey
 		end
 		setting.value = nowValue
-		localFunctions.notifySettingChange(player, setting)
-		userSettingsChangedFunction:InvokeServer(setting)
+		localFunctions.setSetting(setting)
 	end)
 
 	return fr
@@ -101,8 +97,10 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 	local sg = Instance.new("ScreenGui")
 	sg.Name = "SettingsSgui"
 
-	local userSettingsFunction: RemoteFunction = rf.getRemoteFunction("GetUserSettingsFunction")
-	local userSettings: { tt.userSettingValue } = userSettingsFunction:InvokeServer("Survey")
+	local localFunctions = require(game.ReplicatedStorage.localFunctions)
+	--just get marathon settings.
+	local userSettings: { [string]: tt.userSettingValue } =
+		localFunctions.getSettingByDomain(settingEnums.settingDomains.Surveys)
 
 	local outerFrame = Instance.new("Frame")
 	outerFrame.Parent = sg
@@ -144,7 +142,9 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 	vv.Parent = scrollingFrame
 
 	local player: Player = PlayersService:GetPlayerByUserId(userId)
-	for ii, setting in ipairs(userSettings) do
+	local ii = 0
+	for name, setting in pairs(userSettings) do
+		ii += 1
 		if setting.domain ~= settingEnums.settingDomains.Surveys then
 			continue
 		end

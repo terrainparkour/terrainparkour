@@ -22,6 +22,7 @@ local remotes = require(game.ReplicatedStorage.util.remotes)
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 local marathonClient = require(StarterPlayer.StarterCharacterScripts.marathon.marathonClient)
 local mds = require(game.ReplicatedStorage.marathonDescriptors)
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
 local lbIsEnabled = true
 
@@ -518,8 +519,8 @@ end
 --user changed marathon settings in UI - uses registration to monitor it.
 --note there is an init call here so user initial settings _will_ show up here and we should
 --be careful not to mistakenly reinit LB needlessly.
-local function handleUserSettingChanged(player: Player, setting: tt.userSettingValue)
-	if setting.name == "hide leaderboard" then
+local function handleUserSettingChanged(setting: tt.userSettingValue)
+	if setting.name == settingEnums.settingNames.HIDE_LEADERBOARD then
 		if setting.value then
 			lbIsEnabled = false
 			marathonClient.CloseAllMarathons()
@@ -531,14 +532,18 @@ local function handleUserSettingChanged(player: Player, setting: tt.userSettingV
 			end
 		end
 	end
-	if setting.domain ~= "Marathons" then
+end
+
+--ideally filter at the registration layer but whatever.
+--also why is this being done here rather than in marathon client?
+local function handleMarathonSettingsChanged(setting: tt.userSettingValue)
+	if setting.domain ~= settingEnums.settingDomains.MARATHONS then
 		return
 	end
-
 	local key = string.split(setting.name, " ")[2]
 	local targetMarathon: mt.marathonDescriptor = mds[key]
 	if targetMarathon == nil then
-		warn("bad setting.")
+		warn("bad setting probably legacy bad naming, shouldn't be many and no effect." .. key)
 		return
 	end
 	if setting.value then
@@ -555,6 +560,21 @@ local function init()
 	for _, lbUserCellDescriptor in pairs(lbUserCellDescriptors) do
 		lbwidth = lbwidth + lbUserCellDescriptor.width
 	end
+	local localFunctions = require(game.ReplicatedStorage.localFunctions)
+	local hideLb = localFunctions.getSettingByName(settingEnums.settingNames.HIDE_LEADERBOARD)
+	if hideLb.value then
+		lbIsEnabled = false
+	else
+		lbIsEnabled = true
+	end
+
+	localFunctions.registerLocalSettingChangeReceiver(function(item: tt.userSettingValue): any
+		return handleUserSettingChanged(item)
+	end, "leaderboardSettingListener")
+
+	localFunctions.registerLocalSettingChangeReceiver(function(item: tt.userSettingValue): any
+		return handleMarathonSettingsChanged(item)
+	end, "handleMarathonSettingsChanged")
 
 	completelyResetUserLB()
 	--we setup the event, but what if upstream playerjoinfunc is called first?
@@ -565,12 +585,18 @@ local function init()
 	--listen to racestart, raceendevent
 
 	marathonClient.Init()
-	local userSettingsFunction: RemoteFunction = remotes.getRemoteFunction("GetUserSettingsFunction")
-	local userSettings: { tt.userSettingValue } = userSettingsFunction:InvokeServer()
+	local localFunctions = require(game.ReplicatedStorage.localFunctions)
+	local initialMarathonSettings = localFunctions.getSettingByDomain(settingEnums.settingDomains.MARATHONS)
 
 	--load marathons according to the users settings
-	for _, userSetting in ipairs(userSettings) do
-		handleUserSettingChanged(localPlayer, userSetting)
+	for _, userSetting in pairs(initialMarathonSettings) do
+		handleMarathonSettingsChanged(userSetting)
+	end
+
+	local userSettings = localFunctions.getSettingByDomain(settingEnums.settingDomains.USERSETTINGS)
+
+	for _, userSetting in pairs(userSettings) do
+		handleUserSettingChanged(userSetting)
 	end
 
 	-- TODO revive this.
@@ -578,10 +604,5 @@ local function init()
 	-- local randomRace = randomMarathon.CreateRandomRaceInMarathonUI("A", "Mazatlan")
 	-- marathonClient.InitMarathon(randomRace, true)
 end
-
-local localFunctions = require(game.ReplicatedStorage.localFunctions)
-localFunctions.registerSettingChangeReceiver(function(player: Player, item)
-	return handleUserSettingChanged(player, item)
-end, "leaderboardMarathonEnablementListener")
 
 init()
