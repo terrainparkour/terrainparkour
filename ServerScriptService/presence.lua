@@ -90,12 +90,10 @@ module.init = function()
 	PlayersService.PlayerRemoving:Connect(applyPlayerRemovingFuncs)
 	-- PlayersService.PlayerDisconnecting:Connect(applyPlayerRemovingFuncs)
 
-	if true then
-		--backfill.
-		for _, player: Player in ipairs(PlayersService:GetPlayers()) do
-			--"retroactive" re-simulate them joining.
-			applyPlayerJoiningFuncs(player)
-		end
+	--backfill.
+	for _, player: Player in ipairs(PlayersService:GetPlayers()) do
+		--"retroactive" re-simulate them joining.
+		applyPlayerJoiningFuncs(player)
 	end
 end
 

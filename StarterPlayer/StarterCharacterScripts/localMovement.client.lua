@@ -242,6 +242,9 @@ local function SetupFloorIsLava()
 		if fm == Enum.Material.CrackedLava then
 			reduceSpeed(afterLavaRunSpeed, 3.5)
 			localplayer.Character.Humanoid.Sit = true
+			game.Players.LocalPlayer.Character.Humanoid.JumpPower = 10
+		else
+			game.Players.LocalPlayer.Character.Humanoid.JumpPower = 55
 		end
 	end)
 end

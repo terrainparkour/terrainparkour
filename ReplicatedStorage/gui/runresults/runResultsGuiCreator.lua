@@ -11,11 +11,16 @@ local thumbnails = require(game.ReplicatedStorage.thumbnails)
 local enums = require(game.ReplicatedStorage.util.enums)
 -- local PlayersService = game:GetService("Players")
 local tt = require(game.ReplicatedStorage.types.gametypes)
+local UserInputService = game:GetService("UserInputService")
+
 local resultRowHeightScale = 0.08
 local lesserYScale = 0.04
 
 local playerRowHeight = 0.055
 
+--this UI also sets up a shortcut to warp to this, if set.
+local lastWarpTarget = nil
+local lastWarperWrapper = nil
 local module = {}
 
 --actually more like addCell with optional text.
@@ -225,7 +230,7 @@ module.createNewRunResultSgui =
 		local warpRow: Frame = nil
 		if signName ~= nil then
 			local bad = false
-			for ii, badname in ipairs(enums.ExcludeSignNamesFromStartingAt) do
+			for _, badname in ipairs(enums.ExcludeSignNamesFromStartingAt) do
 				if badname == signName then
 					bad = true
 					break
@@ -243,6 +248,8 @@ module.createNewRunResultSgui =
 				invisibleTextButton.Text = "warp"
 				invisibleTextButton.TextScaled = true
 				invisibleTextButton.Parent = warpRow
+				lastWarpTarget = options.startSignId
+				lastWarperWrapper = warperWrapper
 				invisibleTextButton.Activated:Connect(function()
 					warperWrapper.requestWarpToSign(options.startSignId)
 				end)
@@ -275,5 +282,21 @@ module.createNewRunResultSgui =
 
 		return raceResultSgui
 	end
+
+local function onInputBegin(inputObject, gameProcessedEvent)
+	if gameProcessedEvent then
+		return
+	end
+
+	if inputObject.UserInputType == Enum.UserInputType.Keyboard then
+		if inputObject.KeyCode == Enum.KeyCode.One then
+			if lastWarpTarget ~= nil then
+				lastWarperWrapper.requestWarpToSign(lastWarpTarget)
+			end
+		end
+	end
+end
+
+UserInputService.InputBegan:Connect(onInputBegin)
 
 return module

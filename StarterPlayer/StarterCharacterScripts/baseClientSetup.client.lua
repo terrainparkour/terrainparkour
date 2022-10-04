@@ -2,7 +2,7 @@
 --eval 9.25.22
 
 --zoomlevel, jump base etc.
-game.Players.LocalPlayer.CameraMaxZoomDistance = 11999
+game.Players.LocalPlayer.CameraMaxZoomDistance = 9999
 game.Players.LocalPlayer.Character.Humanoid.JumpPower = 55
 -- game.Players.LocalPlayer.Character.Humanoid.JumpPower = 10
 game.Workspace.CurrentCamera.FieldOfView = (70 + (5 * 2))

@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.188 October 3 2022"
+module.gameVersion = "1.189 October 4 2022"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -650,6 +650,10 @@ local releaseNotes: { [number]: string } = {
 * fix live-application of settings and marathon configurations when you reset character
 ]],
 	[188] = [[* redo dynamic running to always position yoru run against the current result, not your prior result
+]],
+	[189] = [[* marathon ui bugfixes
+* keyboard shortcut '1' to warp to the last completed race.
+* worse lava behavior
 ]],
 }
 module.releaseNotes = releaseNotes

@@ -161,42 +161,6 @@ local function calculateText(frame: tt.DynamicRunFrame): (string, Color3)
 		if comparatorPlace == 0 then
 			newNth = lastSeenPlace + 1
 		end
-		local text = ""
-		if comparatorPlace > 0 then
-			if frame.myplace and comparatorPlace == frame.myplace.place then
-				text = string.format(
-					"improve your %s by %0.1f",
-					tpUtil.getCardinal(comparatorPlace),
-					comparatorTimeImprovement
-				)
-			else
-				text = string.format(
-					"on track for %s by %0.1f",
-					tpUtil.getCardinal(comparatorPlace),
-					comparatorTimeImprovement
-				)
-			end
-		else
-			if frame.myplace then
-				text = string.format("no improvement by %0.1f", (currentRunElapsedMs - frame.myplace.timeMs) / 1000)
-			else
-				if newNth <= 10 then
-					text = "Would get new " .. tpUtil.getCardinal(newNth)
-				else
-					text = "Would not place"
-				end
-			end
-		end
-		local yourlast = ""
-		if frame.myplace and frame.myplace.place then
-			if frame.myplace.place <= 10 then
-				yourlast = "(prev " .. tpUtil.getCardinal(frame.myplace.place) .. ")"
-			else
-				yourlast = ""
-			end
-		else
-			yourlast = "new run for you"
-		end
 		local useColor = colors.defaultGrey
 		if comparatorPlace == 1 then
 			if frame.myplace and frame.myplace.place == 1 then
@@ -211,6 +175,45 @@ local function calculateText(frame: tt.DynamicRunFrame): (string, Color3)
 				useColor = colors.lightBlue
 			end
 		end
+		local text = ""
+		if comparatorPlace > 0 then
+			if frame.myplace and comparatorPlace == frame.myplace.place then
+				text = string.format(
+					"improve your %s by %0.1fs",
+					tpUtil.getCardinal(comparatorPlace),
+					comparatorTimeImprovement
+				)
+			else
+				text = string.format(
+					"on track for %s by %0.1fs",
+					tpUtil.getCardinal(comparatorPlace),
+					comparatorTimeImprovement
+				)
+			end
+		else
+			if frame.myplace then
+				text = string.format("no improvement by %0.1fs", (currentRunElapsedMs - frame.myplace.timeMs) / 1000)
+				useColor = colors.lightRed
+			else
+				if newNth <= 10 then
+					text = "Would get new " .. tpUtil.getCardinal(newNth)
+				else
+					text = "Would not place"
+					useColor = colors.lightRed
+				end
+			end
+		end
+		local yourlast = ""
+		if frame.myplace and frame.myplace.place then
+			if frame.myplace.place <= 10 then
+				yourlast = "(prev " .. tpUtil.getCardinal(frame.myplace.place) .. ")"
+			else
+				yourlast = ""
+			end
+		else
+			yourlast = "new run for you"
+		end
+
 		return text .. "\n" .. yourlast, useColor
 	else
 		if not frame.myfound then
@@ -277,14 +280,12 @@ local function handleUserSettingChanged(setting: tt.userSettingValue)
 		if setting.value then
 			if not dynamicRunningEnabled then
 				dynamicRunningEnabled = true
-				print("enabled dynamic running.")
 			end
 		elseif setting.value == false then
 			if dynamicRunningEnabled then
 				--also destroy them all.
 				dynamicRunningEnabled = false
 				module.endDynamic(true)
-				print("disabled dynamic running.")
 			end
 		end
 	end

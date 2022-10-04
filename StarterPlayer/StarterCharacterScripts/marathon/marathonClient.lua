@@ -223,6 +223,11 @@ local function innerReceiveHit(desc: mt.marathonDescriptor, signName: string, in
 	local frameName = marathonstatic.getMarathonKindFrameName(desc)
 	local marathonRow: Frame = getLbFrame():FindFirstChild(frameName)
 
+	--marathon has been killed in UI.
+	if marathonRow == nil then
+		return
+	end
+
 	--NOTE: Why do this here, separated, not above in evaluateFind?
 	desc.UpdateRow(desc, marathonRow, signName)
 	--previously this also initialized them visually.
