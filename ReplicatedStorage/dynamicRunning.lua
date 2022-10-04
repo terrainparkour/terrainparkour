@@ -90,7 +90,7 @@ end
 local function makeDynamicUI(from: string, to: string): TextLabel
 	local bbgui = Instance.new("BillboardGui")
 	bbgui.Size = UDim2.new(0, 200, 0, 100)
-	bbgui.StudsOffset = Vector3.new(0, 10, 0)
+	bbgui.StudsOffset = Vector3.new(0, 5, 0)
 	bbgui.MaxDistance = bbguiMaxDist
 	bbgui.AlwaysOnTop = false
 	bbgui.Name = "For_" .. from .. "_to_" .. to
@@ -109,7 +109,7 @@ local function makeDynamicUI(from: string, to: string): TextLabel
 	-- tl.BackgroundColor3=Color3.new(0,0,0)
 	tl.TextColor3 = Color3.new(155, 100, 120)
 	tl.Size = UDim2.new(1, 0, 1, 0)
-	tl.FontSize = Enum.FontSize.Size36
+	tl.FontSize = Enum.FontSize.Size24
 	tl.TextScaled = false
 	-- local sign=tpUtil.signName2SignId(from)
 	local signs = game.Workspace:FindFirstChild("Signs")
@@ -136,68 +136,82 @@ local function calculateText(frame: tt.DynamicRunFrame): (string, Color3)
 	end
 	local currentRunElapsedMs = (tick() - dynamicStartTick) * 1000
 	if #frame.places > 0 then
-		--interpose user's time, AND don't forget to include find status
+		--interleave user's time, AND don't forget to include find status
 
-		--for this case display time behind, and new rank, if complete.
-		if frame.myplace and frame.myplace.place and frame.myplace.place <= 10 then
-			local thisRunImprovementVsMyLastRunMs = currentRunElapsedMs - frame.myplace.timeMs
+		local comparatorPlace = 0
+		local comparatorTimeImprovement = 0
 
-			--now determine my effective rank
-			local myProvisionalPlaceText = "not top10"
-			local myProvisionalPlace: number = 12
-			local pasttext = tpUtil.getCardinal(frame.myplace.place)
-			if thisRunImprovementVsMyLastRunMs >= 0 then
-				myProvisionalPlaceText = "no improvement"
-			elseif thisRunImprovementVsMyLastRunMs < 0 then
-				for _, pl in ipairs(frame.places) do
-					if currentRunElapsedMs < pl.timeMs then
-						myProvisionalPlaceText = tpUtil.getCardinal(pl.place)
-						myProvisionalPlace = pl.place
-						break
-					end
-				end
-			end
+		--or if you're worse than the last recorded, you get this.
+		--and if this is 11th, you don't place at all
+		local newNth = 0
+		local lastSeenPlace = 0
 
-			local color = colors.lightGreen
-			local sign = ""
-			if thisRunImprovementVsMyLastRunMs >= 0 then
-				color = colors.lightRed
-				sign = "+"
+		--you can't compare to a run after your own place
+		for _, exipl in ipairs(frame.places) do
+			lastSeenPlace = exipl.place
+			if currentRunElapsedMs < exipl.timeMs then
+				comparatorPlace = exipl.place
+				comparatorTimeImprovement = (exipl.timeMs - currentRunElapsedMs) / 1000
+				break
 			end
-			local text = string.format(
-				"%s (prev %s)\n%s%0.3f",
-				myProvisionalPlaceText,
-				pasttext,
-				sign,
-				thisRunImprovementVsMyLastRunMs / 1000
-			)
-			if frame.myplace and frame.myplace.place == myProvisionalPlace then
-				color = colors.lightOrange
+			if frame.myplace and frame.myplace.place and frame.myplace.place <= exipl.place then
+				break
 			end
-			return text, color
-		else
-			local myProvisionalPlaceText: string
-			local seenLastPlace = 0
-			for _, pl in ipairs(frame.places) do
-				if currentRunElapsedMs < pl.timeMs then
-					myProvisionalPlaceText = string.format(
-						"-%0.3f %s",
-						(pl.timeMs - currentRunElapsedMs) / 1000,
-						tpUtil.getCardinal(pl.place)
-					)
-					return myProvisionalPlaceText, colors.lightGreen
-				end
-				seenLastPlace = pl.place
-			end
-			if seenLastPlace < 10 then
-				return string.format("new %s", tpUtil.getCardinal(seenLastPlace + 1)), colors.lightOrange
-			end
-			local extra = ""
-			if not frame.myfound then
-				extra = "\nnew find"
-			end
-			return "would not place" .. extra, colors.redStop
 		end
+		if comparatorPlace == 0 then
+			newNth = lastSeenPlace + 1
+		end
+		local text = ""
+		if comparatorPlace > 0 then
+			if frame.myplace and comparatorPlace == frame.myplace.place then
+				text = string.format(
+					"improve your %s by %0.1f",
+					tpUtil.getCardinal(comparatorPlace),
+					comparatorTimeImprovement
+				)
+			else
+				text = string.format(
+					"on track for %s by %0.1f",
+					tpUtil.getCardinal(comparatorPlace),
+					comparatorTimeImprovement
+				)
+			end
+		else
+			if frame.myplace then
+				text = string.format("no improvement by %0.1f", (currentRunElapsedMs - frame.myplace.timeMs) / 1000)
+			else
+				if newNth <= 10 then
+					text = "Would get new " .. tpUtil.getCardinal(newNth)
+				else
+					text = "Would not place"
+				end
+			end
+		end
+		local yourlast = ""
+		if frame.myplace and frame.myplace.place then
+			if frame.myplace.place <= 10 then
+				yourlast = "(prev " .. tpUtil.getCardinal(frame.myplace.place) .. ")"
+			else
+				yourlast = ""
+			end
+		else
+			yourlast = "new run for you"
+		end
+		local useColor = colors.defaultGrey
+		if comparatorPlace == 1 then
+			if frame.myplace and frame.myplace.place == 1 then
+				useColor = colors.lightBlue --just improve your 1st place.
+			else
+				useColor = colors.greenGo
+			end
+		else
+			if frame.myplace and frame.myplace.place == comparatorPlace then
+				useColor = colors.lightOrange
+			else
+				useColor = colors.lightBlue
+			end
+		end
+		return text .. "\n" .. yourlast, useColor
 	else
 		if not frame.myfound then
 			return "New Race\nNew Find for you", colors.lightGreen
@@ -232,11 +246,18 @@ local function setupDynamicVisualization(from: string, frame: tt.DynamicRunFrame
 			bbgui.Enabled = true
 		end
 		local text, color = calculateText(frame)
+
 		if text == "" then
 			conn:Disconnect()
 		end
-		tl.Text = text
-		tl.TextColor3 = color
+		if tl.Text ~= text then
+			tl.Text = text
+			tl.TextColor3 = color
+			-- if frame.targetSignName == "Atocha" then
+			-- 	print("\n" .. text)
+			-- 	print(frame)
+			-- end
+		end
 	end)
 end
 

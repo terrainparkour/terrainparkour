@@ -100,7 +100,7 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 	local localFunctions = require(game.ReplicatedStorage.localFunctions)
 	--just get marathon settings.
 	local userSettings: { [string]: tt.userSettingValue } =
-		localFunctions.getSettingByDomain(settingEnums.settingDomains.Surveys)
+		localFunctions.getSettingByDomain(settingEnums.settingDomains.SURVEYS)
 
 	local outerFrame = Instance.new("Frame")
 	outerFrame.Parent = sg
@@ -145,7 +145,7 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 	local ii = 0
 	for name, setting in pairs(userSettings) do
 		ii += 1
-		if setting.domain ~= settingEnums.settingDomains.Surveys then
+		if setting.domain ~= settingEnums.settingDomains.SURVEYS then
 			continue
 		end
 		local rowFrame = makeSurveyRowFrame(setting, player, ii)

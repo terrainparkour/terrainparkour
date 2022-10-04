@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.187 October 2 2022"
+module.gameVersion = "1.188 October 3 2022"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -506,7 +506,7 @@ module.ExcludeSignNamesFromStartingAt = {
 	-- "Niven",
 	"POGGOD",
 	"Obelisk",
-	"Angle of Repose",
+	-- "Angle of Repose",
 	-- "Why",
 	-- "Aphex",
 	"Troll Bridge",
@@ -645,8 +645,11 @@ local releaseNotes: { [number]: string } = {
 * some improvements to make settings better in the future
 ]],
 	[187] = [[* make dynamic running into a setting.
+* setting for digit display of contest UI
 * fixed internal sign representation
 * fix live-application of settings and marathon configurations when you reset character
+]],
+	[188] = [[* redo dynamic running to always position yoru run against the current result, not your prior result
 ]],
 }
 module.releaseNotes = releaseNotes
