@@ -37,7 +37,7 @@ local desc = [[
 --PARAMETERS
 local serverEventMaxLength = 750
 if config.isInStudio() then
-	serverEventMaxLength = 15
+	serverEventMaxLength = 45
 end
 local serverEventIdleTimeout = 120
 

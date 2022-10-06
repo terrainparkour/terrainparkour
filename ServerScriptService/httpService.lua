@@ -20,22 +20,11 @@ spawn(function()
 	end
 end)
 
-local function createPost2(tbl): string
-	return HttpService:JSONEncode(tbl)
-end
-
-local function createPost(tmp): string -- tmp is an key value table
-	local tmpStr = ""
-	for key, val in pairs(tmp) do
-		tmpStr = tmpStr .. HttpService:UrlEncode(key) .. "=" .. HttpService:UrlEncode(val) .. "&"
-	end
-	return (#tmpStr == 0) and "" or tmpStr:sub(1, #tmpStr - 1)
-end
-
+--infinite retrying, blocking.
 module.httpThrottledJsonGet = function(url: string): any
 	while true do
 		if httpremaining > 0 then
-			httpremaining = httpremaining - 1
+			httpremaining -= 1
 			local res
 
 			local success, err: string = pcall(function()
@@ -60,17 +49,16 @@ module.httpThrottledJsonGet = function(url: string): any
 			return ret
 		end
 		warn("httpGetwait." .. httpremaining)
-		wait(0.09)
+		wait(0.05)
 	end
 end
 
 module.httpThrottledJsonPost = function(url: string, data: any): any
-	-- vscdebug.debug()
-	local post = createPost2(data)
+	local post = HttpService:JSONEncode(data)
 	post = post .. "&retry=false"
 	while true do
 		if httpremaining > 0 then
-			httpremaining = httpremaining - 1
+			httpremaining -= 1
 			local res
 			local s, e = pcall(function()
 				res = HttpService:PostAsync(url, post, Enum.HttpContentType.ApplicationUrlEncoded)
@@ -83,17 +71,13 @@ module.httpThrottledJsonPost = function(url: string, data: any): any
 					post = post .. "&retry=true"
 					res = HttpService:PostAsync(url, post, Enum.HttpContentType.ApplicationUrlEncoded)
 				end)
-
-				if not s then
-					print("error getting url 2nd try, giving up.", url, e)
-				end
 				error(e)
 			end
 
 			return HttpService:JSONDecode(res)
 		end
-		warn("httppostwait.")
-		wait(0.07)
+		warn("http.post.wait.")
+		wait(0.05)
 	end
 end
 

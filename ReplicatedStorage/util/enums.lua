@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.191 October 5 2022"
+module.gameVersion = "1.192 October 6 2022"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -500,6 +500,8 @@ module.maxSignId = #name2signId
 --random race cannot start from these for preservation of sanctity reasons.
 module.ExcludeSignNamesFromStartingAt = {
 	"Chirality",
+	"007",
+	"65536",
 	-- "Geosmin",
 	-- "Ziggurat",
 	-- "Square",
@@ -656,6 +658,7 @@ local releaseNotes: { [number]: string } = {
 * worse lava behavior
 ]],
 	[191] = [[* server events interactive loop with payouts]],
+	[192] = [[* fix bugs when someone leaves the server who had dynamic running on]],
 }
 module.releaseNotes = releaseNotes
 

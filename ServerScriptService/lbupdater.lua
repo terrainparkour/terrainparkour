@@ -14,36 +14,52 @@ local leaderboardUpdateEvent: RemoteEvent = ReplicatedStorage:WaitForChild("Remo
 	:WaitForChild("LeaderboardUpdateEvent")
 
 module.updateLeaderboardForRun = function(player: Player, data: tt.lbUpdateFromRun)
-	leaderboardUpdateEvent:FireClient(player, data)
+	spawn(function()
+		leaderboardUpdateEvent:FireClient(player, data)
+	end)
 end
 
 module.updateLeaderboardForFind = function(player: Player, data: tt.signFindOptions)
-	leaderboardUpdateEvent:FireClient(player, data)
+	spawn(function()
+		leaderboardUpdateEvent:FireClient(player, data)
+	end)
 end
 
 module.updateLeaderboardForEphemeralMarathon = function(player: Player, data: mt.lbUpdateFromEphemeralMarathonRun)
-	leaderboardUpdateEvent:FireClient(player, data)
+	spawn(function()
+		leaderboardUpdateEvent:FireClient(player, data)
+	end)
 end
 
 module.updateLeaderboardForMarathon = function(player: Player, data: tt.pyUserFinishedRunResponse)
-	leaderboardUpdateEvent:FireClient(player, data)
+	spawn(function()
+		leaderboardUpdateEvent:FireClient(player, data)
+	end)
 end
 
 module.updateLeaderboardForLeave = function(player: Player, userId: number)
-	local data: tt.leaveOptions = { userId = userId, kind = "leave" }
-	leaderboardUpdateEvent:FireClient(player, data)
+	spawn(function()
+		local data: tt.leaveOptions = { userId = userId, kind = "leave" }
+		leaderboardUpdateEvent:FireClient(player, data)
+	end)
 end
 
 module.updateLeaderboardForJoin = function(player: Player, data: tt.afterData_getStatsByUser)
-	leaderboardUpdateEvent:FireClient(player, data)
+	spawn(function()
+		leaderboardUpdateEvent:FireClient(player, data)
+	end)
 end
 
 module.updateLeaderboardBadgeStats = function(player: Player, data: tt.badgeUpdate)
-	leaderboardUpdateEvent:FireClient(player, data)
+	spawn(function()
+		leaderboardUpdateEvent:FireClient(player, data)
+	end)
 end
 
 module.updateLeaderboardForServerEventCompletionRun = function(player: Player, data: tt.lbUpdateFromRun)
-	leaderboardUpdateEvent:FireClient(player, data)
+	spawn(function()
+		leaderboardUpdateEvent:FireClient(player, data)
+	end)
 end
 
 return module

@@ -27,6 +27,21 @@ local dynamicStartTick: number = 0
 
 local bbguiMaxDist = 190
 
+---------ANNOTATION----------------
+local doAnnotation = false
+-- doAnnotation = true
+local annotationStart = tick()
+local function annotate(s: string)
+	if doAnnotation then
+		if typeof(s) == "string" then
+			print("dynamicRunning.Server: " .. string.format("%.0f", tick() - annotationStart) .. " : " .. s)
+		else
+			print("dynamicRunning.Server.bject: " .. string.format("%.0f", tick() - annotationStart) .. " : ")
+			print(s)
+		end
+	end
+end
+
 local module = {}
 
 --signName => ui outer frame
@@ -35,9 +50,11 @@ local targetSignUis: { [string]: TextLabel } = {}
 local startDynamicDebounce = false
 --destroy all UIs and nuke the pointer dict to them
 module.endDynamic = function(force: boolean?)
+	annotate("endDynamic, force=" .. tostring(force))
 	if not (force or dynamicRunningEnabled) then
 		return
 	end
+	annotate("endDynamic, real")
 	startDynamicDebounce = true
 	local data: tt.dynamicRunningControlType = { action = "stop", fromSignId = 0, userId = localPlayer.UserId }
 	for k, v in pairs(targetSignUis) do
@@ -256,10 +273,6 @@ local function setupDynamicVisualization(from: string, frame: tt.DynamicRunFrame
 		if tl.Text ~= text then
 			tl.Text = text
 			tl.TextColor3 = color
-			-- if frame.targetSignName == "Atocha" then
-			-- 	print("\n" .. text)
-			-- 	print(frame)
-			-- end
 		end
 	end)
 end
@@ -269,8 +282,6 @@ local function handleNewDynamicFrames(updates: tt.dynamicRunFromData)
 		return
 	end
 	for _, frame in ipairs(updates.frames) do
-		-- singleTextUpdate(updates.fromSignName, frame)
-		-- print("setup dynamic " .. updates.fromSignName .. frame.targetSignName)
 		setupDynamicVisualization(updates.fromSignName, frame)
 	end
 end

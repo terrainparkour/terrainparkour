@@ -16,6 +16,8 @@ local PlayersService = game:GetService("Players")
 local module = {}
 
 --create server event, wait for ui to pop, then display a simple modal for success or failure.
+
+--TODO make this into an ephemeral notification.
 local CreateServerEventButtonClicked = function(localPlayer: Player): ScreenGui
 	local userId = localPlayer.UserId
 	local sg = Instance.new("ScreenGui")

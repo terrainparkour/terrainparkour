@@ -119,10 +119,10 @@ end
 
 local debounceInnerSetup = false
 
-local function innerSetupSettings(player: Player): { [string]: tt.userSettingValue }
+local function innerSetupSettings(player: Player, src: string): { [string]: tt.userSettingValue }
 	while debounceInnerSetup do
-		print("settings.innersetup.wait")
-		wait()
+		print("settings.innersetup.wait " .. src)
+		wait(0.05)
 	end
 	debounceInnerSetup = true
 	local userId = player.UserId
@@ -151,7 +151,7 @@ local function innerSetupSettings(player: Player): { [string]: tt.userSettingVal
 end
 
 module.getUserSettingByName = function(player: Player, settingName: string): tt.userSettingValue
-	local userSettings = innerSetupSettings(player)
+	local userSettings = innerSetupSettings(player, "getUserSettingByName " .. settingName)
 	for _, s in userSettings do
 		if s.name == settingName then
 			return s
@@ -161,7 +161,7 @@ module.getUserSettingByName = function(player: Player, settingName: string): tt.
 end
 
 module.getUserSettingsByDomain = function(player: Player, domain: string): { [string]: tt.userSettingValue }
-	local userSettings = innerSetupSettings(player)
+	local userSettings = innerSetupSettings(player, "getUserSettingsByDomain " .. domain)
 	local res = {}
 	for _, s in pairs(userSettings) do
 		if s.domain == domain then
@@ -180,7 +180,7 @@ module.getUserSettingsRouter = function(player: Player, domain: string?, setting
 		return module.getUserSettingByName(player, settingName)
 	end
 
-	local userSettings = innerSetupSettings(player)
+	local userSettings = innerSetupSettings(player, "getUserSettingsRouter.all")
 	return userSettings
 end
 

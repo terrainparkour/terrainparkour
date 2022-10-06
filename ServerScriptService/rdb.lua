@@ -207,6 +207,7 @@ module.setSignPosition = function(data: any)
 	return remoteDbInternal.remoteGet("setSignPosition", data)
 end
 
+--look up dynamic run stats for the signs included, which are likely ones which the user is approaching
 module.dynamicRunFrom = function(userId: number, startSignId: number, targetSignIds: { number })
 	local targetSignIdsString = {}
 	for ii, el in ipairs(targetSignIds) do

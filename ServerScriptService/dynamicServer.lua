@@ -73,15 +73,21 @@ end
 
 local function dynamicControlServer(userId: number, input: tt.dynamicRunningControlType)
 	if input.action == "start" then
-		local thisLoopMonitor = { active = true }
-
 		spawn(function()
 			local sentSignIds: { [number]: boolean } = {}
 
 			while true do
-				local pos = getPositionByUserId(userId)
+				local pos: Vector3?
+				local s, e = pcall(function()
+					pos = getPositionByUserId(userId)
+				end)
+				if not s then
+					warn("should not happen")
+					break
+				end
 				if pos == nil then
-					continue
+					print("player left." .. tostring(userId))
+					break
 				end
 				assert(pos)
 				local nearest = getNearestSigns(pos, userId, false, 50)
@@ -99,15 +105,18 @@ local function dynamicControlServer(userId: number, input: tt.dynamicRunningCont
 				if #todoSignIds > 0 then
 					local frames = rdb.dynamicRunFrom(userId, input.fromSignId, todoSignIds)
 					if frames == nil then
-						print("http overload.")
+						warn("Http 'overload'?")
 						continue
 					end
 					--send frames out.
 					local player = PlayersService:GetPlayerByUserId(userId)
-					dynamicRunningEvent:FireClient(player, frames)
-				end
-				if not thisLoopMonitor.active then
-					break
+					local s, e = pcall(function()
+						dynamicRunningEvent:FireClient(player, frames)
+					end)
+					if not s then
+						--player has left.
+						break
+					end
 				end
 				wait(5)
 			end

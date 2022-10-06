@@ -352,9 +352,9 @@ module.notifyHit = function(sign: Part, player: Player, newFind: boolean, theHit
 		if not s then
 			error("startRun event error." .. e)
 		else
-			-- annotate("startRun.event okay.")
+			annotate("startRun.event okay.")
 		end
-		-- annotate("startRun." .. sign.Name .. " done.")
+		annotate("startRun." .. sign.Name .. " done.")
 	end
 end
 
