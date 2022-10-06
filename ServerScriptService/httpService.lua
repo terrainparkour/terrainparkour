@@ -4,6 +4,7 @@
 local config = require(game.ReplicatedStorage.config)
 
 local HttpService = game:GetService("HttpService")
+local vscdebug = require(game.ReplicatedStorage.vscdebug)
 
 local module = {}
 
@@ -18,6 +19,10 @@ spawn(function()
 		wait(httpaddEvery)
 	end
 end)
+
+local function createPost2(tbl): string
+	return HttpService:JSONEncode(tbl)
+end
 
 local function createPost(tmp): string -- tmp is an key value table
 	local tmpStr = ""
@@ -59,8 +64,9 @@ module.httpThrottledJsonGet = function(url: string): any
 	end
 end
 
-module.httpThrottledJsonPost = function(url: string, data: any):any
-	local post = createPost(data)
+module.httpThrottledJsonPost = function(url: string, data: any): any
+	-- vscdebug.debug()
+	local post = createPost2(data)
 	post = post .. "&retry=false"
 	while true do
 		if httpremaining > 0 then

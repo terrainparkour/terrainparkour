@@ -281,6 +281,7 @@ local popularButton: gt.actionButton = {
 	getActive = function()
 		return true
 	end,
+	widthPixels = 60,
 }
 
 module.popularButton = popularButton

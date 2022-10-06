@@ -42,4 +42,8 @@ module.updateLeaderboardBadgeStats = function(player: Player, data: tt.badgeUpda
 	leaderboardUpdateEvent:FireClient(player, data)
 end
 
+module.updateLeaderboardForServerEventCompletionRun = function(player: Player, data: tt.lbUpdateFromRun)
+	leaderboardUpdateEvent:FireClient(player, data)
+end
+
 return module

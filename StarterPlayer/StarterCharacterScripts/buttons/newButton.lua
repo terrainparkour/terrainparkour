@@ -283,6 +283,7 @@ local newButton: gt.actionButton = {
 	getActive = function()
 		return true
 	end,
+	widthPixels = 60,
 }
 
 module.newButton = newButton

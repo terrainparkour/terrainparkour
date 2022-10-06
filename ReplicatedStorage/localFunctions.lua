@@ -33,14 +33,14 @@ local function localNotifySettingChange(setting: tt.userSettingValue)
 	end
 end
 
-local userSettingsFunction: RemoteFunction = rf.getRemoteFunction("GetUserSettingsFunction")
+local getUserSettingsFunction: RemoteFunction = rf.getRemoteFunction("GetUserSettingsFunction")
 
 module.getSettingByName = function(name: string): tt.userSettingValue
-	return userSettingsFunction:InvokeServer("", name)
+	return getUserSettingsFunction:InvokeServer("", name)
 end
 
 module.getSettingByDomain = function(name: string): { [string]: tt.userSettingValue }
-	return userSettingsFunction:InvokeServer(name)
+	return getUserSettingsFunction:InvokeServer(name)
 end
 
 local userSettingsChangedFunction = rf.getRemoteFunction("UserSettingsChangedFunction") :: RemoteFunction

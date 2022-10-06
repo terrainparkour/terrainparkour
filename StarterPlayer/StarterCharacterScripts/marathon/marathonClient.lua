@@ -286,11 +286,7 @@ local function onWarpEnd()
 	canDoAnything = true
 end
 
--- when user warps, kill outstanding marathons.
-module.Init = function(): nil
-	warper.addCallbackToWarpStart(onWarpStart)
-	warper.addCallbackToWarpEnd(onWarpEnd)
-end
+
 
 --BOTH tell the system that the setting value is this, AND init it visually.
 module.InitMarathon = function(desc: mt.marathonDescriptor, forceDisplay: boolean)
@@ -353,6 +349,12 @@ module.ReInitActiveMarathons = function()
 	for _, joinable in ipairs(joinableMarathonKinds) do
 		module.InitMarathonVisually(joinable)
 	end
+end
+
+-- when user warps, kill outstanding marathons.
+module.Init = function(): nil
+	warper.addCallbackToWarpStart(onWarpStart)
+	warper.addCallbackToWarpEnd(onWarpEnd)
 end
 
 return module

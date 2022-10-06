@@ -3,6 +3,7 @@
 
 local httpservice = require(game.ServerScriptService.httpService)
 local HttpService = game:GetService("HttpService")
+local vscdebug = require(game.ReplicatedStorage.vscdebug)
 
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 
@@ -269,24 +270,27 @@ end
 
 --also send actionResults (for others) to notify.
 local function afterRemoteDbActions(kind: string, afterData: tt.afterdata)
-	if afterData.actionResults ~= nil then
-		--we filter my action results out, because those will be handled in the main get/post call return
-		--(by addition to the main sign for results.)
-		local otherUserActionResults: { tt.actionResult } = {}
-		for _, el in ipairs(afterData.actionResults) do
-			--we only accept notifyAllExcept ARs.
-			-- this means only ones which exclude a single user.
-			if el.notifyAllExcept == true then
-				table.insert(otherUserActionResults, el)
-			else
-				-- print("skipping AR because it targeted a single user in afterRemoteDbActions")
-				-- print(el)
-				table.insert(otherUserActionResults, el)
-			end
-		end
-
-		notify.handleActionResults(otherUserActionResults)
+	if afterData.actionResults == nil then
+		return
 	end
+	if #afterData.actionResults == 0 then
+		return
+	end
+	-- vscdebug.debug()
+	--we filter my action results out, because those will be handled in the main get/post call return
+	--(by addition to the main sign for results.)
+	local otherUserActionResults: { tt.actionResult } = {}
+	for _, el in ipairs(afterData.actionResults) do
+		--we only accept notifyAllExcept ARs.
+		-- this means only ones which exclude a single user.
+		if el.notifyAllExcept == true then
+			table.insert(otherUserActionResults, el)
+		else
+			table.insert(otherUserActionResults, el)
+		end
+	end
+
+	notify.handleActionResults(otherUserActionResults)
 end
 
 --actual URL construction, etc. method.
@@ -313,6 +317,8 @@ module.remoteGet = function(kind: string, data: any): any
 	return res
 end
 
+--how this works: any post endpoint, send to here for security and jsonification of params
+--then it'll be picked up by postsecurity.
 module.remotePost = function(kind: string, data: any)
 	if not host then
 		error("no host.")
@@ -329,8 +335,6 @@ module.remotePost = function(kind: string, data: any)
 		annotate(string.format("%0.3f kind: " .. kind .. " url:" .. url, tick() - st))
 		annotate(data)
 		annotate(res)
-	end
-	if false then
 		annotate(string.format("roundtrip endpoint time: %0.3f ", tick() - st))
 	end
 

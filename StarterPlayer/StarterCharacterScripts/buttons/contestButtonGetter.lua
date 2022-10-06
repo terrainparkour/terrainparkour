@@ -416,6 +416,7 @@ module.getContestButtons = function(userIds: { number }): { gt.actionButton }
 			getActive = function()
 				return contest.contestremaining > 0
 			end,
+			widthPixels = 120,
 		}
 		table.insert(res, contestButton)
 	end

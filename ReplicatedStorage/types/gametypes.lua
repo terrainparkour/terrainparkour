@@ -181,6 +181,18 @@ export type lbUpdateFromRun = {
 	awardCount: number,
 }
 
+export type lbUserStats={
+	kind: string,
+	userId: number,
+	userTix: number,
+	top10s: number,
+	races: number,
+	runs: number,
+	userCompetitiveWRCount: number,
+	userTotalWRCount: number,
+	awardCount: number
+}
+
 export type lbUpdateFromFind = {
 	kind: string,
 	userId: number,
@@ -241,5 +253,33 @@ export type dynamicRunFromData = { kind: string, fromSignName: string, frames: {
 
 --for dynamic running event communication localscript to server
 export type dynamicRunningControlType = { action: string, fromSignId: number, userId: number }
+
+--SERVEREVENTS
+export type runningServerEventUserBest = { userId: number, username: string, timeMs: number, runCount: number }
+export type runningServerEvent = {
+	name: string,
+	serverEventNumber: number,
+	startedTick: number,
+	remainingTick: number,
+	lastActiveTick: number,
+	startSignId: number,
+	endSignId: number,
+	userBests: { [number]: runningServerEventUserBest },
+	tixValue: number,
+	distance: number,
+}
+
+export type serverEventUpdateType = string
+
+export type serverEventUpdates = { { serverEvent: runningServerEvent, updateType: serverEventUpdateType } }
+
+--used from localtimer => server consumers who want to know when runs complete.
+export type serverFinishRunNotifierType = {
+	startSignId: number,
+	endSignId: number,
+	timeMs: number,
+	userId: number,
+	username: string,
+}
 
 return {}

@@ -11,10 +11,8 @@ local module = {}
 local TweenService = game:GetService("TweenService")
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
 local colors = require(game.ReplicatedStorage.util.colors)
-local config = require(game.ReplicatedStorage.config)
 local marathonstatic = require(game.StarterPlayer.StarterCharacterScripts.marathon["marathon.static"])
 local marathonDescriptors = require(game.ReplicatedStorage.marathonDescriptors)
 --global storage for user's lbframe

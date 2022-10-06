@@ -4,21 +4,23 @@
 --2022 remaining bug: sometimes you get fail.04 or fail.05 and permanent  shifting.
 --2022.02.12 why is this so hard to get right? or rather why doesn't it just work out of the box?
 --2022.02.24 revisiting to finally fix LB bugs.
+local vscdebug = require(game.ReplicatedStorage.vscdebug)
 
 local TweenService = game:GetService("TweenService")
 local PlayersService = game:GetService("Players")
-local leaderboardActions = require(game.StarterPlayer.StarterCharacterScripts.leaderboardActions)
+local leaderboardButtons = require(game.StarterPlayer.StarterCharacterScripts.leaderboardButtons)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local localPlayer = PlayersService.LocalPlayer
 local StarterPlayer = game:GetService("StarterPlayer")
-local rs = game:GetService("ReplicatedStorage")
+
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
 local colors = require(game.ReplicatedStorage.util.colors)
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 local mt = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonTypes)
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local remotes = require(game.ReplicatedStorage.util.remotes)
+local rf = require(game.ReplicatedStorage.util.remotes)
+
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 local marathonClient = require(StarterPlayer.StarterCharacterScripts.marathon.marathonClient)
 local mds = require(game.ReplicatedStorage.marathonDescriptors)
@@ -104,7 +106,7 @@ local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
 		num = 14,
 		width = userLbRowCellWidth,
 		userFacingName = "cwrs",
-		tooltip = "How many World records you hold in races with 10+ runners in them!",
+		tooltip = "How many World Records you hold in competitive races!",
 	},
 	{
 		name = "userTotalWRCount",
@@ -208,6 +210,7 @@ local function completelyResetUserLB()
 	lbframe.Size = UDim2.new(0, 0.2, 0, 0)
 	lbframe.Position = UDim2.new(1, -1 * lbwidth - 10, 0.0, 0)
 	lbframe.Name = "LeaderboardFrame"
+	lbframe.BackgroundTransparency = 1
 	local uu = Instance.new("UIListLayout")
 	uu.FillDirection = Enum.FillDirection.Vertical
 	uu.Name = "lbUIListLayout"
@@ -219,14 +222,19 @@ local function completelyResetUserLB()
 	local headerFrame = makeLBHeaderRowFrame()
 	headerFrame.Parent = lbframe
 
-	leaderboardActions.initActionButtons(lbframe, localPlayer)
+	leaderboardButtons.initActionButtons(lbframe, localPlayer)
 
 	marathonClient.ReInitActiveMarathons()
 end
 
 --important to use all lbUserCellParams here to make the row complete
 --even if an update comes before the initial loading of full stats.
+local lbadderUserIdDebounce = {}
 local function addUserToLB(userId: number): rowFrameType?
+	if lbadderUserIdDebounce[userId] then
+		return
+	end
+	lbadderUserIdDebounce[userId] = true
 	local rowplayer = PlayersService:GetPlayerByUserId(userId)
 	if rowplayer == nil then
 		return nil
@@ -249,7 +257,6 @@ local function addUserToLB(userId: number): rowFrameType?
 	layout.FillDirection = Enum.FillDirection.Horizontal
 	layout.Parent = rowFrame.frame
 	rowFrame.frame.Parent = lbframe
-
 	local bgcolor = colors.grey
 	if userId == localPlayer.UserId then
 		bgcolor = colors.meColor
@@ -265,6 +272,16 @@ local function addUserToLB(userId: number): rowFrameType?
 			img.Name = string.format("%02d.value", lbUserCellDescriptor.num)
 			img.Parent = rowFrame.frame
 			img.BorderMode = Enum.BorderMode.Outline
+
+			if false then --disabled user thumbnail mouseover TODO
+				local content2 = thumbnails.getThumbnailContent(userId, Enum.ThumbnailType.HeadShot, 256, 256)
+				local innerImg = Instance.new("ImageLabel")
+				innerImg.Size = UDim2.new(1, 0, 1, 0)
+				innerImg.Image = content2
+				innerImg.BackgroundColor3 = bgcolor
+				innerImg.Name = string.format("%02d.inner.bigImg", lbUserCellDescriptor.num)
+				toolTip.setupToolTip(localPlayer, img, innerImg, UDim2.fromOffset(200, 200), true)
+			end
 		else --it's a textlabel whatever we're generating anyway.
 			local tl = guiUtil.getTl(
 				string.format("%02d.value", lbUserCellDescriptor.num),
@@ -297,6 +314,7 @@ local function addUserToLB(userId: number): rowFrameType?
 			end
 		end
 	end
+	lbadderUserIdDebounce[userId] = true
 	return rowFrame
 end
 
@@ -577,15 +595,14 @@ local function init()
 	end, "handleMarathonSettingsChanged")
 
 	completelyResetUserLB()
+
 	--we setup the event, but what if upstream playerjoinfunc is called first?
-	local leaderboardUpdateEvent: RemoteEvent =
-		rs:WaitForChild("RemoteEvents"):WaitForChild("LeaderboardUpdateEvent") :: RemoteEvent
+	local leaderboardUpdateEvent = rf.registerRemoteEvent("LeaderboardUpdateEvent")
 	leaderboardUpdateEvent.OnClientEvent:Connect(clientReceiveNewLeaderboardData)
 
 	--listen to racestart, raceendevent
 
 	marathonClient.Init()
-	local localFunctions = require(game.ReplicatedStorage.localFunctions)
 	local initialMarathonSettings = localFunctions.getSettingByDomain(settingEnums.settingDomains.MARATHONS)
 
 	--load marathons according to the users settings
@@ -598,11 +615,6 @@ local function init()
 	for _, userSetting in pairs(userSettings) do
 		handleUserSettingChanged(userSetting)
 	end
-
-	-- TODO revive this.
-	-- local randomMarathon = require(StarterPlayer.StarterCharacterScripts.marathon.randomMarathon)
-	-- local randomRace = randomMarathon.CreateRandomRaceInMarathonUI("A", "Mazatlan")
-	-- marathonClient.InitMarathon(randomRace, true)
 end
 
 init()

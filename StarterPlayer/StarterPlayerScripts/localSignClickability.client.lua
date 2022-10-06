@@ -504,6 +504,7 @@ local function SetupSignsThatHaventBeenYet()
 		if setupSigns[sign.Name] then
 			continue
 		end
+		sign=sign::Part
 
 		local sg = Instance.new("SurfaceGui")
 		sg.Parent = playerGui

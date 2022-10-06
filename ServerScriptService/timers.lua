@@ -129,105 +129,6 @@ local function shouldBlockHitDueToWarping(warpTime: number, hitTime: number): bo
 	return false
 end
 
---this is trusted, the old server endrun code.
-local function serverEndRun(player: Player, sign: Part, newFind: boolean, theHitTick: number)
-	if banning.getBanLevel(player.UserId) > 0 then
-		return
-	end
-	-- annotate("endRun." .. sign.Name)
-	local userId = player.UserId
-	--i should actually look at the sign to make sure it's the current race.
-	--that way out of order notifyHit calls wouldn't kill display of the sign.
-	if endingDebouncers[userId] then
-		warn("endRun.endDebouncers.So.Skip.")
-		return
-	end
-	-- annotate("endRun.doingIt.")
-	endingDebouncers[userId] = true
-
-	local raceTicks = theHitTick - playerStatuses[userId].st
-	-- annotate(string.format("endRun.got.raceTicks: %0.3f", raceTicks))
-
-	--read everything necessary before killing status.
-	local status = playerStatuses[userId]
-	local sourceSignId = status.signId
-
-	local success, err = pcall(function()
-		-- annotate("endRun.calling.cancelRun")
-		if shouldBlockHitDueToWarping(lastWarpTimes[player.UserId], theHitTick) then
-			return
-		end
-		--clean up serverside
-		module.cancelRun(player, "timers.endRun")
-	end)
-
-	--continue on to report best times, etc. here
-	if success then
-		-- annotate("endRun.did cancelRun")
-	else
-		-- annotate("endRun.fail cancelRun")
-		error(err)
-	end
-
-	local sourceSignName = enums.signId2name[sourceSignId]
-	local runMilliseconds = math.ceil(tonumber(raceTicks * 1000))
-	local sourceSignPosition = signInfo.getSignPosition(sourceSignId)
-	local distance = (sourceSignPosition - sign.Position).magnitude
-	local speed = distance / runMilliseconds
-
-	local raceName = sourceSignName .. " to " .. sign.Name
-	local spd = math.ceil(speed * 100) / 100
-
-	local startSignId = sourceSignId
-	local endSignId = enums.name2signId[sign.Name]
-	local userIds = tpUtil.GetUserIdsInServer()
-
-	userIds = table.concat(userIds, ",")
-
-	--this is where we save the time to db, and then continue to display runresults.
-	spawn(function()
-		local userFinishedRunOptions: tt.userFinishedRunOptions = {
-			userId = userId,
-			startId = startSignId,
-			endId = endSignId,
-			runMilliseconds = runMilliseconds,
-			otherPlayerUserIds = userIds,
-			remoteActionName = "userFinishedRun",
-		}
-		local userFinishedRunResponse: tt.pyUserFinishedRunResponse = rdb.userFinishedRun(userFinishedRunOptions)
-		-- annotate("spawn - before check badge: " .. tostring(userId))
-
-		spawn(function()
-			badgeCheckers.checkBadgeGrantingAfterRun(userId, userFinishedRunResponse, startSignId, endSignId)
-			--simulate "finding" the start, end
-			-- 2022.04 patching this up
-			-- badges.checkBadgeGrantingAfterFind(userId, startSignId, userFinishedRunResponse.userTotalFindCount)
-			-- badges.checkBadgeGrantingAfterFind(userId, endSignId, userFinishedRunResponse.userTotalFindCount)
-		end)
-
-		-- annotate("spawn - showbesttimes for: " .. tostring(userId))
-		raceCompleteData.showBestTimes(player, raceName, startSignId, endSignId, spd, newFind, userFinishedRunResponse)
-		-- annotate("spawn - preparing datatosend to otherPlayer LB.")
-		local lbRunUpdate: tt.lbUpdateFromRun = {
-			kind = "lbUpdate from run",
-			userId = userId,
-			userTix = userFinishedRunResponse.userTix,
-			top10s = userFinishedRunResponse.userTotalTop10Count,
-			races = userFinishedRunResponse.userTotalRaceCount,
-			runs = userFinishedRunResponse.userTotalRunCount,
-			userCompetitiveWRCount = userFinishedRunResponse.userCompetitiveWRCount,
-			userTotalWRCount = userFinishedRunResponse.userTotalWRCount,
-			awardCount = userFinishedRunResponse.awardCount,
-		}
-
-		for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
-			lbupdater.updateLeaderboardForRun(otherPlayer, lbRunUpdate)
-		end
-	end)
-	endingDebouncers[userId] = false
-	-- annotate("endRun.done")
-end
-
 --in new trust the client code, just call this directly with the actual details.
 --note: it would be nice to retain server-side timing to detect hackers. nearly every one would give themselves away.
 local function serverEndRunPromptedByClient(
@@ -296,8 +197,16 @@ local function serverEndRunPromptedByClient(
 			lbupdater.updateLeaderboardForRun(otherPlayer, lbRunUpdate)
 		end
 	end)
+	local serverEventBindableEvent = remotes.getBindableEvent("ServerEventBindableEvent")
+	local data: tt.serverFinishRunNotifierType = {
+		startSignId = startSignId,
+		endSignId = endSignId,
+		timeMs = runMilliseconds,
+		userId = userId,
+		username = rdb.getUsernameByUserId(userId),
+	}
+	serverEventBindableEvent:Fire(data)
 	endingDebouncers[userId] = false
-	-- annotate("endRun.done")
 end
 
 clientControlledRunEndEvent.OnServerEvent:Connect(

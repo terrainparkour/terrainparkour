@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.189 October 4 2022"
+module.gameVersion = "1.191 October 5 2022"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -655,6 +655,7 @@ local releaseNotes: { [number]: string } = {
 * keyboard shortcut '1' to warp to the last completed race.
 * worse lava behavior
 ]],
+	[191] = [[* server events interactive loop with payouts]],
 }
 module.releaseNotes = releaseNotes
 

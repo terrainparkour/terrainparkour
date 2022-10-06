@@ -142,10 +142,11 @@ local marathonSettingsButton: gt.actionButton = {
 	name = "Marathon Settings",
 	contentsGetter = getSettingsModal,
 	hoverHint = "Configure Marathons",
-	shortName = "+ Marathon",
+	shortName = "Marathon",
 	getActive = function()
 		return true
 	end,
+	widthPixels = 60,
 }
 
 module.marathonSettingsButton = marathonSettingsButton

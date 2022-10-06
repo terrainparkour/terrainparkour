@@ -6,6 +6,7 @@
 
 local PlayersService = game:GetService("Players")
 
+local vscdebug = require(game.ReplicatedStorage.vscdebug)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
@@ -241,6 +242,13 @@ module.dynamicRunFrom = function(userId: number, startSignId: number, targetSign
 		end
 	end
 
+	return res
+end
+
+module.reportServerEventEnd = function(ev: tt.runningServerEvent, allocations)
+	local combined = { ev = ev, allocations = allocations }
+	combined.remoteActionName = "reportServerEventEnd"
+	local res = remoteDbInternal.remotePost("postEndpoint", combined)
 	return res
 end
 

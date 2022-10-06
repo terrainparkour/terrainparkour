@@ -16,8 +16,14 @@ module.createEvents = function()
 	fr.Name = "RemoteFunctions"
 	fr.Parent = ReplicatedStorage
 
+	local be = Instance.new("Folder")
+	be.Name = "BindableEvents"
+	be.Parent = ReplicatedStorage
+
 	--notify client that a race which already started, has an updated (later) start time.
 	-- remotes.registerRemoteEvent("DelayedStartTimeUpdateEvent")
+
+	--note: this is all pointless, the getters should do registration too if necessary.
 
 	--chatscript and movement guys call this to make banned players move like sludge.
 	remotes.registerRemoteFunction("GetBanStatusRemoteFunction")
@@ -34,6 +40,9 @@ module.createEvents = function()
 	remotes.registerRemoteEvent("EphemeralMarathonCompleteEvent")
 	remotes.registerRemoteFunction("DynamicRunningFunction")
 	remotes.registerRemoteEvent("DynamicRunningEvent")
+
+	remotes.registerRemoteEvent("ServerEventRemoteEvent")
+	remotes.registerRemoteFunction("ServerEventRemoteFunction")
 
 	remotes.registerRemoteFunction("EphemeralMarathonCreateFunction")
 	remotes.registerRemoteFunction("BadgeAttainmentsFunction")
@@ -63,6 +72,8 @@ module.createEvents = function()
 
 	--local player clicks sign, server generate signpopup, send it back to client
 	remotes.registerRemoteFunction("ClickSignRemoteFunction")
+
+	remotes.registerBindableEvent("ServerEventBindableEvent")
 end
 
 return module

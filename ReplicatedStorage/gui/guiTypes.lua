@@ -11,6 +11,7 @@ export type actionButton = {
 	shortName: string,
 	hoverHint: string,
 	getActive: () -> boolean,
+	widthPixels: number,
 }
 
 return module

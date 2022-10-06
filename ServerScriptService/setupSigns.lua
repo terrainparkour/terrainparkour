@@ -157,12 +157,14 @@ if false then
 		part.Material = Enum.Material.Granite
 		part.Color = Color3.fromRGB(255, 89, 89)
 		local sguiName = "SignGui_" .. part.Name
-		local sGui = part:FindFirstChild(sguiName)
-		if sGui == nil then
-			sGui = Instance.new("SurfaceGui")
-			sGui.Name = sguiName
-			sGui.Parent = part
+		local sGui = part:FindFirstChildOfClass("SurfaceGui")
+		if sGui ~= nil then
+			sGui:Destroy()
 		end
+
+		sGui = Instance.new("SurfaceGui")
+		sGui.Name = sguiName
+		sGui.Parent = part
 
 		local canvasSize = Vector2.new(part.Size.Z * 30, part.Size.X * 30)
 		sGui.CanvasSize = canvasSize
@@ -176,12 +178,13 @@ if false then
 		sGui.Parent.FrontSurface = Enum.SurfaceType.Smooth
 		sGui.Parent.BackSurface = Enum.SurfaceType.Smooth
 
-		local textLabel = part:FindFirstChild(part.Name)
-		if textLabel == nil then
-			textLabel = Instance.new("TextLabel")
-			textLabel.Parent = sGui
+		local textLabel = sGui:FindFirstChildOfClass("TextLabel")
+		if textLabel ~= nil then
+			textLabel:Destroy()
 		end
 
+		textLabel = Instance.new("TextLabel")
+		textLabel.Parent = sGui
 		textLabel.AutoLocalize = false
 		textLabel.Text = part.Name
 		textLabel.Font = Enum.Font.Gotham
@@ -189,7 +192,7 @@ if false then
 		textLabel.Size = UDim2.new(1, 0, 1, 0)
 		textLabel.TextScaled = true
 		textLabel.RichText = true
-		textLabel.TextColor3 =  Color3.fromRGB(255, 240, 241)
+		textLabel.TextColor3 = Color3.fromRGB(255, 240, 241)
 		part.Anchored = true
 	end
 end

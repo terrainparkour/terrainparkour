@@ -6,7 +6,7 @@
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
 
-local Players = game:GetService("Players")
+local vscdebug = require(game.ReplicatedStorage.vscdebug)
 
 local module = {}
 
@@ -16,40 +16,73 @@ module.enum.toolTipSize.NormalText = UDim2.new(0, 350, 0, 80)
 module.enum.toolTipSize.BigPane = UDim2.new(0, 450, 0, 320)
 
 --right=they float right+down rather than left+down from cursor. default is right.
-module.setupToolTip = function(localPlayer: Player, item: TextLabel, contents: string?, size: UDim2, right: boolean?)
+local debounce = false
+module.setupToolTip = function(
+	localPlayer: Player,
+	target: TextLabel | TextButton | ImageLabel | Frame,
+	tooltipContents: string | ImageLabel,
+	size: UDim2,
+	right: boolean?,
+	alignment: any?
+)
+	if alignment == nil then
+		alignment = Enum.TextXAlignment.Center
+	end
 	if right == nil then
 		right = true
 	end
-	if contents == nil then
+	if tooltipContents == nil then
 		return
 	end
-	assert(contents)
+	assert(tooltipContents)
 	local mouse: Mouse = localPlayer:GetMouse()
 
-	local gui: ScreenGui
-	item.MouseEnter:Connect(function()
-		gui = Instance.new("ScreenGui")
-		gui.Parent = localPlayer.PlayerGui
-		gui.Name = "ToolTipGui"
-		gui.Enabled = true
-		gui.Parent = localPlayer.PlayerGui
+	local ephemeralName = "EphemeralTooltip"
+	target.MouseEnter:Connect(function()
+		local gui = localPlayer.PlayerGui:FindFirstChild("ToolTipGui")
+		if gui == nil then
+			print("made new")
+			gui = Instance.new("ScreenGui")
+			gui.Parent = localPlayer.PlayerGui
+			gui.Name = "ToolTipGui"
+			gui.Enabled = true
+		end
+		local tooltipFrame = Instance.new("Frame")
+		tooltipFrame.Size = size
+		tooltipFrame.Name = ephemeralName
+		tooltipFrame.Parent = gui
 
-		local frm = Instance.new("Frame")
-		frm.Parent = gui
-		frm.Size = size
-		frm.Name = "EphemeralTooltip"
-		local tl = guiUtil.getTl("Sgui", UDim2.new(1, 0, 1, 0), 2, frm, colors.defaultGrey, 1)
-		tl.Text = contents
-		tl.TextXAlignment = Enum.TextXAlignment.Left
-		if right then
-			frm.Position = UDim2.fromOffset(mouse.X + 10, mouse.Y + 10)
+		if typeof(tooltipContents) == "string" then
+			local tl = guiUtil.getTl("Sgui", UDim2.new(1, 0, 1, 0), 2, tooltipFrame, colors.defaultGrey, 1)
+			tl.Text = tooltipContents
+			tl.TextScaled = true
+			tl.Font = Enum.Font.Gotham
+			tl.TextXAlignment = alignment
 		else
-			frm.Position = UDim2.fromOffset(mouse.X + 10 - size.X.Offset, mouse.Y + 10)
+			local s, e = pcall(function()
+				tooltipContents.Parent = tooltipFrame
+			end)
+			if not s then
+				warn(e)
+			end
+		end
+
+		if right then
+			tooltipFrame.Position = UDim2.fromOffset(mouse.X + 10, mouse.Y + 10)
+		else
+			tooltipFrame.Position = UDim2.fromOffset(mouse.X + 10 - size.X.Offset, mouse.Y + 10)
 		end
 	end)
-	item.MouseLeave:Connect(function()
-		if gui then
-			gui:Destroy()
+	target.MouseLeave:Connect(function()
+		-- if true then return end
+
+		for _, el in ipairs(localPlayer.PlayerGui:FindFirstChild("ToolTipGui"):GetChildren()) do
+			if el.Name == ephemeralName then
+				for _, el2 in ipairs(el:GetChildren()) do
+					el2:Destroy()
+				end
+				el:Destroy()
+			end
 		end
 	end)
 end
