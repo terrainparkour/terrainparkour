@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.192 October 6 2022"
+module.gameVersion = "1.193 October 6 2022"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -497,80 +497,56 @@ module.name2signId = name2signId
 module.minSignId = 1
 module.maxSignId = #name2signId
 
+module.ExcludeSignNamesFromEndingAt = {
+	"007",
+	"65536",
+	"POGGOD",
+	"Mauna Loa",
+}
+
 --random race cannot start from these for preservation of sanctity reasons.
 module.ExcludeSignNamesFromStartingAt = {
 	"Chirality",
 	"007",
 	"65536",
-	-- "Geosmin",
-	-- "Ziggurat",
-	-- "Square",
-	-- "Niven",
 	"POGGOD",
 	"Obelisk",
-	-- "Angle of Repose",
-	-- "Why",
-	-- "Aphex",
 	"Troll Bridge",
 	"Helix",
 	"Elevator",
-	-- "Kaminarimon",
-	-- "Pentekontors",
 	"Sputnik",
 	"Maobahe",
-	-- "Gnomon",
 	"Mauna Loa",
 	"Hosho",
-	-- "MarginalRev",
 	"Roblox",
-	-- "Voxel",
 	"Aorta",
-	-- "Gold Pond",
 	"Pretzel",
-	-- "Salt Maze",
 	"Beehive",
 	"Pharoah",
 	"Subterranean Temple",
-	-- "Cave of Forgotten Dreams",
 	"Blanc",
-	-- "Horseshoe",
-	-- "Skafloc",
-	-- "Obby",
 	"Flint",
-	-- "Oxalis",
 	"Woodingdean",
 	"Chaoskampf",
 	"Nyx",
 	"Lignin",
-	-- "Hasmonean",
-	-- "Saltus",
-	-- "Ra",
-	-- "Terminal",
 	"Mencius",
 	"Ooloi",
-	-- "Claudius",
-	-- "Viridian",
 	"Spiral Jump",
 	"Rapunzel",
 	"Rubble",
-	-- "Cloud Chamber",
 	"Olympus",
 	"Summit",
 	"Vesuvius",
-	-- "Conch",
 	"Wozniak",
 	"Klytus",
 	"Tapochki",
 	"Cinchona",
 	"Sciocchi",
 	"Erg",
-	-- "Union",
-	-- "Sterling",
 	"Sakura",
-	-- "Ende",
 	"Slig",
 	"Asana",
-	-- "Uniq",
 	"Kew",
 	"Guru",
 	"Darwin",
@@ -578,14 +554,11 @@ module.ExcludeSignNamesFromStartingAt = {
 	"Ararat",
 	"Petrichor",
 	"Kudzu",
-	-- "Orbital",
 	"Soylent",
-	-- "Eno",
 	"IPO",
 	"Mitchell",
 	"Rosen",
 	"Roygbiv",
-	-- "McGuire",
 	"Yang",
 	"Swiss",
 	"Slig",
@@ -594,20 +567,29 @@ module.ExcludeSignNamesFromStartingAt = {
 	"Kongzi",
 	"Mogwai",
 	"Verne",
-	-- "Swiss",
 	"Coagulate",
 	"Floor",
 	"Chomik",
 	"Neandertal",
 }
-local SignIdIsExcluded: { [number]: boolean } = {}
-module.SignIdIsExcluded = SignIdIsExcluded
+local SignIdIsExcludedFromStart: { [number]: boolean } = {}
+module.SignIdIsExcludedFromStart = SignIdIsExcludedFromStart
 for ii, signName in ipairs(module.ExcludeSignNamesFromStartingAt) do
 	local signId = module.name2signId[signName]
 	if signId == nil then
 		continue
 	end
-	module.SignIdIsExcluded[signId] = true
+	module.SignIdIsExcludedFromStart[signId] = true
+end
+
+local SignIdIsExcludedFromEnd: { [number]: boolean } = {}
+module.SignIdIsExcludedFromEnd = SignIdIsExcludedFromEnd
+for ii, signName in ipairs(module.ExcludeSignNamesFromEndingAt) do
+	local signId = module.name2signId[signName]
+	if signId == nil then
+		continue
+	end
+	module.SignIdIsExcludedFromEnd[signId] = true
 end
 
 module.signId2name = {}

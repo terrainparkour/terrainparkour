@@ -83,7 +83,7 @@ local function makeTile(el: tt.runningServerEventUserBest, ii: number, isMe: boo
 	if isMe then
 		tl.Text = string.format("%0.3fs", el.timeMs / 1000)
 	else
-		tl.Text = string.format("%0.0fs", el.timeMs / 1000)
+		tl.Text = string.format("%0.1fs", el.timeMs / 1000)
 	end
 
 	local ttText = string.format("%s %0.3fs %s%s", el.username, el.timeMs / 1000, tpUtil.getCardinal(ii), extra)
@@ -148,7 +148,14 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 	end
 
 	-- awardMouseoverText = "No prizes during testing"
-	toolTip.setupToolTip(localPlayer, prizeTl, awardMouseoverText, UDim2.new(0, 100, 0, lines * 24), false, Enum.TextXAlignment.Left)
+	toolTip.setupToolTip(
+		localPlayer,
+		prizeTl,
+		awardMouseoverText,
+		UDim2.new(0, 100, 0, lines * 24),
+		false,
+		Enum.TextXAlignment.Left
+	)
 
 	--remaining tile
 	local remainingTl = guiUtil.getTl(
@@ -258,7 +265,6 @@ module.endEventVisually = function(serverEvent: tt.runningServerEvent)
 		warn("no serverEvent to descroy. hmm.")
 	end
 end
-
 
 remotes.registerBindableEvent("ServerEventLocalClientWarpBindableEvent")
 

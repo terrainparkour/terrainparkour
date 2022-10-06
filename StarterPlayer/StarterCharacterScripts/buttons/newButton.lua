@@ -164,7 +164,7 @@ local function makePopRowFrame(
 	if not pop.hasFoundStart then
 		mode = "unfound"
 	end
-	if pop.hasFoundStart and enums.SignIdIsExcluded[pop.startSignId] then
+	if pop.hasFoundStart and enums.SignIdIsExcludedFromStart[pop.startSignId] then
 		mode = "excluded"
 	end
 

@@ -87,11 +87,11 @@ module.handleActionResults = function(actionResults: { tt.actionResult })
 
 				--filter this out if the person we are notifying isn't allowed to warp to it
 				local useWarpToSignId = (
-						actionResult.warpToSignId
-						and rdb.hasUserFoundSign(op.UserId, actionResult.warpToSignId)
-						and not enums.SignIdIsExcluded[actionResult.warpToSignId]
-						and actionResult.warpToSignId
-					) or 0
+					actionResult.warpToSignId
+					and rdb.hasUserFoundSign(op.UserId, actionResult.warpToSignId)
+					and not enums.SignIdIsExcludedFromStart[actionResult.warpToSignId]
+					and actionResult.warpToSignId
+				) or 0
 
 				module.notifyPlayerAboutActionResult(op, {
 					userId = actionResult.userId,
@@ -102,11 +102,11 @@ module.handleActionResults = function(actionResults: { tt.actionResult })
 			end
 		else
 			local useWarpToSignId = (
-					actionResult.warpToSignId
-					and rdb.hasUserFoundSign(arSubjectPlayer.UserId, actionResult.warpToSignId)
-					and not enums.SignIdIsExcluded[actionResult.warpToSignId]
-					and actionResult.warpToSignId
-				) or 0
+				actionResult.warpToSignId
+				and rdb.hasUserFoundSign(arSubjectPlayer.UserId, actionResult.warpToSignId)
+				and not enums.SignIdIsExcludedFromStart[actionResult.warpToSignId]
+				and actionResult.warpToSignId
+			) or 0
 			module.notifyPlayerAboutActionResult(arSubjectPlayer, {
 				userId = actionResult.userId,
 				text = actionResult.message,

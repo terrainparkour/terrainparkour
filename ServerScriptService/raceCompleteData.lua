@@ -242,7 +242,7 @@ module.showBestTimes = function(
 			local useWarpToSignId = (
 				startSignId
 				and rdb.hasUserFoundSign(op.UserId, startSignId)
-				and not enums.SignIdIsExcluded[startSignId]
+				and not enums.SignIdIsExcludedFromStart[startSignId]
 				and startSignId
 			) or 0
 

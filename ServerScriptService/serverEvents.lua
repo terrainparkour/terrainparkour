@@ -190,7 +190,7 @@ local function startServerEvent(data: ServerEventCreateType): (tt.runningServerE
 			local canSign = allSigns[math.random(1, #allSigns)]
 			local candidateSignId = enums.name2signId[canSign.Name]
 
-			if enums.SignIdIsExcluded[candidateSignId] then
+			if enums.SignIdIsExcludedFromStart[candidateSignId] then
 				continue
 			end
 
@@ -203,6 +203,10 @@ local function startServerEvent(data: ServerEventCreateType): (tt.runningServerE
 			local candidateSignId = enums.name2signId[canSign.Name]
 
 			if candidateSignId == startSignId then
+				continue
+			end
+
+			if enums.SignIdIsExcludedFromEnd[candidateSignId] then
 				continue
 			end
 
@@ -268,7 +272,7 @@ local function serverReceiveFunction(player: Player, message: string, data: any)
 		local serverEvent = startServerEvent(data)
 
 		if serverEvent == nil then
-			return { message = "Didn't Start ServerEvent, probably cause 5 were started already" }
+			return { message = "Didn't Start Server Event, probably 3 is the max." }
 		else
 			serverEventRemoteEvent:FireAllClients(serverEventEnums.messageTypes.UPDATE, serverEvent)
 			return { message = "Started Server Event" }

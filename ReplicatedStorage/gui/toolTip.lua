@@ -41,7 +41,6 @@ module.setupToolTip = function(
 	target.MouseEnter:Connect(function()
 		local gui = localPlayer.PlayerGui:FindFirstChild("ToolTipGui")
 		if gui == nil then
-			print("made new")
 			gui = Instance.new("ScreenGui")
 			gui.Parent = localPlayer.PlayerGui
 			gui.Name = "ToolTipGui"

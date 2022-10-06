@@ -121,7 +121,7 @@ local debounceInnerSetup = false
 
 local function innerSetupSettings(player: Player, src: string): { [string]: tt.userSettingValue }
 	while debounceInnerSetup do
-		print("settings.innersetup.wait " .. src)
+		annotate("settings.innersetup.wait " .. src)
 		wait(0.05)
 	end
 	debounceInnerSetup = true
