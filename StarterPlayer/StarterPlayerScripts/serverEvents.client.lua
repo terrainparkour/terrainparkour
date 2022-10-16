@@ -7,11 +7,8 @@ local serverEventGuis = require(game.StarterPlayer.StarterCharacterScripts.serve
 local PlayersService = game:GetService("Players")
 local localPlayer: Player = PlayersService.LocalPlayer
 
-local playerGui = localPlayer:WaitForChild("PlayerGui")
-local warper = require(game.ReplicatedStorage.warper)
-
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local rf = require(game.ReplicatedStorage.util.remotes)
+local remotes = require(game.ReplicatedStorage.util.remotes)
 local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
 local vscdebug = require(game.ReplicatedStorage.vscdebug)
 --how to convert N manual "set breakpoint to debug" actions in studio
@@ -47,14 +44,7 @@ local function clientReceiveMessage(message: string, data: any)
 	end
 end
 
-local serverEventRemoteEvent = rf.getRemoteEvent("ServerEventRemoteEvent")
-local serverEventRemoteFunction = rf.getRemoteFunction("ServerEventRemoteFunction")
-
-local function sendToServerEvent(...)
-	annotate("sending to server, args:.")
-	print(...)
-	serverEventRemoteEvent:FireServer(...)
-end
+local serverEventRemoteEvent = remotes.getRemoteEvent("ServerEventRemoteEvent")
 
 local function init()
 	annotate("serverEvents init start")

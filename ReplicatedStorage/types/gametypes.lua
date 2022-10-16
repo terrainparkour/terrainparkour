@@ -181,7 +181,7 @@ export type lbUpdateFromRun = {
 	awardCount: number,
 }
 
-export type lbUserStats={
+export type lbUserStats = {
 	kind: string,
 	userId: number,
 	userTix: number,
@@ -190,7 +190,7 @@ export type lbUserStats={
 	runs: number,
 	userCompetitiveWRCount: number,
 	userTotalWRCount: number,
-	awardCount: number
+	awardCount: number,
 }
 
 export type lbUpdateFromFind = {
@@ -223,6 +223,7 @@ export type badgeOptions = {
 }
 
 export type userSettingValue = { name: string, domain: string, value: boolean? }
+export type userSettingValuesWithDistributions = { name: string, domain: string, value: boolean?, percentage: number }
 
 --for the left side of a sign popup.
 export type signWrStatus = { userId: number, count: number }
@@ -256,12 +257,12 @@ export type dynamicRunningControlType = { action: string, fromSignId: number, us
 
 --SERVEREVENTS
 export type runningServerEventUserBest = { userId: number, username: string, timeMs: number, runCount: number }
+
 export type runningServerEvent = {
 	name: string,
 	serverEventNumber: number,
 	startedTick: number,
 	remainingTick: number,
-	lastActiveTick: number,
 	startSignId: number,
 	endSignId: number,
 	userBests: { [number]: runningServerEventUserBest },
@@ -281,5 +282,7 @@ export type serverFinishRunNotifierType = {
 	userId: number,
 	username: string,
 }
+
+export type serverEventTixAllocation = { userId: number, username: string, tixallocation: number, eventPlace: number }
 
 return {}

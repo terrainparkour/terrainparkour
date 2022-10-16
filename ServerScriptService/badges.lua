@@ -207,8 +207,8 @@ module.getBadgeCountByUser = function(userId: number): number
 	return hasBadgeCount
 end
 
-local rf = require(game.ReplicatedStorage.util.remotes)
-local badgeAttainmentsFunction = rf.getRemoteFunction("BadgeAttainmentsFunction") :: RemoteFunction
+local remotes = require(game.ReplicatedStorage.util.remotes)
+local badgeAttainmentsFunction = remotes.getRemoteFunction("BadgeAttainmentsFunction") :: RemoteFunction
 
 badgeAttainmentsFunction.OnServerInvoke = function(player: Player, userIdsInServer: { number }, rationale: string): any
 	return module.getBadgeAttainments(userIdsInServer, rationale)

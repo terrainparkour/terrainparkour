@@ -16,17 +16,16 @@ module.enum.toolTipSize.NormalText = UDim2.new(0, 350, 0, 80)
 module.enum.toolTipSize.BigPane = UDim2.new(0, 450, 0, 320)
 
 --right=they float right+down rather than left+down from cursor. default is right.
-local debounce = false
 module.setupToolTip = function(
 	localPlayer: Player,
 	target: TextLabel | TextButton | ImageLabel | Frame,
 	tooltipContents: string | ImageLabel,
 	size: UDim2,
 	right: boolean?,
-	alignment: any?
+	xalignment: any?
 )
-	if alignment == nil then
-		alignment = Enum.TextXAlignment.Center
+	if xalignment == nil then
+		xalignment = Enum.TextXAlignment.Center
 	end
 	if right == nil then
 		right = true
@@ -37,27 +36,31 @@ module.setupToolTip = function(
 	assert(tooltipContents)
 	local mouse: Mouse = localPlayer:GetMouse()
 
-	local ephemeralName = "EphemeralTooltip"
+	local ephemeralToolTipFrameName = "EphemeralTooltip"
 	target.MouseEnter:Connect(function()
-		local gui = localPlayer.PlayerGui:FindFirstChild("ToolTipGui")
-		if gui == nil then
-			gui = Instance.new("ScreenGui")
-			gui.Parent = localPlayer.PlayerGui
-			gui.Name = "ToolTipGui"
-			gui.Enabled = true
+		wait(1/59)
+		local ttgui = localPlayer.PlayerGui:FindFirstChild("ToolTipGui")
+		if ttgui == nil then
+			ttgui = Instance.new("ScreenGui")
+			ttgui.Parent = localPlayer.PlayerGui
+			ttgui.Name = "ToolTipGui"
+			ttgui.Enabled = true
 		end
 		local tooltipFrame = Instance.new("Frame")
 		tooltipFrame.Size = size
-		tooltipFrame.Name = ephemeralName
-		tooltipFrame.Parent = gui
+		tooltipFrame.Name = ephemeralToolTipFrameName
+		tooltipFrame.Parent = ttgui
 
 		if typeof(tooltipContents) == "string" then
-			local tl = guiUtil.getTl("Sgui", UDim2.new(1, 0, 1, 0), 2, tooltipFrame, colors.defaultGrey, 1)
+			local tl = guiUtil.getTl("theTl", UDim2.new(1, 0, 1, 0), 2, tooltipFrame, colors.defaultGrey, 1)
 			tl.Text = tooltipContents
 			tl.TextScaled = true
 			tl.Font = Enum.Font.Gotham
-			tl.TextXAlignment = alignment
-		else
+			tl.TextXAlignment = xalignment
+			tl.TextYAlignment = Enum.TextYAlignment.Top
+			tl.Parent.ZIndex = 400
+			tl.ZIndex = 500
+		else --image tooltips not working so well.
 			local s, e = pcall(function()
 				tooltipContents.Parent = tooltipFrame
 			end)
@@ -75,12 +78,15 @@ module.setupToolTip = function(
 	target.MouseLeave:Connect(function()
 		-- if true then return end
 
-		for _, el in ipairs(localPlayer.PlayerGui:FindFirstChild("ToolTipGui"):GetChildren()) do
-			if el.Name == ephemeralName then
-				for _, el2 in ipairs(el:GetChildren()) do
-					el2:Destroy()
+		local theGuy = localPlayer.PlayerGui:FindFirstChild("ToolTipGui")
+		if theGuy then
+			for _, el in ipairs(theGuy:GetChildren()) do
+				if el.Name == ephemeralToolTipFrameName then
+					for _, el2 in ipairs(el:GetChildren()) do
+						el2:Destroy()
+					end
+					el:Destroy()
 				end
-				el:Destroy()
 			end
 		end
 	end)

@@ -99,32 +99,36 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 
 	local localFunctions = require(game.ReplicatedStorage.localFunctions)
 	--just get marathon settings.
-	local userSettings: { [string]: tt.userSettingValue } =
-		localFunctions.getSettingByDomain(settingEnums.settingDomains.SURVEYS)
+	local surveyData: { [string]: tt.userSettingValuesWithDistributions } =
+		localFunctions.getUserSettingsWithDistributions(settingEnums.settingDomains.SURVEYS)
 
 	local outerFrame = Instance.new("Frame")
 	outerFrame.Parent = sg
-	outerFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
-	outerFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
+	outerFrame.Size = UDim2.new(0.5, 0, 0.5, 0)
+	outerFrame.Position = UDim2.new(0.25, 0, 0.3, 0)
 	local vv2 = Instance.new("UIListLayout")
 	vv2.FillDirection = Enum.FillDirection.Vertical
 	vv2.Parent = outerFrame
 
+	local headerFrameHeight = 40
 	local headerFrame = Instance.new("Frame")
 	headerFrame.Parent = outerFrame
 	headerFrame.Name = "01SurveySettingsHeader"
-	headerFrame.Size = UDim2.new(1, 0, 0, 20)
+	headerFrame.Size = UDim2.new(1, 0, 0, headerFrameHeight)
 	local vv = Instance.new("UIListLayout")
 	vv.FillDirection = Enum.FillDirection.Horizontal
 	vv.Parent = headerFrame
-	local tl = guiUtil.getTl("01Type", UDim2.new(0.2, 0, 0, 20), 4, headerFrame, colors.blueDone, 1)
+	local tl = guiUtil.getTl("01Type", UDim2.new(0.15, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
 	tl.Text = "Type"
 
-	local tl = guiUtil.getTl("02Name", UDim2.new(0.5, 0, 0, 20), 4, headerFrame, colors.blueDone, 1)
-	tl.Text = "Name"
+	local tln = guiUtil.getTl("02Name", UDim2.new(0.45, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
+	tln.Text = "Name"
 
-	local tl = guiUtil.getTl("03Value", UDim2.new(0.3, 0, 0, 20), 4, headerFrame, colors.blueDone, 1)
-	tl.Text = "Value"
+	local tlv = guiUtil.getTl("03Value", UDim2.new(0.3, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
+	tlv.Text = "Value"
+
+	local tlp = guiUtil.getTl("04Others", UDim2.new(0.1, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
+	tlp.Text = "Others?"
 
 	--scrolling setting frame
 	local frameName = "02SettingsModal"
@@ -143,7 +147,7 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 
 	local player: Player = PlayersService:GetPlayerByUserId(userId)
 	local ii = 0
-	for name, setting in pairs(userSettings) do
+	for name, setting in pairs(surveyData) do
 		ii += 1
 		if setting.domain ~= settingEnums.settingDomains.SURVEYS then
 			continue

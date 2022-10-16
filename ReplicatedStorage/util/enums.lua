@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.193 October 6 2022"
+module.gameVersion = "1.197-500 October 16 2022"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -487,6 +487,35 @@ local name2signId: { [string]: number } = {
 	["Arbitrage"] = 475,
 	["Hsu"] = 476,
 	["Perestroika"] = 477,
+	["Kazumura"] = 478,
+	["Unexpectable"] = 479,
+	["RCC"] = 480,
+	["Instrumental Convergence"] = 481,
+	["Hedonic Monster"] = 482,
+	["Brachiolation"] = 483,
+	["Survival"] = 484,
+	["Hyperparameter"] = 485,
+	["Wallfacer"] = 486,
+	["Glasnost"] = 487,
+	["HPMOR"] = 488,
+	["Teotwaki"] = 489,
+	["Jackie"] = 490,
+	["Hide"] = 491,
+	["Skill Susie"] = 492,
+	["Hypergravity"] = 493,
+	["Bolt"] = 494,
+	["Stellar Voyage"] = 495,
+	["Tungsten"] = 496,
+	["Quadruple"] = 497,
+	["Mægæ"] = 498,
+	["Elder"] = 499,
+	["Triple"] = 500,
+	["Village Up North"] = 501,
+	["Ø"] = 502,
+	["Fosbury"] = 503,
+	["Tetromino"] = 504,
+	["Keep Off the Grass"] = 505,
+	-- ["Kazumura"]=502,
 }
 
 --⚔
@@ -538,11 +567,11 @@ module.ExcludeSignNamesFromStartingAt = {
 	"Olympus",
 	"Summit",
 	"Vesuvius",
-	"Wozniak",
+	-- "Wozniak",
 	"Klytus",
 	"Tapochki",
 	"Cinchona",
-	"Sciocchi",
+	-- "Sciocchi",
 	"Erg",
 	"Sakura",
 	"Slig",
@@ -641,6 +670,10 @@ local releaseNotes: { [number]: string } = {
 ]],
 	[191] = [[* server events interactive loop with payouts]],
 	[192] = [[* fix bugs when someone leaves the server who had dynamic running on]],
+	[194] = [[* improve dynamic running]],
+	[195] = [[* Fix dynamic running more.]],
+	[196] = [[* Other small fixes and server event badges.
+* webhooks for server event completion]],
 }
 module.releaseNotes = releaseNotes
 

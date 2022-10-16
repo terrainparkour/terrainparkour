@@ -2,8 +2,6 @@
 
 --eval 9.25.22
 
-local remotes = require(game.ReplicatedStorage.util.remotes)
-
 local module = {}
 
 module.createEvents = function()
@@ -20,60 +18,60 @@ module.createEvents = function()
 	be.Name = "BindableEvents"
 	be.Parent = ReplicatedStorage
 
-	--notify client that a race which already started, has an updated (later) start time.
-	-- remotes.registerRemoteEvent("DelayedStartTimeUpdateEvent")
+	local remotes = require(game.ReplicatedStorage.util.remotes)
 
 	--note: this is all pointless, the getters should do registration too if necessary.
+	--note actually not, it helps having server register everything first so client/server getters don't fight.
 
 	--chatscript and movement guys call this to make banned players move like sludge.
-	remotes.registerRemoteFunction("GetBanStatusRemoteFunction")
+	remotes.getRemoteFunction("GetBanStatusRemoteFunction")
 
 	--blocks any timing stuff til return value comes in
 	--
-	remotes.registerRemoteFunction("WarpRequestFunction")
+	remotes.getRemoteFunction("WarpRequestFunction")
 
 	--server calls this to hook into normal client warp locking.
 	--then client calls back
-	remotes.registerRemoteFunction("ServerWantsWarpFunction")
+	remotes.getRemoteFunction("ServerWantsWarpFunction")
 
-	remotes.registerRemoteEvent("MarathonCompleteEvent")
-	remotes.registerRemoteEvent("EphemeralMarathonCompleteEvent")
-	remotes.registerRemoteFunction("DynamicRunningFunction")
-	remotes.registerRemoteEvent("DynamicRunningEvent")
+	remotes.getRemoteEvent("MarathonCompleteEvent")
+	remotes.getRemoteEvent("EphemeralMarathonCompleteEvent")
+	remotes.getRemoteFunction("DynamicRunningFunction")
+	remotes.getRemoteEvent("DynamicRunningEvent")
 
-	remotes.registerRemoteEvent("ServerEventRemoteEvent")
-	remotes.registerRemoteFunction("ServerEventRemoteFunction")
+	remotes.getRemoteEvent("ServerEventRemoteEvent")
+	remotes.getRemoteFunction("ServerEventRemoteFunction")
 
-	remotes.registerRemoteFunction("EphemeralMarathonCreateFunction")
-	remotes.registerRemoteFunction("BadgeAttainmentsFunction")
-	remotes.registerRemoteFunction("GetUserSettingsFunction") --look up user settings
-	remotes.registerRemoteFunction("UserSettingsChangedFunction") --look up user settings
-	remotes.registerRemoteFunction("GetPopularRunsFunction")
-	remotes.registerRemoteFunction("GetNewRunsFunction")
-	remotes.registerRemoteFunction("GetContestsFunction")
-	remotes.registerRemoteFunction("GetSingleContestFunction")
+	remotes.getRemoteFunction("EphemeralMarathonCreateFunction")
+	remotes.getRemoteFunction("BadgeAttainmentsFunction")
+	remotes.getRemoteFunction("GetUserSettingsFunction") --look up user settings
+	remotes.getRemoteFunction("UserSettingsChangedFunction") --look up user settings
+	remotes.getRemoteFunction("GetPopularRunsFunction")
+	remotes.getRemoteFunction("GetNewRunsFunction")
+	remotes.getRemoteFunction("GetContestsFunction")
+	remotes.getRemoteFunction("GetSingleContestFunction")
 
-	remotes.registerRemoteEvent("RunStartEvent")
+	remotes.getRemoteEvent("RunStartEvent")
 
 	--used for tellign the client to stop displaying the run in progress..
-	remotes.registerRemoteEvent("RunEndEvent")
+	remotes.getRemoteEvent("RunEndEvent")
 
 	--artificially tell server the actual runtime of an end
-	remotes.registerRemoteEvent("ClientControlledRunEndEvent")
+	remotes.getRemoteEvent("ClientControlledRunEndEvent")
 
 	--send message from server to client (notifier, etc.)
-	remotes.registerRemoteEvent("MessageReceivedEvent")
+	remotes.getRemoteEvent("MessageReceivedEvent")
 
 	--TODO is this actually used and why is it a remote function at all?
-	remotes.registerRemoteFunction("CancelRunRemoteFunction")
+	remotes.getRemoteFunction("CancelRunRemoteFunction")
 
 	--send events to clients telling them to update their leaderboard with player stats and stuff.
-	remotes.registerRemoteEvent("LeaderboardUpdateEvent")
+	remotes.getRemoteEvent("LeaderboardUpdateEvent")
 
 	--local player clicks sign, server generate signpopup, send it back to client
-	remotes.registerRemoteFunction("ClickSignRemoteFunction")
+	remotes.getRemoteFunction("ClickSignRemoteFunction")
 
-	remotes.registerBindableEvent("ServerEventBindableEvent")
+	remotes.getBindableEvent("ServerEventBindableEvent")
 end
 
 return module

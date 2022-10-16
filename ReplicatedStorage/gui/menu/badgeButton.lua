@@ -10,8 +10,8 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local badgeSorts = require(game.ReplicatedStorage.util.badgeSorts)
 
-local rf = require(game.ReplicatedStorage.util.remotes)
-local badgeAttainmentsFunction = rf.getRemoteFunction("BadgeAttainmentsFunction") :: RemoteFunction
+local remotes = require(game.ReplicatedStorage.util.remotes)
+local badgeAttainmentsFunction = remotes.getRemoteFunction("BadgeAttainmentsFunction") :: RemoteFunction
 
 local module = {}
 

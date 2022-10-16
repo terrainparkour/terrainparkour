@@ -119,6 +119,7 @@ end
 
 local debounceInnerSetup = false
 
+--just call this to get settings and it will handle caching.
 local function innerSetupSettings(player: Player, src: string): { [string]: tt.userSettingValue }
 	while debounceInnerSetup do
 		annotate("settings.innersetup.wait " .. src)
@@ -141,8 +142,6 @@ local function innerSetupSettings(player: Player, src: string): { [string]: tt.u
 			if userSettingsCache[userId][defaultSetting.name] == nil then
 				userSettingsCache[userId][defaultSetting.name] = copySetting(defaultSetting)
 			end
-
-			--TODO optionally should we store these in BE?  might be nice, then we'd know we served fake defaults to a user
 		end
 	end
 
@@ -150,7 +149,7 @@ local function innerSetupSettings(player: Player, src: string): { [string]: tt.u
 	return userSettingsCache[userId]
 end
 
-module.getUserSettingByName = function(player: Player, settingName: string): tt.userSettingValue
+local getUserSettingByName = function(player: Player, settingName: string): tt.userSettingValue
 	local userSettings = innerSetupSettings(player, "getUserSettingByName " .. settingName)
 	for _, s in userSettings do
 		if s.name == settingName then
@@ -160,7 +159,7 @@ module.getUserSettingByName = function(player: Player, settingName: string): tt.
 	error("missing setting of name " .. settingName)
 end
 
-module.getUserSettingsByDomain = function(player: Player, domain: string): { [string]: tt.userSettingValue }
+local getUserSettingsByDomain = function(player: Player, domain: string): { [string]: tt.userSettingValue }
 	local userSettings = innerSetupSettings(player, "getUserSettingsByDomain " .. domain)
 	local res = {}
 	for _, s in pairs(userSettings) do
@@ -171,13 +170,22 @@ module.getUserSettingsByDomain = function(player: Player, domain: string): { [st
 	return res
 end
 
-module.getUserSettingsRouter = function(player: Player, domain: string?, settingName: string?): any
-	if domain ~= nil and domain ~= "" then
-		return module.getUserSettingsByDomain(player, domain)
+module.getUserSettingsRouter = function(player: Player, data: settingEnums.settingRequest): any
+	if data.includeDistributions then
+		if data.domain == settingEnums.settingDomains.SURVEYS then
+			local got = rdb.getSurveyResults(player.UserId)
+
+			return got
+		else
+			error("cant get distributions for other settings.")
+		end
+	end
+	if data.domain ~= nil and data.domain ~= "" then
+		return getUserSettingsByDomain(player, data.domain)
 	end
 
-	if settingName ~= nil and settingName ~= "" then
-		return module.getUserSettingByName(player, settingName)
+	if data.settingName ~= nil and data.settingName ~= "" then
+		return getUserSettingByName(player, data.settingName)
 	end
 
 	local userSettings = innerSetupSettings(player, "getUserSettingsRouter.all")
@@ -194,11 +202,11 @@ local function userChangedSettingFromUI(userId: number, setting: tt.userSettingV
 end
 
 module.init = function()
-	local rf = require(game.ReplicatedStorage.util.remotes)
-	local getUserSettingsFunction = rf.getRemoteFunction("GetUserSettingsFunction") :: RemoteFunction
+	local remotes = require(game.ReplicatedStorage.util.remotes)
+	local getUserSettingsFunction = remotes.getRemoteFunction("GetUserSettingsFunction") :: RemoteFunction
 	getUserSettingsFunction.OnServerInvoke = module.getUserSettingsRouter
 
-	local userSettingsChangedFunction = rf.getRemoteFunction("UserSettingsChangedFunction")
+	local userSettingsChangedFunction = remotes.getRemoteFunction("UserSettingsChangedFunction")
 	userSettingsChangedFunction.OnServerInvoke = function(player: Player, setting: tt.userSettingValue)
 		return userChangedSettingFromUI(player.UserId, setting)
 	end

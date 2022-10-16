@@ -13,13 +13,13 @@ local gt = require(game.ReplicatedStorage.gui.guiTypes)
 
 local ContestResponseTypes = require(game.ReplicatedStorage.types.ContestResponseTypes)
 local enums = require(game.ReplicatedStorage.util.enums)
-local rf = require(game.ReplicatedStorage.util.remotes)
+local remotes = require(game.ReplicatedStorage.util.remotes)
 
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
-local getContestsFunction = rf.getRemoteFunction("GetContestsFunction")
-local getSingleContestFunction = rf.getRemoteFunction("GetSingleContestFunction")
+local getContestsFunction = remotes.getRemoteFunction("GetContestsFunction")
+local getSingleContestFunction = remotes.getRemoteFunction("GetSingleContestFunction")
 
 local warper = require(game.ReplicatedStorage.warper)
 
@@ -416,7 +416,7 @@ module.getContestButtons = function(userIds: { number }): { gt.actionButton }
 			getActive = function()
 				return contest.contestremaining > 0
 			end,
-			widthPixels = 120,
+			widthPixels = 90,
 		}
 		table.insert(res, contestButton)
 	end

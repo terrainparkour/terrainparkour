@@ -56,6 +56,7 @@ module.riseandspin = function(sign: Part)
 				local frac = (deg / 360) * 2 * math.pi
 				local val = math.sin(frac)
 				sign.Position = adjustedOrig + Vector3.new(val * vec.X, val * vec.Y, val * vec.Z)
+				--TODO this should be physics stepped.
 				wait(1 / 60)
 			end
 		end

@@ -142,6 +142,59 @@ module.missingWrs = function(speaker: Player, to: string, signId: number, channe
 	return true
 end
 
+local function getClosestSignToPlayer(player: Player): (number, Instance)
+	local root = player.Character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		warn("no humanoid in describe clsoest!")
+	end
+	local playerPos = root.Position
+	local bestsign = nil
+	local bestdist = nil
+	for _, sign: Part in ipairs(workspace:WaitForChild("Signs"):GetChildren()) do
+		local signId = tpUtil.looseSignName2SignId(sign.Name)
+		if not rdb.hasUserFoundSign(player.UserId, signId :: number) then
+			continue
+		end
+		local dist = tpUtil.getDist(sign.Position, playerPos)
+		if bestdist == nil or dist < bestdist then
+			bestdist = dist
+			bestsign = sign
+		end
+	end
+	return bestdist, bestsign
+end
+
+local beckontimes = {}
+module.beckon = function(speaker: Player, channel): boolean
+	if beckontimes[speaker.UserId] then
+		local gap = tick() - beckontimes[speaker.UserId]
+		local limit = 180
+		if config.isInStudio() then
+			limit = 3
+		end
+		if gap < limit then
+			sm(channel, "You can beckon every 3 minutes.")
+			return true
+		end
+	end
+	beckontimes[speaker.UserId] = tick()
+	local d, s = getClosestSignToPlayer(speaker)
+	local players = PlayersService:GetPlayers()
+	local occupancySentence = ""
+	if #players == 1 then
+		occupancySentence = ""
+	elseif #players == 2 then
+		occupancySentence = "The server has %d other player, too."
+	else
+		occupancySentence = "The server has %d other players, too."
+	end
+	local msg = string.format("They are standing %0.1fd from %s.%s", d, s.Name, occupancySentence)
+	rdb.beckon(speaker.UserId, msg)
+	sm(channel, speaker.Name .. " beckons distant friends to join.")
+
+	return true
+end
+
 module.badges = function(speaker: Player, channel): boolean
 	local res = badges.getBadgeAttainment(speaker.UserId, "cmdline")
 	sm(channel, "Badge status for: " .. speaker.Name)
@@ -302,26 +355,7 @@ module.meta = function(speaker: Player, channel): boolean
 end
 
 module.closest = function(speaker: Player, channel): boolean
-	local root = speaker.Character:FindFirstChild("HumanoidRootPart")
-	if not root then
-		warn("no humanoid in describe clsoest!")
-		return false
-	end
-	local playerPos = root.Position
-	local bestsign = nil
-	local bestdist = nil
-	for _, sign: Part in ipairs(workspace:WaitForChild("Signs"):GetChildren()) do
-		local signId = tpUtil.looseSignName2SignId(sign.Name)
-		if not rdb.hasUserFoundSign(speaker.UserId, signId :: number) then
-			continue
-		end
-		local dist = tpUtil.getDist(sign.Position, playerPos)
-		if bestdist == nil or dist < bestdist then
-			bestdist = dist
-			bestsign = sign
-		end
-	end
-
+	local bestdist, bestsign, y = getClosestSignToPlayer(speaker)
 	local message = ""
 	if bestsign == nil then
 		message = "You have not found any signs."

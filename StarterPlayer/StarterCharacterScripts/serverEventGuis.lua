@@ -13,9 +13,8 @@ local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
-local remotes = require(game.ReplicatedStorage.util.remotes)
 
-local serverEventRowHeight = 60
+local serverEventRowHeight = 34
 local doAnnotation = false
 doAnnotation = false
 local annotationStart = tick()
@@ -97,7 +96,7 @@ end
 
 local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId: number): Frame
 	local frame = Instance.new("Frame")
-	frame.Size = UDim2.new(1, 0, 0, serverEventRowHeight)
+	frame.Size = UDim2.new(0.8, 0, 0, serverEventRowHeight)
 	frame.Name = determineServerEventRowName(serverEvent)
 	frame.BackgroundTransparency = 1
 
@@ -152,7 +151,7 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 		localPlayer,
 		prizeTl,
 		awardMouseoverText,
-		UDim2.new(0, 100, 0, lines * 24),
+		UDim2.new(0, 150, 0, lines * 24),
 		false,
 		Enum.TextXAlignment.Left
 	)
@@ -166,6 +165,7 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 		colors.defaultGrey,
 		1
 	)
+	remainingTl.Text = ""
 
 	spawn(function()
 		local loopEndTick = tick() + serverEvent.remainingTick
@@ -173,7 +173,7 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 			if remainingTl == nil then
 				break
 			end
-			local remaining = loopEndTick - tick()
+			local remaining = math.max(loopEndTick - tick(), 0)
 			remainingTl.Text = string.format("%0.0fs", remaining)
 			wait(1)
 		end
@@ -190,11 +190,12 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 
 	local sortedUserBests = serverEventEnums.getSortedUserBests(serverEvent)
 
-	local summaryWidth = 0.02
+	--row2bufferWidthMin
+	local row2bufferWidthMin = 0.02
 
 	local summaryTile = guiUtil.getTl(
 		"01-serverEvent-summaryWidth",
-		UDim2.fromScale(summaryWidth, 1),
+		UDim2.fromScale(row2bufferWidthMin, 1),
 		0,
 		row2frame,
 		colors.defaultGrey,
@@ -207,35 +208,29 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 	summaryTile.Text = "    "
 	local ii = 1
 	local count = #sortedUserBests
-	local useCount = math.min(count, 8)
-	if useCount == 0 then
-		--shrink place row.
+	local maxDisplayUserCount = 3
+	local useCount = math.min(count, maxDisplayUserCount)
 
-		-- local emptyPlaceholderTile = guiUtil.getTl(
-		-- 	"02-serverEvent-emptyPlaceholderTile",
-		-- 	UDim2.fromScale(1 - summaryWidth, 1),
-		-- 	0,
-		-- 	row2frame,
-		-- 	colors.defaultGrey,
-		-- 	1
-		-- )
-		-- emptyPlaceholderTile.Text = " <top runs appear here>"
+	local placeUsedWidth = 0
+	if useCount == 0 then
 		row1frame.Size = UDim2.fromScale(1, 1)
 		row2frame:Destroy()
 		frame.Size = UDim2.new(1, 0, 0, serverEventRowHeight / 2)
 	else
-		while ii <= 8 do
+		while ii <= maxDisplayUserCount do
 			local el = sortedUserBests[ii]
 			if not el then
 				break
 			end
 			local isMe = el.userId == userId
 			--cap width used by top placers.
-			local useWidth = math.min(0.3, (1 - summaryWidth) / useCount)
+			local useWidth = math.min(0.3, (1 - row2bufferWidthMin) / useCount)
 			local tile = makeTile(el, ii, isMe, useWidth)
 			tile.Parent = row2frame
 			ii += 1
+			placeUsedWidth += useWidth
 		end
+		summaryTile.Parent.Size = UDim2.fromScale(1 - placeUsedWidth, 1)
 	end
 
 	return frame
@@ -266,6 +261,6 @@ module.endEventVisually = function(serverEvent: tt.runningServerEvent)
 	end
 end
 
-remotes.registerBindableEvent("ServerEventLocalClientWarpBindableEvent")
+-- remotes.getBindableEvent("ServerEventLocalClientWarpBindableEvent")
 
 return module

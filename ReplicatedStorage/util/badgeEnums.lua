@@ -63,19 +63,19 @@ local badges: { [string]: tt.badgeDescriptor } = {
 	TerrainObby = {
 		name = "Terrain Obby",
 		assetId = 2125786190,
-		badgeClass = "weird run",
+		badgeClass = "weird",
 		hint = "Find the Obbys",
 	},
 	FirstEmpire = {
 		name = "First Empire",
 		assetId = 2126158377,
-		badgeClass = "weird run",
+		badgeClass = "weird",
 		hint = "He crowned himself",
 	},
 	TrainParkour = {
 		name = "TrainParkour",
 		assetId = 2126162027,
-		badgeClass = "weird run",
+		badgeClass = "weird",
 		hint = "Terrain Parklore",
 	},
 	CrowdedHouse = {
@@ -151,38 +151,38 @@ local badges: { [string]: tt.badgeDescriptor } = {
 	Hieroglyph = {
 		name = "Hieroglyph",
 		assetId = 2126491233,
-		badgeClass = "weird run",
+		badgeClass = "weird",
 	},
 	ScottishNoah = {
 		name = "Scottish Noah",
 		assetId = 2125857717,
-		badgeClass = "weird run",
+		badgeClass = "weird",
 	},
 	LandscapeAcrobatics = {
 		name = "Landscape Acrobatics",
 		assetId = 2126801968,
-		badgeClass = "weird run",
+		badgeClass = "weird",
 	},
 	Royalty = {
 		name = "Royalty",
 		assetId = 2126743612,
-		badgeClass = "weird run",
+		badgeClass = "weird",
 	},
 	Orthography = {
 		name = "Orthography",
 		assetId = 2126338129,
-		badgeClass = "weird run",
+		badgeClass = "weird",
 		hint = "Run between any two SPECIAL signs.",
 	},
 	RobloxStudio = {
 		name = "Roblox Studio",
 		assetId = 2126338127,
-		badgeClass = "weird run",
+		badgeClass = "weird",
 	},
 	Unicode = {
 		name = "Unicode",
 		assetId = 2126158374,
-		badgeClass = "weird run",
+		badgeClass = "weird",
 		hint = "Run between the first two unicode signs.",
 	},
 	MaxFind = {
@@ -265,10 +265,10 @@ local badges: { [string]: tt.badgeDescriptor } = {
 	SciFiRun = {
 		name = "Science Fiction Run!",
 		assetId = 2125445664,
-		badgeClass = "weird run",
+		badgeClass = "weird",
 		hint = "This mission is too important for me to allow you to jeopardize it.",
 	},
-	SuperSlowRun = { name = "Super Slow Run!", assetId = 2125445673, badgeClass = "weird run" },
+	SuperSlowRun = { name = "Super Slow Run!", assetId = 2125445673, badgeClass = "weird" },
 	LongFall = { name = "Long Fall!", assetId = 2125445695, badgeClass = "long run" },
 	LongClimb = { name = "Long Climb!", assetId = 2125445694, badgeClass = "long run" },
 	LongRun = { name = "Long Run!", assetId = 2125445527, badgeClass = "long run" },
@@ -297,11 +297,11 @@ local badges: { [string]: tt.badgeDescriptor } = {
 	Run999 = { name = "Do a .999 run!", assetId = 2125445692, badgeClass = "time" },
 	CountVonCount = { name = "Count Von Count", assetId = 2126075995, badgeClass = "time", hint = "Ah-Ah-Ah!" },
 
-	RoundRun = { name = "Do a round run!", assetId = 2124922251, badgeClass = "weird run" },
-	LoseBy001 = { name = "Lose by 0.001s!", assetId = 2124935509, badgeClass = "weird run" },
-	WinBy001 = { name = "Win by 0.001s!", assetId = 2124922216, badgeClass = "weird run" },
-	TieForFirst = { name = "Tie For First! Sorry!", assetId = 2124922217, badgeClass = "weird run" },
-	WinstonSmith = { name = "Winston S####", assetId = 2126158371, badgeClass = "weird run" },
+	RoundRun = { name = "Do a round run!", assetId = 2124922251, badgeClass = "weird" },
+	LoseBy001 = { name = "Lose by 0.001s!", assetId = 2124935509, badgeClass = "weird" },
+	WinBy001 = { name = "Win by 0.001s!", assetId = 2124922216, badgeClass = "weird" },
+	TieForFirst = { name = "Tie For First! Sorry!", assetId = 2124922217, badgeClass = "weird" },
+	WinstonSmith = { name = "Winston S####", assetId = 2126158371, badgeClass = "weird" },
 
 	CmdLine = { name = "Used Cmd Line!", assetId = 872955307, badgeClass = "meta", hint = "true power." },
 	Secret = { name = "Secret!", assetId = 872952358, badgeClass = "meta", hint = "can you command the secret?" },
@@ -324,16 +324,16 @@ local badges: { [string]: tt.badgeDescriptor } = {
 	DoubleEliteRun = { name = "Double Elite Run!", assetId = 2125857724, badgeClass = "elite" },
 	WinEliteRun = { name = "Win Elite Run!", assetId = 2125445675, badgeClass = "elite" },
 
-	CompetititiveLongRun = { name = "Run Competititive Long Run!", assetId = 2125445668, badgeClass = "long run" },
-	WinCompetititiveLongRun = {
+	CompetitiveLongRun = { name = "Run Competitive Long Run!", assetId = 2125445668, badgeClass = "long run" },
+	WinCompetitiveLongRun = {
 		name = "Win Competitive Long Run!",
 		assetId = 2125445670,
 		badgeClass = "long run",
 	},
-	WinCompetititiveRun = {
+	WinCompetitiveRun = {
 		name = "Win Competitive Run!",
 		assetId = 2125445672,
-		badgeClass = "competitive",
+		badgeClass = "cwrs",
 		hint = "A sign which has at least 10 runners.",
 	},
 
@@ -724,6 +724,94 @@ local badges: { [string]: tt.badgeDescriptor } = {
 		badgeClass = "runs",
 		baseNumber = 222666,
 		hint = "If you want a thing done well, do it yourself.",
+	},
+	PlacedInServerEvent = { name = "Placed In Server Event", assetId = 2126801969, badgeClass = "server events" },
+	PrizeInServerEvent = { name = "Prize In Server Event", assetId = 2126801967, badgeClass = "server events" },
+	BigPrizeInServerEvent = { name = "Big Prize In Server Event", assetId = 2126801966, badgeClass = "server events" },
+	HugePrizeInServerEvent = {
+		name = "Huge Prize In Server Event",
+		assetId = 2126801965,
+		badgeClass = "server events",
+	},
+	MegaPrizeInServerEvent = {
+		name = "Mega Prize In Server Event",
+		assetId = 2126743614,
+		badgeClass = "server events",
+	},
+	ExceptionalPrizeInServerEvent = {
+		name = "Exceptional Prize In Server Event",
+		assetId = 2126743613,
+		badgeClass = "server events",
+	},
+	WinCompetitiveServerEvent = {
+		name = "Win Competitive Server Event",
+		assetId = 2126743611,
+		badgeClass = "server events",
+	},
+	CompeteInCompetitiveServerEvent = {
+		name = "Compete In Competitive Server Event",
+		assetId = 2126743613,
+		badgeClass = "server events",
+	},
+	CompeteInLongCompetitiveServerEvent = {
+		name = "Compete In Long Competitive Server Event",
+		assetId = 2126639211,
+		badgeClass = "server events",
+	},
+	WinLongCompetitiveServerEvent = {
+		name = "Win Long Competitive Server Event",
+		assetId = 2126639215,
+		badgeClass = "server events",
+	},
+	Heinlein = {
+		name = "Robert H Badge",
+		assetId = 2128983603,
+		badgeClass = "weird",
+	},
+	MetricSystem = {
+		name = "Metric System",
+		assetId = 2128933909,
+		badgeClass = "weird",
+	},
+	Multiple = {
+		name = "Multiple",
+		assetId = 2129020813,
+		badgeClass = "weird",
+	},
+	LeadFromTriple = {
+		name = "Lead From Triple",
+		assetId = 2129020814,
+		badgeClass = "weird",
+	},
+	LeadFromQuadruple = {
+		name = "Lead From Quadruple",
+		assetId = 2129020815,
+		badgeClass = "weird",
+	},
+	LeadFromHypergravity = {
+		name = "Lead From Hypergravity",
+		assetId = 2128983641,
+		badgeClass = "weird",
+	},
+	FloorExplorer = {
+		name = "Floor Explorer",
+		assetId = 2129020809,
+		badgeClass = "weird",
+	},
+	MegaFloorExplorer = {
+		name = "Mega Floor Explorer",
+		assetId = 2128983661,
+		badgeClass = "weird",
+	},
+	MegaFloorExplorerWinner = {
+		name = "Mega Floor Explorer Winner",
+		assetId = 2128932825,
+		badgeClass = "weird",
+	},
+	LeadFromKeepOffTheGrass = {
+		name = "Lead From Keep Off the Grass",
+		assetId = 2128932827,
+		badgeClass = "weird",
 	},
 }
 

@@ -6,12 +6,27 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local rdb = require(game.ServerScriptService.rdb)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 
+local remotes = require(game.ReplicatedStorage.util.remotes)
+local dynamicRunningEvent = remotes.getRemoteEvent("DynamicRunningEvent") :: RemoteEvent
+local signs: Folder = game.Workspace:FindFirstChild("Signs")
+local dynamicRunningEnums = require(game.ReplicatedStorage.dynamicRunningEnums)
+
 local module = {}
 
-local rf = require(game.ReplicatedStorage.util.remotes)
+local doAnnotation = false
+-- doAnnotation = true
+local annotationStart = tick()
+local function annotate(s: string)
+	if doAnnotation then
+		if typeof(s) == "string" then
+			print("dynamicRunning.Client: " .. string.format("%.0f", tick() - annotationStart) .. " : " .. s)
+		else
+			print("dynamicRunning.Client.object: " .. string.format("%.0f", tick() - annotationStart) .. " : ")
+			print(s)
+		end
+	end
+end
 
-local dynamicRunningFunction = rf.getRemoteFunction("DynamicRunningFunction") :: RemoteFunction
-local dynamicRunningEvent = rf.getRemoteEvent("DynamicRunningEvent") :: RemoteEvent
 local function getPositionByUserId(userId: number): Vector3?
 	local player = PlayersService:GetPlayerByUserId(userId)
 	if player == nil then
@@ -35,10 +50,10 @@ local function getPositionByUserId(userId: number): Vector3?
 	return characterPosition
 end
 
-local signs: Folder = game.Workspace:FindFirstChild("Signs")
---hmm i should do this based on game.workspace actually
-local function getNearestSigns(pos: Vector3, userId: number, includeUnfound: boolean, count: number)
+local function getNearestSigns(pos: Vector3, userId: number, includeFoundOnly: boolean, count: number)
 	local dists = {}
+
+	--yes it's dumb to do this entire thing, no it doesn't actually matter based on measurement
 	for _, sign: Part in ipairs(signs:GetChildren()) do
 		local dist = tpUtil.getDist(pos, sign.Position)
 		table.insert(dists, { signName = sign.Name, dist = dist })
@@ -50,6 +65,7 @@ local function getNearestSigns(pos: Vector3, userId: number, includeUnfound: boo
 
 	local res = {}
 	local ii = 0
+
 	while ii < count do
 		ii += 1
 		if not dists[ii] then
@@ -60,7 +76,7 @@ local function getNearestSigns(pos: Vector3, userId: number, includeUnfound: boo
 			break
 		end
 		local signId = tpUtil.signName2SignId(signName)
-		if not includeUnfound then
+		if includeFoundOnly then
 			if not rdb.hasUserFoundSign(userId, signId) then
 				continue
 			end
@@ -71,12 +87,20 @@ local function getNearestSigns(pos: Vector3, userId: number, includeUnfound: boo
 	return res
 end
 
-local function dynamicControlServer(userId: number, input: tt.dynamicRunningControlType)
-	if input.action == "start" then
+--userId => active target
+local activeLoopMarkers: { [number]: number } = {}
+
+local function dynamicControlServer(player: Player, input: tt.dynamicRunningControlType)
+	local userId = player.UserId
+	activeLoopMarkers[input.userId] = input.fromSignId
+	if input.action == dynamicRunningEnums.ACTIONS.DYNAMIC_START then
 		spawn(function()
 			local sentSignIds: { [number]: boolean } = {}
-
 			while true do
+				if activeLoopMarkers[userId] ~= input.fromSignId then
+		
+					break
+				end
 				local pos: Vector3?
 				local s, e = pcall(function()
 					pos = getPositionByUserId(userId)
@@ -86,11 +110,11 @@ local function dynamicControlServer(userId: number, input: tt.dynamicRunningCont
 					break
 				end
 				if pos == nil then
-					print("player left." .. tostring(userId))
+					annotate("player left." .. tostring(userId))
 					break
 				end
 				assert(pos)
-				local nearest = getNearestSigns(pos, userId, false, 50)
+				local nearest = getNearestSigns(pos, userId, true, 50)
 				local todoSignIds = {}
 				for _, signId in ipairs(nearest) do
 					if signId == input.fromSignId then
@@ -111,6 +135,7 @@ local function dynamicControlServer(userId: number, input: tt.dynamicRunningCont
 					--send frames out.
 					local player = PlayersService:GetPlayerByUserId(userId)
 					local s, e = pcall(function()
+						annotate("fire frames to client.")
 						dynamicRunningEvent:FireClient(player, frames)
 					end)
 					if not s then
@@ -121,13 +146,15 @@ local function dynamicControlServer(userId: number, input: tt.dynamicRunningCont
 				wait(5)
 			end
 		end)
+	elseif input.action == dynamicRunningEnums.ACTIONS.DYNAMIC_STOP then
+		activeLoopMarkers[input.userId] = 0
+	else --other actions.
+		warn("unhandled action.")
 	end
 end
 
 module.init = function()
-	dynamicRunningFunction.OnServerInvoke = function(player: Player, data: tt.dynamicRunningControlType)
-		return dynamicControlServer(player.UserId, data)
-	end
+	dynamicRunningEvent.OnServerEvent:Connect(dynamicControlServer)
 end
 
 return module

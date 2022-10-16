@@ -19,7 +19,7 @@ local colors = require(game.ReplicatedStorage.util.colors)
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 local mt = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonTypes)
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local rf = require(game.ReplicatedStorage.util.remotes)
+local remotes = require(game.ReplicatedStorage.util.remotes)
 
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 local marathonClient = require(StarterPlayer.StarterCharacterScripts.marathon.marathonClient)
@@ -61,8 +61,8 @@ local lbframe: Frame
 local lbRowCount = 0
 
 --pixel heights.
-local lbHeaderY = 20
-local lbPlayerRowY = 30
+local lbHeaderY = 19
+local lbPlayerRowY = 24
 local userLbRowCellWidth = 43
 local lbwidth = 0
 
@@ -72,11 +72,11 @@ type lbUserCellDescriptorType = { name: string, num: number, width: number, user
 --use num to artificially keep them separated
 local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
 	{ name = "portrait", num = 1, width = lbPlayerRowY, userFacingName = "", tooltip = "" },
-	{ name = "username", num = 3, width = 90, userFacingName = "", tooltip = "" },
+	{ name = "username", num = 3, width = 75, userFacingName = "", tooltip = "" },
 	{
 		name = "awardCount",
 		num = 5,
-		width = userLbRowCellWidth,
+		width = userLbRowCellWidth - 10,
 		userFacingName = "awards",
 		tooltip = "How many special awards you've earned from contests or other achievements.",
 	},
@@ -96,15 +96,15 @@ local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
 	},
 	{
 		name = "findRank",
-		num = 13,
+		num = 11,
 		width = userLbRowCellWidth,
 		userFacingName = "rank",
 		tooltip = "Your rank of how many signs you've found.",
 	},
 	{
 		name = "userCompetitiveWRCount",
-		num = 14,
-		width = userLbRowCellWidth,
+		num = 13,
+		width = userLbRowCellWidth - 8,
 		userFacingName = "cwrs",
 		tooltip = "How many World Records you hold in competitive races!",
 	},
@@ -149,7 +149,6 @@ local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
 
 local function resetLbHeight(): nil
 	lbframe.Size = UDim2.new(0, lbwidth, 0, lbHeaderY + lbPlayerRowY * lbRowCount)
-	-- annotate("resetLbHeight.all")
 end
 
 --setup header row as first row in lbframe
@@ -161,6 +160,7 @@ local function makeLBHeaderRowFrame(): Frame
 	headerFrame.BorderSizePixel = 0
 	headerFrame.Name = "00000000-lb-headerframe"
 	headerFrame.Size = UDim2.new(1, 0, 0, lbHeaderY)
+	headerFrame.BackgroundTransparency = 1
 	local uu = Instance.new("UIListLayout")
 	uu.FillDirection = Enum.FillDirection.Horizontal
 	uu.Parent = headerFrame
@@ -170,10 +170,10 @@ local function makeLBHeaderRowFrame(): Frame
 		local el = guiUtil.getTl(
 			string.format("%02d.header.%s", lbUserCellDescriptor.num, lbUserCellDescriptor.userFacingName),
 			UDim2.new(0, lbUserCellDescriptor.width, 1, 0),
-			2,
+			0,
 			headerFrame,
 			colors.defaultGrey,
-			1
+			0
 		)
 		if lbUserCellDescriptor.tooltip ~= "" then
 			toolTip.setupToolTip(localPlayer, el, lbUserCellDescriptor.tooltip, UDim2.fromOffset(300, 40), false)
@@ -182,6 +182,10 @@ local function makeLBHeaderRowFrame(): Frame
 		el.ZIndex = lbUserCellDescriptor.num
 		el.TextXAlignment = Enum.TextXAlignment.Center
 		el.TextYAlignment = Enum.TextYAlignment.Center
+		-- if lbUserCellDescriptor.name == "portrait" or lbUserCellDescriptor.name == "username" then
+		el.BackgroundTransparency = 1
+		el.Parent.BackgroundTransparency = 1
+		-- end
 	end
 	return headerFrame
 end
@@ -208,13 +212,14 @@ local function completelyResetUserLB()
 	lbframe.BorderSizePixel = 0
 	lbframe.Parent = lbSgui
 	lbframe.Size = UDim2.new(0, 0.2, 0, 0)
-	lbframe.Position = UDim2.new(1, -1 * lbwidth - 10, 0.0, 0)
+	lbframe.Position = UDim2.new(1, -1 * lbwidth - 3, 0, -36)
 	lbframe.Name = "LeaderboardFrame"
 	lbframe.BackgroundTransparency = 1
 	local uu = Instance.new("UIListLayout")
 	uu.FillDirection = Enum.FillDirection.Vertical
 	uu.Name = "lbUIListLayout"
 	uu.Parent = lbframe
+	uu.HorizontalAlignment = Enum.HorizontalAlignment.Right
 
 	lbRowCount = 0
 	resetLbHeight()
@@ -229,6 +234,7 @@ end
 
 --important to use all lbUserCellParams here to make the row complete
 --even if an update comes before the initial loading of full stats.
+local lbTransparencyRate = 0.35
 local lbadderUserIdDebounce = {}
 local function addUserToLB(userId: number): rowFrameType?
 	if lbadderUserIdDebounce[userId] then
@@ -253,6 +259,7 @@ local function addUserToLB(userId: number): rowFrameType?
 	rowFrame.frame.Size = UDim2.new(1, 0, 0, lbPlayerRowY)
 	rowFrame.frame.BorderMode = Enum.BorderMode.Inset
 	rowFrame.frame.BorderSizePixel = 0
+	rowFrame.frame.BackgroundTransparency = 1
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
 	layout.Parent = rowFrame.frame
@@ -282,15 +289,27 @@ local function addUserToLB(userId: number): rowFrameType?
 				innerImg.Name = string.format("%02d.inner.bigImg", lbUserCellDescriptor.num)
 				toolTip.setupToolTip(localPlayer, img, innerImg, UDim2.fromOffset(200, 200), true)
 			end
+			img.BackgroundTransparency = lbTransparencyRate
+			img.BorderSizePixel=0
 		else --it's a textlabel whatever we're generating anyway.
 			local tl = guiUtil.getTl(
 				string.format("%02d.value", lbUserCellDescriptor.num),
-				UDim2.new(0, lbUserCellDescriptor.width, 1, 0),
-				2,
+				UDim2.new(0, lbUserCellDescriptor.width - 3, 1, 0),
+				0,
 				rowFrame.frame,
 				bgcolor,
-				1
+				0
 			)
+			if lbUserCellDescriptor.num < 31 then
+				local placeholderTl = guiUtil.getTl(
+					string.format("%02d.value", lbUserCellDescriptor.num + 1),
+					UDim2.new(0, 1, 1, 0),
+					0,
+					rowFrame.frame,
+					colors.defaultGrey,
+					0
+				)
+			end
 
 			--find text for initial value.
 			--note that depending on what the user does first, userDataFromCache may have missing values.
@@ -301,6 +320,8 @@ local function addUserToLB(userId: number): rowFrameType?
 				end
 			elseif lbUserCellDescriptor.name == "username" then
 				tl.Text = rowplayer.Name
+			elseif lbUserCellDescriptor.name == "badges" then
+				tl.Text = "..."
 			else
 				local candidateTextValue = userDataFromCache[lbUserCellDescriptor.name]
 
@@ -312,6 +333,8 @@ local function addUserToLB(userId: number): rowFrameType?
 				end
 				tl.Text = textValue
 			end
+			tl.BackgroundTransparency = lbTransparencyRate
+			tl.Parent.BackgroundTransparency = lbTransparencyRate
 		end
 	end
 	lbadderUserIdDebounce[userId] = true
@@ -469,11 +492,15 @@ local function receivedLBUpdateForUser(userData: userData, initial: boolean): ni
 		local newTL = guiUtil.getTl(
 			string.format("%02d.value", descriptor.num),
 			UDim2.new(0, descriptor.width, 1, 0),
-			2,
+			0,
 			rowFrame.frame,
 			bgcolor,
-			1
+			0
 		)
+
+		newTL.BackgroundTransparency = lbTransparencyRate
+		newTL.Parent.BackgroundTransparency = lbTransparencyRate
+
 		--phase to new color if needed
 		if newIntermediateText == nil then
 			newTL.Text = newFinalText
@@ -597,7 +624,7 @@ local function init()
 	completelyResetUserLB()
 
 	--we setup the event, but what if upstream playerjoinfunc is called first?
-	local leaderboardUpdateEvent = rf.registerRemoteEvent("LeaderboardUpdateEvent")
+	local leaderboardUpdateEvent = remotes.getRemoteEvent("LeaderboardUpdateEvent")
 	leaderboardUpdateEvent.OnClientEvent:Connect(clientReceiveNewLeaderboardData)
 
 	--listen to racestart, raceendevent

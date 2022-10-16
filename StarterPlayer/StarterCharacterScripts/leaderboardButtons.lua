@@ -31,11 +31,12 @@ for _, contestButton in ipairs(contestButtons) do
 	table.insert(actionButtons, contestButton)
 end
 
+local actionButtonHeightPixels = 18
 module.initActionButtons = function(lbframe: Frame, player: Player)
 	local fr = Instance.new("Frame")
 	fr.BorderMode = Enum.BorderMode.Inset
 	fr.BorderSizePixel = 0
-	fr.Size = UDim2.new(1, 0, 0, 30)
+	fr.Size = UDim2.new(1, 0, 0, actionButtonHeightPixels)
 	local h = Instance.new("UIListLayout")
 	h.HorizontalAlignment = Enum.HorizontalAlignment.Right
 	h.FillDirection = Enum.FillDirection.Horizontal
@@ -52,10 +53,13 @@ module.initActionButtons = function(lbframe: Frame, player: Player)
 		end
 
 		local buttonTb =
-			guiUtil.getTb(tostring(bignum - ii) .. "." .. but.name, UDim2.new(0, but.widthPixels, 1, 0), 3, fr, color)
+			guiUtil.getTb(tostring(bignum - ii) .. "." .. but.name, UDim2.new(0, but.widthPixels, 1, 0), 0, fr, color, 0)
 		buttonTb.Text = but.shortName
 		--reverse order they're listed in actionButtons above
 		buttonTb.Name = tostring(bignum - ii)
+		buttonTb.BackgroundTransparency = 0.5
+		buttonTb.Parent.BackgroundTransparency = 0.5
+
 		buttonTb.Activated:Connect(function()
 			spawn(function()
 				local userIds = {}
@@ -66,7 +70,7 @@ module.initActionButtons = function(lbframe: Frame, player: Player)
 				content.Parent = pgui
 			end)
 		end)
-		toolTip.setupToolTip(localPlayer, buttonTb, but.hoverHint, UDim2.new(0, 200, 0, 40))
+		toolTip.setupToolTip(localPlayer, buttonTb, but.hoverHint, UDim2.new(0, 200, 0, 40), false)
 	end
 	fr.Name = "zzzActionButtons"
 	fr.BackgroundTransparency = 1

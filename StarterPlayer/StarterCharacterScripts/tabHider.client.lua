@@ -4,12 +4,19 @@
 -- hide chat window and leaderboard when the user hits tab.
 
 local UserInputService = game:GetService("UserInputService")
-local showUI: boolean = true
+local showLB: boolean = true
+local showChat: boolean = true
 
 local players = game:GetService("Players")
 local localplayer = players.LocalPlayer
 
-local function ToggleUI(intendedState: boolean)
+local function ToggleChat(intendedState: boolean)
+	local ChatMain =
+		require(game.Players.LocalPlayer.PlayerScripts:FindFirstChild("ChatScript"):WaitForChild("ChatMain"))
+	ChatMain:SetVisible(intendedState)
+end
+
+local function ToggleLB(intendedState: boolean)
 	local items = { localplayer.PlayerGui:FindFirstChild("LeaderboardScreenGui") }
 	for _, el in ipairs(items) do
 		if el == nil then
@@ -18,10 +25,6 @@ local function ToggleUI(intendedState: boolean)
 		end
 		el.Enabled = intendedState
 	end
-	local ChatMain =
-		require(game.Players.LocalPlayer.PlayerScripts:FindFirstChild("ChatScript"):WaitForChild("ChatMain"))
-	ChatMain:SetVisible(intendedState)
-	--ChatMain:ToggleVisibility()
 end
 
 local function KillPopups()
@@ -38,6 +41,9 @@ local function KillPopups()
 		if el.Name == "NewFindSgui" then
 			el:Destroy()
 		end
+		if el.Name == "EphemeralTooltip" then
+			el:Destroy()
+		end
 	end
 end
 
@@ -48,8 +54,8 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 
 	if inputObject.UserInputType == Enum.UserInputType.Keyboard then
 		if inputObject.KeyCode == Enum.KeyCode.Tab then
-			showUI = not showUI
-			ToggleUI(showUI)
+			showLB = not showLB
+			ToggleLB(showLB)
 		end
 
 		if inputObject.KeyCode == Enum.KeyCode.X then

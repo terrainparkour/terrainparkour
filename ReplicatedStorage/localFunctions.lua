@@ -11,7 +11,7 @@
 --i.e. one local ui to another.  this is likely not the ideal method.
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local rf = require(game.ReplicatedStorage.util.remotes)
+local remotes = require(game.ReplicatedStorage.util.remotes)
 
 local module = {}
 
@@ -33,7 +33,7 @@ local function localNotifySettingChange(setting: tt.userSettingValue)
 	end
 end
 
-local getUserSettingsFunction: RemoteFunction = rf.getRemoteFunction("GetUserSettingsFunction")
+local getUserSettingsFunction: RemoteFunction = remotes.getRemoteFunction("GetUserSettingsFunction")
 
 module.getSettingByName = function(name: string): tt.userSettingValue
 	return getUserSettingsFunction:InvokeServer("", name)
@@ -43,7 +43,11 @@ module.getSettingByDomain = function(name: string): { [string]: tt.userSettingVa
 	return getUserSettingsFunction:InvokeServer(name)
 end
 
-local userSettingsChangedFunction = rf.getRemoteFunction("UserSettingsChangedFunction") :: RemoteFunction
+module.getUserSettingsWithDistributions = function(name: string): { [string]: tt.userSettingValuesWithDistributions }
+	return getUserSettingsFunction:InvokeServer(name, true)
+end
+
+local userSettingsChangedFunction = remotes.getRemoteFunction("UserSettingsChangedFunction") :: RemoteFunction
 
 module.setSetting = function(setting: tt.userSettingValue)
 	userSettingsChangedFunction:InvokeServer(setting)

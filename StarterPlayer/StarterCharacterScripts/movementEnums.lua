@@ -1,6 +1,6 @@
 --!strict
 
---eval 9.25.22
+--movement enums for movementV2, MOSTLY unreleased except for floop slipperiness
 
 local defaultDensity = 0.7
 local defaultFriction = 0.3

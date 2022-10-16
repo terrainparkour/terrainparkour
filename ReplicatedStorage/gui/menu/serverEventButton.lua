@@ -21,7 +21,7 @@ local module = {}
 local CreateServerEventButtonClicked = function(localPlayer: Player): ScreenGui
 	local userId = localPlayer.UserId
 	local sg = Instance.new("ScreenGui")
-	sg.Name = "SettingsSgui"
+	sg.Name = "CreateServerEventButtonClickedSgui"
 
 	local outerFrame = Instance.new("Frame")
 	outerFrame.Parent = sg
@@ -48,6 +48,22 @@ local CreateServerEventButtonClicked = function(localPlayer: Player): ScreenGui
 	tb.Activated:Connect(function()
 		sg:Destroy()
 	end)
+	spawn(function()
+		local amt=0.035
+		while true do
+			tb.BackgroundTransparency = tb.BackgroundTransparency + amt
+			tb.TextTransparency = tb.TextTransparency + amt
+			outerFrame.BackgroundTransparency = outerFrame.BackgroundTransparency + amt
+			tl.Parent.BackgroundTransparency = tl.Parent.BackgroundTransparency + amt
+			tl.BackgroundTransparency = tl.BackgroundTransparency + amt
+			tl.TextTransparency=tl.TextTransparency+amt
+			wait(0.01)
+			if tb.BackgroundTransparency >= 1 then
+				break
+			end
+		end
+		sg:Destroy()
+	end)
 	return sg
 end
 
@@ -59,7 +75,7 @@ local serverEventButton: gt.actionButton = {
 	getActive = function()
 		return true
 	end,
-	widthPixels = 180,
+	widthPixels = 70,
 }
 
 module.serverEventButton = serverEventButton

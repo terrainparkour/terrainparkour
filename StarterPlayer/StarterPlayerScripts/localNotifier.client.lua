@@ -52,8 +52,8 @@ end
 
 --set up events.
 local function init()
-	local rf = require(game.ReplicatedStorage.util.remotes)
-	local messageReceivedEvent = rf.getRemoteEvent("MessageReceivedEvent")
+	local remotes = require(game.ReplicatedStorage.util.remotes)
+	local messageReceivedEvent = remotes.getRemoteEvent("MessageReceivedEvent")
 	messageReceivedEvent.OnClientEvent:Connect(function(options)
 		clientReceiveNotification(options)
 	end)

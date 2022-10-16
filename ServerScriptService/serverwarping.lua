@@ -6,9 +6,9 @@
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local timers = require(game.ServerScriptService.timers)
 
-local rf = require(game.ReplicatedStorage.util.remotes)
+local remotes = require(game.ReplicatedStorage.util.remotes)
 
-local serverWantsWarpFunction = rf.getRemoteFunction("ServerWantsWarpFunction")
+local serverWantsWarpFunction = remotes.getRemoteFunction("ServerWantsWarpFunction")
 
 local module = {}
 
@@ -80,7 +80,7 @@ local function InnerWarp(player: Player, pos: Vector3, randomize: boolean): bool
 	rootPart.Velocity = Vector3.new(0, 0, 0)
 	rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 	player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-	timers.cancelRun(player, "innerWarp.afterVelocityRemoval")
+	-- timers.cancelRun(player, "innerWarp.afterVelocityRemoval")
 
 	--actually move AFTER momentum gone.
 	rootPart.CFrame = CFrame.new(pos)
@@ -132,11 +132,13 @@ module.WarpToSignId = function(player: Player, signId: number, hasLock: boolean)
 	end
 end
 
-local warpRequestFunction = rf.getRemoteFunction("WarpRequestFunction")
---when player clicks warp to <sign> they fire this event and go.
-warpRequestFunction.OnServerInvoke = function(player: Player, signId: number): any
-	-- print("server receive warp.")
-	module.WarpToSignId(player, signId, true)
+module.init = function()
+	local warpRequestFunction = remotes.getRemoteFunction("WarpRequestFunction")
+	--when player clicks warp to <sign> they fire this event and go.
+	warpRequestFunction.OnServerInvoke = function(player: Player, signId: number): any
+		-- print("server receive warp.")
+		module.WarpToSignId(player, signId, true)
+	end
 end
 
 return module

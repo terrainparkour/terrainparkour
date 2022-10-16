@@ -15,7 +15,6 @@ local ChatConstants = require(clientChatModules:WaitForChild("ChatConstants"))
 local util = require(script.Parent:WaitForChild("Util"))
 
 function CreateMessageLabel(messageData, channelName)
-
 	local fromSpeaker = messageData.FromSpeaker
 	local message = messageData.Message
 
@@ -35,15 +34,25 @@ function CreateMessageLabel(messageData, channelName)
 	local ChannelButton = nil
 
 	if channelName ~= messageData.OriginalChannel then
-			local whisperString = messageData.OriginalChannel
-			if messageData.FromSpeaker ~= LocalPlayer.Name then
-				whisperString = string.format("From %s", messageData.FromSpeaker)
-			end
+		local whisperString = messageData.OriginalChannel
+		if messageData.FromSpeaker ~= LocalPlayer.Name then
+			whisperString = string.format("From %s", messageData.FromSpeaker)
+		end
 
-			local formatChannelName = string.format("{%s}", whisperString)
-			ChannelButton = util:AddChannelButtonToBaseMessage(BaseMessage, useChannelColor, formatChannelName, messageData.OriginalChannel)
-			NameButton.Position = UDim2.new(0, ChannelButton.Size.X.Offset + util:GetStringTextBounds(" ", useFont, useTextSize).X, 0, 0)
-			numNeededSpaces = numNeededSpaces + util:GetNumberOfSpaces(formatChannelName, useFont, useTextSize) + 1
+		local formatChannelName = string.format("{%s}", whisperString)
+		ChannelButton = util:AddChannelButtonToBaseMessage(
+			BaseMessage,
+			useChannelColor,
+			formatChannelName,
+			messageData.OriginalChannel
+		)
+		NameButton.Position = UDim2.new(
+			0,
+			ChannelButton.Size.X.Offset + util:GetStringTextBounds(" ", useFont, useTextSize).X,
+			0,
+			0
+		)
+		numNeededSpaces = numNeededSpaces + util:GetNumberOfSpaces(formatChannelName, useFont, useTextSize) + 1
 	end
 
 	local function UpdateTextFunction(messageObject)
@@ -62,19 +71,19 @@ function CreateMessageLabel(messageData, channelName)
 
 	local FadeParmaters = {}
 	FadeParmaters[NameButton] = {
-		TextTransparency = {FadedIn = 0, FadedOut = 1},
-		TextStrokeTransparency = {FadedIn = 0.75, FadedOut = 1}
+		TextTransparency = { FadedIn = 0, FadedOut = 1 },
+		TextStrokeTransparency = { FadedIn = 0.75, FadedOut = 1 },
 	}
 
 	FadeParmaters[BaseMessage] = {
-		TextTransparency = {FadedIn = 0, FadedOut = 1},
-		TextStrokeTransparency = {FadedIn = 0.75, FadedOut = 1}
+		TextTransparency = { FadedIn = 0, FadedOut = 1 },
+		TextStrokeTransparency = { FadedIn = 0.75, FadedOut = 1 },
 	}
 
 	if ChannelButton then
 		FadeParmaters[ChannelButton] = {
-			TextTransparency = {FadedIn = 0, FadedOut = 1},
-			TextStrokeTransparency = {FadedIn = 0.75, FadedOut = 1}
+			TextTransparency = { FadedIn = 0, FadedOut = 1 },
+			TextStrokeTransparency = { FadedIn = 0.75, FadedOut = 1 },
 		}
 	end
 
@@ -87,11 +96,11 @@ function CreateMessageLabel(messageData, channelName)
 		[util.KEY_GET_HEIGHT] = GetHeightFunction,
 		[util.KEY_FADE_IN] = FadeInFunction,
 		[util.KEY_FADE_OUT] = FadeOutFunction,
-		[util.KEY_UPDATE_ANIMATION] = UpdateAnimFunction
+		[util.KEY_UPDATE_ANIMATION] = UpdateAnimFunction,
 	}
 end
 
 return {
 	[util.KEY_MESSAGE_TYPE] = ChatConstants.MessageTypeWhisper,
-	[util.KEY_CREATOR_FUNCTION] = CreateMessageLabel
+	[util.KEY_CREATOR_FUNCTION] = CreateMessageLabel,
 }

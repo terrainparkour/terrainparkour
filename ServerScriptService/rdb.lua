@@ -253,4 +253,9 @@ module.reportServerEventEnd = function(ev: tt.runningServerEvent, allocations)
 	return res
 end
 
+module.beckon = function(userId: number, message: string)
+	local data = { remoteActionName = "beckon", userId = userId, message = message }
+	remoteDbInternal.remotePost("postEndpoint", data)
+end
+
 return module

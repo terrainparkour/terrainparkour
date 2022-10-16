@@ -13,11 +13,11 @@ local warper = require(game.ReplicatedStorage.warper)
 
 local PopularResponseTypes = require(game.ReplicatedStorage.types.PopularResponseTypes)
 local enums = require(game.ReplicatedStorage.util.enums)
-local rf = require(game.ReplicatedStorage.util.remotes)
+local remotes = require(game.ReplicatedStorage.util.remotes)
 
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 
-local getPopularRunsFunction = rf.getRemoteFunction("GetPopularRunsFunction")
+local getPopularRunsFunction = remotes.getRemoteFunction("GetPopularRunsFunction")
 
 local module = {}
 
@@ -281,7 +281,7 @@ local popularButton: gt.actionButton = {
 	getActive = function()
 		return true
 	end,
-	widthPixels = 60,
+	widthPixels = 40,
 }
 
 module.popularButton = popularButton

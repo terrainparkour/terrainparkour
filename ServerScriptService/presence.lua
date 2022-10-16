@@ -62,7 +62,7 @@ module.init = function()
 	table.insert(playerAddFuncs, { func = badgeCheckers.MetCreatorChecker, name = "setupMetCreatorChecker" })
 	table.insert(playerAddFuncs, { func = badgeCheckers.BumpedCreatorChecker, name = "setupBumpedCreatorChecker" })
 	table.insert(playerAddFuncs, { func = badgeCheckers.CrowdedHouseChecker, name = "setupCrowdedHouseChecker" })
-	table.insert(playerAddFuncs, { func = playerMonitoring.CancelRunOnDeath, name = "cancelOnDeath" })
+	-- table.insert(playerAddFuncs, { func = playerMonitoring.CancelRunOnDeath, name = "cancelOnDeath" })
 	table.insert(playerAddFuncs, { func = playerMonitoring.LogLocationOnDeath, name = "logLocationOnDeath" })
 	table.insert(
 		playerAddFuncs,
@@ -74,10 +74,10 @@ module.init = function()
 	table.insert(playerAddFuncs, { func = leaderboardEvents.PostJoinToRacers, name = "PostJoinToRacers" })
 
 	table.insert(playerRemovingFuncs, { func = playerMonitoring.LogQuit, name = "LogQuit" })
-	table.insert(
-		playerRemovingFuncs,
-		{ func = playerMonitoring.CancelRunOnPlayerRemove, name = "CancelRunOnPlayerRemove" }
-	)
+	-- table.insert(
+	-- 	playerRemovingFuncs,
+	-- 	{ func = playerMonitoring.CancelRunOnPlayerRemove, name = "CancelRunOnPlayerRemove" }
+	-- )
 	table.insert(playerRemovingFuncs, { func = playerMonitoring.LogPlayerLeft, name = "LogPlayerLeft" })
 	table.insert(
 		playerRemovingFuncs,

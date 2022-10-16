@@ -14,13 +14,13 @@ local marathonstatic = require(game.StarterPlayer.StarterCharacterScripts.marath
 local warper = require(game.ReplicatedStorage.warper)
 
 local lbMarathonRowY = 18
-local rf = require(game.ReplicatedStorage.util.remotes)
+local remotes = require(game.ReplicatedStorage.util.remotes)
 
 local mt = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonTypes)
 local joinableMarathonKinds: { mt.marathonDescriptor } = {}
 
-local marathonCompleteEvent = rf.getRemoteEvent("MarathonCompleteEvent")
-local ephemeralMarathonCompleteEvent = rf.getRemoteEvent("EphemeralMarathonCompleteEvent")
+local marathonCompleteEvent = remotes.getRemoteEvent("MarathonCompleteEvent")
+local ephemeralMarathonCompleteEvent = remotes.getRemoteEvent("EphemeralMarathonCompleteEvent")
 if marathonCompleteEvent == nil or ephemeralMarathonCompleteEvent == nil then
 	warn("FAIL")
 end

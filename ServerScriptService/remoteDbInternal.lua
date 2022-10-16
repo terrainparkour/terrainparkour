@@ -46,11 +46,13 @@ local function getPath(kind: string, data: any)
 	if kind == "userJoined" then
 		local uu = data.username
 		if data.userId == enums.objects.TerrainParkour then
-			warn("flip.")
+			-- warn("flip.")
 			--why do i do this.  changing the cached username? probably unnecessary.
 			uu = "TerrainParkour"
 		end
 		return kind .. "/" .. tostring(stringdata.userId) .. "/" .. uu .. "/"
+	elseif kind == "beckon" then
+		return kind .. "/" .. tostring(stringdata.userId)
 	elseif kind == "getAwardsByUser" then
 		return kind .. "/" .. tostring(stringdata.username)
 	elseif kind == "getBadgesByUser" then

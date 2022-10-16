@@ -50,6 +50,9 @@ dynamic.init()
 local serverEvents = require(game.ServerScriptService.serverEvents)
 serverEvents.init()
 
+local serverwarping = require(game.ServerScriptService.serverwarping)
+serverwarping.init()
+
 --how  does the game work?
 --good question.  mainly it's in lua client/server scripts, but via certain calls made from BE, you hit a python mysql db server you also have to have set up.  this is where all your real records and data are stored.
 

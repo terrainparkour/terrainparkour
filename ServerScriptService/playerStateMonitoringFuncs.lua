@@ -316,26 +316,26 @@ end
 -- 	notify.notifyPlayer(player, { text = text, kind = "initial notifications" })
 -- end
 
-module.CancelRunOnDeath = function(player: Player)
-	player.CharacterAdded:Connect(function(character)
-		local hum: Humanoid = character:WaitForChild("Humanoid")
-		hum.Died:Connect(function()
-			timers.cancelRun(player, "charadd.died")
-		end)
-	end)
+-- module.CancelRunOnDeath = function(player: Player)
+-- 	player.CharacterAdded:Connect(function(character)
+-- 		local hum: Humanoid = character:WaitForChild("Humanoid")
+-- 		hum.Died:Connect(function()
+-- 			timers.cancelRun(player, "charadd.died")
+-- 		end)
+-- 	end)
 
-	local character = player:FindFirstChild("Character")
-	if character == nil then
-		return
-	end
-	local hum2: Humanoid = character:WaitForChild("Humanoid")
-	if hum2 == nil then
-		return
-	end
-	hum2.Died:Connect(function()
-		timers.cancelRun(player, "died")
-	end)
-end
+-- 	local character = player:FindFirstChild("Character")
+-- 	if character == nil then
+-- 		return
+-- 	end
+-- 	local hum2: Humanoid = character:WaitForChild("Humanoid")
+-- 	if hum2 == nil then
+-- 		return
+-- 	end
+-- 	-- hum2.Died:Connect(function()
+-- 	timers.cancelRun(player, "died")
+-- 	-- end)
+-- end
 
 local function remoteLogDeath(character, UserId)
 	--we already know where they were here.
@@ -388,9 +388,9 @@ module.LogQuit = function(player: Player)
 	})
 end
 
-module.CancelRunOnPlayerRemove = function(player)
-	timers.cancelRun(player, "removed")
-end
+-- module.CancelRunOnPlayerRemove = function(player)
+-- 	timers.cancelRun(player, "removed")
+-- end
 
 module.LogPlayerLeft = function(player)
 	remoteDbInternal.remoteGet("userLeft", { userId = player.UserId })

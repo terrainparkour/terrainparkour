@@ -323,7 +323,7 @@ if false then
 			if exi[1] == last then
 				continue
 			end
-			print(exi[1])
+			-- print(exi[1])
 			last = exi[1]
 		end
 	end)

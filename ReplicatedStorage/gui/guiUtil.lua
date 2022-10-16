@@ -62,31 +62,31 @@ module.getTb = function(
 	bgcolor: Color3,
 	borderSizePixel: number?
 ): TextButton
-	local tl = Instance.new("TextLabel")
-	tl.ZIndex = 1
-	tl.TextTransparency = 1
-	tl.Size = size
-	tl.Parent = parent
-	tl.Name = name
-	tl.BackgroundColor3 = bgcolor
-	tl.BorderMode = Enum.BorderMode.Inset
-	tl.BorderSizePixel = 1
+	local outerTb = Instance.new("TextButton")
+	outerTb.ZIndex = 1
+	outerTb.TextTransparency = 1
+	outerTb.Size = size
+	outerTb.Parent = parent
+	outerTb.Name = name
+	outerTb.BackgroundColor3 = bgcolor
+	outerTb.BorderMode = Enum.BorderMode.Inset
+	outerTb.BorderSizePixel = 1
 	if borderSizePixel ~= nil then
-		tl.BorderSizePixel = borderSizePixel
-		tl.BorderMode = Enum.BorderMode.Outline
+		outerTb.BorderSizePixel = borderSizePixel
+		outerTb.BorderMode = Enum.BorderMode.Outline
 	end
-	local innerTl = Instance.new("TextButton")
-	innerTl.Parent = tl
-	innerTl.TextScaled = true
-	innerTl.ZIndex = 2
-	innerTl.Name = "Inner"
-	innerTl.Font = Enum.Font.Gotham
-	innerTl.Size = UDim2.new(1, -2 * padding, 1, -2 * padding)
-	innerTl.Position = UDim2.new(0, padding, 0, padding)
-	innerTl.BackgroundColor3 = bgcolor
-	innerTl.BorderSizePixel = 0
-	innerTl.BorderMode = Enum.BorderMode.Inset
-	return innerTl
+	local innerTb = Instance.new("TextButton")
+	innerTb.Parent = outerTb
+	innerTb.TextScaled = true
+	innerTb.ZIndex = 2
+	innerTb.Name = "Inner"
+	innerTb.Font = Enum.Font.Gotham
+	innerTb.Size = UDim2.new(1, -2 * padding, 1, -2 * padding)
+	innerTb.Position = UDim2.new(0, padding, 0, padding)
+	innerTb.BackgroundColor3 = bgcolor
+	innerTb.BorderSizePixel = 0
+	innerTb.BorderMode = Enum.BorderMode.Inset
+	return innerTb
 end
 
 --kill a sgui with an invisible textbutton on top of it.

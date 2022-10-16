@@ -299,7 +299,7 @@ module.init = function()
 			while true do
 				local minute = os.date("%M", tick())
 				local minnum = tonumber(minute)
-				if minnum == 1 then
+				if minnum == 7 then
 					if not signVisible then
 						signVisible = true
 						r.fadeInSign(doubleO7Sign)
