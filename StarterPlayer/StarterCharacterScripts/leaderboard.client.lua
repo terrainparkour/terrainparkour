@@ -25,6 +25,7 @@ local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 local marathonClient = require(StarterPlayer.StarterCharacterScripts.marathon.marathonClient)
 local mds = require(game.ReplicatedStorage.marathonDescriptors)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+local lbEnums = require(game.ReplicatedStorage.enums.lbEnums)
 
 local lbIsEnabled = true
 
@@ -72,7 +73,7 @@ type lbUserCellDescriptorType = { name: string, num: number, width: number, user
 --use num to artificially keep them separated
 local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
 	{ name = "portrait", num = 1, width = lbPlayerRowY, userFacingName = "", tooltip = "" },
-	{ name = "username", num = 3, width = 75, userFacingName = "", tooltip = "" },
+	{ name = "username", num = 3, width = 80, userFacingName = "", tooltip = "" },
 	{
 		name = "awardCount",
 		num = 5,
@@ -170,7 +171,7 @@ local function makeLBHeaderRowFrame(): Frame
 		local el = guiUtil.getTl(
 			string.format("%02d.header.%s", lbUserCellDescriptor.num, lbUserCellDescriptor.userFacingName),
 			UDim2.new(0, lbUserCellDescriptor.width, 1, 0),
-			0,
+			2,
 			headerFrame,
 			colors.defaultGrey,
 			0
@@ -234,7 +235,7 @@ end
 
 --important to use all lbUserCellParams here to make the row complete
 --even if an update comes before the initial loading of full stats.
-local lbTransparencyRate = 0.35
+
 local lbadderUserIdDebounce = {}
 local function addUserToLB(userId: number): rowFrameType?
 	if lbadderUserIdDebounce[userId] then
@@ -289,13 +290,13 @@ local function addUserToLB(userId: number): rowFrameType?
 				innerImg.Name = string.format("%02d.inner.bigImg", lbUserCellDescriptor.num)
 				toolTip.setupToolTip(localPlayer, img, innerImg, UDim2.fromOffset(200, 200), true)
 			end
-			img.BackgroundTransparency = lbTransparencyRate
-			img.BorderSizePixel=0
+			img.BackgroundTransparency = lbEnums.lbTransparency
+			img.BorderSizePixel = 0
 		else --it's a textlabel whatever we're generating anyway.
 			local tl = guiUtil.getTl(
 				string.format("%02d.value", lbUserCellDescriptor.num),
 				UDim2.new(0, lbUserCellDescriptor.width - 3, 1, 0),
-				0,
+				2,
 				rowFrame.frame,
 				bgcolor,
 				0
@@ -309,6 +310,9 @@ local function addUserToLB(userId: number): rowFrameType?
 					colors.defaultGrey,
 					0
 				)
+				placeholderTl.Text = ""
+				placeholderTl.BackgroundTransparency = 1
+				placeholderTl.Parent.BackgroundTransparency = lbEnums.lbTransparency
 			end
 
 			--find text for initial value.
@@ -333,8 +337,8 @@ local function addUserToLB(userId: number): rowFrameType?
 				end
 				tl.Text = textValue
 			end
-			tl.BackgroundTransparency = lbTransparencyRate
-			tl.Parent.BackgroundTransparency = lbTransparencyRate
+			tl.BackgroundTransparency = 1
+			tl.Parent.BackgroundTransparency = lbEnums.lbTransparency
 		end
 	end
 	lbadderUserIdDebounce[userId] = true
@@ -492,14 +496,14 @@ local function receivedLBUpdateForUser(userData: userData, initial: boolean): ni
 		local newTL = guiUtil.getTl(
 			string.format("%02d.value", descriptor.num),
 			UDim2.new(0, descriptor.width, 1, 0),
-			0,
+			2,
 			rowFrame.frame,
 			bgcolor,
 			0
 		)
 
-		newTL.BackgroundTransparency = lbTransparencyRate
-		newTL.Parent.BackgroundTransparency = lbTransparencyRate
+		newTL.BackgroundTransparency = 1
+		newTL.Parent.BackgroundTransparency = lbEnums.lbTransparency
 
 		--phase to new color if needed
 		if newIntermediateText == nil then
@@ -518,6 +522,9 @@ local function receivedLBUpdateForUser(userData: userData, initial: boolean): ni
 			end)
 			local Tween = TweenService:Create(newTL, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
 			Tween:Play()
+			local Tween2 =
+				TweenService:Create(newTL.Parent, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+			Tween2:Play()
 		end
 	end
 	-- annotate("redrawUserLBRow.end")

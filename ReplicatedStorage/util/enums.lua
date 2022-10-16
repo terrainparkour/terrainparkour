@@ -674,7 +674,22 @@ local releaseNotes: { [number]: string } = {
 	[195] = [[* Fix dynamic running more.]],
 	[196] = [[* Other small fixes and server event badges.
 * webhooks for server event completion]],
+	[197] = [[* New signs 
+* New areas
+* New slogans
+* New badges
+* Special signs with badges
+* Improvement to discord webhooks
+* "beckon" command
+* <tab> now only toggle LB, not LB+Chat
+* Shrunk LB somewhat to handle more people
+* Server events can only be started from signs which someone in the server has found
+* Cleaned up a bunch of old code - please test warping
+* fixed green highlighting in LB
+* fix tooltips
+* ]],
 }
+
 module.releaseNotes = releaseNotes
 
 return module

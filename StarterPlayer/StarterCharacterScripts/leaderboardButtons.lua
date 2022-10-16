@@ -19,6 +19,7 @@ local contestButtonGetter = require(game.StarterPlayer.StarterCharacterScripts.b
 local contestButtons = contestButtonGetter.getContestButtons({ localPlayer.UserId })
 local marathonSettingsButton = require(game.ReplicatedStorage.gui.menu.marathonSettingsButton)
 local serverEventButton = require(game.ReplicatedStorage.gui.menu.serverEventButton)
+local lbEnums = require(game.ReplicatedStorage.enums.lbEnums)
 
 local actionButtons: { gt.actionButton } = {
 	marathonSettingsButton.marathonSettingsButton,
@@ -52,13 +53,13 @@ module.initActionButtons = function(lbframe: Frame, player: Player)
 			end
 		end
 
-		local buttonTb =
-			guiUtil.getTb(tostring(bignum - ii) .. "." .. but.name, UDim2.new(0, but.widthPixels, 1, 0), 0, fr, color, 0)
+		local buttonName = tostring(bignum - ii) .. "." .. but.name
+		local buttonTb = guiUtil.getTb(buttonName, UDim2.new(0, but.widthPixels, 1, 0), 2, fr, color, 0)
 		buttonTb.Text = but.shortName
 		--reverse order they're listed in actionButtons above
 		buttonTb.Name = tostring(bignum - ii)
-		buttonTb.BackgroundTransparency = 0.5
-		buttonTb.Parent.BackgroundTransparency = 0.5
+		buttonTb.BackgroundTransparency = 1
+		buttonTb.Parent.BackgroundTransparency =  lbEnums.lbTransparency
 
 		buttonTb.Activated:Connect(function()
 			spawn(function()

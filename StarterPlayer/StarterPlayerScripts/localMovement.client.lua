@@ -170,6 +170,8 @@ local function receivedSpeedManipulation(msg: signMovementEnums.movementModeMess
 	elseif msg.action == signMovementEnums.movementModes.HIGHJUMP then
 		restoreNormalMovement()
 		effectiveJumpPower = 94
+		effectiveRunSpeed = 56
+		--mua ha ha
 	elseif msg.action == signMovementEnums.movementModes.NOGRASS then
 		restoreNormalMovement()
 		setupNoGrassMonitor()

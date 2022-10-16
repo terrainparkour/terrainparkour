@@ -813,6 +813,21 @@ local badges: { [string]: tt.badgeDescriptor } = {
 		assetId = 2128932827,
 		badgeClass = "weird",
 	},
+	TakeSurvey = {
+		name = "Take Survey",
+		assetId = 2128983659,
+		badgeClass = "weird",
+	},
+	SurveyKing = {
+		name = "Survey King",
+		assetId = 2128983652,
+		badgeClass = "weird",
+	},
+	Beckoner = {
+		name = "Beckoner",
+		assetId = 2128372864,
+		badgeClass = "weird",
+	},
 }
 
 module.badges = badges

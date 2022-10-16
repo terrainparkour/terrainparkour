@@ -51,7 +51,7 @@ local doAnnotation = false
 	or localPlayer.Name == "Player2"
 	or localPlayer.Name == "Player1"
 doAnnotation = true
--- doAnnotation = false
+doAnnotation = false
 local annotationStart = tick()
 local function annotate(s: string | any)
 	if doAnnotation then
@@ -115,12 +115,12 @@ local function handleSpecialSignTouches(signName: string)
 	elseif signName == "Fosbury" then
 		local data: signMovementEnums.movementModeMessage = { action = signMovementEnums.movementModes.HIGHJUMP }
 		activeMovementData = data
-		specialMovementType = "HighJump:"
+		specialMovementType = "High Jump"
 		movementManipulationBindableEvent:Fire(data)
 	elseif signName == "Keep Off the Grass" then
 		local data: signMovementEnums.movementModeMessage = { action = signMovementEnums.movementModes.NOGRASS }
 		activeMovementData = data
-		specialMovementType = "Don't touch grass."
+		specialMovementType = "Don't touch Grass"
 		movementManipulationBindableEvent:Fire(data)
 	end
 	modeChangeDebounce = false

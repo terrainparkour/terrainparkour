@@ -180,7 +180,7 @@ local function DataAdminFunc(speakerName: string, message: string, channelName: 
 		return channelCommands.missingTop10s(speaker, channel)
 	end
 
-	if verb=="beckon" then
+	if verb == "beckon" then
 		return channelCommands.beckon(speaker, channel)
 	end
 	if verb == "nonwrs" then
@@ -357,6 +357,7 @@ local joinMessages = {
 	"Just one more race",
 	"Emergent speedrunning",
 	"Racing off the rails",
+	"Going farther than others would",
 }
 local joinMessage = joinMessages[math.random(#joinMessages)]
 

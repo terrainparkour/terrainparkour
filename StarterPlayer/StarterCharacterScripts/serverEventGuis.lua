@@ -13,8 +13,9 @@ local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
+local lbEnums = require(game.ReplicatedStorage.enums.lbEnums)
 
-local serverEventRowHeight = 34
+local serverEventRowHeight = 40
 local doAnnotation = false
 doAnnotation = false
 local annotationStart = tick()
@@ -52,6 +53,8 @@ local function makeTile(el: tt.runningServerEventUserBest, ii: number, isMe: boo
 	frame.Size = UDim2.fromScale(width, 1)
 	frame.Name = "02-name-place-tile" .. tostring(ii)
 	frame.BorderMode = Enum.BorderMode.Inset
+	frame.BackgroundTransparency = 1
+
 	local hh = Instance.new("UIListLayout")
 	hh.Parent = frame
 	hh.FillDirection = Enum.FillDirection.Horizontal
@@ -60,20 +63,22 @@ local function makeTile(el: tt.runningServerEventUserBest, ii: number, isMe: boo
 	im.Parent = frame
 	im.Size = UDim2.new(0, serverEventRowHeight / 2, 1, 0)
 	im.Name = "00-serverEvent-position"
+	im.BorderSizePixel = 0
 
 	local content2 = thumbnails.getThumbnailContent(el.userId, Enum.ThumbnailType.HeadShot)
 	local useColor = isMe and colors.yellow or colors.defaultGrey
 
 	im.Image = content2
 	im.BackgroundColor3 = useColor
+	im.BackgroundTransparency = lbEnums.lbTransparency
 
 	local tl = guiUtil.getTl(
 		"01-serverEvent-result-tile" .. tostring(ii),
 		UDim2.new(1, -1 * serverEventRowHeight / 2, 1, 0),
-		1,
+		3,
 		frame,
 		useColor,
-		1
+		0
 	)
 	local extra = ""
 	if el.runCount > 1 then
@@ -85,6 +90,8 @@ local function makeTile(el: tt.runningServerEventUserBest, ii: number, isMe: boo
 		tl.Text = string.format("%0.1fs", el.timeMs / 1000)
 	end
 
+	tl.BackgroundTransparency = 1
+	tl.Parent.BackgroundTransparency = lbEnums.lbTransparency
 	local ttText = string.format("%s %0.3fs %s%s", el.username, el.timeMs / 1000, tpUtil.getCardinal(ii), extra)
 	toolTip.setupToolTip(localPlayer, frame, ttText, UDim2.new(0, #el.username * 13, 0, 30), false)
 	return frame
@@ -94,15 +101,19 @@ local function determineServerEventRowName(serverEvent: tt.runningServerEvent): 
 	return string.format("b-%04d-%s-serverEvent", serverEvent.serverEventNumber, serverEvent.name)
 end
 
+local serverEventRowWidthScale = 0.7
+
 local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId: number): Frame
 	local frame = Instance.new("Frame")
-	frame.Size = UDim2.new(0.8, 0, 0, serverEventRowHeight)
+	frame.Size = UDim2.new(serverEventRowWidthScale, 0, 0, serverEventRowHeight)
 	frame.Name = determineServerEventRowName(serverEvent)
 	frame.BackgroundTransparency = 1
 
 	local row1frame = Instance.new("Frame")
 	row1frame.Name = "serverEvent-row1"
 	row1frame.Size = UDim2.new(1, 0, 0.5, 0)
+	row1frame.BackgroundTransparency = 1
+
 	local row2frame = Instance.new("Frame")
 	row2frame.Name = "serverEvent-row2"
 	row2frame.Size = UDim2.new(1, 0, 0.5, 0)
@@ -117,9 +128,9 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 	row2frame.Parent = frame
 	row2frame.Position = UDim2.new(0, 0, 0.5, 0)
 
-	local nameWidth = 0.45
-	local prizeWidth = 0.25
-	local remainingTimeWidth = 0.10
+	local nameWidth = 0.5
+	local prizeWidth = 0.17
+	local remainingTimeWidth = 0.13
 	local warpWidth = 0.20
 
 	--strip prefixing "xxx" which is used for global ordering.
@@ -128,15 +139,19 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 	local combined = string.format("%s", cleanName)
 	local raceToolTip = string.format("(%0.0fd)", serverEvent.distance)
 	local nameTl =
-		guiUtil.getTl("01-serverEvent-name", UDim2.fromScale(nameWidth, 1), 4, row1frame, colors.defaultGrey, 1)
+		guiUtil.getTl("01-serverEvent-name", UDim2.fromScale(nameWidth, 1), 3, row1frame, colors.defaultGrey, 0)
 
 	nameTl.Text = combined
+	nameTl.BackgroundTransparency = 1
+	nameTl.Parent.BackgroundTransparency = lbEnums.lbTransparency
 	toolTip.setupToolTip(localPlayer, nameTl, raceToolTip, UDim2.new(0, 70, 0, 30), false)
 
 	--prize tile
 	local prizeTl =
-		guiUtil.getTl("02-serverEvent-prize", UDim2.fromScale(prizeWidth, 1), 4, row1frame, colors.defaultGrey, 1)
+		guiUtil.getTl("02-serverEvent-prize", UDim2.fromScale(prizeWidth, 1), 3, row1frame, colors.defaultGrey, 0)
 	prizeTl.Text = string.format("%d tix", serverEvent.tixValue)
+	prizeTl.BackgroundTransparency = 1
+	prizeTl.Parent.BackgroundTransparency = lbEnums.lbTransparency
 	-- prizeTl.Text = "-"
 	local allocation = serverEventEnums.getTixAllocation(serverEvent)
 	local awardMouseoverText = "Prizes as of now:"
@@ -160,13 +175,14 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 	local remainingTl = guiUtil.getTl(
 		"03-serverEvent-timeRemaining",
 		UDim2.fromScale(remainingTimeWidth, 1),
-		4,
+		3,
 		row1frame,
 		colors.defaultGrey,
-		1
+		0
 	)
 	remainingTl.Text = ""
-
+	remainingTl.BackgroundTransparency = 1
+	remainingTl.Parent.BackgroundTransparency = lbEnums.lbTransparency
 	spawn(function()
 		local loopEndTick = tick() + serverEvent.remainingTick
 		while true do
@@ -182,8 +198,10 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 	--warp tile
 	local warper = require(game.ReplicatedStorage.warper)
 	local warpTile =
-		guiUtil.getTb("04-serverEvent-warptile", UDim2.fromScale(warpWidth, 1), 1, row1frame, colors.lightBlue, 1)
+		guiUtil.getTb("04-serverEvent-warptile", UDim2.fromScale(warpWidth, 1), 1, row1frame, colors.lightBlue, 0)
 	warpTile.Text = "Warp"
+	warpTile.BackgroundTransparency = 1
+	warpTile.Parent.BackgroundTransparency = lbEnums.lbTransparency
 	warpTile.Activated:Connect(function()
 		warper.requestWarpToSign(serverEvent.startSignId)
 	end)
@@ -196,7 +214,7 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 	local summaryTile = guiUtil.getTl(
 		"01-serverEvent-summaryWidth",
 		UDim2.fromScale(row2bufferWidthMin, 1),
-		0,
+		3,
 		row2frame,
 		colors.defaultGrey,
 		0
@@ -208,14 +226,15 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 	summaryTile.Text = "    "
 	local ii = 1
 	local count = #sortedUserBests
-	local maxDisplayUserCount = 3
+	local maxDisplayUserCount = 10
 	local useCount = math.min(count, maxDisplayUserCount)
 
 	local placeUsedWidth = 0
 	if useCount == 0 then
 		row1frame.Size = UDim2.fromScale(1, 1)
 		row2frame:Destroy()
-		frame.Size = UDim2.new(1, 0, 0, serverEventRowHeight / 2)
+		--reset outer fram size if row 2 is missing.
+		frame.Size = UDim2.new(serverEventRowWidthScale, 0, 0, serverEventRowHeight / 2)
 	else
 		while ii <= maxDisplayUserCount do
 			local el = sortedUserBests[ii]
@@ -227,6 +246,7 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 			local useWidth = math.min(0.3, (1 - row2bufferWidthMin) / useCount)
 			local tile = makeTile(el, ii, isMe, useWidth)
 			tile.Parent = row2frame
+
 			ii += 1
 			placeUsedWidth += useWidth
 		end

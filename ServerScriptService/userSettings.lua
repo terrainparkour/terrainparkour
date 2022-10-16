@@ -73,6 +73,8 @@ local defaultSettingsValues: { tt.userSettingValue } = {
 	{ name = "should the game have more badges", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "have you found the chomik", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "should the game have more signs", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "should the game have more ice", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "should the game have fewer signs", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "should the game have more new areas", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "should the game have more marathons", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "should the game have more water areas", domain = settingEnums.settingDomains.SURVEYS },
@@ -194,11 +196,23 @@ end
 
 local function userChangedSettingFromUI(userId: number, setting: tt.userSettingValue)
 	if userSettingsCache[userId] == nil then
-		warn("empty should not happen")
-		userSettingsCache[userId] = {}
+		error("empty should not happen")
 	end
 	rdb.updateSettingForUser(userId, setting.value, setting.name, setting.domain)
 	userSettingsCache[userId][setting.name] = setting
+	local grantBadge = require(game.ServerScriptService.grantBadge)
+	local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
+	grantBadge.GrantBadge(userId, badgeEnums.badges.TakeSurvey)
+	local ct = 0
+	for _, item: tt.userSettingValue in userSettingsCache[userId] do
+		if item.value ~= nil then
+			ct += 1
+		end
+		if ct + 20 then
+			grantBadge.GrantBadge(userId, badgeEnums.badges.SurveyKing)
+			break
+		end
+	end
 end
 
 module.init = function()

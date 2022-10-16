@@ -15,6 +15,22 @@ module.enum.toolTipSize = {}
 module.enum.toolTipSize.NormalText = UDim2.new(0, 350, 0, 80)
 module.enum.toolTipSize.BigPane = UDim2.new(0, 450, 0, 320)
 
+local ephemeralToolTipFrameName = "EphemeralTooltip"
+
+local function destroyToolTips(localPlayer: Player)
+	local theGuy = localPlayer.PlayerGui:FindFirstChild("ToolTipGui")
+	if theGuy then
+		for _, el in ipairs(theGuy:GetChildren()) do
+			if el.Name == ephemeralToolTipFrameName then
+				for _, el2 in ipairs(el:GetChildren()) do
+					el2:Destroy()
+				end
+				el:Destroy()
+			end
+		end
+	end
+end
+
 --right=they float right+down rather than left+down from cursor. default is right.
 module.setupToolTip = function(
 	localPlayer: Player,
@@ -36,9 +52,9 @@ module.setupToolTip = function(
 	assert(tooltipContents)
 	local mouse: Mouse = localPlayer:GetMouse()
 
-	local ephemeralToolTipFrameName = "EphemeralTooltip"
 	target.MouseEnter:Connect(function()
-		wait(1/59)
+		destroyToolTips(localPlayer)
+
 		local ttgui = localPlayer.PlayerGui:FindFirstChild("ToolTipGui")
 		if ttgui == nil then
 			ttgui = Instance.new("ScreenGui")
@@ -78,17 +94,7 @@ module.setupToolTip = function(
 	target.MouseLeave:Connect(function()
 		-- if true then return end
 
-		local theGuy = localPlayer.PlayerGui:FindFirstChild("ToolTipGui")
-		if theGuy then
-			for _, el in ipairs(theGuy:GetChildren()) do
-				if el.Name == ephemeralToolTipFrameName then
-					for _, el2 in ipairs(el:GetChildren()) do
-						el2:Destroy()
-					end
-					el:Destroy()
-				end
-			end
-		end
+		destroyToolTips(localPlayer)
 	end)
 end
 

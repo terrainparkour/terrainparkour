@@ -256,6 +256,9 @@ end
 module.beckon = function(userId: number, message: string)
 	local data = { remoteActionName = "beckon", userId = userId, message = message }
 	remoteDbInternal.remotePost("postEndpoint", data)
+	local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
+	local grantBadge = require(game.ServerScriptService.grantBadge)
+	grantBadge.GrantBadge(userId, badgeEnums.badges.Beckoner)
 end
 
 return module

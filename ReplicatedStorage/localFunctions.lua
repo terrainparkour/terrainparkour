@@ -12,6 +12,7 @@
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
 local module = {}
 
@@ -35,16 +36,14 @@ end
 
 local getUserSettingsFunction: RemoteFunction = remotes.getRemoteFunction("GetUserSettingsFunction")
 
-module.getSettingByName = function(name: string): tt.userSettingValue
-	return getUserSettingsFunction:InvokeServer("", name)
+module.getSettingByName = function(settingName: string): tt.userSettingValue
+	local req: settingEnums.settingRequest = { settingName = settingName, includeDistributions = false }
+	return getUserSettingsFunction:InvokeServer(req)
 end
 
-module.getSettingByDomain = function(name: string): { [string]: tt.userSettingValue }
-	return getUserSettingsFunction:InvokeServer(name)
-end
-
-module.getUserSettingsWithDistributions = function(name: string): { [string]: tt.userSettingValuesWithDistributions }
-	return getUserSettingsFunction:InvokeServer(name, true)
+module.getSettingByDomain = function(domain: string): { [string]: tt.userSettingValue }
+	local req: settingEnums.settingRequest = { domain = domain, includeDistributions = false }
+	return getUserSettingsFunction:InvokeServer(req)
 end
 
 local userSettingsChangedFunction = remotes.getRemoteFunction("UserSettingsChangedFunction") :: RemoteFunction
