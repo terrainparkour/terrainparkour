@@ -13,8 +13,12 @@ module.getTl = function(
 	padding: number,
 	parent: Frame | ScrollingFrame,
 	bgcolor: Color3,
-	borderSizePixel: number?
+	borderSizePixel: number?,
+	transparency: number?
 ): TextLabel
+	if transparency == nil then
+		transparency = 0
+	end
 	local tl = Instance.new("TextLabel")
 	tl.ZIndex = 1
 	tl.TextTransparency = 1
@@ -24,6 +28,8 @@ module.getTl = function(
 	tl.BackgroundColor3 = bgcolor
 	tl.BorderMode = Enum.BorderMode.Inset
 	tl.BorderSizePixel = 1
+	tl.BackgroundTransparency = transparency
+
 	if borderSizePixel ~= nil then
 		tl.BorderSizePixel = borderSizePixel
 		tl.BorderMode = Enum.BorderMode.Outline
@@ -39,6 +45,9 @@ module.getTl = function(
 	innerTl.Position = UDim2.new(0, padding, 0, padding)
 	innerTl.BackgroundColor3 = bgcolor
 	innerTl.BorderSizePixel = 0
+	if transparency ~= 0 then
+		innerTl.BackgroundTransparency = 1
+	end
 
 	return innerTl
 end
@@ -60,8 +69,12 @@ module.getTb = function(
 	padding: number,
 	parent: Frame | ScrollingFrame,
 	bgcolor: Color3,
-	borderSizePixel: number?
+	borderSizePixel: number?,
+	transparency: number?
 ): TextButton
+	if transparency == nil then
+		transparency = 0
+	end
 	local outerTb = Instance.new("TextButton")
 	outerTb.ZIndex = 1
 	outerTb.TextTransparency = 1
@@ -71,10 +84,14 @@ module.getTb = function(
 	outerTb.BackgroundColor3 = bgcolor
 	outerTb.BorderMode = Enum.BorderMode.Inset
 	outerTb.BorderSizePixel = 1
+
+	outerTb.BackgroundTransparency = transparency
+
 	if borderSizePixel ~= nil then
 		outerTb.BorderSizePixel = borderSizePixel
 		outerTb.BorderMode = Enum.BorderMode.Outline
 	end
+
 	local innerTb = Instance.new("TextButton")
 	innerTb.Parent = outerTb
 	innerTb.TextScaled = true
@@ -86,6 +103,9 @@ module.getTb = function(
 	innerTb.BackgroundColor3 = bgcolor
 	innerTb.BorderSizePixel = 0
 	innerTb.BorderMode = Enum.BorderMode.Inset
+	if transparency ~= 0 then
+		innerTb.BackgroundTransparency = 1
+	end
 	return innerTb
 end
 

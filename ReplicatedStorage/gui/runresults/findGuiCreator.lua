@@ -95,7 +95,6 @@ module.createFindScreenGui = function(options: tt.signFindOptions): ScreenGui
 	local tl = guiUtil.getTl("01" .. detailsMessage, UDim2.new(0.3, 0, 1, 0), 2, finderHFrame, colors.meColor, 1)
 	tl.Text = detailsMessage
 	tl.TextXAlignment = Enum.TextXAlignment.Center
-	tl.BackgroundTransparency = 0
 
 	--other finders of this sign
 	local tl2 = guiUtil.getTl("02" .. finderMessage, UDim2.new(0.7, 0, 1, 0), 2, finderHFrame, colors.meColor, 1)

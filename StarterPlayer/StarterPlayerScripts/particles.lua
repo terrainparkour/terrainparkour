@@ -4,41 +4,27 @@ local colors = require(game.ReplicatedStorage.util.colors)
 local module = {}
 
 local particleEmitter
-module.SetupParticleEmitter = function()
-	local pe: ParticleEmitter
-	local s, e = pcall(function()
-		pe = Instance.new("ParticleEmitter")
-		pe.EmissionDirection = Enum.NormalId.Back
-		pe.Lifetime = NumberRange.new(1, 1)
+module.SetupParticleEmitter = function(player: Player)
+	player.CharacterAdded:Connect(function()
+		local character = player.Character or player.CharacterAdded:Wait()
+
+		particleEmitter = Instance.new("ParticleEmitter")
+		particleEmitter.EmissionDirection = Enum.NormalId.Back
+		particleEmitter.Lifetime = NumberRange.new(1, 1)
 
 		--initially set it to inactive
-		pe.Rate = 0
-		pe.Size = NumberSequence.new(0.3)
-		pe.Name = "PlayerParticleEmitter"
-		pe.SpreadAngle = Vector2.new(12, 12)
-		pe.Parent = game.Players.LocalPlayer.Character.Humanoid.RootPart
+		particleEmitter.Rate = 0
+		particleEmitter.Size = NumberSequence.new(0.3)
+		particleEmitter.Name = "PlayerParticleEmitter"
+		particleEmitter.SpreadAngle = Vector2.new(12, 12)
+
+		local humanoid = character:WaitForChild("Humanoid")
+		particleEmitter.Parent = humanoid.RootPart
 	end)
-
-	if s then
-		particleEmitter = pe
-	end
-
-	if e then
-		error(e)
-	end
 end
 
 --momentarily set emission to show the thing that just happened to the user.
-module.EmitParticle = function(increase: boolean, localPlayer: Player)
-	if particleEmitter == nil then
-		return
-	end
-	if localPlayer.Character == nil or localPlayer.Character.Humanoid == nil then
-		return
-	end
-	if particleEmitter.Parent == nil then
-		particleEmitter.Parent = localPlayer.Character.Humanoid.RootPart
-	end
+module.EmitParticle = function(increase: boolean)
 	local particleColor: ColorSequence = ColorSequence.new(colors.redStop)
 	if increase then
 		particleColor = ColorSequence.new(colors.greenGo)

@@ -59,7 +59,7 @@ local badges: { [string]: tt.badgeDescriptor } = {
 		hint = "You always knew you were special",
 	},
 	Chomik = { name = "Chomik", assetId = 2125445524, badgeClass = "weird", hint = "Find me: /chomik" },
-	Hurdle = { name = "Run the hurdles!", assetId = 2125445527, badgeClass = "weird run" },
+	Hurdle = { name = "Run the hurdles!", assetId = 2125445527, badgeClass = "weird" },
 	TerrainObby = {
 		name = "Terrain Obby",
 		assetId = 2125786190,
@@ -812,11 +812,13 @@ local badges: { [string]: tt.badgeDescriptor } = {
 		name = "Lead From Keep Off the Grass",
 		assetId = 2128932827,
 		badgeClass = "weird",
+		hint = "Touchdown avoiding the grass",
 	},
 	TakeSurvey = {
 		name = "Take Survey",
 		assetId = 2128983659,
 		badgeClass = "weird",
+		hint = "We're up in a balloon\nwith so many beliefs to be shattered\nour voices quaver",
 	},
 	SurveyKing = {
 		name = "Survey King",
@@ -827,6 +829,25 @@ local badges: { [string]: tt.badgeDescriptor } = {
 		name = "Beckoner",
 		assetId = 2128372864,
 		badgeClass = "weird",
+		hint = "Something like a drifting swarm of bees.",
+	},
+	HideSeek = {
+		name = "Olly olly oxen free",
+		assetId = 2129037622,
+		badgeClass = "weird",
+		hint = "",
+	},
+	FirstBadgeWinner = {
+		name = "First badge winner badge",
+		assetId = 2129037608,
+		badgeClass = "weird",
+		hint = "",
+	},
+	NorthernVillages = {
+		name = "Northern Villages",
+		assetId = 2129037607,
+		badgeClass = "weird",
+		hint = "",
 	},
 }
 

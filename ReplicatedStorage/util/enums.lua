@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.197-500 October 16 2022"
+module.gameVersion = "1.198-fixes October 16 2022"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -644,7 +644,7 @@ objects.TerrainParkour = 164062733
 module.objects = objects
 
 --amount of time to do green 'something changed' ui
-module.greenTime = 14
+module.greenTime = 20
 
 local releaseNotes: { [number]: string } = {
 	[185] = [[* fix challenge for long sign names
@@ -678,16 +678,21 @@ local releaseNotes: { [number]: string } = {
 * New areas
 * New slogans
 * New badges
+* Badge for being the first person to win a certain badge
+* Improved UI for badge notifications
+* "beckon" command
 * Special signs with badges
 * Improvement to discord webhooks
-* "beckon" command
-* <tab> now only toggle LB, not LB+Chat
-* Shrunk LB somewhat to handle more people
+* <tab> now only toggles LB, not LB+Chat
 * Server events can only be started from signs which someone in the server has found
-* Cleaned up a bunch of old code - please test warping
-* fixed green highlighting in LB
-* fix tooltips
-* ]],
+* Shrunk LB somewhat to handle more people
+* Fixed mouseovers
+* Fixed mouseover and green highlighting
+* Cleaned up a bunch of old code - test warping
+* Warning: disable dynamic running if you have performance problems with it
+]],
+	[198] = [[* Bugfixes for resetting
+* fix dynamic running efficiency]],
 }
 
 module.releaseNotes = releaseNotes

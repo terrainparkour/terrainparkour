@@ -6,7 +6,7 @@
 --used on client to kick off sending loops
 --eval 9.24.22
 --10.09 bugfixing why this breaks servers
-
+local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
@@ -19,6 +19,7 @@ local localPlayer: Player = PlayersService.LocalPlayer
 
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local dynamicRunningEvent = remotes.getRemoteEvent("DynamicRunningEvent") :: RemoteEvent
+local renderStepped
 
 --control settings, default start. modifiable by a setting.
 local dynamicRunningEnabled = false
@@ -27,7 +28,12 @@ local dynamicRunningEnabled = false
 local dynamicStartTick: number = 0
 
 --max visualization (CAMERA, not PLAYER) range.
-local bbguiMaxDist = 190
+local bbguiMaxDist = 250
+
+local debounce = false
+local dynamicRunFrames: { tt.DynamicRunFrame } = {}
+--target sign name => TL;
+local tls: { [string]: TextLabel } = {}
 
 ---------ANNOTATION----------------
 local doAnnotation = false
@@ -36,7 +42,14 @@ local annotationStart = tick()
 local function annotate(s: string)
 	if doAnnotation then
 		if typeof(s) == "string" then
-			print("dynamicRunning.Server: " .. string.format("%.0f", tick() - annotationStart) .. " : " .. s)
+			print(
+				"dynamicRunning.Server: "
+					.. string.format("%.2f", tick() - annotationStart)
+					.. ": "
+					.. s
+					.. " frames:"
+					.. #dynamicRunFrames
+			)
 		else
 			print("dynamicRunning.Server.bject: " .. string.format("%.0f", tick() - annotationStart) .. " : ")
 			print(s)
@@ -95,7 +108,7 @@ module.startDynamic = function(player: Player, signName: string, startTick: numb
 	spawn(function()
 		while startDynamicDebounce do
 			wait(0.1)
-			print("waited for dynamic start debounce")
+			annotate("waited for dynamic start debounce")
 		end
 		startDynamicDebounce = true
 		dynamicStartTick = startTick
@@ -110,7 +123,7 @@ module.startDynamic = function(player: Player, signName: string, startTick: numb
 	end)
 end
 
-local function makeDynamicUI(from: string, to: string): TextLabel
+local function makeDynamicSignMouseoverUI(from: string, to: string): TextLabel
 	local bbgui = Instance.new("BillboardGui")
 	bbgui.Size = UDim2.new(0, 200, 0, 100)
 	bbgui.StudsOffset = Vector3.new(0, 5, 0)
@@ -124,7 +137,7 @@ local function makeDynamicUI(from: string, to: string): TextLabel
 	local tl: TextLabel = Instance.new("TextLabel")
 	tl.Parent = frame
 	tl.Font = Enum.Font.GothamBold
-	tl.TextXAlignment = Enum.TextXAlignment.Left
+	tl.TextXAlignment = Enum.TextXAlignment.Center
 	tl.Size = UDim2.new(1, 0, 1, 0)
 	tl.Text = ""
 	tl.TextTransparency = 0.1
@@ -145,7 +158,7 @@ end
 --get or create bbgui above sign
 local function getOrCreateUI(from: string, to: string): TextLabel
 	if not targetSignUis[to] then
-		local ui = makeDynamicUI(from, to)
+		local ui = makeDynamicSignMouseoverUI(from, to)
 		targetSignUis[to] = ui
 	end
 	return targetSignUis[to]
@@ -249,62 +262,150 @@ local function calculateText(frame: tt.DynamicRunFrame): (string, Color3)
 	return text .. "\n" .. yourlast, useColor
 end
 
-local connOnCount = 0
-local connOffCount = 0
-
 --called once per active run + target; after setup, self-runs.
 --(also, self-destroys when you leave the area?)
 --also, needs dynamic runtime.
-local function setupDynamicVisualization(from: string, dynamicRunFrame: tt.DynamicRunFrame)
-	local tl = getOrCreateUI(from, dynamicRunFrame.targetSignName)
-	local bbgui = tl.Parent.Parent :: BillboardGui
-	--based on the frame, calculate the user's position in the list.
 
-	--spin up monitor.
-	--TODO optimize - don't run this all the time if the user is outside distance.
-	--but probably no matter.
-	local signs = game.Workspace:FindFirstChild("Signs")
-	local sign: Part = signs:FindFirstChild(dynamicRunFrame.targetSignName)
-	local conn
-	connOnCount += 1
-	-- print(string.format("on:%d off:%d", connOnCount, connOffCount))
-	conn = RunService.RenderStepped:Connect(function()
-		--this happens when ui is already destroyed and return values won't be used.
-		if dynamicStartTick == 0 then
-			conn:Disconnect()
-			connOffCount += 1
-			-- print(string.format("on:%d off:%d", connOnCount, connOffCount))
-			return
-		end
-
-		local pos = localPlayer.Character.HumanoidRootPart.Position
-		local dist = tpUtil.getDist(sign.Position, pos)
-		if dist > bbguiMaxDist then --far away
-			if bbgui.Enabled then
-				bbgui.Enabled = false
-				return
-			end
-		else --within region
-			if not bbgui.Enabled then
-				bbgui.Enabled = true
-			end
-		end
-
-		local text, color = calculateText(dynamicRunFrame)
-		if tl.Text ~= text then
-			tl.Text = text
-			tl.TextColor3 = color
-		end
-	end)
+local function lock(src: string?)
+	if not src then
+		src = ""
+	end
+	while debounce do
+		annotate("debounce " .. src)
+		wait(0.01)
+	end
+	debounce = true
 end
 
-local function handleNewDynamicFrames(updates: tt.dynamicRunFromData)
+local function unlock()
+	debounce = false
+end
+
+local function add(dynamicRunFrame: tt.DynamicRunFrame, from)
+	lock()
+	table.insert(dynamicRunFrames, dynamicRunFrame)
+	local tl = getOrCreateUI(from, dynamicRunFrame.targetSignName)
+	tls[dynamicRunFrame.targetSignName] = tl
+	annotate("added " .. dynamicRunFrame.targetSignName)
+	unlock()
+end
+
+local function handleOne(dynamicRunFrame: tt.DynamicRunFrame)
+	if dynamicStartTick == 0 then
+		return
+	end
+	-- local st = tick()
+	local tl: TextLabel = tls[dynamicRunFrame.targetSignName]
+	local bbgui: BillboardGui = tl.Parent.Parent
+	local pos = localPlayer.Character.HumanoidRootPart.Position
+	local dist = tpUtil.getDist(bbgui.Parent.Position, pos)
+
+	if dist > bbguiMaxDist then --far away
+		if bbgui.Enabled then
+			bbgui.Enabled = false
+			-- annotate("\tturned off: too far:" .. dynamicRunFrame.targetSignName)
+			return
+		end
+		-- annotate("\tstayed off: too far:" .. dynamicRunFrame.targetSignName)
+		return
+	else --within region
+		if not bbgui.Enabled then
+			bbgui.Enabled = true
+		end
+	end
+
+	local text, color = calculateText(dynamicRunFrame)
+	local changed = false
+	if tl.Text ~= text then
+		tl.Text = text
+		changed = true
+		tl.TextColor3 = color
+	end
+	-- if changed then
+	-- 	annotate(
+	-- 		string.format(
+	-- 			"\tupdate (changed:%s) of %s took %0.7f",
+	-- 			tostring(changed),
+	-- 			dynamicRunFrame.targetSignName,
+	-- 			tick() - st
+	-- 		)
+	-- 	)
+	-- end
+end
+
+local function fullReset()
+	annotate("full reset")
+	lock()
+	for _, item in ipairs(tls) do
+		item.Parent.Parent:Destroy()
+	end
+	tls = {}
+	dynamicRunFrames = {}
+	unlock()
+end
+
+local function receiveDynamicRunData(updates: tt.dynamicRunFromData)
+	annotate("Receive " .. tostring(#updates.frames))
 	if not dynamicRunningEnabled then
 		return
 	end
-	for _, dynamicRunFrame in ipairs(updates.frames) do
-		setupDynamicVisualization(updates.fromSignName, dynamicRunFrame)
+	annotate("add Receive " .. tostring(#updates.frames))
+
+	for _, dynamicRunFrame: tt.DynamicRunFrame in ipairs(updates.frames) do
+		add(dynamicRunFrame, updates.fromSignName)
 	end
+end
+
+local lastupdates = {}
+local hasReset = false
+local function setupRenderStepped()
+	annotate("strating render stepped")
+
+	renderStepped = RunService.RenderStepped:Connect(function()
+		local st = tick()
+		if dynamicStartTick == 0 then
+			if not hasReset then
+				fullReset()
+				hasReset = true
+			end
+			return
+		end
+		hasReset = false
+		if #dynamicRunFrames == 0 then
+			return
+		end
+
+		-- local didframe = {}
+		for ii, item in ipairs(dynamicRunFrames) do
+			if not lastupdates[item.targetSignName] then
+				lastupdates[item.targetSignName] = tick()
+			end
+			if tick() - lastupdates[item.targetSignName] >= 0.1 then
+				handleOne(item)
+				-- table.insert(didframe,tostring(ii))
+
+				-- annotate(
+				-- 	string.format(
+				-- 		"\t %d updating cause gap: %0.5f %s",
+				-- 		ii,
+				-- 		st - lastupdates[item.targetSignName],
+				-- 		item.targetSignName
+				-- 	)
+				-- )
+
+				lastupdates[item.targetSignName] = tick()
+				if tick()-st>0.001 then break end
+			else
+				-- annotate(string.format("\t %d skipping %s", ii, item.targetSignName))
+			end
+		end
+
+		-- if didframe == 0 then
+		-- 	annotate(string.format("all frames arleady updated. in %0.5f.", tick() - st))
+		-- else
+		-- 	annotate(string.format("successfully updated frames %s in %0.5f.", textUtil.stringJoin(',',didframe), tick() - st))
+		-- end
+	end)
 end
 
 local function handleUserSettingChanged(setting: tt.userSettingValue)
@@ -312,11 +413,14 @@ local function handleUserSettingChanged(setting: tt.userSettingValue)
 		if setting.value then
 			if not dynamicRunningEnabled then
 				dynamicRunningEnabled = true
+				setupRenderStepped()
 			end
 		elseif setting.value == false then
 			if dynamicRunningEnabled then
 				--also destroy them all.
 				dynamicRunningEnabled = false
+				renderStepped:Disconnect()
+				annotate("kill renderstepped")
 				module.endDynamic(true)
 			end
 		end
@@ -324,7 +428,7 @@ local function handleUserSettingChanged(setting: tt.userSettingValue)
 end
 
 local init = function()
-	dynamicRunningEvent.OnClientEvent:Connect(handleNewDynamicFrames)
+	dynamicRunningEvent.OnClientEvent:Connect(receiveDynamicRunData)
 	local localFunctions = require(game.ReplicatedStorage.localFunctions)
 
 	--in addition to this, needs to get the original setting to set it locally too.

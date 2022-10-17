@@ -8,7 +8,7 @@ local vscdebug = require(game.ReplicatedStorage.vscdebug)
 
 local TweenService = game:GetService("TweenService")
 local PlayersService = game:GetService("Players")
-local leaderboardButtons = require(game.StarterPlayer.StarterCharacterScripts.leaderboardButtons)
+local leaderboardButtons = require(game.StarterPlayer.StarterCharacterScripts.buttons.leaderboardButtons)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local localPlayer = PlayersService.LocalPlayer
 local StarterPlayer = game:GetService("StarterPlayer")
@@ -174,7 +174,8 @@ local function makeLBHeaderRowFrame(): Frame
 			2,
 			headerFrame,
 			colors.defaultGrey,
-			0
+			0,
+			1
 		)
 		if lbUserCellDescriptor.tooltip ~= "" then
 			toolTip.setupToolTip(localPlayer, el, lbUserCellDescriptor.tooltip, UDim2.fromOffset(300, 40), false)
@@ -280,6 +281,7 @@ local function addUserToLB(userId: number): rowFrameType?
 			img.Name = string.format("%02d.value", lbUserCellDescriptor.num)
 			img.Parent = rowFrame.frame
 			img.BorderMode = Enum.BorderMode.Outline
+			-- img.BorderSizePixel=1
 
 			if false then --disabled user thumbnail mouseover TODO
 				local content2 = thumbnails.getThumbnailContent(userId, Enum.ThumbnailType.HeadShot, 256, 256)
@@ -291,7 +293,7 @@ local function addUserToLB(userId: number): rowFrameType?
 				toolTip.setupToolTip(localPlayer, img, innerImg, UDim2.fromOffset(200, 200), true)
 			end
 			img.BackgroundTransparency = lbEnums.lbTransparency
-			img.BorderSizePixel = 0
+			img.BorderSizePixel = 1
 		else --it's a textlabel whatever we're generating anyway.
 			local tl = guiUtil.getTl(
 				string.format("%02d.value", lbUserCellDescriptor.num),
@@ -299,21 +301,9 @@ local function addUserToLB(userId: number): rowFrameType?
 				2,
 				rowFrame.frame,
 				bgcolor,
-				0
+				1,
+				lbEnums.lbTransparency
 			)
-			if lbUserCellDescriptor.num < 31 then
-				local placeholderTl = guiUtil.getTl(
-					string.format("%02d.value", lbUserCellDescriptor.num + 1),
-					UDim2.new(0, 1, 1, 0),
-					0,
-					rowFrame.frame,
-					colors.defaultGrey,
-					0
-				)
-				placeholderTl.Text = ""
-				placeholderTl.BackgroundTransparency = 1
-				placeholderTl.Parent.BackgroundTransparency = lbEnums.lbTransparency
-			end
 
 			--find text for initial value.
 			--note that depending on what the user does first, userDataFromCache may have missing values.
@@ -337,8 +327,6 @@ local function addUserToLB(userId: number): rowFrameType?
 				end
 				tl.Text = textValue
 			end
-			tl.BackgroundTransparency = 1
-			tl.Parent.BackgroundTransparency = lbEnums.lbTransparency
 		end
 	end
 	lbadderUserIdDebounce[userId] = true
@@ -485,8 +473,8 @@ local function receivedLBUpdateForUser(userData: userData, initial: boolean): ni
 			end
 			--findrank (rank decrease) is always semantically positive
 			if change.key == "findRank" then
-				improvement = true
-				sign = "+"
+				improvement = not improvement
+				sign = ""
 			end
 			if gap ~= 0 then
 				newIntermediateText = newFinalText .. "\n(" .. sign .. gap .. ")"
@@ -499,35 +487,35 @@ local function receivedLBUpdateForUser(userData: userData, initial: boolean): ni
 			2,
 			rowFrame.frame,
 			bgcolor,
-			0
+			1,
+			lbEnums.lbTransparency
 		)
-
-		newTL.BackgroundTransparency = 1
-		newTL.Parent.BackgroundTransparency = lbEnums.lbTransparency
 
 		--phase to new color if needed
 		if newIntermediateText == nil then
 			newTL.Text = newFinalText
 			newTL.BackgroundColor3 = bgcolor
+			newTL.Parent.BackgroundColor3 = bgcolor
 		else
 			if improvement then
 				newTL.BackgroundColor3 = colors.greenGo
+				newTL.Parent.BackgroundColor3 = colors.greenGo
 			else
 				newTL.BackgroundColor3 = colors.lightRed
+				newTL.Parent.BackgroundColor3 = colors.lightRed
 			end
 			newTL.Text = newIntermediateText
 			spawn(function()
 				wait(enums.greenTime)
 				newTL.Text = newFinalText
 			end)
-			local Tween = TweenService:Create(newTL, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
-			Tween:Play()
-			local Tween2 =
+			local tween = TweenService:Create(newTL, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+			tween:Play()
+			local tween2 =
 				TweenService:Create(newTL.Parent, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
-			Tween2:Play()
+			tween2:Play()
 		end
 	end
-	-- annotate("redrawUserLBRow.end")
 end
 
 local function removeUserLBRow(userId: number)
@@ -608,7 +596,7 @@ end
 local function init()
 	game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 	game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
-
+	lbwidth = -6
 	for _, lbUserCellDescriptor in pairs(lbUserCellDescriptors) do
 		lbwidth = lbwidth + lbUserCellDescriptor.width
 	end

@@ -205,6 +205,9 @@ local function userChangedSettingFromUI(userId: number, setting: tt.userSettingV
 	grantBadge.GrantBadge(userId, badgeEnums.badges.TakeSurvey)
 	local ct = 0
 	for _, item: tt.userSettingValue in userSettingsCache[userId] do
+		if item.domain ~= settingEnums.settingDomains.SURVEYS then
+			continue
+		end
 		if item.value ~= nil then
 			ct += 1
 		end

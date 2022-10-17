@@ -34,7 +34,7 @@ module.RemoveFromLeaderboard = function(player: Player)
 end
 
 module.PostJoinToRacers = function(player: Player)
-	--also post in channel that they left.
+	local character = player.Character or player.CharacterAdded:Wait()
 	local statTag = playerdata.getPlayerDescriptionLine(player.UserId)
 	local text = player.Name .. " joined! " .. statTag
 	local options = { ChatColor = colors.greenGo }
@@ -42,7 +42,6 @@ module.PostJoinToRacers = function(player: Player)
 end
 
 module.PostLeaveToRacers = function(player: Player)
-	--also post in channel that they left.
 	local statTag = playerdata.getPlayerDescriptionLine(player.UserId)
 	local text = player.Name .. " left! " .. statTag
 	local options = { ChatColor = colors.redStop }
@@ -50,7 +49,7 @@ module.PostLeaveToRacers = function(player: Player)
 end
 
 local function updateSomeone(player: Player)
-	-- annotate("updateJoinerLeaderboard." .. player.Name .. " charadded")
+	local character = player.Character or player.CharacterAdded:Wait()
 	for _, otherPlayer: Player in ipairs(PlayerService:GetPlayers()) do
 		local stats: tt.afterData_getStatsByUser =
 			playerdata.getPlayerStatsByUserId(otherPlayer.UserId, "update joiner lb")
@@ -62,16 +61,15 @@ module.UpdateOwnLeaderboard = function(player: Player)
 	player.CharacterAdded:Connect(function(_)
 		return updateSomeone(player)
 	end)
-
+	local character = player.Character or player.CharacterAdded:Wait()
 	updateSomeone(player)
 end
 
 local function updateOthersAboutPlayer(player: Player)
 	local stats: tt.afterData_getStatsByUser =
 		playerdata.getPlayerStatsByUserId(player.UserId, "update other about joiner")
-
+	local character = player.Character or player.CharacterAdded:Wait()
 	for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
-		-- annotate("updateOthers " .. otherPlayer.Name .. " => " .. player.Name)
 		lbupdater.updateLeaderboardForJoin(otherPlayer, stats)
 	end
 end

@@ -30,6 +30,8 @@ module.notifyPlayerAboutMarathonResults = function(player: Player, options: tt.p
 end
 
 module.notifyPlayerAboutBadge = function(player: Player, options: tt.badgeOptions)
+	-- print("badge notif")
+	-- print(options)
 	spawn(function()
 		messageReceivedEvent:FireClient(player, options)
 	end)

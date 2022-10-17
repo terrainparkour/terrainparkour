@@ -1,10 +1,8 @@
 --!strict
 
---eval 9.24.22
-
 local notify = require(game.ReplicatedStorage.notify)
 local badges = require(game.ServerScriptService.badges)
-
+local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local config = require(game.ReplicatedStorage.config)
 
 local leaderboardBadgeEvents = require(game.ServerScriptService.leaderboardBadgeEvents)
@@ -15,6 +13,7 @@ local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
 
 local rdb = require(game.ServerScriptService.rdb)
 
+local Players = game:GetService("Players")
 local module = {}
 
 --userid - cached value for has badge.
@@ -45,60 +44,73 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 		return false
 	end
 
-	if config.isInStudio() then
-		badges.setGrantedBadge(userId, badge.assetId)
-		print("in studio, would have granted badge." .. badge.name)
-		spawn(function()
-			-- annotate("saving to remote " .. badge.name)
-			rdb.saveUserBadgeGrant(userId, badge.assetId, badge.name)
-		end)
-		local text: string = "You got the '" .. badge.name .. "' Badge!"
-		local badgeOptions: tt.badgeOptions = { userId = userId, text = text, kind = "badge received" }
-
-		local player = PlayersService:GetPlayerByUserId(userId)
-		notify.notifyPlayerAboutBadge(player, badgeOptions)
-
-		local otherText = userId .. " got badge '" .. badge.name .. "'!"
-		local badgecount = badges.getBadgeCountByUser(userId)
-		for _, otherPlayer in ipairs(PlayersService:GetPlayers()) do
-			--tell everyone about badgecount
-			leaderboardBadgeEvents.updateBadgeLb(userId, otherPlayer, badgecount)
-			if otherPlayer.UserId == userId then
-				continue
-			end
-			notify.notifyPlayerAboutBadge(otherPlayer, { userId = userId, text = otherText, kind = "badge received" })
+	local otherPlayerHasBadgeMap = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player.UserId == userId and not config.isInStudio() then
+			continue
 		end
-		return true
+		otherPlayerHasBadgeMap[player.UserId] = badges.UserHasBadge(player.UserId, badge)
 	end
 
 	--first time per instance, we
 	local res = BadgeService:AwardBadge(userId, badge.assetId)
 	if not res then
-		return false
+		if not config.isInStudio() then
+			return false
+		end
 	end
+
+	local saveBadgeGrantRes = rdb.saveUserBadgeGrant(userId, badge.assetId, badge.name)
 	spawn(function()
-		rdb.saveUserBadgeGrant(userId, badge.assetId, badge.name)
-		-- annotate("save badge. " .. badge.name)
+		if saveBadgeGrantRes.priorAwardCount == 0 and badge.assetId ~= badgeEnums.badges.FirstBadgeWinner.assetId then
+			module.GrantBadge(userId, badgeEnums.badges.FirstBadgeWinner)
+		end
 	end)
 
 	badges.setGrantedBadge(userId, badge.assetId)
-	local text: string = "You got the '" .. badge.name .. "' Badge!"
+	local text: string = string.format(
+		"You were %s to get the '%s' Badge!",
+		tpUtil.getCardinal(saveBadgeGrantRes.priorAwardCount + 1),
+		badge.name
+	)
 	local badgeOptions: tt.badgeOptions = { userId = userId, text = text, kind = "badge received" }
 
 	local player = PlayersService:GetPlayerByUserId(userId)
 	notify.notifyPlayerAboutBadge(player, badgeOptions)
-	local otherText = player.Name .. " got badge '" .. badge.name .. "'!"
-	local badgecount = badges.getBadgeCountByUser(player.UserId)
+
+	local userBadgeCount = badges.getBadgeCountByUser(player.UserId)
 	for _, otherPlayer in ipairs(PlayersService:GetPlayers()) do
-		--tell everyone about badgecount
-		leaderboardBadgeEvents.updateBadgeLb(player.UserId, otherPlayer, badgecount)
-		if otherPlayer.UserId == player.UserId then
+		--tell everyone about badge get
+		local relativeDescriptor = ""
+		if otherPlayer.UserId == player.UserId and not config.isInStudio() then
 			continue
 		end
+		if otherPlayerHasBadgeMap then
+			relativeDescriptor = " which you do not have!"
+			if otherPlayerHasBadgeMap[otherPlayer.UserId] then
+				relativeDescriptor = " which you already have!"
+			end
+		end
+
+		local fakeStudio = ""
+		if config.isInStudio() and otherPlayer.UserId == player.UserId then
+			fakeStudio = "\nFalse other recipient (studio only)"
+		end
+
+		local otherText = string.format(
+			"%s was %s to get badge %s%s%s",
+			player.Name,
+			tpUtil.getCardinal(saveBadgeGrantRes.priorAwardCount + 1),
+			badge.name,
+			relativeDescriptor,
+			fakeStudio
+		)
+		leaderboardBadgeEvents.updateBadgeLb(player.UserId, otherPlayer, userBadgeCount)
+
 		notify.notifyPlayerAboutBadge(otherPlayer, { userId = userId, text = otherText, kind = "badge received" })
 	end
 
-	if badgecount >= 100 then
+	if userBadgeCount >= 100 then
 		module.GrantBadge(userId, badgeEnums.badges.BadgeFor100Badges)
 	end
 

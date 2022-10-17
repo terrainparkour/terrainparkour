@@ -22,7 +22,7 @@ local module = {}
 local settingChangeFunctions: { [string]: (tt.userSettingValue) -> nil } = {}
 module.registerLocalSettingChangeReceiver = function(func: (tt.userSettingValue) -> nil, name: string)
 	if settingChangeFunctions[name] ~= nil then
-		warn("reregistering setting change warning for " .. name)
+		print("reregistering setting change warning for " .. name)
 	end
 	settingChangeFunctions[name] = func
 end

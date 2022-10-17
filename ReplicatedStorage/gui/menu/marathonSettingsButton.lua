@@ -146,7 +146,7 @@ local marathonSettingsButton: gt.actionButton = {
 	getActive = function()
 		return true
 	end,
-	widthPixels = 40,
+	widthPixels = 50,
 }
 
 module.marathonSettingsButton = marathonSettingsButton

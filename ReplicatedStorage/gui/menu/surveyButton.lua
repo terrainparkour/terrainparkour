@@ -117,17 +117,17 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 	local vv = Instance.new("UIListLayout")
 	vv.FillDirection = Enum.FillDirection.Horizontal
 	vv.Parent = headerFrame
-	local tl = guiUtil.getTl("01Type", UDim2.new(0.15, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
+	local tl = guiUtil.getTl("01Type", UDim2.new(0.20, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
 	tl.Text = "Type"
 
-	local tln = guiUtil.getTl("02Name", UDim2.new(0.45, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
+	local tln = guiUtil.getTl("02Name", UDim2.new(0.5, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
 	tln.Text = "Name"
 
 	local tlv = guiUtil.getTl("03Value", UDim2.new(0.3, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
 	tlv.Text = "Value"
 
-	local tlp = guiUtil.getTl("04Others", UDim2.new(0.1, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
-	tlp.Text = "Others?"
+	-- local tlp = guiUtil.getTl("04Others", UDim2.new(0.1, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
+	-- tlp.Text = "Others?"
 
 	--scrolling setting frame
 	local frameName = "02SettingsModal"

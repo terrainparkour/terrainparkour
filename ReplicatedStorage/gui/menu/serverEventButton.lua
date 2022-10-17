@@ -49,14 +49,14 @@ local CreateServerEventButtonClicked = function(localPlayer: Player): ScreenGui
 		sg:Destroy()
 	end)
 	spawn(function()
-		local amt=0.035
+		local amt = 0.035
 		while true do
 			tb.BackgroundTransparency = tb.BackgroundTransparency + amt
 			tb.TextTransparency = tb.TextTransparency + amt
 			outerFrame.BackgroundTransparency = outerFrame.BackgroundTransparency + amt
 			tl.Parent.BackgroundTransparency = tl.Parent.BackgroundTransparency + amt
 			tl.BackgroundTransparency = tl.BackgroundTransparency + amt
-			tl.TextTransparency=tl.TextTransparency+amt
+			tl.TextTransparency = tl.TextTransparency + amt
 			wait(0.01)
 			if tb.BackgroundTransparency >= 1 then
 				break
@@ -75,7 +75,7 @@ local serverEventButton: gt.actionButton = {
 	getActive = function()
 		return true
 	end,
-	widthPixels = 70,
+	widthPixels = 75,
 }
 
 module.serverEventButton = serverEventButton

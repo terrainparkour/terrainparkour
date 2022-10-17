@@ -13,10 +13,6 @@ local particles = require(game.StarterPlayer.StarterPlayerScripts.particles)
 
 local localPlayer = PlayersService.LocalPlayer
 
-local player = game.Players.LocalPlayer
-local Character = player.Character or player.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
-
 local vscdebug = require(game.ReplicatedStorage.vscdebug)
 local doNotCheckInGameIdentifier = require(game.ReplicatedStorage:FindFirstChild("doNotCheckInGameIdentifier"))
 local newMovementActive = doNotCheckInGameIdentifier.useNewMovement()
@@ -100,6 +96,7 @@ end
 
 -- 2022.10.12 converting this to be modifiable
 local function restoreNormalMovement()
+	annotate("restore normal movement.")
 	effectiveRunSpeed = baseRunSpeed
 	effectiveWalkSpeed = baseWalkSpeed
 	effectiveAfterJumpRunSpeed = baseAfterJumpRunSpeed
@@ -110,7 +107,10 @@ local function restoreNormalMovement()
 	orderedSeenFloorTypes = {}
 	seenFloorCount = 0
 	shouldKillFloorMonitor = true
-	HandleNewFloorMaterial(Humanoid.FloorMaterial, true)
+	local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	--important to spam this
+	local humanoid = character:WaitForChild("Humanoid")
+	HandleNewFloorMaterial(humanoid.FloorMaterial, true)
 end
 
 local function setupTerrainMonitor(limit: number)
@@ -152,6 +152,7 @@ local function setupNoGrassMonitor()
 	end)
 end
 
+--for receiving special sign touches which change with movement.
 local function receivedSpeedManipulation(msg: signMovementEnums.movementModeMessage)
 	if msg.action == signMovementEnums.movementModes.RESTORE then
 		restoreNormalMovement()
@@ -181,22 +182,17 @@ local function receivedSpeedManipulation(msg: signMovementEnums.movementModeMess
 	end
 end
 
---note this does NOT fire when you hit a sign!  doh!
-local function SetupFloorChangeMonitor()
-	Humanoid:GetPropertyChangedSignal("FloorMaterial"):Connect(function()
-		HandleNewFloorMaterial(Humanoid.FloorMaterial, false)
-	end)
-end
-
 local function setSpeed(speed: number)
 	if speed == nil then
 		warn("bad speed.")
 		return
 	end
-	if speed ~= game.Players.LocalPlayer.Character.Humanoid.WalkSpeed then
-		local increase = speed > localPlayer.Character.Humanoid.WalkSpeed
-		game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = speed
-		particles.EmitParticle(increase, localPlayer)
+	local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	local humanoid = character:WaitForChild("Humanoid")
+	if speed ~= humanoid.WalkSpeed then
+		local increase = speed > humanoid.WalkSpeed
+		humanoid.WalkSpeed = speed
+		particles.EmitParticle(increase)
 	end
 end
 
@@ -211,9 +207,10 @@ local function recheckMovementProperties()
 	end
 
 	checkSpeedDebounce = true
-
-	if game.Players.LocalPlayer.Character.Humanoid.JumpPower ~= effectiveJumpPower then
-		game.Players.LocalPlayer.Character.Humanoid.JumpPower = effectiveJumpPower
+	local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	local humanoid = character:WaitForChild("Humanoid")
+	if humanoid.JumpPower ~= effectiveJumpPower then
+		humanoid.JumpPower = effectiveJumpPower
 	end
 	if walking then
 		checkSpeedDebounce = false
@@ -306,43 +303,52 @@ function setupKeyboardCommandsForMovement()
 	end)
 end
 
+--note this does NOT fire when you hit a sign!  doh!
+local function SetupFloorChangeMonitor()
+	local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	local humanoid: Humanoid = character:WaitForChild("Humanoid")
+	humanoid:GetPropertyChangedSignal("FloorMaterial"):Connect(function()
+		HandleNewFloorMaterial(humanoid.FloorMaterial, false)
+	end)
+end
+
 local function SetupFloorIsLava()
-	Humanoid:GetPropertyChangedSignal("FloorMaterial"):Connect(function()
-		local fm = Humanoid.FloorMaterial
+	local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	local humanoid: Humanoid = character:WaitForChild("Humanoid")
+	humanoid:GetPropertyChangedSignal("FloorMaterial"):Connect(function()
+		local fm = humanoid.FloorMaterial
 		if fm == Enum.Material.Air then
 			return
 		end
 		if fm == Enum.Material.CrackedLava then
 			reduceSpeed(effectiveAfterLavaRunSpeed, 3.5)
-			localPlayer.Character.Humanoid.Sit = true
-			game.Players.LocalPlayer.Character.Humanoid.JumpPower = 10
+			humanoid.Sit = true
+			humanoid.JumpPower = 10
 		else
-			game.Players.LocalPlayer.Character.Humanoid.JumpPower = 55
+			humanoid.JumpPower = 55
 		end
 	end)
 end
 
 function init()
-	SetupFloorIsLava()
+	localPlayer.CharacterAdded:Connect(SetupFloorIsLava)
+	localPlayer.CharacterAdded:Connect(SetupFloorChangeMonitor)
+	movementEnums.SetWaterMonitoring(localPlayer)
+	localPlayer.CharacterAdded:Connect(restoreNormalMovement)
 
-	SetupFloorChangeMonitor()
-
-	movementEnums.SetWaterMonitoring(localPlayer, function() end)
-
-	particles.SetupParticleEmitter()
-
-	restoreNormalMovement()
-
-	setSpeed(effectiveRunSpeed)
-
+	particles.SetupParticleEmitter(localPlayer)
 	setupKeyboardCommandsForMovement()
 
-	game.Players.LocalPlayer.Character.Humanoid.Jumping:Connect(function()
-		reduceSpeed(effectiveAfterJumpRunSpeed, 3.5)
+	localPlayer.CharacterAdded:Connect(function(character)
+		localPlayer.Character:WaitForChild("Humanoid").Jumping:Connect(function()
+			reduceSpeed(effectiveAfterJumpRunSpeed, 3.5)
+		end)
 	end)
 
-	game.Players.LocalPlayer.Character.Humanoid.Swimming:Connect(function()
-		reduceSpeed(effectiveAfterSwimmingRunSpeed, 4)
+	localPlayer.CharacterAdded:Connect(function(character)
+		localPlayer.Character:WaitForChild("Humanoid").Swimming:Connect(function()
+			reduceSpeed(effectiveAfterSwimmingRunSpeed, 4)
+		end)
 	end)
 
 	movementManipulationBindableEvent.Event:Connect(receivedSpeedManipulation)

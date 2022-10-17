@@ -184,16 +184,23 @@ module.beckon = function(speaker: Player, channel): boolean
 	if #players == 1 then
 		occupancySentence = ""
 	elseif #players == 2 then
-		occupancySentence = "The server has %d other player, too."
+		occupancySentence = string.format("The server has %d other player, too.", #players)
 	else
-		occupancySentence = "The server has %d other players, too."
+		occupancySentence = string.format("The server has %d other players, too.", #players)
 	end
 	local mat = "*unknown material"
 	local hum: Humanoid = speaker.Character:FindFirstChild("Humanoid")
 	if hum ~= nil then
 		mat = hum.FloorMaterial.Name
 	end
-	local msg = string.format("They are standing on %s, %0.0fd from %s.%s", mat, d, s.Name, occupancySentence)
+	local msg = string.format(
+		"%s beckons you to join the server. They are standing on %s, %0.0fd from %s.%s",
+		speaker.Name,
+		mat,
+		d,
+		s.Name,
+		occupancySentence
+	)
 	rdb.beckon(speaker.UserId, msg)
 	sm(channel, speaker.Name .. " beckons distant friends to join.")
 

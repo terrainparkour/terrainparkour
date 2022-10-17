@@ -72,7 +72,7 @@ local modeChangeDebounce = false
 local function getModeChangeLock(kind: string)
 	while modeChangeDebounce do
 		wait(0.05)
-		print("wait for mode lok." .. kind)
+		annotate("wait for mode lok." .. kind)
 	end
 	modeChangeDebounce = true
 	annotate("locked for " .. kind)
@@ -147,7 +147,7 @@ local function updateFloorTouchedTracking(inputSeenTerrainTypesInput: { [number]
 		end
 
 		specialMovementDetails = textUtil.stringJoin(", ", t)
-		print("specialMovementDetails: " .. specialMovementDetails)
+		annotate("specialMovementDetails: " .. specialMovementDetails)
 		forceSendTerrainUpdate = false
 	end
 	modeChangeDebounce = false
@@ -363,14 +363,14 @@ local function setupCharacter()
 	annotate("localtimer init start CA")
 	canDoAnything = true
 
-	local char: Model = localPlayer.Character
-	local hum: Humanoid = char:WaitForChild("Humanoid", 5) :: Humanoid
+	local character: Model = localPlayer.Character
+	local humanoid: Humanoid = character:WaitForChild("Humanoid", 5) :: Humanoid
 
-	hum.Died:Connect(function()
+	humanoid.Died:Connect(function()
 		warper.blockWarping("died")
 	end)
 
-	hum.Touched:Connect(function(hit)
+	humanoid.Touched:Connect(function(hit)
 		if hit.ClassName == "Terrain" then
 			return
 		end
@@ -382,7 +382,7 @@ local function setupCharacter()
 			if signId == nil then
 				return
 			end
-			clientTouchedSign(hum, hit)
+			clientTouchedSign(humanoid, hit)
 		end
 	end)
 	warper.unblockWarping("new char unblock")

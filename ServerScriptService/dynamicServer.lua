@@ -5,6 +5,7 @@ local PlayersService = game:GetService("Players")
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local rdb = require(game.ServerScriptService.rdb)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local config = require(game.ReplicatedStorage.config)
 
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local dynamicRunningEvent = remotes.getRemoteEvent("DynamicRunningEvent") :: RemoteEvent
@@ -94,11 +95,14 @@ local function dynamicControlServer(player: Player, input: tt.dynamicRunningCont
 	local userId = player.UserId
 	activeLoopMarkers[input.userId] = input.fromSignId
 	if input.action == dynamicRunningEnums.ACTIONS.DYNAMIC_START then
+		local getSignCount = 20
+		if config.isInStudio() then
+			getSignCount = 20
+		end
 		spawn(function()
 			local sentSignIds: { [number]: boolean } = {}
 			while true do
 				if activeLoopMarkers[userId] ~= input.fromSignId then
-		
 					break
 				end
 				local pos: Vector3?
@@ -114,7 +118,7 @@ local function dynamicControlServer(player: Player, input: tt.dynamicRunningCont
 					break
 				end
 				assert(pos)
-				local nearest = getNearestSigns(pos, userId, true, 50)
+				local nearest = getNearestSigns(pos, userId, true, getSignCount)
 				local todoSignIds = {}
 				for _, signId in ipairs(nearest) do
 					if signId == input.fromSignId then

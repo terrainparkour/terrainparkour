@@ -67,7 +67,7 @@ local function makeBadgeRowFrame(
 				colors.greenGo,
 				1
 			)
-			restl.Text = "got it"
+			restl.Text = "got"
 		else --progress bar
 			if oAttainment.progress == -1 then
 				local progressinTL, noprogressoutTL = guiUtil.getTl(
@@ -78,7 +78,7 @@ local function makeBadgeRowFrame(
 					colors.redStop,
 					1
 				)
-				progressinTL.Text = "do not have"
+				progressinTL.Text = "nope"
 			else
 				if not badge.baseNumber then
 					warn("Err")

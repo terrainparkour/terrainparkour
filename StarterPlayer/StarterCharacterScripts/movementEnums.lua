@@ -83,38 +83,42 @@ module.GetJumpHeightForFloor = function(activeFloor): number
 end
 
 --aggressively raycast to detect water and make player swim; also do the callback so outer layer knows about it.
-module.SetWaterMonitoring = function(player: Player, waterCb: () -> nil)
-	local character = player.Character
-	local humanoid: Humanoid = character:WaitForChild("Humanoid")
-	local raycastParams = RaycastParams.new()
+module.SetWaterMonitoring = function(player: Player, waterCb: (() -> nil)?)
+	player.CharacterAdded:Connect(function()
+		local character = player.Character or player.CharacterAdded:Wait()
+		local humanoid: Humanoid = character:WaitForChild("Humanoid")
+		local raycastParams = RaycastParams.new()
 
-	raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-	raycastParams.FilterDescendantsInstances = { character }
+		raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+		raycastParams.FilterDescendantsInstances = { character }
 
-	local rootPart = character:FindFirstChild("HumanoidRootPart")
-	spawn(function()
-		while true do
-			local ii = 3.6
-			local result: RaycastResult = nil
+		local rootPart = character:FindFirstChild("HumanoidRootPart")
+		spawn(function()
+			while true do
+				local ii = 3.6
+				local result: RaycastResult = nil
 
-			while ii < 3.8 do
-				result = workspace:Raycast(
-					rootPart.Position,
-					Vector3.new(0, -1 * ii, 0), -- you might need to make this longer/shorter
-					raycastParams
-				)
-				if result ~= nil then
-					if result.Material == Enum.Material.Water then
-						-- print("water landing at dist. " .. tostring(ii))
-						humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
-						waterCb()
-						break
+				while ii < 3.8 do
+					result = workspace:Raycast(
+						rootPart.Position,
+						Vector3.new(0, -1 * ii, 0), -- you might need to make this longer/shorter
+						raycastParams
+					)
+					if result ~= nil then
+						if result.Material == Enum.Material.Water then
+							-- print("water landing at dist. " .. tostring(ii))
+							humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
+							if waterCb then
+								waterCb()
+							end
+							break
+						end
 					end
+					ii += 0.1
 				end
-				ii += 0.1
+				wait(0.05)
 			end
-			wait()
-		end
+		end)
 	end)
 end
 
