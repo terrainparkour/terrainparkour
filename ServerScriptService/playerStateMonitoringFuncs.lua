@@ -11,6 +11,8 @@ local vscdebug = require(game.ReplicatedStorage.vscdebug)
 local rdb = require(game.ServerScriptService.rdb)
 local remoteDbInternal = require(game.ServerScriptService.remoteDbInternal)
 
+local badgeCheckersSecret = require(game.ServerScriptService.badgeCheckersSecret)
+
 local module = {}
 
 local PlayersService = game:GetService("Players")
@@ -21,86 +23,7 @@ module.PreloadFinds = function(player)
 end
 
 module.BackfillBadges = function(player: Player): nil
-	local low = player.Name:lower()
-	local grantBadge = require(game.ServerScriptService.grantBadge)
-	local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
-	--first contest
-	if player.Name == "Feodoric" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.SilverContest)
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.BronzeContest)
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.FirstContestParticipation)
-	end
-
-	if player.Name:lower() == "redekbo" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.FirstContestParticipation)
-	end
-	if player.Name == "MyTolc" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.FirstContestParticipation)
-	end
-
-	if player.Name == "CaringEnthusiast" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.FirstContestParticipation)
-	end
-	if player.Name:lower() == "rocknoids23135" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.FirstContestParticipation)
-	end
-
-	-----------SECOND CONTEST
-	if player.Name == "QuantumGhoost" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.GoldContest)
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.SecondContestParticipation)
-	end
-
-	if player.Name == "ppsuk099" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.SecondContestParticipation)
-	end
-
-	if player.Name == "SoundBoomer" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.SecondContestParticipation)
-	end
-
-	--------------THIRD CONTEST-------------------
-
-	if low == "biosploosh" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.ContestParticipation)
-	end
-	if low == "cupcabinet" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.ContestParticipation)
-	end
-
-	if low == "jakub2032" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.ContestParticipation)
-	end
-
-	if low == "quantumghoost" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.ContestParticipation)
-	end
-
-	if low == "miyanington" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.BronzeContest)
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.ContestParticipation)
-	end
-	if low == "vegetathesaiyan8" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.ContestParticipation)
-	end
-	if low == "quantumghoost" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.ContestParticipation)
-	end
-
-	if low == "miyanington" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.BronzeContest)
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.ContestParticipation)
-	end
-	if low == "vegetathesaiyan8" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.ContestParticipation)
-	end
-
-	--------------Tenth CONTEST (LONG)-------------------
-
-	if low == "epicurious25" or low == "luldafox" or low == "codycolt05" or low == "tohmrtohm" then
-		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.ContestParticipation)
-	end
-	--------------11th CONTEST -------------------
+	badgeCheckersSecret.BackfillBadges(player)
 end
 
 module.LogJoin = function(player: Player): nil
@@ -131,11 +54,11 @@ module.LogLocationOnDeath = function(player: Player)
 	player.CharacterAdded:Connect(function(character)
 		local hum: Humanoid = character:WaitForChild("Humanoid")
 		hum.Died:Connect(function()
-			print("logged die")
+			-- print("logged die")
 			remoteLogDeath(character, player.UserId)
 		end)
 		hum.Destroying:Connect(function()
-			print("logged destruction")
+			-- print("logged destruction")
 			remoteLogDeath(character, player.UserId)
 		end)
 	end)
@@ -163,7 +86,6 @@ end
 -- end
 
 module.LogPlayerLeft = function(player)
-	print("userLeft" .. player.Name)
 	vscdebug.debug()
 	remoteDbInternal.remoteGet("userLeft", { userId = player.UserId })
 end

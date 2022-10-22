@@ -7,6 +7,7 @@
 --eval 9.24.22
 --10.09 bugfixing why this breaks servers
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
+local vscdebug = require(game.ReplicatedStorage.vscdebug)
 local colors = require(game.ReplicatedStorage.util.colors)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
@@ -15,8 +16,10 @@ local dynamicRunningEnums = require(game.ReplicatedStorage.dynamicRunningEnums)
 
 local PlayersService = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local localPlayer: Player = PlayersService.LocalPlayer
-
+repeat
+	game:GetService("RunService").RenderStepped:wait()
+until game.Players.LocalPlayer.Character ~= nil
+local localPlayer = PlayersService.LocalPlayer
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local dynamicRunningEvent = remotes.getRemoteEvent("DynamicRunningEvent") :: RemoteEvent
 local renderStepped
@@ -291,46 +294,40 @@ local function add(dynamicRunFrame: tt.DynamicRunFrame, from)
 end
 
 local function handleOne(dynamicRunFrame: tt.DynamicRunFrame)
-	if dynamicStartTick == 0 then
-		return
-	end
-	-- local st = tick()
-	local tl: TextLabel = tls[dynamicRunFrame.targetSignName]
-	local bbgui: BillboardGui = tl.Parent.Parent
-	local pos = localPlayer.Character.HumanoidRootPart.Position
-	local dist = tpUtil.getDist(bbgui.Parent.Position, pos)
-
-	if dist > bbguiMaxDist then --far away
-		if bbgui.Enabled then
-			bbgui.Enabled = false
-			-- annotate("\tturned off: too far:" .. dynamicRunFrame.targetSignName)
+	local s, e = pcall(function()
+		if dynamicStartTick == 0 then
 			return
 		end
-		-- annotate("\tstayed off: too far:" .. dynamicRunFrame.targetSignName)
-		return
-	else --within region
-		if not bbgui.Enabled then
-			bbgui.Enabled = true
-		end
-	end
+		-- local st = tick()
+		local tl: TextLabel = tls[dynamicRunFrame.targetSignName]
+		local bbgui: BillboardGui = tl.Parent.Parent
+		local pos = localPlayer.Character.HumanoidRootPart.Position
+		vscdebug.debug()
+		local par = bbgui.Parent :: Part
+		local dist = tpUtil.getDist(par.Position, pos)
 
-	local text, color = calculateText(dynamicRunFrame)
-	local changed = false
-	if tl.Text ~= text then
-		tl.Text = text
-		changed = true
-		tl.TextColor3 = color
-	end
-	-- if changed then
-	-- 	annotate(
-	-- 		string.format(
-	-- 			"\tupdate (changed:%s) of %s took %0.7f",
-	-- 			tostring(changed),
-	-- 			dynamicRunFrame.targetSignName,
-	-- 			tick() - st
-	-- 		)
-	-- 	)
-	-- end
+		if dist > bbguiMaxDist then --far away
+			if bbgui.Enabled then
+				bbgui.Enabled = false
+				-- annotate("\tturned off: too far:" .. dynamicRunFrame.targetSignName)
+				return
+			end
+			-- annotate("\tstayed off: too far:" .. dynamicRunFrame.targetSignName)
+			return
+		else --within region
+			if not bbgui.Enabled then
+				bbgui.Enabled = true
+			end
+		end
+
+		local text, color = calculateText(dynamicRunFrame)
+		local changed = false
+		if tl.Text ~= text then
+			tl.Text = text
+			changed = true
+			tl.TextColor3 = color
+		end
+	end)
 end
 
 local function fullReset()
@@ -382,29 +379,14 @@ local function setupRenderStepped()
 			end
 			if tick() - lastupdates[item.targetSignName] >= 0.1 then
 				handleOne(item)
-				-- table.insert(didframe,tostring(ii))
-
-				-- annotate(
-				-- 	string.format(
-				-- 		"\t %d updating cause gap: %0.5f %s",
-				-- 		ii,
-				-- 		st - lastupdates[item.targetSignName],
-				-- 		item.targetSignName
-				-- 	)
-				-- )
-
 				lastupdates[item.targetSignName] = tick()
-				if tick()-st>0.001 then break end
+				if tick() - st > 0.001 then
+					break
+				end
 			else
 				-- annotate(string.format("\t %d skipping %s", ii, item.targetSignName))
 			end
 		end
-
-		-- if didframe == 0 then
-		-- 	annotate(string.format("all frames arleady updated. in %0.5f.", tick() - st))
-		-- else
-		-- 	annotate(string.format("successfully updated frames %s in %0.5f.", textUtil.stringJoin(',',didframe), tick() - st))
-		-- end
 	end)
 end
 

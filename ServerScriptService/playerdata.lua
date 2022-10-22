@@ -125,7 +125,6 @@ local function serverInvokeClickSignRemote(player: Player, signId: number)
 
 	local s2, e2 = pcall(function()
 		signWRLeaderData = module.getSignWRLeader(signId)
-		badgeCheckers.checkBadgeGrantingFromSignWrLeaderData(signWRLeaderData, player.UserId)
 		got = got + 1
 	end)
 
@@ -134,6 +133,7 @@ local function serverInvokeClickSignRemote(player: Player, signId: number)
 		signWRLeaderData = {}
 		got = got + 1
 	end
+	badgeCheckers.checkBadgeGrantingFromSignWrLeaderData(signWRLeaderData, player.UserId)
 
 	while true do
 		if got == 2 then

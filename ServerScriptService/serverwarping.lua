@@ -38,7 +38,7 @@ local function CreateTemporaryLightPillar(pos: Vector3, desc: string)
 	spawn(function()
 		while true do
 			wait(1 / 37)
-			part.Transparency = part.Transparency + 0.015
+			part.Transparency = part.Transparency + 0.009
 			if part.Transparency >= 1 then
 				part:Destroy()
 				break

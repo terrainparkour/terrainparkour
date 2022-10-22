@@ -12,6 +12,7 @@ local enums = require(game.ReplicatedStorage.util.enums)
 
 local PlayersService = game:GetService("Players")
 
+repeat game:GetService("RunService").RenderStepped:wait() until game.Players.LocalPlayer.Character ~= nil
 local localPlayer = PlayersService.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
 

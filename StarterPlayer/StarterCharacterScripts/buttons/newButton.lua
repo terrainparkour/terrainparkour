@@ -2,7 +2,9 @@
 --a button that will pop a UI for showing popular top runs in game
 --eval 9.25.22
 
-local localPlayer = game:GetService("Players").LocalPlayer
+local PlayersService = game:GetService("Players")
+repeat game:GetService("RunService").RenderStepped:wait() until game.Players.LocalPlayer.Character ~= nil
+local localPlayer = PlayersService.LocalPlayer
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local colors = require(game.ReplicatedStorage.util.colors)

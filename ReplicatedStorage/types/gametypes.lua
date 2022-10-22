@@ -207,6 +207,7 @@ export type badgeDescriptor = {
 	badgeClass: string,
 	baseNumber: number?,
 	hint: string?,
+	order: number?,
 }
 
 export type badgeAttainment = {

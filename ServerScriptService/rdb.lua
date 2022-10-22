@@ -115,15 +115,17 @@ module.getUsernameByUserId = function(userId: number)
 			--missing userid escalate to shedletsky
 			userId = 261
 		end
+		local res
 		local s, e = pcall(function()
-			local res = PlayersService:GetNameFromUserIdAsync(userId)
-			playerUsernames[userId] = res
-			return res
+			res = PlayersService:GetNameFromUserIdAsync(userId)
 		end)
 		if not s then
 			warn(e)
 			return "Unknown Username for " .. userId
 		end
+
+		playerUsernames[userId] = res
+		return res
 	end
 
 	return playerUsernames[userId]

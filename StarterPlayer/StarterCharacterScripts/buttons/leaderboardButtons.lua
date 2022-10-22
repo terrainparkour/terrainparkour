@@ -6,6 +6,9 @@
 local PlayersService = game:GetService("Players")
 
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+repeat
+	game:GetService("RunService").RenderStepped:wait()
+until game.Players.LocalPlayer.Character ~= nil
 local localPlayer = PlayersService.LocalPlayer
 local colors = require(game.ReplicatedStorage.util.colors)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
@@ -58,7 +61,8 @@ module.initActionButtons = function(lbframe: Frame, player: Player)
 		--reverse order they're listed in actionButtons above
 		buttonTb.Name = tostring(bignum - ii)
 		buttonTb.BackgroundTransparency = 1
-		buttonTb.Parent.BackgroundTransparency = lbEnums.lbTransparency
+		local par: TextLabel = buttonTb.Parent
+		par.BackgroundTransparency = lbEnums.lbTransparency
 
 		buttonTb.Activated:Connect(function()
 			spawn(function()

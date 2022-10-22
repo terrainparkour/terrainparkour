@@ -16,7 +16,7 @@ local playerAddFuncs: { storedFunc } = {}
 local playerRemovingFuncs: { storedFunc } = {}
 
 local doAnnotation = false
-doAnnotation = true
+-- doAnnotation = true
 local annotationStart = tick()
 local function annotate(s: string)
 	if doAnnotation then
@@ -78,10 +78,9 @@ module.init = function()
 
 	PlayersService.PlayerRemoving:Connect(applyPlayerRemovingFuncs)
 
+	--players 100% gone by this point but whatever.
 	game:BindToClose(function()
-		print("BIND")
 		for _, player in pairs(game.Players:GetPlayers()) do
-			player:Kick() -- Apparently so that it fires the PlayerRemoving function?
 			for _, func in ipairs(playerRemovingFuncs) do
 				print("calling final server close: " .. func.name .. " on " .. player.Name)
 				func.func(player)

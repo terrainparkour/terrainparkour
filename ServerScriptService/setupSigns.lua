@@ -11,6 +11,7 @@ local notify = require(game.ReplicatedStorage.notify)
 local signInfo = require(game.ReplicatedStorage.signInfo)
 local colors = require(game.ReplicatedStorage.util.colors)
 local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
+local signEnums = require(game.ReplicatedStorage.enums.signEnums)
 
 local banning = require(game.ServerScriptService.banning)
 local rdb = require(game.ServerScriptService.rdb)
@@ -151,54 +152,15 @@ module.touchedSign = function(player: Player, sign: Part, theHitTick: number)
 	--ah, the hits are still being processed when this rolls out!
 end
 
---dump this into command bar to fix all edit-time signs.
-if false then
-	for _, part: Part in ipairs(game.Workspace:FindFirstChild("Signs"):GetChildren()) do
-		part.Material = Enum.Material.Granite
-		part.Color = Color3.fromRGB(255, 89, 89)
-		local sguiName = "SignGui_" .. part.Name
-		local sGui = part:FindFirstChildOfClass("SurfaceGui")
-		if sGui ~= nil then
-			sGui:Destroy()
-		end
-
-		sGui = Instance.new("SurfaceGui")
-		sGui.Name = sguiName
-		sGui.Parent = part
-
-		local canvasSize = Vector2.new(part.Size.Z * 30, part.Size.X * 30)
-		sGui.CanvasSize = canvasSize
-		sGui.Face = Enum.NormalId.Top
-		sGui.Brightness = 1.5
-
-		sGui.Parent.TopSurface = Enum.SurfaceType.Smooth
-		sGui.Parent.BottomSurface = Enum.SurfaceType.Smooth
-		sGui.Parent.LeftSurface = Enum.SurfaceType.Smooth
-		sGui.Parent.RightSurface = Enum.SurfaceType.Smooth
-		sGui.Parent.FrontSurface = Enum.SurfaceType.Smooth
-		sGui.Parent.BackSurface = Enum.SurfaceType.Smooth
-
-		local textLabel = sGui:FindFirstChildOfClass("TextLabel")
-		if textLabel ~= nil then
-			textLabel:Destroy()
-		end
-
-		textLabel = Instance.new("TextLabel")
-		textLabel.Parent = sGui
-		textLabel.AutoLocalize = false
-		textLabel.Text = part.Name
-		textLabel.Font = Enum.Font.Gotham
-		textLabel.BackgroundTransparency = 1
-		textLabel.Size = UDim2.new(1, 0, 1, 0)
-		textLabel.TextScaled = true
-		textLabel.RichText = true
-		textLabel.TextColor3 = Color3.fromRGB(255, 240, 241)
-		part.Anchored = true
-	end
-end
+local useLeftFaceSignNames = { ["cOld mOld on a sLate pLate"] = 1, ["Tetromino"] = 2 }
 
 local function SetupSignVisually(part: Part)
-	part.Material = Enum.Material.Granite
+	if part.Name == signEnums.signs.COLD_MOLD then
+		part.Material = Enum.Material.Slate
+	else
+		part.Material = Enum.Material.Granite
+	end
+
 	part.Color = Color3.fromRGB(255, 89, 89)
 	local sguiName = "SignGui_" .. part.Name
 	local sGui = part:FindFirstChild(sguiName)
@@ -208,9 +170,16 @@ local function SetupSignVisually(part: Part)
 		sGui.Parent = part
 	end
 
-	local canvasSize = Vector2.new(part.Size.Z * 30, part.Size.X * 30)
+	local canvasSize: Vector2
+
+	if useLeftFaceSignNames[part.Name] then
+		canvasSize = Vector2.new(part.Size.Y * 30, part.Size.X * 30)
+		sGui.Face = Enum.NormalId.Left
+	else
+		canvasSize = Vector2.new(part.Size.Z * 30, part.Size.X * 30)
+		sGui.Face = Enum.NormalId.Top
+	end
 	sGui.CanvasSize = canvasSize
-	sGui.Face = Enum.NormalId.Top
 	sGui.Brightness = 1.5
 
 	sGui.Parent.TopSurface = Enum.SurfaceType.Smooth
@@ -220,13 +189,16 @@ local function SetupSignVisually(part: Part)
 	sGui.Parent.FrontSurface = Enum.SurfaceType.Smooth
 	sGui.Parent.BackSurface = Enum.SurfaceType.Smooth
 
-	local textLabel = part:FindFirstChild(part.Name)
-	if textLabel == nil then
-		textLabel = Instance.new("TextLabel")
-		textLabel.Parent = sGui
+	local children = sGui:GetChildren()
+	for _, c in ipairs(children) do
+		if c:IsA("TextLabel") then
+			c:Destroy()
+		end
 	end
 
-	textLabel.AutoLocalize = false
+	local textLabel = Instance.new("TextLabel")
+	textLabel.Parent = sGui
+	textLabel.AutoLocalize = true
 	textLabel.Text = part.Name
 	textLabel.Font = Enum.Font.Gotham
 	textLabel.BackgroundTransparency = 1

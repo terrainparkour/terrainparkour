@@ -4,6 +4,7 @@
 --drawers for serverEvent rows of LB
 
 local PlayersService = game:GetService("Players")
+repeat game:GetService("RunService").RenderStepped:wait() until game.Players.LocalPlayer.Character ~= nil
 local localPlayer = PlayersService.LocalPlayer
 local enums = require(game.ReplicatedStorage.util.enums)
 local tt = require(game.ReplicatedStorage.types.gametypes)
@@ -234,6 +235,7 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 		1,
 		1
 	)
+	local par = summaryTile.Parent::TextLabel
 
 	summaryTile.Text = "    "
 	local ii = 1
@@ -263,7 +265,7 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 			ii += 1
 			placeUsedWidth += useWidth
 		end
-		summaryTile.Parent.Size = UDim2.fromScale(1 - placeUsedWidth, 1)
+		par.Size = UDim2.fromScale(1 - placeUsedWidth, 1)
 	end
 
 	return frame

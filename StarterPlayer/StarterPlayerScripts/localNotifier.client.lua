@@ -12,8 +12,9 @@ local findResultsCreator = require(game.ReplicatedStorage.gui.runresults.findGui
 local ephemeralNotifications = require(game.ReplicatedStorage.gui.ephemeralNotificationCreator)
 
 local PlayersService = game:GetService("Players")
-
+repeat game:GetService("RunService").RenderStepped:wait() until game.Players.LocalPlayer.Character ~= nil
 local localPlayer = PlayersService.LocalPlayer
+
 local playerGui = localPlayer:WaitForChild("PlayerGui")
 local warper = require(game.ReplicatedStorage.warper)
 type legacyOptions = {}

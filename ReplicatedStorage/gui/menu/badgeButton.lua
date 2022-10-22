@@ -15,6 +15,8 @@ local badgeAttainmentsFunction = remotes.getRemoteFunction("BadgeAttainmentsFunc
 
 local module = {}
 
+local sectionWidthsScale = { type = 0.2, badge = 0.4, people = 0.4 }
+
 local function makeBadgeRowFrame(
 	localPlayer: Player,
 	badge: tt.badgeDescriptor,
@@ -29,14 +31,14 @@ local function makeBadgeRowFrame(
 	vv.FillDirection = Enum.FillDirection.Horizontal
 	vv.SortOrder = Enum.SortOrder.Name
 	vv.Parent = fr
-	local label = guiUtil.getTl("00label", UDim2.new(0.2, 0, 1, 0), 1, fr, colors.defaultGrey, 1)
+	local label = guiUtil.getTl("00label", UDim2.new(sectionWidthsScale.type, 0, 1, 0), 1, fr, colors.defaultGrey, 1)
 	-- label.TextScaled = false
 
 	label.Text = badge.badgeClass
 	-- label.FontSize = Enum.FontSize.Size12
 	label.TextXAlignment = Enum.TextXAlignment.Center
 	label.TextYAlignment = Enum.TextYAlignment.Center
-	local tl = guiUtil.getTl("01badgename", UDim2.new(0.4, 0, 1, 0), 2, fr, colors.defaultGrey, 1)
+	local tl = guiUtil.getTl("01badgename", UDim2.new(sectionWidthsScale.badge, 0, 1, 0), 2, fr, colors.defaultGrey, 1)
 
 	tl.Text = badge.name
 	toolTip.setupToolTip(localPlayer, tl, badge.hint, toolTip.enum.toolTipSize.NormalText)
@@ -45,7 +47,7 @@ local function makeBadgeRowFrame(
 
 	local subFrame = Instance.new("Frame")
 	subFrame.Name = "03_subframe" .. badge.name
-	subFrame.Size = UDim2.new(0.4, 0, 1, 0)
+	subFrame.Size = UDim2.new(sectionWidthsScale.people, 0, 1, 0)
 	subFrame.Parent = fr
 	local hh = Instance.new("UIListLayout")
 	hh.FillDirection = Enum.FillDirection.Horizontal
@@ -94,8 +96,8 @@ local function makeBadgeRowFrame(
 				local fsize = UDim2.new(oAttainment.progress / badge.baseNumber, 0, 1, 0)
 				local esize = UDim2.new(remaining / badge.baseNumber, 0, 1, 0)
 
-				local filled = guiUtil.getTl("02filled", fsize, 0, prog, colors.greenGo, 1)
-				local empty = guiUtil.getTl("03empty", esize, 0, prog, colors.redStop, 1)
+				local filled = guiUtil.getTl("02filled", fsize, 1, prog, colors.greenGo, 1)
+				local empty = guiUtil.getTl("03empty", esize, 1, prog, colors.redStop, 1)
 				filled.Text = tostring(oAttainment.progress)
 				empty.Text = tostring(remaining)
 			end
@@ -106,7 +108,6 @@ local function makeBadgeRowFrame(
 end
 
 getBadgeStatusModal = function(localPlayer: Player): ScreenGui
-	local userId = localPlayer.UserId
 	local sg = Instance.new("ScreenGui")
 	sg.Name = "badgeStatusFrame"
 
@@ -123,20 +124,34 @@ getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	local headerFrame = Instance.new("Frame")
 	headerFrame.Parent = outerFrame
 	headerFrame.Name = "02badgeHeader"
-	headerFrame.Size = UDim2.new(1, 0, 0, 60)
+	headerFrame.Size = UDim2.new(1, -10, 0, 60)
 	local vv = Instance.new("UIListLayout")
 	vv.FillDirection = Enum.FillDirection.Horizontal
 	vv.Parent = headerFrame
-	local tl = guiUtil.getTl("1", UDim2.new(0.2, 0, 1, 0), 4, headerFrame, colors.blueDone, 1)
+	local tl = guiUtil.getTl(
+		"1",
+		UDim2.new(sectionWidthsScale.type, sectionWidthsScale.type * 10, 1, 0),
+		4,
+		headerFrame,
+		colors.blueDone,
+		1
+	)
 	tl.Text = "Type"
 
-	local tl = guiUtil.getTl("2", UDim2.new(0.4, 0, 1, 0), 4, headerFrame, colors.blueDone, 1)
+	local tl = guiUtil.getTl(
+		"2",
+		UDim2.new(sectionWidthsScale.badge, sectionWidthsScale.badge * 10, 1, 0),
+		4,
+		headerFrame,
+		colors.blueDone,
+		1
+	)
 	tl.Text = "Badge"
 
 	local usernameSection = Instance.new("Frame")
 	usernameSection.Name = "3.header.username"
 	usernameSection.Parent = headerFrame
-	usernameSection.Size = UDim2.new(0.4, 0, 1, 0)
+	usernameSection.Size = UDim2.new(sectionWidthsScale.people, sectionWidthsScale.people * 10, 1, 0)
 	local hh = Instance.new("UIListLayout")
 	hh.Parent = usernameSection
 	hh.FillDirection = Enum.FillDirection.Horizontal
@@ -146,7 +161,7 @@ getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	local orderedUserIdsInServer: { number } = { localPlayer.UserId }
 
 	--fill in with other players.
-	for ii, player in ipairs(PlayersService:GetPlayers()) do
+	for _, player in ipairs(PlayersService:GetPlayers()) do
 		if player.UserId ~= localPlayer.UserId then
 			table.insert(orderedUserIdsInServer, player.UserId)
 		end
@@ -155,6 +170,8 @@ getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	local playerCount = #orderedUserIdsInServer
 
 	--make labels
+	local perPlayerWidthScale = 1 / playerCount
+	local perPlayerWidthHidePixel = -1 / playerCount*10
 	for ii, userId in ipairs(orderedUserIdsInServer) do
 		local username = "usernameFor" .. tostring(userId)
 		local s, e = pcall(function()
@@ -170,17 +187,29 @@ getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 		if userId == localPlayer.UserId then
 			useColor = colors.meColor
 		end
-		local chip = guiUtil.getTl(
-			string.format("%02d", ii) .. username,
-			UDim2.new(1 / playerCount, -1 * 10 / playerCount, 1, 0),
-			1,
-			usernameSection,
-			useColor,
-			1
-		)
-		chip.Text = username
-		local par = chip.Parent :: TextLabel
+		local frame = Instance.new("Frame")
+		local hh = Instance.new("UIListLayout")
+		hh.Parent = frame
+		hh.FillDirection = Enum.FillDirection.Horizontal
+		
+		frame.Name = "badges-UserSection-Header-" .. username
+		frame.Size = UDim2.new(perPlayerWidthScale, perPlayerWidthHidePixel, 1, 0)
+		frame.Parent = usernameSection
+
+		local usernameChip =
+			guiUtil.getTl(string.format("%02d", ii) .. username, UDim2.new(0.8, 0, 1, 0), 1, frame, useColor, 1)
+		usernameChip.Text = username
+		local par = usernameChip.Parent :: TextLabel
 		par.AutomaticSize = Enum.AutomaticSize.X
+		local thumbnails = require(game.ReplicatedStorage.thumbnails)
+		local img = Instance.new("ImageLabel")
+		img.Size = UDim2.new(0.2, 0, 1, 0)
+		local content = thumbnails.getThumbnailContent(userId, Enum.ThumbnailType.HeadShot)
+		img.Image = content
+		img.BackgroundColor3 = useColor
+		img.Name = string.format("02.%s.badgePortrait", username)
+		img.Parent = frame
+		img.BorderMode = Enum.BorderMode.Outline
 	end
 	local badgeInfo: { [number]: { tt.badgeAttainment } } =
 		badgeAttainmentsFunction:InvokeServer(orderedUserIdsInServer, "badgeButtonSetup.")

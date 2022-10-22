@@ -3,7 +3,9 @@
 --eval 9.25.22
 --a button that will pop a current contest, if any exists.
 
-local localPlayer = game:GetService("Players").LocalPlayer
+repeat game:GetService("RunService").RenderStepped:wait() until game.Players.LocalPlayer.Character ~= nil
+local PlayersService = game:GetService("Players")
+local localPlayer = PlayersService.LocalPlayer
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local colors = require(game.ReplicatedStorage.util.colors)

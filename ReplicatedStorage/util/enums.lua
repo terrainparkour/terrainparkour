@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.198-fixes October 16 2022"
+module.gameVersion = "1.204 October 22 2022"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -515,6 +515,7 @@ local name2signId: { [string]: number } = {
 	["Fosbury"] = 503,
 	["Tetromino"] = 504,
 	["Keep Off the Grass"] = 505,
+	["cOld mOld on a sLate pLate"] = 506,
 	-- ["Kazumura"]=502,
 }
 
@@ -692,7 +693,12 @@ local releaseNotes: { [number]: string } = {
 * Warning: disable dynamic running if you have performance problems with it
 ]],
 	[198] = [[* Bugfixes for resetting
-* fix dynamic running efficiency]],
+* fix dynamic running efficiency
+* fix beckon terminology
+* redo movement setup (?)
+]],
+[202]=[[* Various bugfixes]],
+[203]=[[* Sign lore badge]],
 }
 
 module.releaseNotes = releaseNotes

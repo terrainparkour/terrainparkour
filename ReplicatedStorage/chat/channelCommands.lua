@@ -184,9 +184,9 @@ module.beckon = function(speaker: Player, channel): boolean
 	if #players == 1 then
 		occupancySentence = ""
 	elseif #players == 2 then
-		occupancySentence = string.format("The server has %d other player, too.", #players)
+		occupancySentence = string.format(" The server has 1 other player, too.")
 	else
-		occupancySentence = string.format("The server has %d other players, too.", #players)
+		occupancySentence = string.format(" The server has %d other players, too.", #players)
 	end
 	local mat = "*unknown material"
 	local hum: Humanoid = speaker.Character:FindFirstChild("Humanoid")

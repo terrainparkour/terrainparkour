@@ -45,6 +45,7 @@ module.getTl = function(
 	innerTl.Position = UDim2.new(0, padding, 0, padding)
 	innerTl.BackgroundColor3 = bgcolor
 	innerTl.BorderSizePixel = 0
+	innerTl.AutoLocalize=true
 	if transparency ~= 0 then
 		innerTl.BackgroundTransparency = 1
 	end

@@ -34,15 +34,8 @@ local function getPositionByUserId(userId: number): Vector3?
 		return nil
 	end
 
-	local char = player.Character
-	if char == nil then
-		return nil
-	end
-	local hum: Humanoid? = char:FindFirstChild("Humanoid")
-	if hum == nil then
-		return nil
-	end
-	local rootPart: Part? = char:FindFirstChild("HumanoidRootPart")
+	local character = player.Character or player.CharacterAdded:Wait()
+	local rootPart: Part? = character:FindFirstChild("HumanoidRootPart")
 	if rootPart == nil then
 		return nil
 	end

@@ -74,7 +74,8 @@ module.setupToolTip = function(
 			tl.Font = Enum.Font.Gotham
 			tl.TextXAlignment = xalignment
 			tl.TextYAlignment = Enum.TextYAlignment.Top
-			tl.Parent.ZIndex = 400
+			local par:TextLabel=tl.Parent
+			par.ZIndex = 400
 			tl.ZIndex = 500
 		else --image tooltips not working so well.
 			local s, e = pcall(function()

@@ -12,8 +12,8 @@ function setupBanMonitor()
 	spawn(function()
 		while true do
 			local lastBanLevel = 0
-			local re = require(game.ReplicatedStorage.util.remotes)
-			local getBanStatusRemoteFunction = re.getRemoteFunction("GetBanStatusRemoteFunction")
+			local remotes = require(game.ReplicatedStorage.util.remotes)
+			local getBanStatusRemoteFunction = remotes.getRemoteFunction("GetBanStatusRemoteFunction")
 			if getBanStatusRemoteFunction then
 				local banLevel = getBanStatusRemoteFunction:InvokeServer()
 				if banLevel ~= nil then

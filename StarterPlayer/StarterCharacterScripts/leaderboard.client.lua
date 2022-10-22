@@ -10,6 +10,9 @@ local TweenService = game:GetService("TweenService")
 local PlayersService = game:GetService("Players")
 local leaderboardButtons = require(game.StarterPlayer.StarterCharacterScripts.buttons.leaderboardButtons)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+repeat
+	game:GetService("RunService").RenderStepped:wait()
+until game.Players.LocalPlayer.Character ~= nil
 local localPlayer = PlayersService.LocalPlayer
 local StarterPlayer = game:GetService("StarterPlayer")
 
@@ -185,8 +188,8 @@ local function makeLBHeaderRowFrame(): Frame
 		el.TextXAlignment = Enum.TextXAlignment.Center
 		el.TextYAlignment = Enum.TextYAlignment.Center
 		-- if lbUserCellDescriptor.name == "portrait" or lbUserCellDescriptor.name == "username" then
-		el.BackgroundTransparency = 1
-		el.Parent.BackgroundTransparency = 1
+		el.BackgroundTransparency = 1;
+		(el.Parent :: TextLabel).BackgroundTransparency = 1
 		-- end
 	end
 	return headerFrame
@@ -490,19 +493,20 @@ local function receivedLBUpdateForUser(userData: userData, initial: boolean): ni
 			1,
 			lbEnums.lbTransparency
 		)
-
+		local par = newTL.Parent::TextLabel
 		--phase to new color if needed
 		if newIntermediateText == nil then
 			newTL.Text = newFinalText
 			newTL.BackgroundColor3 = bgcolor
-			newTL.Parent.BackgroundColor3 = bgcolor
+			
+			par.BackgroundColor3 = bgcolor
 		else
 			if improvement then
 				newTL.BackgroundColor3 = colors.greenGo
-				newTL.Parent.BackgroundColor3 = colors.greenGo
+				par.BackgroundColor3 = colors.greenGo
 			else
 				newTL.BackgroundColor3 = colors.lightRed
-				newTL.Parent.BackgroundColor3 = colors.lightRed
+				par.BackgroundColor3 = colors.lightRed
 			end
 			newTL.Text = newIntermediateText
 			spawn(function()

@@ -123,7 +123,6 @@ local function setupKiller()
 					local s, e = pcall(function()
 						local res = endServerEvent(serverEvent)
 						if not res then
-							vscdebug.debug()
 							endServerEvent(serverEvent)
 						end
 					end)

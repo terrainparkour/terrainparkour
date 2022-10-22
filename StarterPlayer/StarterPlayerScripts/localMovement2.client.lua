@@ -4,17 +4,19 @@
 
 local movementEnums = require(game.StarterPlayer.StarterCharacterScripts.movementEnums)
 local speedEvents = require(game.StarterPlayer.StarterCharacterScripts.speedEvents)
-local particles = require(game.ReplicatedStorage.particles)
+local particles = require(game.StarterPlayer.StarterPlayerScripts.particles)
 local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local PlayersService = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
-local localplayer = PlayersService.LocalPlayer
+repeat
+	game:GetService("RunService").RenderStepped:wait()
+until game.Players.LocalPlayer.Character ~= nil
+local localPlayer = PlayersService.LocalPlayer
 
-local player = game.Players.LocalPlayer
-local Character = player.Character or player.CharacterAdded:Wait()
+local Character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 
 local doNotCheckInGameIdentifier = require(game.ReplicatedStorage:FindFirstChild("doNotCheckInGameIdentifier"))
@@ -56,7 +58,7 @@ local checkSpeedDebounce = false
 
 local function setupSpd(): TextLabel
 	local spd = Instance.new("ScreenGui")
-	spd.Parent = localplayer.PlayerGui
+	spd.Parent = localPlayer.PlayerGui
 	spd.Name = "PlayerSpeedScreenGui"
 	local fr = Instance.new("Frame", spd)
 	fr.Size = UDim2.new(0.2, 0, 0.05, 0)
@@ -85,9 +87,8 @@ local changedFloor = false
 --AND set universal fake physical properties for just this local player to say
 local function SetupFloorChangeMonitor()
 	Humanoid:GetPropertyChangedSignal("FloorMaterial"):Connect(function()
-		local st = tick()
 		local fm = Humanoid.FloorMaterial
-		print("floor is: " .. tostring(fm))
+		local st = tick()
 		if fm == nil then
 			return
 		end
@@ -104,7 +105,7 @@ local function SetupFloorChangeMonitor()
 		local senumnum = nil
 		if fm == Enum.Material.CrackedLava then
 			senumnum = movementEnums.SpeedEventName2Id.LAVA
-			localplayer.Character.Humanoid.Sit = true
+			localPlayer.Character.Humanoid.Sit = true
 		elseif fm == Enum.Material.Air then
 			senumnum = movementEnums.SpeedEventName2Id.GETAIR
 		end
@@ -134,7 +135,7 @@ local function setSpeed(spd: number, acc: { string }): nil
 	if spd ~= game.Players.LocalPlayer.Character.Humanoid.WalkSpeed then
 		local increase = spd - game.Players.LocalPlayer.Character.Humanoid.WalkSpeed
 		game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = spd
-		particles.EmitParticle(localplayer, increase)
+		particles.EmitParticle(increase > 0)
 
 		local joined = textUtil.stringJoin(",", acc)
 		if #acc then
@@ -180,7 +181,7 @@ local function reCheckSpeed(): nil
 	--TODO: badges for high speeds.
 
 	local adder = 0
-	local pos = localplayer.Character.HumanoidRootPart.Position
+	local pos = localPlayer.Character.HumanoidRootPart.Position
 	local rise = pos.Y - lastPos.Y
 
 	local acc: { string } = {}
@@ -334,7 +335,7 @@ function init()
 
 	SetupFloorChangeMonitor()
 
-	movementEnums.SetWaterMonitoring(localplayer, function()
+	movementEnums.SetWaterMonitoring(localPlayer, function()
 		speedEvents.addEvent({ type = movementEnums.SpeedEventName2Id.WATER, timems = tick() })
 	end)
 

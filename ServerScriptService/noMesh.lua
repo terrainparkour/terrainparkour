@@ -15,6 +15,7 @@ local function handle(character)
 			if hum ~= nil then
 				break
 			end
+			print("W")
 			wait(0.1)
 		end
 

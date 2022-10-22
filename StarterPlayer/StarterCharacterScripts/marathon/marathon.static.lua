@@ -8,7 +8,8 @@ local colors = require(game.ReplicatedStorage.util.colors)
 local mt = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonTypes)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 
-local localPlayer = game:GetService("Players").LocalPlayer
+local PlayersService = game:GetService("Players")
+local localPlayer = PlayersService.LocalPlayer
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 
 local doAnnotation = false

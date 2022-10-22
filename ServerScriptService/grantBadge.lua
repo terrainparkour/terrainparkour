@@ -68,6 +68,9 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 	end)
 
 	badges.setGrantedBadge(userId, badge.assetId)
+	if not saveBadgeGrantRes.priorAwardCount and config.isInStudio then
+		saveBadgeGrantRes.priorAwardCount = 0
+	end
 	local text: string = string.format(
 		"You were %s to get the '%s' Badge!",
 		tpUtil.getCardinal(saveBadgeGrantRes.priorAwardCount + 1),

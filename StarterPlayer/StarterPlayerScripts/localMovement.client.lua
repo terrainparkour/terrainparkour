@@ -6,6 +6,8 @@
 local movementEnums = require(game.StarterPlayer.StarterCharacterScripts.movementEnums)
 local signMovementEnums = require(game.ReplicatedStorage.enums.signMovementEnums)
 
+local colors = require(game.ReplicatedStorage.util.colors)
+
 local PlayersService = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local remotes = require(game.ReplicatedStorage.util.remotes)
@@ -31,7 +33,7 @@ local doAnnotation = false
 	or localPlayer.Name == "Player2"
 	or localPlayer.Name == "Player1"
 doAnnotation = false
--- doAnnotation = false
+-- doAnnotation = true
 local annotationStart = tick()
 local function annotate(s: string | any)
 	if doAnnotation then
@@ -61,6 +63,7 @@ local effectiveAfterLavaRunSpeed = 32
 local effectiveJumpPower = 55
 
 local seenTerrainFloorTypes: { [string]: boolean } = {}
+local seenTerrainFloorCounts: { [string]: number } = {}
 local seenFloorCount = 0
 local orderedSeenFloorTypes = {}
 local runKiller = remotes.getBindableEvent("KillClientRunBindableEvent")
@@ -77,13 +80,24 @@ local function HandleNewFloorMaterial(fm, special: boolean)
 	if fm == Enum.Material.Air then
 		return
 	end
-
+	local last = orderedSeenFloorTypes[#orderedSeenFloorTypes]
+	if last == nil then
+		seenTerrainFloorCounts[fm.Name] = 1
+	end
+	if last ~= nil and fm.Name ~= last then
+		if not seenTerrainFloorCounts[fm.Name] then
+			seenTerrainFloorCounts[fm.Name] = 1
+		else
+			seenTerrainFloorCounts[fm.Name] = seenTerrainFloorCounts[fm.Name] + 1
+		end
+	end
 	if not seenTerrainFloorTypes[fm.Name] and not nonMaterialEnumTypes[fm.Value] then
 		seenTerrainFloorTypes[fm.Name] = true
 		seenFloorCount += 1
 		annotate(fm.Name)
 		annotate(seenTerrainFloorTypes)
 		annotate(seenFloorCount)
+		annotate(seenTerrainFloorCounts)
 		table.insert(orderedSeenFloorTypes, fm.Name)
 
 		if special then
@@ -104,6 +118,7 @@ local function restoreNormalMovement()
 	effectiveAfterLavaRunSpeed = baseAfterLavaRunSpeed
 	effectiveJumpPower = baseJumpPower
 	seenTerrainFloorTypes = {}
+	seenTerrainFloorCounts = {}
 	orderedSeenFloorTypes = {}
 	seenFloorCount = 0
 	shouldKillFloorMonitor = true
@@ -152,6 +167,38 @@ local function setupNoGrassMonitor()
 	end)
 end
 
+local function setupMold()
+	local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	local bc: BodyColors = character:FindFirstChild("BodyColors")
+	if bc == nil then
+		bc = Instance.new("BodyColors")
+		bc.Parent = character
+	end
+
+	bc.HeadColor3 = colors.white
+	bc.LeftArmColor3 = colors.white
+	bc.RightArmColor3 = colors.white
+	bc.LeftLegColor3 = colors.white
+	bc.RightLegColor3 = colors.white
+	bc.TorsoColor3 = colors.white
+
+	shouldKillFloorMonitor = false
+	spawn(function()
+		while true do
+			if shouldKillFloorMonitor then
+				break
+			end
+			wait(0.1)
+			for k, num in pairs(seenTerrainFloorCounts) do
+				if num > 1 then
+					runKiller:Fire("don't touch terrain twice")
+					break
+				end
+			end
+		end
+	end)
+end
+
 --for receiving special sign touches which change with movement.
 local function receivedSpeedManipulation(msg: signMovementEnums.movementModeMessage)
 	if msg.action == signMovementEnums.movementModes.RESTORE then
@@ -165,6 +212,12 @@ local function receivedSpeedManipulation(msg: signMovementEnums.movementModeMess
 	elseif msg.action == signMovementEnums.movementModes.THREETERRAIN then
 		restoreNormalMovement()
 		setupTerrainMonitor(3)
+	elseif msg.action == signMovementEnums.movementModes.COLDMOLD then
+		restoreNormalMovement()
+		effectiveAfterSwimmingRunSpeed = 94
+		effectiveAfterLavaRunSpeed = 70
+		effectiveRunSpeed = 45
+		setupMold()
 	elseif msg.action == signMovementEnums.movementModes.FOURTERRAIN then
 		restoreNormalMovement()
 		setupTerrainMonitor(4)
@@ -249,13 +302,15 @@ local function recheckMovementProperties()
 		checkSpeedDebounce = false
 		return
 	end
+
 	setSpeed(minFound)
 	checkSpeedDebounce = false
 end
 
 --reduce player speed for a time based on contact.
-local function reduceSpeed(targetSpeed: number, waitTime: number): nil
+local function reduceSpeed(func: () -> number, waitTime: number): nil
 	local now = tick()
+	local targetSpeed = func()
 	local deadline = now + waitTime
 	if speedLimitsByTime[deadline] ~= nil then
 		warn("should not happen.")
@@ -263,7 +318,7 @@ local function reduceSpeed(targetSpeed: number, waitTime: number): nil
 		recheckMovementProperties()
 		return
 	end
-	speedLimitsByTime[deadline] = targetSpeed
+	speedLimitsByTime[deadline] = func()
 	recheckMovementProperties()
 	return
 end
@@ -317,11 +372,14 @@ local function SetupFloorIsLava()
 	local humanoid: Humanoid = character:WaitForChild("Humanoid")
 	humanoid:GetPropertyChangedSignal("FloorMaterial"):Connect(function()
 		local fm = humanoid.FloorMaterial
+		annotate("changed to: " .. tostring(fm))
 		if fm == Enum.Material.Air then
 			return
 		end
 		if fm == Enum.Material.CrackedLava then
-			reduceSpeed(effectiveAfterLavaRunSpeed, 3.5)
+			reduceSpeed(function()
+				return effectiveAfterLavaRunSpeed
+			end, 3.5)
 			humanoid.Sit = true
 			humanoid.JumpPower = 10
 		else
@@ -341,13 +399,17 @@ function init()
 
 	localPlayer.CharacterAdded:Connect(function(character)
 		localPlayer.Character:WaitForChild("Humanoid").Jumping:Connect(function()
-			reduceSpeed(effectiveAfterJumpRunSpeed, 3.5)
+			reduceSpeed(function()
+				return effectiveAfterJumpRunSpeed
+			end, 3.5)
 		end)
 	end)
 
 	localPlayer.CharacterAdded:Connect(function(character)
 		localPlayer.Character:WaitForChild("Humanoid").Swimming:Connect(function()
-			reduceSpeed(effectiveAfterSwimmingRunSpeed, 4)
+			reduceSpeed(function()
+				return effectiveAfterSwimmingRunSpeed
+			end, 4)
 		end)
 	end)
 

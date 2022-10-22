@@ -5,7 +5,10 @@
 local serverEventGuis = require(game.StarterPlayer.StarterCharacterScripts.serverEventGuis)
 
 local PlayersService = game:GetService("Players")
-local localPlayer: Player = PlayersService.LocalPlayer
+repeat
+	game:GetService("RunService").RenderStepped:wait()
+until game.Players.LocalPlayer.Character ~= nil
+local localPlayer = PlayersService.LocalPlayer
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)

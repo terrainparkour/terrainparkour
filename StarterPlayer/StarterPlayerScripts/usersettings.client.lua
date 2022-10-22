@@ -1,19 +1,25 @@
 --!strict
 
-if false then
-	-- local GameSettings = UserSettings().GameSettings
+local us: UserSettings = UserSettings()
+local GameSettings = us.GameSettings
 
-	-- local function onGameSettingChanged(nameOfSetting)
-	-- 	-- Fetch the value of this setting through a pcall to make sure we can retrieve it.
-	-- 	-- Sometimes the event fires with properties that LocalScripts can't access.
-	-- 	local canGetSetting, setting = pcall(function()
-	-- 		return GameSettings[nameOfSetting]
-	-- 	end)
+local function onGameSettingChanged(nameOfSetting)
+	local canGetSetting, setting = pcall(function()
+		return GameSettings[nameOfSetting]
+	end)
 
-	-- 	if canGetSetting then
-	-- 		print("Your " .. nameOfSetting .. " has changed to: " .. tostring(setting))
-	-- 	end
-	-- end
+	if canGetSetting then
+		print("Your " .. nameOfSetting .. " has changed to: " .. tostring(setting))
+	end
+end
 
-	-- GameSettings.Changed:Connect(onGameSettingChanged)
+GameSettings.Changed:Connect(onGameSettingChanged)
+
+local LocalizationService = game:GetService("LocalizationService")
+local success, translator = pcall(function()
+	return LocalizationService:GetTranslatorForPlayerAsync(game.Players.LocalPlayer)
+end)
+
+if success then
+	local id = translator.LocaleId
 end

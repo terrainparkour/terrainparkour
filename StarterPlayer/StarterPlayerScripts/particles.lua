@@ -25,6 +25,9 @@ end
 
 --momentarily set emission to show the thing that just happened to the user.
 module.EmitParticle = function(increase: boolean)
+	if particleEmitter == nil then
+		return
+	end
 	local particleColor: ColorSequence = ColorSequence.new(colors.redStop)
 	if increase then
 		particleColor = ColorSequence.new(colors.greenGo)

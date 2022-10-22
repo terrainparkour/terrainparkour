@@ -7,8 +7,9 @@ local UserInputService = game:GetService("UserInputService")
 local showLB: boolean = true
 local showChat: boolean = true
 
-local players = game:GetService("Players")
-local localplayer = players.LocalPlayer
+local PlayersService = game:GetService("Players")
+repeat game:GetService("RunService").RenderStepped:wait() until game.Players.LocalPlayer.Character ~= nil
+local localPlayer = PlayersService.LocalPlayer
 
 local function ToggleChat(intendedState: boolean)
 	local ChatMain =
@@ -17,7 +18,7 @@ local function ToggleChat(intendedState: boolean)
 end
 
 local function ToggleLB(intendedState: boolean)
-	local items = { localplayer.PlayerGui:FindFirstChild("LeaderboardScreenGui") }
+	local items = { localPlayer.PlayerGui:FindFirstChild("LeaderboardScreenGui") }
 	for _, el in ipairs(items) do
 		if el == nil then
 			print("bad item.")
@@ -28,7 +29,7 @@ local function ToggleLB(intendedState: boolean)
 end
 
 local function KillPopups()
-	for _, el in ipairs(localplayer.PlayerGui:GetChildren()) do
+	for _, el in ipairs(localPlayer.PlayerGui:GetChildren()) do
 		if el.Name == "RaceResultSgui" then
 			el:Destroy()
 		end

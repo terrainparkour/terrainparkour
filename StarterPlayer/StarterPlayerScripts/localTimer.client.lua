@@ -78,8 +78,8 @@ local function getModeChangeLock(kind: string)
 	annotate("locked for " .. kind)
 end
 
-local function restoreNormalMovement()
-	annotate("restore normal movement")
+local function tellLocalMovementToRestore()
+	annotate("tellLocalMovementToRestore")
 	local data: signMovementEnums.movementModeMessage = { action = signMovementEnums.movementModes.RESTORE }
 	movementManipulationBindableEvent:Fire(data)
 	specialMovementType = ""
@@ -106,6 +106,11 @@ local function handleSpecialSignTouches(signName: string)
 		local data: signMovementEnums.movementModeMessage = { action = signMovementEnums.movementModes.THREETERRAIN }
 		activeMovementData = data
 		specialMovementType = "Limited to 3 terrain types:"
+		movementManipulationBindableEvent:Fire(data)
+	elseif signName == "cOld mOld on a sLate pLate" then
+		local data: signMovementEnums.movementModeMessage = { action = signMovementEnums.movementModes.COLDMOLD }
+		activeMovementData = data
+		specialMovementType = "Touch terrain only once."
 		movementManipulationBindableEvent:Fire(data)
 	elseif signName == "Quadruple" then
 		local data: signMovementEnums.movementModeMessage = { action = signMovementEnums.movementModes.FOURTERRAIN }
@@ -148,7 +153,20 @@ local function updateFloorTouchedTracking(inputSeenTerrainTypesInput: { [number]
 
 		specialMovementDetails = textUtil.stringJoin(", ", t)
 		annotate("specialMovementDetails: " .. specialMovementDetails)
-		forceSendTerrainUpdate = false
+	end
+	if activeMovementData and activeMovementData.action == signMovementEnums.movementModes.COLDMOLD then
+		local t = {}
+		for ii, k in ipairs(inputSeenTerrainTypes) do
+			if ii == #inputSeenTerrainTypes then
+				break
+			end
+			table.insert(t, k)
+		end
+		specialMovementDetails = string.format(
+			"Now: %s Forbidden from touching:%s",
+			inputSeenTerrainTypes[#inputSeenTerrainTypes],
+			textUtil.stringJoin(", ", t)
+		)
 	end
 	modeChangeDebounce = false
 end
@@ -162,7 +180,7 @@ updateTerrainSeenBindableEvent.Event:Connect(updateFloorTouchedTracking)
 local function killClientRun(context: string)
 	getModeChangeLock("killClientRun")
 	annotate("killClientRun." .. context)
-	restoreNormalMovement()
+	tellLocalMovementToRestore()
 	currentRunStartTick = 0
 	currentRunSignName = ""
 	local sgui = playerGui:FindFirstChild("RunningRunSgui")
@@ -276,12 +294,13 @@ local function clientTouchedSign(humanoid: Humanoid, sign: BasePart)
 	marathonClient.receiveHit(sign.Name, touchTimeTick)
 
 	----NEW HIT AREA START, RETURNED--------
+	--NOTE we do not FIND signs from the client.-------
 	if currentRunSignName == "" then -------START RACE
 		--this tells the movement module to get ready to send me floor updates.
 
 		--this lock is here so that
 		-- getModeChangeLock("starting run")
-		restoreNormalMovement()
+		tellLocalMovementToRestore()
 		if warper.isWarping() then
 			clientTouchDebounce[pn] = false
 			annotate("blocked due to iswarping.")
@@ -355,7 +374,7 @@ local function clientTouchedSign(humanoid: Humanoid, sign: BasePart)
 	runShouldEndSemaphore = true
 	--set this to debounce new run starts immediately.
 	lastRunCompleteTime = tick()
-	restoreNormalMovement()
+	tellLocalMovementToRestore()
 	clientTouchDebounce[pn] = false
 end
 
@@ -377,7 +396,7 @@ local function setupCharacter()
 		if hit.ClassName == "SpawnLocation" then
 			return
 		end
-		if hit.ClassName == "Part" or hit.ClassName == "MeshPart" then
+		if hit.ClassName == "Part" or hit.ClassName == "MeshPart" or hit.ClassName == "UnionOperation" then
 			local signId = enums.name2signId[hit.Name]
 			if signId == nil then
 				return

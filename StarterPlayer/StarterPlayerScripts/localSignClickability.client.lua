@@ -10,7 +10,12 @@ local thumbnails = require(game.ReplicatedStorage.thumbnails)
 
 local PlayersService = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+repeat
+	game:GetService("RunService").RenderStepped:wait()
+until game.Players.LocalPlayer.Character ~= nil
 local localPlayer = PlayersService.LocalPlayer
+
 local playerGui = localPlayer:WaitForChild("PlayerGui")
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 
@@ -336,6 +341,10 @@ local function DisplaySignRelatedData(signRelatedData, sign)
 
 	local leader = leaderdata[1]
 	local wrRelatedBgColor = colors.grey
+	if localPlayer == nil then
+		warn("no localplayer")
+		return bbg
+	end
 	if localPlayer.UserId == leader.userId then
 		wrRelatedBgColor = colors.meColor
 	end
@@ -397,6 +406,10 @@ local function DisplaySignRelatedData(signRelatedData, sign)
 		local rank = 1
 		for index, el in ipairs(leaderdata) do
 			if index == 1 then
+				continue
+			end
+			if el == nil then
+				warn("nill")
 				continue
 			end
 			rank = rank + 1
@@ -504,7 +517,7 @@ local function SetupSignsThatHaventBeenYet()
 		if setupSigns[sign.Name] then
 			continue
 		end
-		sign=sign::Part
+		sign = sign :: Part
 
 		local sg = Instance.new("SurfaceGui")
 		sg.Parent = playerGui
