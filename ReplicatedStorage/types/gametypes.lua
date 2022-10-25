@@ -89,10 +89,8 @@ export type pyUserFinishedRunResponse = {
 	userTotalFindCount: number,
 
 	--for display options
-	playerText: string,
+	raceName: string,
 	yourText: string,
-	lossText: string,
-	personalRaceHistoryText: string,
 	raceTotalHistoryText: string,
 }
 
@@ -285,5 +283,7 @@ export type serverFinishRunNotifierType = {
 }
 
 export type serverEventTixAllocation = { userId: number, username: string, tixallocation: number, eventPlace: number }
+
+export type playerProfileData={}
 
 return {}

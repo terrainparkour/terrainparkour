@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.204 October 22 2022"
+module.gameVersion = "1.210 October 25 2022"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -516,7 +516,9 @@ local name2signId: { [string]: number } = {
 	["Tetromino"] = 504,
 	["Keep Off the Grass"] = 505,
 	["cOld mOld on a sLate pLate"] = 506,
-	-- ["Kazumura"]=502,
+	["Freedom"] = 507,
+	["Salekhard"] = 508,
+	["Knocking on the Door of Life"] = 509,
 }
 
 --⚔
@@ -569,9 +571,9 @@ module.ExcludeSignNamesFromStartingAt = {
 	"Summit",
 	"Vesuvius",
 	-- "Wozniak",
-	"Klytus",
-	"Tapochki",
-	"Cinchona",
+	-- "Klytus",
+	-- "Tapochki",
+	-- "Cinchona",
 	-- "Sciocchi",
 	"Erg",
 	"Sakura",
@@ -697,8 +699,11 @@ local releaseNotes: { [number]: string } = {
 * fix beckon terminology
 * redo movement setup (?)
 ]],
-[202]=[[* Various bugfixes]],
-[203]=[[* Sign lore badge]],
+	[202] = [[* Various bugfixes]],
+	[203] = [[* Sign lore badge]],
+	[205] = [[* Survey server integration]],
+	[206] = [[* Freedom]],
+	[208] = [[* Badge fixes]],
 }
 
 module.releaseNotes = releaseNotes

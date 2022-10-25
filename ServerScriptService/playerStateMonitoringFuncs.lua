@@ -66,7 +66,6 @@ end
 
 module.LogQuit = function(player: Player)
 	--player may already be gone, so we just use the last tracked loc.
-	vscdebug.debug()
 	local loc = locationMonitor.getLocation(player.UserId)
 	if loc == nil or loc.X == nil then --already gone so just leave.
 		--this led to bugs when we just returned here since we no longer location track for some reason?
@@ -86,7 +85,6 @@ end
 -- end
 
 module.LogPlayerLeft = function(player)
-	vscdebug.debug()
 	remoteDbInternal.remoteGet("userLeft", { userId = player.UserId })
 end
 

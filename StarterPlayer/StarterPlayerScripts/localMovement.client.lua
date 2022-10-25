@@ -55,6 +55,8 @@ local baseAfterSwimmingRunSpeed = 35
 local baseAfterLavaRunSpeed = 32
 local baseJumpPower = 55
 
+local allIsSlippery = false
+
 local effectiveRunSpeed = 68
 local effectiveWalkSpeed = 16
 local effectiveAfterJumpRunSpeed = 63
@@ -94,10 +96,10 @@ local function HandleNewFloorMaterial(fm, special: boolean)
 	if not seenTerrainFloorTypes[fm.Name] and not nonMaterialEnumTypes[fm.Value] then
 		seenTerrainFloorTypes[fm.Name] = true
 		seenFloorCount += 1
-		annotate(fm.Name)
-		annotate(seenTerrainFloorTypes)
-		annotate(seenFloorCount)
-		annotate(seenTerrainFloorCounts)
+		-- annotate(fm.Name)
+		-- annotate(seenTerrainFloorTypes)
+		-- annotate(seenFloorCount)
+		-- annotate(seenTerrainFloorCounts)
 		table.insert(orderedSeenFloorTypes, fm.Name)
 
 		if special then
@@ -105,12 +107,17 @@ local function HandleNewFloorMaterial(fm, special: boolean)
 		end
 		updateTerrainSeenBindableEvent:Fire(orderedSeenFloorTypes)
 	end
-	workspace.Terrain.CustomPhysicalProperties = movementEnums.GetPropertiesForFloor(fm)
+	if allIsSlippery then
+		workspace.Terrain.CustomPhysicalProperties = movementEnums.GetIceProperties()
+	else
+		workspace.Terrain.CustomPhysicalProperties = movementEnums.GetPropertiesForFloor(fm)
+	end
 end
 
 -- 2022.10.12 converting this to be modifiable
 local function restoreNormalMovement()
 	annotate("restore normal movement.")
+
 	effectiveRunSpeed = baseRunSpeed
 	effectiveWalkSpeed = baseWalkSpeed
 	effectiveAfterJumpRunSpeed = baseAfterJumpRunSpeed
@@ -126,6 +133,8 @@ local function restoreNormalMovement()
 	--important to spam this
 	local humanoid = character:WaitForChild("Humanoid")
 	HandleNewFloorMaterial(humanoid.FloorMaterial, true)
+	allIsSlippery = false
+	workspace.Terrain.CustomPhysicalProperties = movementEnums.GetPropertiesForFloor(humanoid.FloorMaterial)
 end
 
 local function setupTerrainMonitor(limit: number)
@@ -202,6 +211,7 @@ end
 --for receiving special sign touches which change with movement.
 local function receivedSpeedManipulation(msg: signMovementEnums.movementModeMessage)
 	if msg.action == signMovementEnums.movementModes.RESTORE then
+		annotate("received outer restore.")
 		restoreNormalMovement()
 	elseif msg.action == signMovementEnums.movementModes.NOJUMP then
 		restoreNormalMovement()
@@ -229,6 +239,12 @@ local function receivedSpeedManipulation(msg: signMovementEnums.movementModeMess
 	elseif msg.action == signMovementEnums.movementModes.NOGRASS then
 		restoreNormalMovement()
 		setupNoGrassMonitor()
+	elseif msg.action == signMovementEnums.movementModes.SLIPPERY then
+		restoreNormalMovement()
+		effectiveJumpPower = 43
+		effectiveAfterJumpRunSpeed = 46
+		allIsSlippery = true
+		workspace.Terrain.CustomPhysicalProperties = movementEnums.GetIceProperties()
 	else
 		warn("bad msg.")
 		print(msg)
@@ -372,7 +388,6 @@ local function SetupFloorIsLava()
 	local humanoid: Humanoid = character:WaitForChild("Humanoid")
 	humanoid:GetPropertyChangedSignal("FloorMaterial"):Connect(function()
 		local fm = humanoid.FloorMaterial
-		annotate("changed to: " .. tostring(fm))
 		if fm == Enum.Material.Air then
 			return
 		end

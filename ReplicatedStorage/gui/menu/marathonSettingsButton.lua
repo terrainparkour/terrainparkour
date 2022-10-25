@@ -68,6 +68,13 @@ local function makeSettingRowFrame(setting: tt.userSettingValue, player: Player,
 	return fr
 end
 
+local function settingSort(a: tt.userSettingValue, b: tt.userSettingValue): boolean
+	if a.domain ~= b.domain then
+		return a.domain < b.domain
+	end
+	return a.name < b.name
+end
+
 --we already have clientside stuff whic hgets initial settings value.
 local getSettingsModal = function(localPlayer: Player): ScreenGui
 	local userId = localPlayer.UserId
@@ -78,6 +85,12 @@ local getSettingsModal = function(localPlayer: Player): ScreenGui
 	--just get marathon settings.
 	local userSettings: { [string]: tt.userSettingValue } =
 		localFunctions.getSettingByDomain(settingEnums.settingDomains.MARATHONS)
+
+	local settings = {}
+	for _, setting in pairs(userSettings) do
+		table.insert(settings, setting)
+	end
+	table.sort(settings, settingSort)
 
 	local outerFrame = Instance.new("Frame")
 	outerFrame.Parent = sg
@@ -120,7 +133,7 @@ local getSettingsModal = function(localPlayer: Player): ScreenGui
 
 	local player: Player = PlayersService:GetPlayerByUserId(userId)
 	local ii = 1
-	for _, setting in pairs(userSettings) do
+	for _, setting in pairs(settings) do
 		local rowFrame = makeSettingRowFrame(setting, player, ii)
 		rowFrame.Parent = scrollingFrame
 		ii += 1
@@ -142,7 +155,7 @@ local marathonSettingsButton: gt.actionButton = {
 	name = "Marathon Settings",
 	contentsGetter = getSettingsModal,
 	hoverHint = "Configure Marathons",
-	shortName = "Marathon",
+	shortName = "Marathons",
 	getActive = function()
 		return true
 	end,

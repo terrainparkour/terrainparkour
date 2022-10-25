@@ -32,6 +32,10 @@ export type terrainMovementSpec = {
 
 --PhysicalProperties.new(density, friction, elasticity, frictionweight, elasticityweight)
 
+module.GetIceProperties = function()
+	return IceProps
+end
+
 module.GetPropertiesForFloor = function(activeFloor): PhysicalProperties
 	if activeFloor == Enum.Material.Ice then
 		return IceProps

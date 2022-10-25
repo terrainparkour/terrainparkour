@@ -302,7 +302,6 @@ local function handleOne(dynamicRunFrame: tt.DynamicRunFrame)
 		local tl: TextLabel = tls[dynamicRunFrame.targetSignName]
 		local bbgui: BillboardGui = tl.Parent.Parent
 		local pos = localPlayer.Character.HumanoidRootPart.Position
-		vscdebug.debug()
 		local par = bbgui.Parent :: Part
 		local dist = tpUtil.getDist(par.Position, pos)
 

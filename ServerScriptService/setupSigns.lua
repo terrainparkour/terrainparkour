@@ -153,6 +153,7 @@ module.touchedSign = function(player: Player, sign: Part, theHitTick: number)
 end
 
 local useLeftFaceSignNames = { ["cOld mOld on a sLate pLate"] = 1, ["Tetromino"] = 2 }
+local unanchoredSignNames = { ["Freedom"] = 1 }
 
 local function SetupSignVisually(part: Part)
 	if part.Name == signEnums.signs.COLD_MOLD then
@@ -160,15 +161,23 @@ local function SetupSignVisually(part: Part)
 	else
 		part.Material = Enum.Material.Granite
 	end
+	if unanchoredSignNames[part.Name] then
+		part.Anchored = false
+	else
+		part.Anchored = true
+	end
 
 	part.Color = Color3.fromRGB(255, 89, 89)
-	local sguiName = "SignGui_" .. part.Name
-	local sGui = part:FindFirstChild(sguiName)
-	if sGui == nil then
-		sGui = Instance.new("SurfaceGui")
-		sGui.Name = sguiName
-		sGui.Parent = part
+
+	local childs = part:GetChildren()
+	for _, child in ipairs(childs) do
+		child:Destroy()
 	end
+
+	local sguiName = "SignGui_" .. part.Name
+	local sGui = Instance.new("SurfaceGui")
+	sGui.Name = sguiName
+	sGui.Parent = part
 
 	local canvasSize: Vector2
 
@@ -206,7 +215,6 @@ local function SetupSignVisually(part: Part)
 	textLabel.TextScaled = true
 	textLabel.RichText = true
 	textLabel.TextColor3 = colors.signTextColor
-	part.Anchored = true
 
 	--I shold add a touch sound TODO
 	--i should add a touch visual

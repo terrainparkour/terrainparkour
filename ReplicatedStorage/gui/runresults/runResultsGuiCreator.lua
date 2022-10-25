@@ -11,17 +11,68 @@ local thumbnails = require(game.ReplicatedStorage.thumbnails)
 local enums = require(game.ReplicatedStorage.util.enums)
 -- local PlayersService = game:GetService("Players")
 local tt = require(game.ReplicatedStorage.types.gametypes)
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
-local resultRowHeightScale = 0.08
-local lesserYScale = 0.04
+local codeFont = Font.new("Code", Enum.FontWeight.Bold)
+local codeFontLight = Font.new("Code")
 
-local playerRowHeight = 0.055
+--global counter for this "class"
+local rowCount = 1
 
 --this UI also sets up a shortcut to warp to this, if set.
 local lastWarpTarget = nil
 local lastWarperWrapper = nil
 local module = {}
+
+local heightsPixel = { race = 40, text = 25, row = 32, warp = 43 }
+
+local function addChippedRow(mechips, otherChips, parent, height, name, bgcolor)
+	rowCount += 1
+	local frame = Instance.new("Frame")
+	frame.Parent = parent
+	frame.Size = UDim2.new(1, 0, 0, height)
+	frame.Name = string.format("%02d-%s", rowCount, name)
+
+	local hh = Instance.new("UIListLayout")
+	hh.Parent = frame
+	hh.FillDirection = Enum.FillDirection.Horizontal
+	local w = 1 / (#mechips + #otherChips)
+
+	for cn, chunk in ipairs({ mechips, otherChips }) do
+		if cn == 1 then
+			bgcolor = colors.meColor
+		else
+			bgcolor = colors.defaultGrey
+		end
+		for ii, chip in ipairs(chunk) do
+			if chip == nil or chip == "" then
+				warn("chip")
+				continue
+			end
+			local tl = guiUtil.getTl(tostring(ii), UDim2.new(w, 0, 1, 0), 3, frame, bgcolor, 1, 0)
+			tl.Text = chip
+		end
+	end
+end
+
+local function addTimeRow(yourText, timeText, parent, height, name)
+	rowCount += 1
+	local frame = Instance.new("Frame")
+	frame.Parent = parent
+	frame.Size = UDim2.new(1, 0, 0, height)
+	frame.Name = string.format("%02d-%s", rowCount, name)
+
+	local hh = Instance.new("UIListLayout")
+	hh.Parent = frame
+	hh.FillDirection = Enum.FillDirection.Horizontal
+
+	local yourTextTl = guiUtil.getTl("02yourText", UDim2.new(0.8, 0, 1, 0), 2, frame, colors.meColor, 1, 0)
+	yourTextTl.Text = yourText
+	local timeTextTl = guiUtil.getTl("01timeText", UDim2.new(0.2, 0, 1, 0), 2, frame, colors.meColor, 1, 0)
+	timeTextTl.FontFace = codeFont
+	timeTextTl.Text = timeText
+end
 
 --actually more like addCell with optional text.
 local function addRow(
@@ -30,251 +81,251 @@ local function addRow(
 	height: number,
 	name: string,
 	bgcolor: Color3?,
-	width: number?,
-	textColor: Color3?
+	descriptor: string?,
+	textcolor: Color3?
 ): Frame
+	rowCount += 1
+
+	if textcolor == nil then
+		textcolor = colors.black
+	end
+	if bgcolor == nil then
+		bgcolor = colors.defaultGrey
+	end
+	assert(bgcolor)
+
 	local frame = Instance.new("Frame")
 	frame.Parent = parent
-	if height == nil then
-		height = 0.1
+	frame.Size = UDim2.new(1, 0, 0, height)
+	frame.Name = string.format("%02d-%s", rowCount, name)
+
+	if text == nil or text == "" then
+		warn("text.")
 	end
-	if width == nil then
-		width = 1
-	end
-	frame.Size = UDim2.new(width, 0, height, 0)
-	if name ~= nil then
-		frame.Name = name
-	end
-	if text ~= nil and text ~= "" then
-		frame.Name = frame.Name .. tostring(text)
-		if width == nil then
-			width = 1
-		end
-		assert(width)
-		if bgcolor == nil then
-			bgcolor = colors.defaultGrey
-		end
-		assert(bgcolor)
-		local tl = guiUtil.getTl("01" .. text, UDim2.fromScale(width, 1), 2, frame, bgcolor, 1)
-		tl.Text = text
-		if textColor ~= nil then
-			tl.TextColor3 = textColor
-		end
+
+	local tl: TextLabel
+	if descriptor == "mono" then
+		tl = guiUtil.getTl("01" .. text, UDim2.new(1, 0, 1, 0), 2, frame, bgcolor, 1)
+		tl.FontFace = codeFont
 		tl.TextXAlignment = Enum.TextXAlignment.Left
+	else
+		tl = guiUtil.getTl("01" .. text, UDim2.new(1, 0, 1, 0), 4, frame, bgcolor, 1)
+		tl.TextXAlignment = Enum.TextXAlignment.Center
 	end
+	tl.Text = text
+	tl.TextColor3 = textcolor
 	return frame
 end
 
 --used for adding subrows to the stop score list in a high score viewer.
-local function addPlayerPastResultRow(frame: Frame, rowOrder: number, runEntry: tt.runEntry, useColor: Color3)
-	local name = string.format("%02d", rowOrder)
-	local f = addRow("", frame, playerRowHeight, name)
+local function addPlayerPastResultRow(parent: Frame, runEntry: tt.runEntry, useColor: Color3)
+	rowCount += 1
+
 	local hh = Instance.new("UIListLayout")
-	hh.Parent = f
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1, 0, 0, heightsPixel.row)
+	frame.Name = string.format("%02d-PlayerResults", rowCount)
+	frame.Parent = parent
+	hh.Parent = frame
 	hh.FillDirection = Enum.FillDirection.Horizontal
 
 	--this depends on semi-broken BE behavior about virtualized places, etc.
-	local tl = guiUtil.getTl(tostring("1place"), UDim2.new(0.1, 0, 1, 0), 2, f, useColor, 1)
+	local placeTl = guiUtil.getTl(tostring("1place"), UDim2.new(0.12, -10, 1, 0), 2, frame, useColor, 1)
 	if runEntry.place == 0 then
-		tl.Text = "-"
+		placeTl.Text = "-"
 	else
-		tl.Text = tostring(runEntry.place)
+		placeTl.Text = tostring(runEntry.place)
 	end
 	if runEntry.place == 11 then
-		tl.Text = "KO"
+		placeTl.Text = "KO"
 	end
-	tl.TextXAlignment = Enum.TextXAlignment.Center
+	placeTl.TextXAlignment = Enum.TextXAlignment.Center
 
 	--thumb
 
-	local av = Instance.new("ImageLabel")
-	av.BorderMode = Enum.BorderMode.Inset
-	av.Name = "2runresultImage"
-	av.Size = UDim2.new(resultRowHeightScale, 0, 1, 0)
+	local img = Instance.new("ImageLabel")
+	img.BorderMode = Enum.BorderMode.Inset
+	img.Name = "2.runresult.Image"
+	img.Size = UDim2.new(0, heightsPixel.row, 1, 0)
 	local content = thumbnails.getThumbnailContent(runEntry.userId, Enum.ThumbnailType.HeadShot)
-	av.Image = content
-	av.BackgroundColor3 = useColor
-	av.BorderSizePixel = 0
-	av.Parent = f
+	img.Image = content
+	img.BackgroundColor3 = useColor
+	img.BorderSizePixel = 0
+	img.Parent = frame
 
 	--username
-	local n = guiUtil.getTl("3username", UDim2.new(0.58, 0, 1, 0), 2, f, useColor, 0)
-	n.Text = runEntry.username
-	n.TextXAlignment = Enum.TextXAlignment.Left
-	n.TextYAlignment = Enum.TextYAlignment.Center
+	local nameTl = guiUtil.getTl("3username", UDim2.new(0.60, -10, 1, 0), 2, frame, useColor, 0)
+	nameTl.Text = runEntry.username
+	nameTl.TextXAlignment = Enum.TextXAlignment.Left
+	nameTl.TextYAlignment = Enum.TextYAlignment.Center
 
 	--time
-	local t = guiUtil.getTl("4time", UDim2.new(0.24, 0, 1, 0), 2, f, useColor, 1)
-	t.Text = tpUtil.fmtms(runEntry.runMilliseconds)
-	t.TextXAlignment = Enum.TextXAlignment.Right
+	local timeTl = guiUtil.getTl("4time", UDim2.new(0.28, -10, 1, 0), 2, frame, useColor, 1)
+	timeTl.Text = tpUtil.fmtms(runEntry.runMilliseconds)
+	timeTl.TextXAlignment = Enum.TextXAlignment.Right
+	timeTl.FontFace = codeFontLight
 end
 
 --sgui for the results of running a race OR a marathon!.
-module.createNewRunResultSgui = function(options: tt.pyUserFinishedRunResponse, warperWrapper: tt.warperWrapper): ScreenGui
-	options.userId = tonumber(options.userId) :: number
-	local raceResultSgui = Instance.new("ScreenGui")
-	raceResultSgui.Name = "RaceResultSgui"
 
-	local raceResultFrameName = "raceResultFrame"
-	local frame: Frame = Instance.new("Frame")
-	frame.Name = raceResultFrameName
+module.createNewRunResultSgui =
+	function(options: tt.pyUserFinishedRunResponse, warperWrapper: tt.warperWrapper): ScreenGui
+		rowCount = 0
+		options.userId = tonumber(options.userId) :: number
+		local raceResultSgui = Instance.new("ScreenGui")
+		raceResultSgui.Name = string.format("RaceResultSgui-%s", options.raceName)
 
-	local defaultOuterFrameSize = 0.49
+		local raceResultFrameName = string.format("raceResultFrame%s", options.raceName)
+		local frame: Frame = Instance.new("Frame")
+		frame.Name = raceResultFrameName
+		frame.Parent = raceResultSgui
+		--the used framesize; will be expanded later.
+		frame.Position = UDim2.new(0.72, -5, 0.18, 0)
 
-	--the used framesize; will be expanded later.
-	local frameYUsed = 0
-	local totalSent: number = 0
-	frame.Position = UDim2.new(0.72, -5, 0.33, 0)
+		local layout = Instance.new("UIListLayout")
+		layout.FillDirection = Enum.FillDirection.Vertical
+		layout.Name = "UIListLayoutV"
+		layout.Parent = frame
 
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Vertical
-	layout.Name = "UIListLayoutV"
-	layout.Parent = frame
+		addRow(options.raceName, frame, heightsPixel.race, "raceName", colors.signColor, nil, colors.white)
 
-	if options.playerText ~= "" and options.playerText ~= nil then
-		addRow(
-			options.playerText,
+		addTimeRow(
+			options.yourText,
+			string.format("%0.3fs", options.thisRunMilliseconds / 1000),
 			frame,
-			resultRowHeightScale,
-			string.format("%02d-playerText", totalSent),
-			colors.meColor
+			heightsPixel.text,
+			"timeRelatedRow"
 		)
-		frameYUsed = frameYUsed + resultRowHeightScale
-		totalSent += 1
-	end
-	if options.yourText ~= "" and options.yourText ~= nil then
-		addRow(options.yourText, frame, lesserYScale, string.format("%02d-yourText", totalSent), colors.meColor)
-		frameYUsed = frameYUsed + lesserYScale
-		totalSent += 1
-	end
-	if options.lossText ~= "" and options.lossText ~= nil then
-		addRow(options.lossText, frame, resultRowHeightScale, string.format("%02d-losstext", totalSent), colors.meColor)
-		frameYUsed = frameYUsed + resultRowHeightScale
-		totalSent += 1
-	end
 
-	local hasShownYourLastRun = false
-	local hasShownYourPastRun = false
-	local hasShownYourBoth = false
-	if options.runEntries == nil then
-		warn("nil pbs.")
-		options.runEntries = {}
-	end
-	for _, runEntry: tt.runEntry in ipairs(options.runEntries) do
-		if runEntry.place == nil then
-			warn("weirdly nil runentry. ")
-			continue
+		--run details.
+
+		local meRuns = string.format("You've run %d times", options.userRaceRunCount)
+		if options.userRaceRunCount == 1 then
+			meRuns = string.format("You've run once")
 		end
-		totalSent = totalSent + 1
-		local useColor = colors.defaultGrey
-		if runEntry.userId == options.userId then
-			if runEntry.kind == "past run" then
-				useColor = colors.mePastColor
-				hasShownYourPastRun = true
-			else
-				hasShownYourLastRun = true
-				useColor = colors.meColor
+		local racers = string.format("%d racers", options.totalRacersOfThisRaceCount)
+		if options.totalRacersOfThisRaceCount == 1 then
+			racers = string.format("%d racer", options.totalRacersOfThisRaceCount)
+		end
+
+		local otherChipTexts = {}
+		if options.totalRunsOfThisRaceCount ~= 1 then
+			local otherRuns = string.format("%d runs", options.totalRunsOfThisRaceCount)
+			table.insert(otherChipTexts, otherRuns)
+		end
+		table.insert(otherChipTexts, racers)
+		local dist = string.format("%0.1fd", options.distance)
+		table.insert(otherChipTexts, dist)
+
+		if options.thisRunMilliseconds > 0 then
+			local spd = string.format("%0.1fd/s", options.distance / options.thisRunMilliseconds * 1000)
+			table.insert(otherChipTexts, spd)
+		end
+
+		addChippedRow({ meRuns }, otherChipTexts, frame, heightsPixel.text, "Comparisons", colors.meColor)
+
+		local hasShownYourLastRun = false
+		local hasShownYourPastRun = false
+		local hasShownYourBoth = false
+		if options.runEntries == nil then
+			warn("nil pbs.")
+			options.runEntries = {}
+		end
+		for _, runEntry: tt.runEntry in ipairs(options.runEntries) do
+			if runEntry.place == nil then
+				warn("weirdly nil runentry. ")
+				continue
 			end
-		end
-		hasShownYourBoth = hasShownYourLastRun and hasShownYourPastRun
-		--KO conditions: 10th place, AND I just entered the race (have current, no past)
-		if runEntry.place == 11 then
-			useColor = colors.redStop
-		end
 
-		--this has bugs and neeeds tests when you "knock" yourself out.
-		if runEntry.place > 10 then
+			local useColor = colors.defaultGrey
 			if runEntry.userId == options.userId then
-				runEntry.place = 0
-			else
-				--skip 11+ unless they've been pushed down.
-				if
-					(
-						hasShownYourBoth --no knockouts can happen
-						or (hasShownYourPastRun and not hasShownYourLastRun) --just show a blue past
-						or (not hasShownYourLastRun and not hasShownYourPastRun) --show nothing
-					) and runEntry.place == 11
-				then
-					continue
+				if runEntry.kind == "past run" then
+					useColor = colors.mePastColor
+					hasShownYourPastRun = true
+				else
+					hasShownYourLastRun = true
+					useColor = colors.meColor
 				end
 			end
+			hasShownYourBoth = hasShownYourLastRun and hasShownYourPastRun
+			--KO conditions: 10th place, AND I just entered the race (have current, no past)
+			if runEntry.place == 11 then
+				useColor = colors.redStop
+			end
+
+			--this has bugs and neeeds tests when you "knock" yourself out.
+			if runEntry.place > 10 then
+				if runEntry.userId == options.userId then
+					runEntry.place = 0
+				else
+					--skip 11+ unless they've been pushed down.
+					if
+						(
+							hasShownYourBoth --no knockouts can happen
+							or (hasShownYourPastRun and not hasShownYourLastRun) --just show a blue past
+							or (not hasShownYourLastRun and not hasShownYourPastRun) --show nothing
+						) and runEntry.place == 11
+					then
+						continue
+					end
+				end
+			end
+			if runEntry.place > 11 then
+				continue
+			end
+
+			addPlayerPastResultRow(frame, runEntry, useColor)
 		end
-		if runEntry.place > 11 then
-			continue
-		end
 
-		addPlayerPastResultRow(frame, totalSent, runEntry, useColor)
-		frameYUsed = frameYUsed + playerRowHeight
-	end
-
-	if options.personalRaceHistoryText ~= "" then
-		addRow(options.personalRaceHistoryText, frame, 0.04, string.format("%02d", totalSent), colors.meColor)
-		frameYUsed = frameYUsed + 0.04
-		totalSent += 1
-	end
-
-	if options.raceTotalHistoryText ~= "" then
-		addRow(options.raceTotalHistoryText, frame, 0.04, string.format("%02d", totalSent))
-		frameYUsed = frameYUsed + 0.04
-		totalSent += 1
-	end
-
-	local signName = enums.signId2name[options.startSignId]
-	local warpRow: Frame = nil
-	if signName ~= nil then
-		local bad = false
-		for _, badname in ipairs(enums.ExcludeSignNamesFromStartingAt) do
-			if badname == signName then
-				bad = true
-				break
+		local signName = enums.signId2name[options.startSignId]
+		local warpRow: Frame = nil
+		--we will display a button to warp back to startId
+		if signName ~= nil then
+			local bad = false
+			for _, badname in ipairs(enums.ExcludeSignNamesFromStartingAt) do
+				if badname == signName then
+					bad = true
+					break
+				end
+			end
+			if not bad then
+				warpRow = addRow("Warp back to " .. signName, frame, heightsPixel.warp, "warpRow", colors.lightBlue)
+				local invisibleTextButton = Instance.new("TextButton")
+				invisibleTextButton.Position = warpRow.Position
+				invisibleTextButton.Size = UDim2.new(1, 0, 1, 0)
+				invisibleTextButton.Transparency = 1.0
+				invisibleTextButton.Text = "warp"
+				invisibleTextButton.TextScaled = true
+				invisibleTextButton.ZIndex = 20
+				invisibleTextButton.Parent = warpRow
+				lastWarpTarget = options.startSignId
+				lastWarperWrapper = warperWrapper
+				invisibleTextButton.Activated:Connect(function()
+					warperWrapper.requestWarpToSign(options.startSignId)
+				end)
 			end
 		end
-		if not bad then
-			--we will display a button to warp back to startId
 
-			local warpRowName = string.format("%02d Warp", totalSent)
-			warpRow = addRow("Warp back to " .. signName, frame, 0.09, warpRowName, colors.lightBlue)
-			local invisibleTextButton = Instance.new("TextButton")
-			invisibleTextButton.Position = warpRow.Position
-			invisibleTextButton.Size = UDim2.new(1, 0, 1, 0)
-			invisibleTextButton.Transparency = 1.0
-			invisibleTextButton.Text = "warp"
-			invisibleTextButton.TextScaled = true
-			invisibleTextButton.Parent = warpRow
-			lastWarpTarget = options.startSignId
-			lastWarperWrapper = warperWrapper
-			invisibleTextButton.Activated:Connect(function()
-				warperWrapper.requestWarpToSign(options.startSignId)
-			end)
-
-			frameYUsed = frameYUsed + 0.09
-			totalSent += 1
+		local ypix = 0
+		for ii, el: Frame in ipairs(frame:GetChildren()) do
+			if el:IsA("Frame") then
+				ypix += el.Size.Y.Offset
+			end
 		end
+
+		frame.Size = UDim2.new(0.27, 0, 0, ypix)
+		guiUtil.setupKillOnClick(raceResultSgui, nil, warpRow)
+		frame.BorderSizePixel = 6
+		frame.BorderColor3 = colors.meColor
+		local tween = TweenService:Create(
+			frame,
+			TweenInfo.new(3.5, Enum.EasingStyle.Quart),
+			{ BorderSizePixel =1, BorderColor3 = colors.black }
+		)
+		tween:Play()
+
+		return raceResultSgui
 	end
-
-	frame.Parent = raceResultSgui
-
-	--scale outer frame
-	local globalYScaleToUse = math.min(defaultOuterFrameSize, frameYUsed)
-
-	frame.Size = UDim2.new(0.27, 0, globalYScaleToUse, 0)
-
-	--scale internal items so they take up 1.0
-	local ratio = 1 / frameYUsed
-	--if total yscale isn't used, expand them.  this is independent of size of the popup scaling.
-	local childFrames = frame:GetChildren()
-	for _, innerframe in ipairs(childFrames) do
-		if not innerframe:IsA("Frame") then
-			continue
-		end
-		local iff = innerframe :: Frame
-		iff.Size = UDim2.new(iff.Size.X.Scale, 0, iff.Size.Y.Scale * ratio, 0)
-	end
-
-	guiUtil.setupKillOnClick(raceResultSgui, nil, warpRow)
-
-	return raceResultSgui
-end
 
 local function onInputBegin(inputObject, gameProcessedEvent)
 	if gameProcessedEvent then

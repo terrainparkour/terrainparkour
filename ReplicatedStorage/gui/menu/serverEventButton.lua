@@ -36,7 +36,7 @@ local CreateServerEventButtonClicked = function(localPlayer: Player): ScreenGui
 	local res = serverEventRemoteFunction:InvokeServer(serverEventEnums.messageTypes.CREATE, { userId = userId })
 
 	local tl = guiUtil.getTl("XXXResults", UDim2.new(1, 0, 1, 0), 0, outerFrame, colors.defaultGrey, 2)
-	local par=tl.Parent::TextLabel
+	local par = tl.Parent :: TextLabel
 	tl.Text = res.message
 
 	local tb = guiUtil.getTbSimple()
@@ -71,7 +71,7 @@ local serverEventButton: gt.actionButton = {
 	name = "Create Server Event",
 	contentsGetter = CreateServerEventButtonClicked,
 	hoverHint = "Create new server event",
-	shortName = " +Random Race ",
+	shortName = " Random Race ",
 	getActive = function()
 		return true
 	end,

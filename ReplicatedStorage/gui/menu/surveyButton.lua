@@ -13,6 +13,13 @@ local PlayersService = game:GetService("Players")
 
 local module = {}
 
+local function settingSort(a: tt.userSettingValue, b: tt.userSettingValue): boolean
+	if a.domain ~= b.domain then
+		return a.domain < b.domain
+	end
+	return a.name < b.name
+end
+
 local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, n: number): Frame
 	local fr = Instance.new("Frame")
 	fr.Name = string.format("33-settingRow-%04d", n) .. "setting." .. setting.name
@@ -29,7 +36,7 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 	label.TextYAlignment = Enum.TextYAlignment.Center
 
 	local tl = guiUtil.getTl("01-SettingName", UDim2.new(0.5, 0, 1, 0), 4, fr, colors.defaultGrey, 1)
-	tl.Text = setting.name
+	tl.Text = setting.name .. "?"
 	tl.TextXAlignment = Enum.TextXAlignment.Left
 	local noButton = guiUtil.getTb("02-No." .. setting.name, UDim2.new(0.1, -3, 1, 0), 2, fr, colors.defaultGrey, 1)
 	noButton.Text = "No"
@@ -146,7 +153,14 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 
 	local player: Player = PlayersService:GetPlayerByUserId(userId)
 	local ii = 0
-	for name, setting in pairs(surveyData) do
+
+	local settings = {}
+	for _, setting in pairs(surveyData) do
+		table.insert(settings, setting)
+	end
+	table.sort(settings, settingSort)
+
+	for _, setting in pairs(settings) do
 		ii += 1
 		if setting.domain ~= settingEnums.settingDomains.SURVEYS then
 			continue
@@ -160,10 +174,16 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 	tb.Name = "03ZZZMarathonSettingsCloseButton"
 	tb.Size = UDim2.new(1, 0, 0, 40)
 	tb.BackgroundColor3 = colors.redStop
+	tb.BorderSizePixel = 1
 	tb.Parent = outerFrame
 	tb.Activated:Connect(function()
 		sg:Destroy()
 	end)
+
+	local publicNotice =
+		guiUtil.getTl("02ZZZpublicWarning", UDim2.new(1, 0, 0, 40), 1, outerFrame, colors.defaultGrey, 1, 0)
+	publicNotice.Text = "Your answers are public."
+
 	return sg
 end
 

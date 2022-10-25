@@ -783,6 +783,7 @@ module.find100 = mkFindN(100, badgeEnums.badges.MarathonCompletionFind100)
 module.find200 = mkFindN(200, badgeEnums.badges.MarathonCompletionFind200)
 module.find300 = mkFindN(300, badgeEnums.badges.MarathonCompletionFind300)
 module.find380 = mkFindN(380, badgeEnums.badges.MarathonCompletionFind380)
+module.find500 = mkFindN(500, badgeEnums.badges.MarathonCompletionFind500)
 
 module.find10s = find10s
 module.find10t = find10t

@@ -127,6 +127,11 @@ local function handleSpecialSignTouches(signName: string)
 		activeMovementData = data
 		specialMovementType = "Don't touch Grass"
 		movementManipulationBindableEvent:Fire(data)
+	elseif signName == "Salekhard" then
+		local data: signMovementEnums.movementModeMessage = { action = signMovementEnums.movementModes.SLIPPERY }
+		activeMovementData = data
+		specialMovementType = "Slip"
+		movementManipulationBindableEvent:Fire(data)
 	end
 	modeChangeDebounce = false
 end

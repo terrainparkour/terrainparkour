@@ -9,6 +9,9 @@ thumbnailMaps[Enum.ThumbnailType.HeadShot] = {}
 thumbnailMaps[Enum.ThumbnailType.AvatarBust] = {}
 
 module.getThumbnailContent = function(userId: number, ttype, x: number?, y: number?): string
+	if userId<0 then
+		userId=261
+	end
 	if x == nil then
 		x = 100
 	end

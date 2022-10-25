@@ -64,6 +64,9 @@ local function InnerWarp(player: Player, pos: Vector3, randomize: boolean): bool
 	if not player.Character then
 		return false
 	end
+	if not player.Character.HumanoidRootPart then
+		return false
+	end
 	local rootPart = player.Character.HumanoidRootPart
 
 	CreateTemporaryLightPillar(rootPart.Position, "source")

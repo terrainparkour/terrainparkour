@@ -15,6 +15,7 @@ local movementModes = {
 	HIGHJUMP = "highjump",
 	NOGRASS = "nograss",
 	COLDMOLD = "coldmold",
+	SLIPPERY = "slippery",
 }
 module.movementModes = movementModes
 

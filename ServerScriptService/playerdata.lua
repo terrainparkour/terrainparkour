@@ -20,7 +20,7 @@ module.getGameStats = function()
 	local allTimeRuns = remoteDbInternal.remoteGet("getTotalRunCount", {})["count"]
 	local totalRaces = remoteDbInternal.remoteGet("getTotalRaceCount", {})["count"]
 	local text = tostring(todayRuns) .. " runs today\n"
-	text = text .. tostring(allTimeRuns) .. " races have been run ever!\n"
+	text = text .. tostring(allTimeRuns) .. " runs have been done ever!\n"
 	text = text .. tostring(totalRaces) .. " different races have been discovered."
 	return text
 end
@@ -310,6 +310,10 @@ module.describeRaceHistoryMultilineText = function(signId1: number, signId2: num
 
 	local sign1: Part = game.Workspace:FindFirstChild("Signs"):FindFirstChild(real1) :: Part
 	local sign2: Part = game.Workspace:FindFirstChild("Signs"):FindFirstChild(real2) :: Part
+	if sign1 == nil or sign2 == nil then
+		warn("no such sign")
+		return ""
+	end
 	local runEntries = remoteDbInternal.remoteGet("getBestTimesByRace", { startId = signId1, endId = signId2 })["res"]
 
 	local dist = tpUtil.getDist(sign1.Position, sign2.Position)

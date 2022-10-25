@@ -71,18 +71,27 @@ local userLbRowCellWidth = 43
 local lbwidth = 0
 
 --descriptors used for user-LB rows for which the later ones, updates come up from server.
-type lbUserCellDescriptorType = { name: string, num: number, width: number, userFacingName: string, tooltip: string }
+type lbUserCellDescriptorType = {
+	name: string,
+	num: number,
+	width: number,
+	userFacingName: string,
+	tooltip: string,
+	transparency: number,
+}
 
 --use num to artificially keep them separated
+local lbtrans = 0.55
 local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
-	{ name = "portrait", num = 1, width = lbPlayerRowY, userFacingName = "", tooltip = "" },
-	{ name = "username", num = 3, width = 80, userFacingName = "", tooltip = "" },
+	{ name = "portrait", num = 1, width = lbPlayerRowY, userFacingName = "", tooltip = "", transparency = 1 },
+	{ name = "username", num = 3, width = 80, userFacingName = "", tooltip = "", transparency = 1 },
 	{
 		name = "awardCount",
 		num = 5,
 		width = userLbRowCellWidth - 10,
 		userFacingName = "awards",
 		tooltip = "How many special awards you've earned from contests or other achievements.",
+		transparency = lbtrans,
 	},
 	{
 		name = "userTix",
@@ -90,6 +99,7 @@ local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
 		width = userLbRowCellWidth,
 		userFacingName = "tix",
 		tooltip = "How many tix you've earned from your runs and finds and records.",
+		transparency = lbtrans,
 	},
 	{
 		name = "userTotalFindCount",
@@ -97,6 +107,7 @@ local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
 		width = userLbRowCellWidth,
 		userFacingName = "finds",
 		tooltip = "How many signs you've found!",
+		transparency = lbtrans,
 	},
 	{
 		name = "findRank",
@@ -104,6 +115,7 @@ local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
 		width = userLbRowCellWidth,
 		userFacingName = "rank",
 		tooltip = "Your rank of how many signs you've found.",
+		transparency = lbtrans,
 	},
 	{
 		name = "userCompetitiveWRCount",
@@ -111,6 +123,7 @@ local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
 		width = userLbRowCellWidth - 8,
 		userFacingName = "cwrs",
 		tooltip = "How many World Records you hold in competitive races!",
+		transparency = lbtrans,
 	},
 	{
 		name = "userTotalWRCount",
@@ -118,6 +131,7 @@ local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
 		width = userLbRowCellWidth,
 		userFacingName = "wrs",
 		tooltip = "How many World Records you hold right now.",
+		transparency = lbtrans,
 	},
 	{
 		name = "top10s",
@@ -125,6 +139,7 @@ local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
 		width = userLbRowCellWidth,
 		userFacingName = "top10s",
 		tooltip = "How many of your runs are still in the top10.",
+		transparency = lbtrans,
 	},
 	{
 		name = "races",
@@ -132,6 +147,7 @@ local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
 		width = userLbRowCellWidth,
 		userFacingName = "races",
 		tooltip = "How many distinct runs you've done.",
+		transparency = lbtrans,
 	},
 	{
 		name = "runs",
@@ -139,6 +155,7 @@ local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
 		width = userLbRowCellWidth,
 		userFacingName = "runs",
 		tooltip = "How many runs you've done in total.",
+		transparency = lbtrans,
 	},
 	{
 		name = "badgeCount",
@@ -146,6 +163,7 @@ local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
 		width = userLbRowCellWidth,
 		userFacingName = "badges",
 		tooltip = "Total game badges you have won.",
+		transparency = lbtrans,
 	},
 }
 
@@ -178,7 +196,7 @@ local function makeLBHeaderRowFrame(): Frame
 			headerFrame,
 			colors.defaultGrey,
 			0,
-			1
+			lbUserCellDescriptor.transparency
 		)
 		if lbUserCellDescriptor.tooltip ~= "" then
 			toolTip.setupToolTip(localPlayer, el, lbUserCellDescriptor.tooltip, UDim2.fromOffset(300, 40), false)
@@ -187,9 +205,6 @@ local function makeLBHeaderRowFrame(): Frame
 		el.ZIndex = lbUserCellDescriptor.num
 		el.TextXAlignment = Enum.TextXAlignment.Center
 		el.TextYAlignment = Enum.TextYAlignment.Center
-		-- if lbUserCellDescriptor.name == "portrait" or lbUserCellDescriptor.name == "username" then
-		el.BackgroundTransparency = 1;
-		(el.Parent :: TextLabel).BackgroundTransparency = 1
 		-- end
 	end
 	return headerFrame
@@ -493,12 +508,12 @@ local function receivedLBUpdateForUser(userData: userData, initial: boolean): ni
 			1,
 			lbEnums.lbTransparency
 		)
-		local par = newTL.Parent::TextLabel
+		local par = newTL.Parent :: TextLabel
 		--phase to new color if needed
 		if newIntermediateText == nil then
 			newTL.Text = newFinalText
 			newTL.BackgroundColor3 = bgcolor
-			
+
 			par.BackgroundColor3 = bgcolor
 		else
 			if improvement then

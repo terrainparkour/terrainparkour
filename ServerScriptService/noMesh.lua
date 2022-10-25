@@ -48,6 +48,7 @@ local function handle(character)
 					end
 				end
 			end
+			-- print("char children: " .. el.Name)
 		end
 	end)
 end

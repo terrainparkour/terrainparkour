@@ -41,6 +41,11 @@ local function GrandUndocumentedCommandBadge(userId: number)
 	GrandCmdlineBadge(userId)
 end
 
+local freedomBuffer = {}
+module.freedom = function(speaker: Player, channel)
+	freedomBuffer = {}
+end
+
 module.hint = function(speaker: Player, channel, parts: { string }): boolean
 	local target: string
 	if #parts == 1 then
@@ -186,7 +191,7 @@ module.beckon = function(speaker: Player, channel): boolean
 	elseif #players == 2 then
 		occupancySentence = string.format(" The server has 1 other player, too.")
 	else
-		occupancySentence = string.format(" The server has %d other players, too.", #players)
+		occupancySentence = string.format(" The server has %d other players, too.", #players - 1)
 	end
 	local mat = "*unknown material"
 	local hum: Humanoid = speaker.Character:FindFirstChild("Humanoid")

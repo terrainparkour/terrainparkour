@@ -17,7 +17,7 @@ local function setupValues()
 			"fall",
 			"idle",
 			"jump",
-			"laugh",
+			-- "laugh",
 			"point",
 			"run",
 			"sit",
@@ -154,9 +154,9 @@ local animNames = {
 		{ id = "http://www.roblox.com/asset/?id=507777451", weight = 10 },
 		{ id = "http://www.roblox.com/asset/?id=507777623", weight = 10 },
 	},
-	laugh = {
-		{ id = "http://www.roblox.com/asset/?id=507770818", weight = 10 },
-	},
+	-- laugh = {
+	-- 	{ id = "http://www.roblox.com/asset/?id=507770818", weight = 10 },
+	-- },
 	cheer = {
 		{ id = "http://www.roblox.com/asset/?id=507770677", weight = 10 },
 	},
@@ -169,7 +169,7 @@ local loopEmote = {
 	dance = true,
 	dance2 = true,
 	dance3 = true,
-	laugh = true,
+	-- laugh = false,
 	cheer = true,
 }
 

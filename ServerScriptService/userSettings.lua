@@ -49,6 +49,7 @@ local defaultSettingsValues: { tt.userSettingValue } = {
 	{ name = "enable find200", domain = settingEnums.settingDomains.MARATHONS },
 	{ name = "enable find300", domain = settingEnums.settingDomains.MARATHONS },
 	{ name = "enable find380", domain = settingEnums.settingDomains.MARATHONS },
+	{ name = "enable find500", domain = settingEnums.settingDomains.MARATHONS },
 	{ name = "enable find10s", domain = settingEnums.settingDomains.MARATHONS },
 	{ name = "enable find10t", domain = settingEnums.settingDomains.MARATHONS },
 	{ name = "enable exactly40letters", domain = settingEnums.settingDomains.MARATHONS },
@@ -94,6 +95,19 @@ local defaultSettingsValues: { tt.userSettingValue } = {
 	{ name = "have you played among us", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "have you played factorio", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "have you played slay the spire", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more special signs", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more limited signs", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "moveable signs", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more lava", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more ice", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more players", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more advertisements", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more sounds", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more music", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more configuration options", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more UIs", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more commands", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more user generated content", domain = settingEnums.settingDomains.SURVEYS },
 
 	--a real impactful user setting
 	{
@@ -122,6 +136,7 @@ end
 local debounceInnerSetup = false
 
 --just call this to get settings and it will handle caching.
+--src is just for debugging.
 local function innerSetupSettings(player: Player, src: string): { [string]: tt.userSettingValue }
 	while debounceInnerSetup do
 		annotate("settings.innersetup.wait " .. src)

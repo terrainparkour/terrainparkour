@@ -19,6 +19,13 @@ local localPlayer = PlayersService.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 
+--signid:bool
+local toggledOnSigns = {}
+local setupSigns = {}
+
+local remotes = require(game.ReplicatedStorage.util.remotes)
+local clickSignRemoteFunction = remotes.getRemoteFunction("ClickSignRemoteFunction")
+
 local YOULEAD = 1
 local YOUPLACE = 2
 local YOURAN = 3
@@ -345,7 +352,7 @@ local function DisplaySignRelatedData(signRelatedData, sign)
 		warn("no localplayer")
 		return bbg
 	end
-	if localPlayer.UserId == leader.userId then
+	if leader.userId and localPlayer.UserId == leader.userId then
 		wrRelatedBgColor = colors.meColor
 	end
 
@@ -501,22 +508,16 @@ local function DisplaySignRelatedData(signRelatedData, sign)
 	return bbg
 end
 
---signid:bool
-local toggledOnSigns = {}
-local setupSigns = {}
-
-local clickSignRemoteFunction: RemoteFunction = ReplicatedStorage:WaitForChild("RemoteFunctions")
-	:WaitForChild("ClickSignRemoteFunction")
-
 --2022 signs stream in as you move around, so need to run this periodically.
 --2022 POST streaming enabled disablement is that true?
-local function SetupSignsThatHaventBeenYet()
+local function SetupSigns()
 	--when the response from the click with data to display comes back.
 	--set up each sign to be clickable by this user individually.
 	for _, sign: Part in ipairs(game.Workspace:WaitForChild("Signs"):GetChildren()) do
 		if setupSigns[sign.Name] then
 			continue
 		end
+
 		sign = sign :: Part
 
 		local sg = Instance.new("SurfaceGui")
@@ -572,10 +573,4 @@ local function SetupSignsThatHaventBeenYet()
 	end
 end
 
-spawn(function()
-	while true do
-		wait(1)
-		SetupSignsThatHaventBeenYet()
-		wait(6)
-	end
-end)
+SetupSigns()

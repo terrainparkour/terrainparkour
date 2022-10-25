@@ -19,6 +19,7 @@ module.getTl = function(
 	if transparency == nil then
 		transparency = 0
 	end
+	assert(transparency ~= nil)
 	local tl = Instance.new("TextLabel")
 	tl.ZIndex = 1
 	tl.TextTransparency = 1
@@ -76,6 +77,7 @@ module.getTb = function(
 	if transparency == nil then
 		transparency = 0
 	end
+	assert(transparency~=nil)
 	local outerTb = Instance.new("TextButton")
 	outerTb.ZIndex = 1
 	outerTb.TextTransparency = 1
@@ -118,30 +120,8 @@ module.setupKillOnClick = function(sgui: ScreenGui, excludeElementName: string?,
 	local mainFrame = sgui:FindFirstChildOfClass("Frame")
 	assert(mainFrame)
 	invisibleCloseModalButton.Position = mainFrame.Position
-	local additionalYScaleReduction = 0
-	local additionalYOffsetReduction = 0
 
-	if excludeElementName and excludeElementName ~= "" then
-		assert(excludeElementName)
-		local excluded: Frame
-		excluded = sgui:FindFirstChild(excludeElementName) :: Frame
-		if excluded then
-			additionalYScaleReduction += excluded.Size.Height.Scale
-			warn("yscale.")
-			--2022 apparently this never happens
-		end
-	end
-	if actualExcludedFrame then
-		additionalYScaleReduction += actualExcludedFrame.Size.Height.Scale * mainFrame.Size.Height.Scale
-		additionalYOffsetReduction += actualExcludedFrame.Size.Height.Offset
-	end
-	local newYScale = mainFrame.Size.Y.Scale - additionalYScaleReduction - additionalYOffsetReduction
-
-	if newYScale < 0 then
-		warn("bad scale.")
-	end
-	invisibleCloseModalButton.Size =
-		UDim2.new(mainFrame.Size.X.Scale, mainFrame.Size.X.Offset, newYScale, mainFrame.Size.Y.Offset)
+	invisibleCloseModalButton.Size = mainFrame.Size
 	invisibleCloseModalButton.Name = "invisibleCloseModalButton"
 	invisibleCloseModalButton.Transparency = 1.0
 	invisibleCloseModalButton.Text = "kill but can't see"
@@ -150,6 +130,7 @@ module.setupKillOnClick = function(sgui: ScreenGui, excludeElementName: string?,
 	invisibleCloseModalButton.Activated:Connect(function()
 		sgui:Destroy()
 	end)
+	invisibleCloseModalButton.ZIndex=10
 end
 
 --pixel-sized udim creator

@@ -278,7 +278,6 @@ local function afterRemoteDbActions(kind: string, afterData: tt.afterdata)
 	if #afterData.actionResults == 0 then
 		return
 	end
-	-- vscdebug.debug()
 	--we filter my action results out, because those will be handled in the main get/post call return
 	--(by addition to the main sign for results.)
 	local otherUserActionResults: { tt.actionResult } = {}

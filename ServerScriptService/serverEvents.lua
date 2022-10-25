@@ -101,7 +101,6 @@ local function endServerEvent(serverEvent: tt.runningServerEvent): boolean
 
 	local res = rdb.reportServerEventEnd(serverEvent, allocations)
 
-	-- vscdebug.debug()
 	if res.userLbStats then
 		for _, otherPlayer in ipairs(PlayersService:GetPlayers()) do
 			local otherStats = res.userLbStats[tostring(otherPlayer.UserId)]
@@ -217,7 +216,7 @@ local function startServerEvent(data: ServerEventCreateType): (tt.runningServerE
 	--pick among candidates based on length criteria.
 	while true do
 		tries += 1
-		if tries > 20 then
+		if tries > 100 then
 			return nil
 		end
 		local startSign = nil

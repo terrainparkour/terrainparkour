@@ -8,7 +8,9 @@ local showLB: boolean = true
 local showChat: boolean = true
 
 local PlayersService = game:GetService("Players")
-repeat game:GetService("RunService").RenderStepped:wait() until game.Players.LocalPlayer.Character ~= nil
+repeat
+	game:GetService("RunService").RenderStepped:wait()
+until game.Players.LocalPlayer.Character ~= nil
 local localPlayer = PlayersService.LocalPlayer
 
 local function ToggleChat(intendedState: boolean)
@@ -30,7 +32,7 @@ end
 
 local function KillPopups()
 	for _, el in ipairs(localPlayer.PlayerGui:GetChildren()) do
-		if el.Name == "RaceResultSgui" then
+		if string.sub(el.Name, 0, 14) == "RaceResultSgui" then
 			el:Destroy()
 		end
 		if el.Name == "EphemeralNotificationSgui" then
@@ -46,6 +48,7 @@ local function KillPopups()
 			el:Destroy()
 		end
 	end
+	ToggleChat(false)
 end
 
 local function onInputBegin(inputObject, gameProcessedEvent)

@@ -529,6 +529,12 @@ local badges: { [string]: tt.badgeDescriptor } = {
 		badgeClass = "marathon",
 		order = 380,
 	},
+	MarathonCompletionFind500 = {
+		name = "Complete Find 500 sign Marathon!",
+		assetId = 2129122996,
+		badgeClass = "marathon",
+		order = 500,
+	},
 	MarathonCompletionFind10T = {
 		name = "Complete Find 10 T* Marathon!",
 		assetId = 2125027178,
@@ -896,6 +902,33 @@ local badges: { [string]: tt.badgeDescriptor } = {
 		hint = "Touchdown avoiding the grass",
 		order = 50,
 	},
+
+	LeadCwrFromTriple = {
+		name = "Lead CWR From Triple",
+		assetId = 2129133095,
+		badgeClass = "special sign",
+		order = 20,
+	},
+	LeadCwrFromQuadruple = {
+		name = "Lead CWR From Quadruple",
+		assetId = 2129133094,
+		badgeClass = "special sign",
+		order = 30,
+	},
+	LeadCwrFromHypergravity = {
+		name = "Lead CWR From Hypergravity",
+		assetId = 2129133093,
+		badgeClass = "special sign",
+		order = 40,
+	},
+	LeadCwrFromKeepOffTheGrass = {
+		name = "Lead CWR From Keep Off the Grass",
+		assetId = 2129133089,
+		badgeClass = "special sign",
+		hint = "Touchdown avoiding the grass",
+		order = 50,
+	},
+
 	FloorExplorer = {
 		name = "Floor Explorer",
 		assetId = 2129020809,
