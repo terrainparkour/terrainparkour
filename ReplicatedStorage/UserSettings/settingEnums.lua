@@ -16,7 +16,11 @@ local settingNames: { [string]: string } = {
 	ENABLE_DYNAMIC_RUNNING = "enable dynamic running",
 	HIDE_LEADERBOARD = "hide leaderboard",
 	SHORTEN_CONTEST_DIGIT_DISPLAY = "shorten contest digit display",
+	X_BUTTON_IGNORES_CHAT = "x button ignores chat",
 }
+
+--this system fails when i add one here but don't create the userSetting in the db.
+-- I should have a way to automatically at least do a getOrCreate there, like I do with signs.
 
 export type settingRequest = { domain: string?, settingName: string?, includeDistributions: boolean }
 

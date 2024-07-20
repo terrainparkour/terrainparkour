@@ -1,8 +1,6 @@
 --!strict
 
---eval 9.24.22
---will be required by various localscripts
---2023.03 loaded on client, receives and handles warps which are initiated by the server.
+--2024.08 loaded on client, receives and handles warps which are initiated by the server.
 
 local module = {}
 
@@ -17,7 +15,7 @@ local RunService = game:GetService("RunService")
 
 local function createRainbowHighlightEffect(highlight)
 	local tweenInfo = TweenInfo.new(
-		5, -- Duration (adjust for faster/slower transitions)
+		2,
 		Enum.EasingStyle.Linear,
 		Enum.EasingDirection.InOut,
 		-1, -- Repeat infinitely
@@ -42,6 +40,7 @@ local function createRainbowHighlightEffect(highlight)
 		local nextIndex = index % #rainbowColors + 1
 		local localAlpha = (alpha * (#rainbowColors - 1)) % 1
 		local color = lerpColor(rainbowColors[index], rainbowColors[nextIndex], localAlpha)
+		-- print("updateColor:" .. tostring(color))
 		highlight.OutlineColor = color
 	end
 
@@ -54,7 +53,6 @@ local function createRainbowHighlightEffect(highlight)
 		updateColor(alpha)
 	end)
 
-	-- Optional: Return the connection so it can be disconnected later if needed
 	return connection
 end
 
@@ -72,21 +70,15 @@ module.doHighlight = function(signId: number)
 	local sign = tpUtil.signId2Sign(signId)
 	if sign == nil then
 		warn("warping to highlight an unseen sign?")
+		return
 	end
 	--to highlight a sign we have to:
 	--verify the signId exists as a sign in this game
-	--verify the user has found it.
 	local signName = sign.Name
-
-	local hasFound = true
-
-	if not hasFound then
-		print("user has not found this sign.")
-		return
-	end
-
+	print("doHighlight:" .. tostring(signId) .. sign.Name)
 	local hh: Highlight = Instance.new("Highlight")
 	hh.Parent = sign
+	hh.Name = "TheHighlightYo"
 	hh.FillColor = colors.signColor
 	hh.OutlineColor = Color3.new(0, 1, 0)
 	hh.OutlineTransparency = 0.0

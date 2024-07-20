@@ -53,7 +53,7 @@ dynamic.init()
 local serverEvents = require(game.ServerScriptService.serverEvents)
 serverEvents.init()
 
-local serverwarping = require(game.ServerScriptService.serverwarping)
+local serverwarping = require(game.ServerScriptService.serverWarping)
 serverwarping.init()
 
 --how  does the game work?

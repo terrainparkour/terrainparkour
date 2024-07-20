@@ -1,8 +1,7 @@
 --!strict
 
---eval 9.24.22
---will be required by various localscripts
---2023.03 loaded on client, receives and handles warps which are initiated by the server.
+--warper client. requests warp permissions from server
+--server validates it
 
 local annotationStart = tick()
 local doAnnotation = true
@@ -58,7 +57,7 @@ module.requestWarpToSign = function(signId: number, highlightSignId: number?): b
 
 	if succeededInWarp then
 		if highlightSignId then
-			highlighting.doHighlight(signId)
+			highlighting.doHighlight(highlightSignId)
 		end
 		print("client side warp success")
 	else

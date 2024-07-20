@@ -1,11 +1,13 @@
 --!strict
 
 --eval 9.25.22
---the lower right S hamburger
+--the lower right S hamburger menu which contains info screens "ways to play", "badges", "surveys" and also the settings UI.
 
 local PlayersService = game:GetService("Players")
 
-repeat game:GetService("RunService").RenderStepped:wait() until game.Players.LocalPlayer.Character ~= nil
+repeat
+	game:GetService("RunService").RenderStepped:wait()
+until game.Players.LocalPlayer.Character ~= nil
 local localPlayer = PlayersService.LocalPlayer
 local pgui: PlayerGui = PlayersService.LocalPlayer:WaitForChild("PlayerGui")
 local menu = require(game.ReplicatedStorage.gui.menu.menu)

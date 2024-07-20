@@ -9,7 +9,7 @@ local module = {}
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
 local rdb = require(game.ServerScriptService.rdb)
-local serverwarping = require(game.ServerScriptService.serverwarping)
+local serverwarping = require(game.ServerScriptService.serverWarping)
 
 local playerLocations: { Vector3 } = {}
 

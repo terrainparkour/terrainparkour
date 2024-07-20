@@ -131,6 +131,11 @@ local defaultSettingsValues: { tt.userSettingValue } = {
 		domain = settingEnums.settingDomains.USERSETTINGS,
 		value = false,
 	},
+	{
+		name = settingEnums.settingNames.X_BUTTON_IGNORES_CHAT,
+		domain = settingEnums.settingDomains.USERSETTINGS,
+		value = false,
+	},
 }
 
 --copy a setting based on template default.

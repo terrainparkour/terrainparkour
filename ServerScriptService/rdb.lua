@@ -292,8 +292,8 @@ local function checkBadgesForBadIds()
 	end
 end
 
-module.getSignProfileForUser = function(userId: number, signId: number)
-	local data = { userId = userId, signId = signId }
+module.getSignProfileForUser = function(username: string, signId: number)
+	local data = { username = username, signId = signId }
 	return remoteDbInternal.remoteGet("getSignProfileForUser", data)
 end
 

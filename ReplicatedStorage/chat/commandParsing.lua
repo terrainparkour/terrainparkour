@@ -14,7 +14,7 @@ local playerdata = require(game.ServerScriptService.playerdata)
 local rdb = require(game.ServerScriptService.rdb)
 
 local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
-local serverwarping = require(game.ServerScriptService.serverwarping)
+local serverwarping = require(game.ServerScriptService.serverWarping)
 local channelCommands = require(game.ReplicatedStorage.chat.channelCommands)
 
 local sendMessageModule = require(game.ReplicatedStorage.chat.sendMessage)
@@ -268,37 +268,31 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 
 		--this is another way to get the right-click sign UI to pop up.
 		if verb == "sign" then
-			local signProfiler = require(game.ReplicatedStorage.commands.signProfileCommand)
+			local signProfileCommand = require(game.ReplicatedStorage.commands.signProfileCommand)
 			if #parts <= 1 then
 				return false
 			end
 
-			local userId = speaker.UserId
-			local signId = tpUtil.looseSignName2SignId(parts[2])
+			local subjectUsername: string = speaker.Name
+			-- forms of the command: /sign X <info on sign X about you>
+			-- /sign X Y <info on sign X about player Y, even if Y is not in server>
+			table.remove(parts, 1)
+
+			--maybe its one big signid.
+			signId = tpUtil.looseSignName2SignId(textUtil.coalesceFrom(parts, 1))
 			if not signId then
-				return false
+				--multi-word sign. take all the ones before last.
+				subjectUsername = parts[#parts]
+				table.remove(parts, #parts)
+				signId = tpUtil.looseSignName2SignId(textUtil.coalesceFrom(parts, 1))
 			end
-			if #parts == 2 then --signid, default userid.
-			elseif #parts >= 3 then
-				--try taking last arg as user
-				local tuser = tpUtil.looseGetPlayerFromUsername(parts[#parts])
-				if tuser then
-					userId = tuser.UserId
-					local int = {}
-					for a, b in ipairs(parts) do
-						if a == #parts then
-							break
-						end
-						table.insert(int, b)
-					end
-					signId = tpUtil.looseSignName2SignId(textUtil.coalesceFrom(int, 2))
-				else
-					signId = tpUtil.looseSignName2SignId(textUtil.coalesceFrom(parts, 2))
-				end
+
+			if signId and subjectUsername then
+				--problem: we have not verified the username here.
+				signProfileCommand.signProfileCommand(subjectUsername, signId, speaker)
 			else
 				return false
 			end
-			signProfiler.signProfileCommand(userId, signId, speaker)
 			return true
 		end
 
@@ -326,7 +320,31 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 			end
 		end
 
-		--falling through to interpreting the command as a player name.
+		local coalescedVerb = textUtil.coalesceFrom(parts, 1)
+
+		--first look up exact match on player.
+		for _, player: Player in ipairs(PlayersService:GetPlayers()) do
+			if player.Name:lower() == coalescedVerb then
+				local playerDescription = playerdata.getPlayerDescriptionMultiline(player.UserId)
+				if playerDescription ~= "unknown" then
+					local res = player.Name .. " stats: " .. playerDescription
+					sm(channel, res)
+					GrandCmdlineBadge(speaker.UserId)
+					return true
+				end
+			end
+		end
+
+		--then look up candidate signs loosely.
+
+		local candidateSignId = tpUtil.looseSignName2SignId(coalescedVerb)
+		if candidateSignId ~= nil then
+			channelCommands.describeSingleSign(speaker, candidateSignId, channel)
+			GrandCmdlineBadge(speaker.UserId)
+			return true
+		end
+
+		--now treat it as a player prefix.
 		local messageplayer = tpUtil.looseGetPlayerFromUsername(message:lower())
 		if messageplayer then
 			local playerDescription = playerdata.getPlayerDescriptionMultiline(messageplayer.UserId)
@@ -338,13 +356,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 			end
 		end
 
-		--testing if the user typed /<signnamePrefix>
-		local candidateSignId = tpUtil.looseSignName2SignId(verb)
-		if candidateSignId ~= nil then
-			channelCommands.describeSingleSign(speaker, candidateSignId, channel)
-			GrandCmdlineBadge(speaker.UserId)
-			return true
-		end
+		--what about remote players? TODO2024
 
 		--lookup a race (NAMEPREFIX-NAMEPREFIX) sign names
 		local signParts = textUtil.stringSplit(message:lower(), "-")

@@ -5,9 +5,9 @@
 
 local module = {}
 
-local rf = require(game.ReplicatedStorage.util.remotes)
-local warpRequestFunction = rf.getRemoteFunction("WarpRequestFunction")
-local serverWantsWarpFunction = rf.getRemoteFunction("ServerWantsWarpFunction")
+local remotes = require(game.ReplicatedStorage.util.remotes)
+local warpRequestFunction = remotes.getRemoteFunction("WarpRequestFunction")
+local serverWantsWarpFunction = remotes.getRemoteFunction("ServerWantsWarpFunction")
 
 local warpStartCallbacks = {}
 local warpEndCallbacks = {}

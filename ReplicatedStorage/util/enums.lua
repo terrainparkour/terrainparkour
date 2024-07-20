@@ -574,6 +574,7 @@ module.signName2Alias["凹"] = "bumpin"
 module.signName2Alias["👍"] = "thumbsup"
 module.signName2Alias["🔥"] = "flame"
 module.signName2Alias["ディズニー"] = "disney"
+module.signName2Alias["Mægæ"] = "Maegae"
 module.signName2Alias["ඞ"] = "sus"
 module.signName2Alias["Ø"] = "nullity"
 module.signName2Alias["👻"] = "ghost"
@@ -584,7 +585,6 @@ module.signName2Alias["Fimmtudagur"] = "Thursday - Icelandic"
 module.signName2Alias["金曜日"] = "Friday - Japanese"
 module.signName2Alias["Thứ Bảy"] = "Saturday - Vietnamese"
 module.signName2Alias["일요일"] = "Sunday - Korean"
-
 --probably put this in a bucket saying to NOT repeat its alias.
 module.signName2Alias["Jökulhlaup"] = "Jokulhlaup"
 
@@ -793,6 +793,9 @@ local releaseNotes: { [number]: string } = {
 	[211] = [[* Add other server user info into sign history lookups
 * starting on user sign profiles. try "/sign tripool"]],
 	[216] = [[* First release in a while, new sign, catching up.]],
+	[231] = [[* First release in a very great while. 
+	* Rewrote warping, movement, refactor lots of things, lots of new funky signs. 
+	* Some UI and cmdline fixes. Basically, this is about rebooting game development]],
 }
 
 module.releaseNotes = releaseNotes

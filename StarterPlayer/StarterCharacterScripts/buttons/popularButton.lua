@@ -175,7 +175,7 @@ local function makePopRowFrame(
 		warp.Text = "Warp"
 
 		warp.Activated:Connect(function()
-			warper.requestWarpToSign(pop.startSignId, pop.endSignName)
+			warper.requestWarpToSign(pop.startSignId, pop.endSignId)
 			lastCanvasPosition = scrollingFrame.CanvasPosition
 			parentSgui:Destroy()
 		end)
@@ -219,7 +219,7 @@ local function getPopularContents(player: Player, userIds: { number })
 	-- headerFrame.BorderMode = Enum.BorderMode.Inset
 	headerFrame.Parent = outerFrame
 	headerFrame.Name = "01popularHeaderRow"
-	headerFrame.Size = UDim2.new(1, -10, 0, 20)
+	headerFrame.Size = UDim2.new(1, 0, 0, 20)
 	local vv = Instance.new("UIListLayout")
 	vv.FillDirection = Enum.FillDirection.Horizontal
 	vv.Parent = headerFrame

@@ -13,7 +13,7 @@ local module = {}
 
 module.rotate = function(sign: Part)
 	if not sign and not config.isInStudio() then
-		warn("no sign")
+		warn("no sign2")
 		return
 	end
 	spawn(function()
@@ -28,7 +28,7 @@ end
 
 module.rotateMeshpart = function(sign: MeshPart)
 	if not sign and not config.isInStudio() then
-		warn("no sign")
+		warn("no sign3")
 		return
 	end
 	spawn(function()
@@ -43,7 +43,7 @@ end
 
 module.riseandspin = function(sign: Part)
 	if not sign and config.isInStudio() then
-		warn("no sign")
+		warn("no sign4")
 		return
 	end
 	spawn(function()
@@ -67,7 +67,7 @@ end
 --following for 007 mystery sign.
 module.fadeInSign = function(sign: Part)
 	if not sign and config.isInStudio() then
-		warn("no sign")
+		warn("no sign5")
 		return
 	end
 	spawn(function()

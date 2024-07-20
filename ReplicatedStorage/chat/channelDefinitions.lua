@@ -14,7 +14,7 @@ local playerdata = require(game.ServerScriptService.playerdata)
 local rdb = require(game.ServerScriptService.rdb)
 
 local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
-local serverwarping = require(game.ServerScriptService.serverwarping)
+local serverwarping = require(game.ServerScriptService.serverWarping)
 local channelCommands = require(game.ReplicatedStorage.chat.channelCommands)
 
 local sendMessageModule = require(game.ReplicatedStorage.chat.sendMessage)

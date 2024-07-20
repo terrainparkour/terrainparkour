@@ -12,6 +12,10 @@ repeat
 	game:GetService("RunService").RenderStepped:wait()
 until game.Players.LocalPlayer.Character ~= nil
 local localPlayer = PlayersService.LocalPlayer
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+local localFunctions = require(game.ReplicatedStorage.localFunctions)
+local tt = require(game.ReplicatedStorage.types.gametypes)
+local ignoreChatWhenHittingX = false
 
 local function ToggleChat(intendedState: boolean)
 	local ChatMain =
@@ -53,7 +57,10 @@ local function KillPopups()
 			el:Destroy()
 		end
 	end
-	ToggleChat(false)
+	if ignoreChatWhenHittingX then
+	else
+		ToggleChat(false)
+	end
 end
 
 local function onInputBegin(inputObject, gameProcessedEvent)
@@ -74,3 +81,17 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 end
 
 UserInputService.InputBegan:Connect(onInputBegin)
+
+local handleUserSettingChanged = function(item: tt.userSettingValue)
+	if ignoreChatWhenHittingX ~= item.value then
+		ignoreChatWhenHittingX = item.value
+		print("changed x button ignore chat to " .. tostring(item.value))
+	end
+end
+
+localFunctions.registerLocalSettingChangeReceiver(function(item: tt.userSettingValue): any
+	return handleUserSettingChanged(item)
+end, "handleXButtonEffectSettingChanged")
+
+local sval = localFunctions.getSettingByName(settingEnums.settingNames.X_BUTTON_IGNORES_CHAT)
+handleUserSettingChanged(sval)

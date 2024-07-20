@@ -214,14 +214,14 @@ local function getPopularContents(player: Player, userIds: { number }): ScreenGu
 	vv0.FillDirection = Enum.FillDirection.Vertical
 	vv0.Parent = outerFrame
 
-	local tb = guiUtil.getTl("00PopularTitle", UDim2.new(1, 0, 0, 30), 2, outerFrame, colors.defaultGrey, 1)
-	tb.Text = "Recent Popular Runs"
+	local tb = guiUtil.getTl("00NewTitle", UDim2.new(1, 0, 0, 30), 2, outerFrame, colors.defaultGrey, 1)
+	tb.Text = "New Runs"
 
 	local headerFrame = Instance.new("Frame")
 	-- headerFrame.BorderMode = Enum.BorderMode.Inset
 	headerFrame.Parent = outerFrame
 	headerFrame.Name = "01popularHeaderRow"
-	headerFrame.Size = UDim2.new(1, -10, 0, 20)
+	headerFrame.Size = UDim2.new(1, 0, 0, 20)
 	local vv = Instance.new("UIListLayout")
 	vv.FillDirection = Enum.FillDirection.Horizontal
 	vv.Parent = headerFrame
@@ -259,7 +259,13 @@ local function getPopularContents(player: Player, userIds: { number }): ScreenGu
 	vv.Parent = scrollingFrame
 
 	for ii, pop in ipairs(popResults) do
-		local rowFrame = makePopRowFrame(pop, ii, sg, scrollingFrame, { requestWarpToSign = warper.requestWarpToSign })
+		local rowFrame = makePopRowFrame(pop, ii, sg, scrollingFrame, {
+			requestWarpToSign = function(signId: number, highlightSignId: number?)
+				warper.requestWarpToSign(signId, highlightSignId)
+				--we make this new enclosure to make sure the type manager realizes taht in this case
+				--we don't care about the return value.
+			end,
+		})
 		rowFrame.Parent = scrollingFrame
 	end
 

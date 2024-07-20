@@ -17,7 +17,7 @@ local badges = require(game.ServerScriptService.badges)
 local leaderboardBadgeEvents = require(game.ServerScriptService.leaderboardBadgeEvents)
 local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
 local banning = require(game.ServerScriptService.banning)
-local serverwarping = require(game.ServerScriptService.serverWarping)
+local serverwarping = require(game.ServerScriptService.serverwarping)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local PopularResponseTypes = require(game.ReplicatedStorage.types.PopularResponseTypes)
 local popular = require(game.ServerScriptService.data.popular)
@@ -26,17 +26,17 @@ local sm = sendMessageModule.sendMessage
 
 local PlayersService = game:GetService("Players")
 
-local sg = require(game.ReplicatedStorage.commands.profileSguiCreator)
+local sg=require(game.ReplicatedStorage.chat.profileSguiCreator)
 
 local module = {}
 
-local function prepayerData(targetUserId): tt.playerProfileData
-	local res: tt.playerProfileData
-	return res
+local function prepayerData(targetUserId):tt.playerProfileData
+	local res:tt.playerProfileData
+	return res	
 end
 
-module.profileCommand = function(targetUserId: number, localPlayer: Player)
-	local data = prepayerData(targetUserId)
+module.profileCommand=function(targetUserId:number, localPlayer:Player)
+	local data=prepayerData(targetUserId)
 	sg.createSgui(localPlayer, data)
 end
 

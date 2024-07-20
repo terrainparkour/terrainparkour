@@ -155,8 +155,8 @@ clickSignRemoteFunction.OnServerInvoke = function(player: Player, signClickMessa
 	if signClickMessage.leftClick then
 		return serverInvokeClickSignRemote(player, signClickMessage.signId)
 	else
-		local profile = require(game.ReplicatedStorage.commands.signProfileCommand)
-		profile.signProfileCommand(player.UserId, signClickMessage.signId, player)
+		local signProfileCommand = require(game.ReplicatedStorage.commands.signProfileCommand)
+		signProfileCommand.signProfileCommand(player.Name, signClickMessage.signId, player)
 	end
 end
 

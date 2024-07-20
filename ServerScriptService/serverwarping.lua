@@ -1,8 +1,5 @@
 --!strict
 
---2022.04.29 only called by RS.warper which must have been required by various client scripts
---eval 9.25.22
-
 --2024.08 simplified everything to use serverwarp.
 --also added highlighting.
 local annotationStart = tick()
@@ -61,7 +58,6 @@ local function CreateTemporaryLightPillar(pos: Vector3, desc: string)
 	end)
 end
 
---what in the world is size here?
 local function InnerWarp(player: Player, pos: Vector3, randomize: boolean): boolean
 	annotate("innerwarp.")
 	annotate("invoke Client:serverWantsWarpFunction .")

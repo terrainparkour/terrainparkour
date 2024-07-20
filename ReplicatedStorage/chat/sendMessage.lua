@@ -43,7 +43,7 @@ module.usageCommandDesc = [[Admin Command examples:
 /popular - show popular top runs and server ranking.
 /random - Give a random sign name you have found.
 /randomrace or /rr - start a random race for the server between two signs!
-/sign [signname] <username> - show user's summary stats on sign, defaults to you.
+/sign <username> [signname] - show user's sign profile, defaults to you.
 /stats - Show today's stats.
 /tix [username] - Find out the TIX balance for any user!
 /uptime - server uptime

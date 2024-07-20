@@ -214,7 +214,7 @@ local function getPath(kind: string, data: any)
 	elseif kind == "getKnownSignIds" then
 		return kind .. "/"
 	elseif kind == "getSignProfileForUser" then
-		return kind .. "/" .. stringdata.userId .. "/" .. stringdata.signId .. "/"
+		return kind .. "/" .. stringdata.username .. "/" .. stringdata.signId .. "/"
 
 		--stats RACE
 	elseif kind == "getTotalRunCountByUserAndRace" then

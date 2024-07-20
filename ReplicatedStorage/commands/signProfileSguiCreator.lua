@@ -7,7 +7,7 @@ local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
 
 local config = require(game.ReplicatedStorage.config)
-
+local thumbnails = require(game.ReplicatedStorage.thumbnails)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 local tt = require(game.ReplicatedStorage.types.gametypes)
@@ -94,10 +94,28 @@ module.createSgui = function(localPlayer: Player, data: tt.playerSignProfileData
 	local hh = Instance.new("UIListLayout")
 	hh.Parent = hframe
 	hh.FillDirection = Enum.FillDirection.Horizontal
-	local title = guiUtil.getTl("01.SignProfile.Title", UDim2.new(0.5, 0, 1, 0), 2, hframe, colors.blueDone, 1, 0)
-	title.Text = string.format("%s Profile for", localPlayer.Name)
 
-	local signLabel = guiUtil.getTl("02.SignProfile.Title", UDim2.new(0.5, 0, 1, 0), 2, hframe, colors.signColor, 1, 0)
+	local bgcolor = colors.grey
+	if data.userId == localPlayer.UserId then
+		bgcolor = colors.meColor
+	end
+
+	local img = Instance.new("ImageLabel")
+	img.Size = UDim2.new(0.1, 0, 1, 0)
+	local content = thumbnails.getThumbnailContent(data.userId, Enum.ThumbnailType.HeadShot)
+	img.Image = content
+	img.BackgroundColor3 = bgcolor
+	img.Name = "01.thumbnail."
+	img.Parent = hframe
+	img.BorderMode = Enum.BorderMode.Outline
+	-- img.BorderSizePixel=1
+	img.BackgroundTransparency = 0
+	img.BorderSizePixel = 1
+
+	local title = guiUtil.getTl("02.SignProfile.Title", UDim2.new(0.4, 0, 1, 0), 2, hframe, colors.blueDone, 1, 0)
+	title.Text = string.format("%s Profile for", data.username)
+
+	local signLabel = guiUtil.getTl("03.SignProfile.Title", UDim2.new(0.5, 0, 1, 0), 2, hframe, colors.signColor, 1, 0)
 	signLabel.TextColor3 = colors.white
 	signLabel.Text = string.format("%s", data.signName)
 

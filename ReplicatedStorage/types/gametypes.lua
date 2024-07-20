@@ -314,6 +314,8 @@ export type playerSignProfileData = {
 	relationships: { userSignSignRelationship },
 	unrunCwrs: { string }, --limited selection
 	unrunSigns: { string },
+	username: string,
+	userId: number, --the SUBJECT userid.
 }
 
 --local sign clickability - left and right clicks do diff things.

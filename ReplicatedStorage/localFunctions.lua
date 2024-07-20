@@ -1,12 +1,11 @@
 --!strict
 
---eval 9.25.22
-
 --localfunctions used for local script communication about settings changes.
 --if you care, register to listen
 --and the settings ui will spam you
 
 --TODO what happens if you call this from server context?
+-- TODO 2024 - doesn't it seem like these settings changes should really be communicated via a bindable event? rather than my custom registrartion/monitoring system?
 
 --i.e. one local ui to another.  this is likely not the ideal method.
 
@@ -19,11 +18,13 @@ local module = {}
 --local listeners send callbacks here for notification when other local settings changers change a setting, or when server receives the change.
 --TODO why do i have both methods?
 --TODO this is unsafe for player death but because of the way name overlapping works, we just replace re-registrations
+
+-- this NAME is just a placeholder for managing the settings handlers? rather than being the actual in-db name.
 local settingChangeFunctions: { [string]: (tt.userSettingValue) -> nil } = {}
 module.registerLocalSettingChangeReceiver = function(func: (tt.userSettingValue) -> nil, name: string)
-	if settingChangeFunctions[name] ~= nil then
-		-- print("reregistering setting change warning for " .. name)
-	end
+	-- if settingChangeFunctions[name] ~= nil then
+	-- print("reregistering setting change warning for " .. name)
+	-- end
 	settingChangeFunctions[name] = func
 end
 
@@ -36,6 +37,8 @@ end
 
 local getUserSettingsFunction: RemoteFunction = remotes.getRemoteFunction("GetUserSettingsFunction")
 
+--2024 is this safe to globally just use? like, in the chat toggler can I hit this and get some kind of useful or at least
+-- not super slow/not missing data way to get the current value?
 module.getSettingByName = function(settingName: string): tt.userSettingValue
 	local req: settingEnums.settingRequest = { settingName = settingName, includeDistributions = false }
 	return getUserSettingsFunction:InvokeServer(req)

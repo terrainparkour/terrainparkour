@@ -308,7 +308,19 @@ module.createNewRunResultSgui = function(
 			end
 		end
 		if not bad then
-			warpRow = addRow("Warp back to " .. signName, frame, heightsPixel.warp, "warpRow", colors.lightBlue)
+			local uis = game:GetService("UserInputService")
+			local mobileText = ""
+			if uis.KeyboardEnabled then
+				mobileText = " [1]"
+			end
+
+			warpRow = addRow(
+				string.format("Warp back to %s%s", signName, mobileText),
+				frame,
+				heightsPixel.warp,
+				"warpRow",
+				colors.lightBlue
+			)
 			local invisibleTextButton = Instance.new("TextButton")
 			invisibleTextButton.Position = warpRow.Position
 			invisibleTextButton.Size = UDim2.new(1, 0, 1, 0)
