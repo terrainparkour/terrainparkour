@@ -8,7 +8,8 @@ local colors = require(game.ReplicatedStorage.util.colors)
 local mt = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonTypes)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 
-local localPlayer = game:GetService("Players").LocalPlayer
+local PlayersService = game:GetService("Players")
+local localPlayer = PlayersService.LocalPlayer
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 
 local doAnnotation = false
@@ -99,30 +100,34 @@ module.alphaKeysReverse = {
 --its important to use the module naming method to get the name because
 --that will be used later to find the way to toggle it on again.
 --e.g. make chips for marathon subcomponent achievements
-module.makeTileForSubcomponent =
-	function(desc: mt.marathonDescriptor, key: string, xscale: number, zindex: number): TextLabel
-		local name = module.getMarathonComponentName(desc, key)
-		local fakeParent = Instance.new("Frame")
-		local usePadding = desc.chipPadding
-		if usePadding == nil then
-			usePadding = 0
-		end
-		local tl = guiUtil.getTl(name, UDim2.new(0, xscale, 1, 0), usePadding, fakeParent, colors.defaultGrey, 1)
-		-- tl.Parent.BorderMode = Enum.BorderMode.Outline
-
-		--TODO fix this - override hack because keys are 2digit numbers and for display in this case we want to fix.
-		if desc.highLevelType == "signsOfEveryLength" then
-			key = tostring(tonumber(key))
-			tl.TextScaled = true
-		end
-		if desc.highLevelType == "findSet" then
-			tl.TextScaled = true
-		end
-		tl.Text = key
-		tl.ZIndex = zindex
-
-		return tl.Parent
+module.makeTileForSubcomponent = function(
+	desc: mt.marathonDescriptor,
+	key: string,
+	xscale: number,
+	zindex: number
+): TextLabel
+	local name = module.getMarathonComponentName(desc, key)
+	local fakeParent = Instance.new("Frame")
+	local usePadding = desc.chipPadding
+	if usePadding == nil then
+		usePadding = 0
 	end
+	local tl = guiUtil.getTl(name, UDim2.new(0, xscale, 1, 0), usePadding, fakeParent, colors.defaultGrey, 1)
+	-- tl.Parent.BorderMode = Enum.BorderMode.Outline
+
+	--TODO fix this - override hack because keys are 2digit numbers and for display in this case we want to fix.
+	if desc.highLevelType == "signsOfEveryLength" then
+		key = tostring(tonumber(key))
+		tl.TextScaled = true
+	end
+	if desc.highLevelType == "findSet" then
+		tl.TextScaled = true
+	end
+	tl.Text = key
+	tl.ZIndex = zindex
+
+	return tl.Parent
+end
 
 --TODO make X button to just close a marathon from the UI entirely.
 module.getMarathonResetTile = function(desc: mt.marathonDescriptor): TextButton
@@ -183,8 +188,10 @@ local function getComponentTilesForKind(desc: mt.marathonDescriptor, tiles: { Te
 		end
 		if #effectiveTargets == 0 then
 			warn("error in marathon setup.")
+			return
 		end
 		for ii, k in ipairs(effectiveTargets) do
+			--if effectiveTargets has nothing?
 			local thisWidth = math.ceil(remainingLetterWidth / (#effectiveTargets - ii + 1))
 			remainingLetterWidth -= thisWidth
 			local tl = module.makeTileForSubcomponent(desc, k, thisWidth, ii + rnd)

@@ -6,14 +6,14 @@
 
 local PlayerService = game:GetService("Players")
 local colors = require(game.ReplicatedStorage.util.colors)
-local channelDefinitions = require(game.ReplicatedStorage.chat.channelDefinitions)
+local channeldefinitions = require(game.ReplicatedStorage.chat.channeldefinitions)
 local playerdata = require(game.ServerScriptService.playerdata)
 local lbupdater = require(game.ServerScriptService.lbupdater)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local module = {}
 
-local racersChannel = channelDefinitions.getChannel("Racers")
+local racersChannel = channeldefinitions.getChannel("Racers")
 
 local doAnnotation = false
 
@@ -23,63 +23,84 @@ local function annotate(s: string)
 	end
 end
 
---leaver should be updated to everyone
-module.RemoveFromLeaderboard = function(player: Player)
+--this whole set of functions seems highly strange.
+-- why should this be so hard?
+-- a lot of them are of the form: when a player joins the server, set further rules such taht if they
+-- do something else, update other people?
+-- i don't get why instead it isn't like, when a player joins, they should get everyone's current state, and also subscribe to new updates.
+-- so it's basically: catchup, follow.
+
+--leaver should be updated to everyone. this is called when a player actually leaves.
+module.RemoveFromLeaderboardImmediate = function(player: Player)
+	annotate("this player left: " .. player.Name)
 	for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
 		if otherPlayer.UserId == player.UserId then
-			continue --skip why not?
+			continue
 		end
-		lbupdater.updateLeaderboardForLeave(otherPlayer, player.UserId)
+		lbupdater.sendLeaveInfoToSomeone(otherPlayer, player.UserId)
 	end
 end
 
-module.PostJoinToRacers = function(player: Player)
-	--also post in channel that they left.
+module.PostJoinToRacersImmediate = function(player: Player)
+	annotate("Posting join to racers: " .. player.Name)
+	local character = player.Character or player.CharacterAdded:Wait()
 	local statTag = playerdata.getPlayerDescriptionLine(player.UserId)
 	local text = player.Name .. " joined! " .. statTag
 	local options = { ChatColor = colors.greenGo }
 	racersChannel:SendSystemMessage(text, options)
 end
 
-module.PostLeaveToRacers = function(player: Player)
-	--also post in channel that they left.
+module.PostLeaveToRacersImmediate = function(player: Player)
+	annotate("Posting leave to racers: " .. player.Name)
 	local statTag = playerdata.getPlayerDescriptionLine(player.UserId)
 	local text = player.Name .. " left! " .. statTag
 	local options = { ChatColor = colors.redStop }
 	racersChannel:SendSystemMessage(text, options)
 end
 
-local function updateSomeone(player: Player)
-	-- annotate("updateJoinerLeaderboard." .. player.Name .. " charadded")
+--update joiner about current players
+local function updatePlayerLbAboutAllImmediate(player: Player)
+	local character = player.Character or player.CharacterAdded:Wait()
 	for _, otherPlayer: Player in ipairs(PlayerService:GetPlayers()) do
 		local stats: tt.afterData_getStatsByUser =
 			playerdata.getPlayerStatsByUserId(otherPlayer.UserId, "update joiner lb")
-		lbupdater.updateLeaderboardForJoin(player, stats)
+		lbupdater.sendUpdateToPlayer(player, stats)
+		annotate(string.format("Updating player: %s about %s", player.Name, otherPlayer.Name))
 	end
 end
 
-module.UpdateOwnLeaderboard = function(player: Player)
+module.SetPlayerToReceiveUpdates = function(player: Player)
+	annotate("Setting player to receive updates: " .. player.Name)
 	player.CharacterAdded:Connect(function(_)
-		return updateSomeone(player)
+		annotate("Player " .. player.Name .. " was added, so telling " .. player.Name .. " about it.")
+		return updatePlayerLbAboutAllImmediate(player)
 	end)
-
-	updateSomeone(player)
+	local character = player.Character or player.CharacterAdded:Wait()
+	updatePlayerLbAboutAllImmediate(player)
 end
 
-local function updateOthersAboutPlayer(player: Player)
+local function updateOthersAboutPlayerImmediate(player: Player)
 	local stats: tt.afterData_getStatsByUser =
 		playerdata.getPlayerStatsByUserId(player.UserId, "update other about joiner")
-
+	local character = player.Character or player.CharacterAdded:Wait()
 	for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
-		-- annotate("updateOthers " .. otherPlayer.Name .. " => " .. player.Name)
-		lbupdater.updateLeaderboardForJoin(otherPlayer, stats)
+		if otherPlayer.UserId == player.UserId then
+			continue
+		end
+		annotate(string.format("Updating %s about player: %s", otherPlayer.Name, player.Name))
+		lbupdater.sendUpdateToPlayer(otherPlayer, stats)
 	end
 end
 
+-- when a player is added
+-- we make it so that, for that player,
+-- when that player initially spawns (or respawns)
 module.UpdateOthersAboutJoinerLb = function(player: Player)
-	player.CharacterAdded:Connect(function(_)
-		updateOthersAboutPlayer(player)
+	player.CharacterAdded:Connect(function()
+		annotate("Player " .. player.Name .. " was added, so telling others about it - top.")
+		updateOthersAboutPlayerImmediate(player)
 	end)
-	updateOthersAboutPlayer(player)
+	annotate("Player " .. player.Name .. " initial add backfull, so telling others.")
+	updateOthersAboutPlayerImmediate(player)
 end
 return module

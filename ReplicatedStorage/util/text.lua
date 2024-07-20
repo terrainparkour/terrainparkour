@@ -137,11 +137,11 @@ module.generateTextForRankedList = function(
 		else
 			obj.username = rdb.getUsernameByUserId(obj.userId)
 		end
-
+		local color = colors.white
 		--the person in the top list also is in server, so highlight them.
 		if playersInServer[obj.userId] ~= nil then
-			local res = tpUtil.getCardinal(obj.rank) .. ":\t" .. obj.count .. " - " .. obj.username
-			local color = colors.mePastColor
+			local res = tpUtil.getCardinalEmoji(obj.rank) .. ":\t" .. obj.count .. " - " .. obj.username
+			color = colors.greenGo
 			if obj.userId == speakerUserId then
 				color = colors.meColor
 			end
@@ -151,8 +151,8 @@ module.generateTextForRankedList = function(
 		end
 
 		--normal case: add the person
-		local res = tpUtil.getCardinal(obj.rank) .. ":\t" .. obj.count .. " - " .. obj.username
-		table.insert(messageItems, { message = res, options = { ChatColor = colors.white } })
+		local res = tpUtil.getCardinalEmoji(obj.rank) .. ":\t" .. obj.count .. " - " .. obj.username
+		table.insert(messageItems, { message = res, options = { ChatColor = color } })
 	end
 
 	--fallback to display stats for the other people in the server too.
@@ -164,8 +164,8 @@ module.generateTextForRankedList = function(
 		-- print("showing" .. userIdInServer)
 		local username = rdb.getUsernameByUserId(userIdInServer)
 		local stats = getStats(userIdInServer)
-		local res = tpUtil.getCardinal(stats.rank) .. ":\t" .. stats.count .. " - " .. username
-		local color = colors.defaultGrey
+		local res = tpUtil.getCardinalEmoji(stats.rank) .. ":\t" .. stats.count .. " - " .. username
+		local color = colors.greenGo
 		if userIdInServer == speakerUserId then
 			color = colors.meColor
 		end

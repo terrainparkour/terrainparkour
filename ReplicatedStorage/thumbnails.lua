@@ -9,6 +9,9 @@ thumbnailMaps[Enum.ThumbnailType.HeadShot] = {}
 thumbnailMaps[Enum.ThumbnailType.AvatarBust] = {}
 
 module.getThumbnailContent = function(userId: number, ttype, x: number?, y: number?): string
+	if userId < 0 then
+		userId = 261
+	end
 	if x == nil then
 		x = 100
 	end
@@ -27,6 +30,18 @@ module.getThumbnailContent = function(userId: number, ttype, x: number?, y: numb
 		thumbnailMaps[ttype][userId] = content
 	end
 	return thumbnailMaps[ttype][userId]
+end
+
+module.getBadgeAssetThumbnailContent = function(badgeAssetId: number): string
+	if badgeAssetId == nil or badgeAssetId < 0 then
+		error("bad id.")
+	end
+	-- local x = 150
+	-- local y = 150
+	-- local ttype = "badge"
+	local at = "BadgeIcon"
+	local content = "rbxthumb://type=" .. at .. "&id=" .. badgeAssetId .. "&w=150&h=150"
+	return content
 end
 
 return module

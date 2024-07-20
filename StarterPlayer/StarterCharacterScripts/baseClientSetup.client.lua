@@ -2,8 +2,8 @@
 --eval 9.25.22
 
 --zoomlevel, jump base etc.
-game.Players.LocalPlayer.CameraMaxZoomDistance = 6999
-game.Players.LocalPlayer.Character.Humanoid.JumpPower = 55
+game.Players.LocalPlayer.CameraMaxZoomDistance = 8999
+
 -- game.Players.LocalPlayer.Character.Humanoid.JumpPower = 10
 game.Workspace.CurrentCamera.FieldOfView = (70 + (5 * 2))
 
@@ -12,8 +12,8 @@ function setupBanMonitor()
 	spawn(function()
 		while true do
 			local lastBanLevel = 0
-			local re = require(game.ReplicatedStorage.util.remotes)
-			local getBanStatusRemoteFunction = re.getRemoteFunction("GetBanStatusRemoteFunction")
+			local remotes = require(game.ReplicatedStorage.util.remotes)
+			local getBanStatusRemoteFunction = remotes.getRemoteFunction("GetBanStatusRemoteFunction")
 			if getBanStatusRemoteFunction then
 				local banLevel = getBanStatusRemoteFunction:InvokeServer()
 				if banLevel ~= nil then

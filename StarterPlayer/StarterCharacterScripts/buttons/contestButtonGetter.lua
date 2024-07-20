@@ -3,7 +3,11 @@
 --eval 9.25.22
 --a button that will pop a current contest, if any exists.
 
-local localPlayer = game:GetService("Players").LocalPlayer
+repeat
+	game:GetService("RunService").RenderStepped:wait()
+until game.Players.LocalPlayer.Character ~= nil
+local PlayersService = game:GetService("Players")
+local localPlayer = PlayersService.LocalPlayer
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local colors = require(game.ReplicatedStorage.util.colors)
@@ -13,15 +17,16 @@ local gt = require(game.ReplicatedStorage.gui.guiTypes)
 
 local ContestResponseTypes = require(game.ReplicatedStorage.types.ContestResponseTypes)
 local enums = require(game.ReplicatedStorage.util.enums)
-local rf = require(game.ReplicatedStorage.util.remotes)
+local remotes = require(game.ReplicatedStorage.util.remotes)
 
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
-local getContestsFunction = rf.getRemoteFunction("GetContestsFunction")
-local getSingleContestFunction = rf.getRemoteFunction("GetSingleContestFunction")
+local getContestsFunction = remotes.getRemoteFunction("GetContestsFunction")
+local getSingleContestFunction = remotes.getRemoteFunction("GetSingleContestFunction")
+local emojis = require(game.ReplicatedStorage.enums.emojis)
 
-local warper = require(game.ReplicatedStorage.warper)
+local warper = require(game.StarterPlayer.StarterPlayerScripts.util.warperClient)
 
 local module = {}
 
@@ -33,7 +38,33 @@ local lastCanvasPosition = Vector2.new(0, 0)
 --display multiple significant digits in contest lb
 local shortenContestDigitDisplay = false
 
-local function getPlaceByUsername(ss: { ContestResponseTypes.Runner }, username: string): ContestResponseTypes.Runner
+local function getColorForTimeGap(gap: number)
+	local useColor = colors.defaultGrey
+	local plus = ""
+	if gap == 0 then
+		plus = ""
+		useColor = colors.greenGo
+	elseif gap < 1000 then
+		plus = "+"
+		useColor = colors.lightGreen
+	elseif gap < 3000 then
+		plus = "+"
+		useColor = colors.lightYellow
+	elseif gap < 10000 then
+		plus = "+"
+		useColor = colors.lightOrange
+	elseif gap < 20000 then
+		plus = "+"
+		useColor = colors.lightRed
+	else
+		plus = "+"
+		useColor = colors.redStop
+	end
+
+	return plus, useColor
+end
+
+local getPlaceByUsername = function(ss: { ContestResponseTypes.Runner }, username: string): ContestResponseTypes.Runner?
 	for ii, el in ipairs(ss) do
 		if el.username == username then
 			return el
@@ -44,7 +75,7 @@ end
 --widths for rows like
 local widths = { number = 0.025, race = 0.2, dist = 0.045, leads = 0.68, warp = 0.05 }
 
-local function makeLeaderCell(runner: ContestResponseTypes.Runner, ii: number)
+local function makeLeaderCell(runner: ContestResponseTypes.Runner, ii: number, leadTime: number)
 	local fr = Instance.new("Frame")
 	fr.Size = UDim2.new(widths.leads / userSizedColumns, 0, 1, 0)
 	fr.Name = string.format("%02d.LeaderCellFor%s", ii, (runner == nil and ".none" or runner.username))
@@ -64,7 +95,7 @@ local function makeLeaderCell(runner: ContestResponseTypes.Runner, ii: number)
 	local img = Instance.new("ImageLabel")
 	img.BorderMode = Enum.BorderMode.Outline
 	img.BorderSizePixel = 0
-	img.Size = UDim2.new(1, 0, 0.6, 0)
+	img.Size = UDim2.new(1, 0, 0.5, 0)
 	local content = thumbnails.getThumbnailContent(runner.userId, Enum.ThumbnailType.HeadShot)
 	img.Image = content
 	img.BackgroundColor3 = useColor
@@ -74,9 +105,20 @@ local function makeLeaderCell(runner: ContestResponseTypes.Runner, ii: number)
 	local tl = guiUtil.getTl("01.Username", UDim2.new(1, 0, 0.2, 0), 1, fr, colors.defaultGrey, 1)
 	tl.Text = runner.username
 
-	local tl2 = guiUtil.getTl("02.Time", UDim2.new(1, 0, 0.2, 0), 1, fr, colors.defaultGrey, 1)
+	local tl2 = guiUtil.getTl("02.Time", UDim2.new(1, 0, 0.15, 0), 1, fr, colors.defaultGrey, 1)
 	tl2.Text = string.format("%0.3fs", runner.timeMs / 1000)
 
+	if ii == 1 then
+		--user ios leader so we don't display a timegap!
+
+		local tl3 = guiUtil.getTl("03.TimeGap", UDim2.new(1, 0, 0.15, 0), 1, fr, colors.greenGo, 1)
+		tl3.Text = "Leading!"
+	else
+		local behindMs = runner.timeMs - leadTime
+		local plus, behindnessUseColor = getColorForTimeGap(behindMs)
+		local tl3 = guiUtil.getTl("03.TimeGap", UDim2.new(1, 0, 0.15, 0), 1, fr, behindnessUseColor, 1)
+		tl3.Text = string.format("%s%0.3fs", plus, behindMs / 1000)
+	end
 	return fr
 end
 
@@ -155,38 +197,47 @@ local function makeContestRow(
 	end
 
 	---YOU
+	--get the run to display in your column from either the top10, or the special user-scoped ".user" field.
 	local theRun = getPlaceByUsername(race.runners, localPlayer.Name)
+	if theRun == nil then
+		local fakeUseronlyRunnser = {}
+		table.insert(fakeUseronlyRunnser, race.user)
+		theRun = getPlaceByUsername(fakeUseronlyRunnser, localPlayer.Name)
+	end
 	local youFrame = Instance.new("Frame")
 	youFrame.Name = "19.youFrame"
 	youFrame.Parent = fr
 	youFrame.Size = UDim2.new(widths.leads / userSizedColumns, 0, 1, 0)
-	local vv = Instance.new("UIListLayout")
-	vv.Parent = youFrame
-	vv.FillDirection = Enum.FillDirection.Vertical
+	local hh = Instance.new("UIListLayout")
+	hh.Parent = youFrame
+	hh.FillDirection = Enum.FillDirection.Horizontal
 	if theRun ~= nil then
-		local youTl = guiUtil.getTl("01", UDim2.new(1, 0, 0.5, 0), 1, youFrame, colors.defaultGrey)
+		local youTl = guiUtil.getTl("01", UDim2.new(0.5, 0, 1.0, 0), 1, youFrame, colors.defaultGrey)
 		youTl.Text = string.format("%0.3fs", theRun.timeMs / 1000)
 		local gap = theRun.timeMs - race.best.timeMs
 		local useColor = colors.lightRed
-		local plus = "+"
-		--determining colors for relative position to leader.
-		if gap == 0 then
-			plus = ""
-			useColor = colors.greenGo
-		elseif gap < 1000 then
-			plus = "+"
-			useColor = colors.lightGreen
-		elseif gap < 3000 then
-			plus = "+"
-			useColor = colors.lightYellow
-		elseif gap < 10000 then
-			plus = "+"
-			useColor = colors.lightOrange
-		elseif gap < 20000 then
-			plus = "+"
-			useColor = colors.lightRed
-		end
-		local diffTl = guiUtil.getTl("02", UDim2.new(1, 0, 0.5, 0), 1, youFrame, useColor)
+
+		local plus, useColor = getColorForTimeGap(gap)
+
+		-- local plus = "+"
+		-- --determining colors for relative position to leader.
+		-- if gap == 0 then
+		-- 	plus = ""
+		-- 	useColor = colors.greenGo
+		-- elseif gap < 1000 then
+		-- 	plus = "+"
+		-- 	useColor = colors.lightGreen
+		-- elseif gap < 3000 then
+		-- 	plus = "+"
+		-- 	useColor = colors.lightYellow
+		-- elseif gap < 10000 then
+		-- 	plus = "+"
+		-- 	useColor = colors.lightOrange
+		-- elseif gap < 20000 then
+		-- 	plus = "+"
+		-- 	useColor = colors.lightRed
+		-- end
+		local diffTl = guiUtil.getTl("02", UDim2.new(0.5, 0, 1, 0), 1, youFrame, useColor)
 		diffTl.Text = string.format("%s%0.03fs", plus, gap / 1000)
 	else
 		local youTl = guiUtil.getTl("20", UDim2.new(1, 0, 1, 0), 7, youFrame, colors.lightGrey)
@@ -211,7 +262,7 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	--get contest status for player, aggregated info from other people too.
 	local scrollingFrameRows = #contest.races
 	local sg = Instance.new("ScreenGui")
-	sg.Name = "ContestSG"
+	sg.Name = "ContestScreenGui"
 	local outerFrame = Instance.new("Frame")
 	outerFrame.Name = "ContestFrame"
 	outerFrame.BorderMode = Enum.BorderMode.Inset
@@ -230,8 +281,19 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	introduction.TextXAlignment = Enum.TextXAlignment.Left
 
 	local awards = guiUtil.getTl("01.ContestTitle", UDim2.new(1, 0, 0, 30), 4, outerFrame, colors.defaultGrey, 1)
-	awards.Text = contest.name
-		.. " - Prizes: Gold contest badge + 1111 tix, Silver + 555 tix, Bronze + 333 tix. Completing all runs: Participation badge + 111tix"
+	local t = string.format(
+		"%s - Prizes: Gold contest badge + %s tix, Silver + %s tix, Bronze + %s tix. Completing all runs: Participation badge + %s tix",
+		contest.name,
+
+		tpUtil.getNumberEmojis(1111),
+
+		tpUtil.getNumberEmojis(555),
+
+		tpUtil.getNumberEmojis(333),
+		tpUtil.getNumberEmojis(111)
+	)
+	awards.Text = t
+
 	awards.TextXAlignment = Enum.TextXAlignment.Left
 
 	---------LEADER SUMMARY AND CURRENT RESULTS------------
@@ -274,13 +336,19 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	--frame for gold leader
 
 	local jj = 1
+
+	local leadTime = nil
+	if contest.leaders[tostring(1)] ~= nil then
+		leadTime = contest.leaders[tostring(1)].timeMs
+	end
+
 	while jj <= maxUsersToDisplayInContest do
-		local chunk = makeLeaderCell(contest.leaders[tostring(jj)], jj)
+		local chunk = makeLeaderCell(contest.leaders[tostring(jj)], jj, leadTime)
 		chunk.Parent = leaderSummaryRow
 		jj += 1
 	end
 
-	local youpos = makeLeaderCell(contest.user, 12)
+	local youpos = makeLeaderCell(contest.user, 12, leadTime)
 	youpos.Parent = leaderSummaryRow
 
 	local vv = Instance.new("UIListLayout")
@@ -322,13 +390,13 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 			colors.blueDone,
 			1
 		)
-		local text = tpUtil.getCardinal(ii)
+		local text = tpUtil.getCardinalEmoji(ii)
 		if ii == 1 then
-			text = "Gold"
+			text = "Gold " .. tpUtil.getCardinalEmoji(1)
 		elseif ii == 2 then
-			text = "Silver"
+			text = "Silver " .. tpUtil.getCardinalEmoji(2)
 		elseif ii == 3 then
-			text = "Bronze"
+			text = "Bronze " .. tpUtil.getCardinalEmoji(3)
 		end
 		tl.Text = text
 		ii += 1
@@ -396,7 +464,7 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	return sg
 end
 
-local function makeGetter(contest: ContestResponseTypes.Contest, userIds: { number }): (Player) -> (ScreenGui)
+local function makeGetter(contest: ContestResponseTypes.Contest, userIds: { number }): (Player) -> ScreenGui
 	local function f(localPlayer: Player): ScreenGui
 		local newcontest = getSingleContestFunction:InvokeServer(userIds, contest.contestid)
 		return getContest(newcontest)
@@ -416,7 +484,7 @@ module.getContestButtons = function(userIds: { number }): { gt.actionButton }
 			getActive = function()
 				return contest.contestremaining > 0
 			end,
-			widthPixels = 120,
+			widthPixels = 90,
 		}
 		table.insert(res, contestButton)
 	end

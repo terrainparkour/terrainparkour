@@ -46,11 +46,13 @@ local function getPath(kind: string, data: any)
 	if kind == "userJoined" then
 		local uu = data.username
 		if data.userId == enums.objects.TerrainParkour then
-			warn("flip.")
+			-- warn("flip.")
 			--why do i do this.  changing the cached username? probably unnecessary.
 			uu = "TerrainParkour"
 		end
 		return kind .. "/" .. tostring(stringdata.userId) .. "/" .. uu .. "/"
+	elseif kind == "beckon" then
+		return kind .. "/" .. tostring(stringdata.userId)
 	elseif kind == "getAwardsByUser" then
 		return kind .. "/" .. tostring(stringdata.username)
 	elseif kind == "getBadgesByUser" then
@@ -211,6 +213,8 @@ local function getPath(kind: string, data: any)
 		--for listing known signs.
 	elseif kind == "getKnownSignIds" then
 		return kind .. "/"
+	elseif kind == "getSignProfileForUser" then
+		return kind .. "/" .. stringdata.userId .. "/" .. stringdata.signId .. "/"
 
 		--stats RACE
 	elseif kind == "getTotalRunCountByUserAndRace" then
@@ -232,7 +236,7 @@ local function getPath(kind: string, data: any)
 
 		--summary
 	elseif kind == "getBestTimesByRace" then
-		return kind .. "/" .. stringdata.startId .. "/" .. stringdata.endId .. "/"
+		return kind .. "/" .. stringdata.startId .. "/" .. stringdata.endId .. "/" .. stringdata.userIdsCsv .. "/"
 
 		-- elseif kind=='getNearestNineAndUserStatus' then
 		-- 	return kind..'/'..stringdata.signId..'/'..stringdata.userId..'/'
@@ -276,7 +280,6 @@ local function afterRemoteDbActions(kind: string, afterData: tt.afterdata)
 	if #afterData.actionResults == 0 then
 		return
 	end
-	-- vscdebug.debug()
 	--we filter my action results out, because those will be handled in the main get/post call return
 	--(by addition to the main sign for results.)
 	local otherUserActionResults: { tt.actionResult } = {}

@@ -43,9 +43,9 @@ local serverInvokeMarathonComplete =
 		end
 	end
 
-local rf = require(game.ReplicatedStorage.util.remotes)
+local remotes = require(game.ReplicatedStorage.util.remotes)
 module.init = function()
-	local marathonCompleteEvent: RemoteEvent = rf.getRemoteEvent("MarathonCompleteEvent") :: RemoteEvent
+	local marathonCompleteEvent: RemoteEvent = remotes.getRemoteEvent("MarathonCompleteEvent") :: RemoteEvent
 	if marathonCompleteEvent == nil then
 		warn("Fail")
 	end

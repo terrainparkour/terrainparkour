@@ -9,6 +9,7 @@ export type popularRaceResult = {
 	startSignName: string,
 	startSignId: number,
 	endSignName: string,
+	endSignId: number,
 	distance: number,
 	ct: number,
 	userPlaces: { { username: string, userId: number, place: number } },

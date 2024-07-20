@@ -21,7 +21,7 @@ local module = {}
 local CreateServerEventButtonClicked = function(localPlayer: Player): ScreenGui
 	local userId = localPlayer.UserId
 	local sg = Instance.new("ScreenGui")
-	sg.Name = "SettingsSgui"
+	sg.Name = "CreateServerEventButtonClickedSgui"
 
 	local outerFrame = Instance.new("Frame")
 	outerFrame.Parent = sg
@@ -36,7 +36,7 @@ local CreateServerEventButtonClicked = function(localPlayer: Player): ScreenGui
 	local res = serverEventRemoteFunction:InvokeServer(serverEventEnums.messageTypes.CREATE, { userId = userId })
 
 	local tl = guiUtil.getTl("XXXResults", UDim2.new(1, 0, 1, 0), 0, outerFrame, colors.defaultGrey, 2)
-
+	local par = tl.Parent :: TextLabel
 	tl.Text = res.message
 
 	local tb = guiUtil.getTbSimple()
@@ -48,6 +48,22 @@ local CreateServerEventButtonClicked = function(localPlayer: Player): ScreenGui
 	tb.Activated:Connect(function()
 		sg:Destroy()
 	end)
+	spawn(function()
+		local amt = 0.035
+		while true do
+			tb.BackgroundTransparency = tb.BackgroundTransparency + amt
+			tb.TextTransparency = tb.TextTransparency + amt
+			outerFrame.BackgroundTransparency = outerFrame.BackgroundTransparency + amt
+			par.BackgroundTransparency = par.BackgroundTransparency + amt
+			tl.BackgroundTransparency = tl.BackgroundTransparency + amt
+			tl.TextTransparency = tl.TextTransparency + amt
+			wait(0.01)
+			if tb.BackgroundTransparency >= 1 then
+				break
+			end
+		end
+		sg:Destroy()
+	end)
 	return sg
 end
 
@@ -55,11 +71,11 @@ local serverEventButton: gt.actionButton = {
 	name = "Create Server Event",
 	contentsGetter = CreateServerEventButtonClicked,
 	hoverHint = "Create new server event",
-	shortName = " +Random Race ",
+	shortName = " Random Race ",
 	getActive = function()
 		return true
 	end,
-	widthPixels = 180,
+	widthPixels = 75,
 }
 
 module.serverEventButton = serverEventButton

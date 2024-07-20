@@ -57,7 +57,7 @@ module.createFindScreenGui = function(options: tt.signFindOptions): ScreenGui
 	newFindSgui.Name = "NewFindSgui"
 
 	local detailsMessage = tostring(options.userTotalFindCount) .. "/" .. tostring(options.totalSignsInGame)
-	local finderMessage = tpUtil.getCardinal(options.signTotalFinds) .. " finder!"
+	local finderMessage = tpUtil.getCardinalEmoji(options.signTotalFinds) .. " finder!"
 
 	local frame = Instance.new("Frame")
 	frame.Parent = newFindSgui
@@ -92,15 +92,14 @@ module.createFindScreenGui = function(options: tt.signFindOptions): ScreenGui
 	finderHFrame.Size = UDim2.new(1, 0, 0.10, 0)
 
 	--you found X
-	local tl = guiUtil.getTl("01" .. detailsMessage, UDim2.new(0.3, 0, 1, 0), 2, finderHFrame, colors.meColor, 1)
-	tl.Text = detailsMessage
-	tl.TextXAlignment = Enum.TextXAlignment.Center
-	tl.BackgroundTransparency = 0
+	local detailsTl = guiUtil.getTl("01" .. detailsMessage, UDim2.new(0.3, 0, 1, 0), 2, finderHFrame, colors.meColor, 1)
+	detailsTl.Text = detailsMessage
+	detailsTl.TextXAlignment = Enum.TextXAlignment.Center
 
 	--other finders of this sign
-	local tl2 = guiUtil.getTl("02" .. finderMessage, UDim2.new(0.7, 0, 1, 0), 2, finderHFrame, colors.meColor, 1)
-	tl2.Text = finderMessage
-	tl2.TextXAlignment = Enum.TextXAlignment.Center
+	local finderMessageTl = guiUtil.getTl("02" .. finderMessage, UDim2.new(0.7, 0, 1, 0), 2, finderHFrame, colors.meColor, 1)
+	finderMessageTl.Text = finderMessage
+	finderMessageTl.TextXAlignment = Enum.TextXAlignment.Center
 
 	--other finders of this sign
 	local descTl = guiUtil.getTl("03lastfound", UDim2.new(1, 0, 0.10, 0), 2, frame, colors.meColor, 1)
@@ -111,19 +110,21 @@ module.createFindScreenGui = function(options: tt.signFindOptions): ScreenGui
 		--other finders of this sign
 		local portraitRow = Instance.new("Frame")
 		portraitRow.Parent = frame
-		portraitRow.Name = "FindPortraitRow"
+		portraitRow.Name = "05FindPortraitRow"
 		portraitRow.Size = UDim2.new(1, 0, 0.47, 0)
-		local av = Instance.new("ImageLabel")
-		av.BorderMode = Enum.BorderMode.Inset
-		av.Size = UDim2.new(1, 0, 1, 0)
+		portraitRow.BorderSizePixel = 0
+		local img = Instance.new("ImageLabel")
+		img.BorderMode = Enum.BorderMode.Inset
+		img.Size = UDim2.new(1, 0, 1, 0)
 		if options.lastFinderUserId < 0 then
 			--default to shed, for some reason doesn't work tho.
 			options.lastFinderUserId = 261
 		end
 		local content = thumbnails.getThumbnailContent(options.lastFinderUserId, Enum.ThumbnailType.HeadShot)
-		av.Image = content
-		av.BackgroundColor3 = colors.grey
-		av.Parent = portraitRow
+		img.Image = content
+		img.BorderSizePixel = 1
+		img.BackgroundColor3 = colors.grey
+		img.Parent = portraitRow
 	end
 
 	guiUtil.setupKillOnClick(newFindSgui, nil)

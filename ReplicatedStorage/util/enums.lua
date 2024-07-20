@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.193 October 6 2022"
+module.gameVersion = "1.231 July 2024"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -487,7 +487,121 @@ local name2signId: { [string]: number } = {
 	["Arbitrage"] = 475,
 	["Hsu"] = 476,
 	["Perestroika"] = 477,
+	["Kazumura"] = 478,
+	["Unexpectable"] = 479,
+	["RCC"] = 480,
+	["Instrumental Convergence"] = 481,
+	["Hedonic Monster"] = 482,
+	["Brachiolation"] = 483,
+	["Survival"] = 484,
+	["Hyperparameter"] = 485,
+	["Wallfacer"] = 486,
+	["Glasnost"] = 487,
+	["HPMOR"] = 488,
+	["Teotwaki"] = 489,
+	["Jackie"] = 490,
+	["Hide"] = 491,
+	["Skill Susie"] = 492,
+	["Hypergravity"] = 493,
+	["Bolt"] = 494,
+	["Stellar Voyage"] = 495,
+	["Tungsten"] = 496,
+	["Quadruple"] = 497,
+	["Mægæ"] = 498,
+	["Elder"] = 499,
+	["Triple"] = 500,
+	["Village Up North"] = 501,
+	["Ø"] = 502,
+	["Fosbury"] = 503,
+	["Tetromino"] = 504,
+	["Keep Off the Grass"] = 505,
+	["cOld mOld on a sLate pLate"] = 506,
+	["Freedom"] = 507,
+	["Salekhard"] = 508,
+	["Knocking on the Door of Life"] = 509,
+	["Polemic"] = 510,
+	["GPT"] = 511,
+	["Calico"] = 512,
+	["Tern"] = 513,
+	["Easy"] = 514,
+	["Expand"] = 515,
+	["Kalikandjari"] = 516,
+	["Agartha"] = 517,
+	["Based"] = 518,
+	["Zen"] = 519,
+	["Waluigi"] = 520,
+	["Pavement"] = 521,
+	["Ukumbizo"] = 522,
+	["Ripple"] = 523,
+	["Butte"] = 524,
+	["Tryto"] = 525,
+	["Grid"] = 526,
+	["Manifold"] = 527,
+	["Elam"] = 528,
+	["Factorio"] = 529,
+	["Nadir"] = 530,
+	["YTP"] = 531,
+	["Prompt"] = 532,
+	["Chadiesson"] = 533,
+	["Enum"] = 534,
+	-- ["Talladega"] = 535,
+	-- ["Talladega2"] = 536,
+	["👻"] = 537,
+	["Big"] = 538,
+	["Small"] = 539,
+	["Blossa"] = 540,
+	["Pulse"] = 541,
+	["ataasinngorneq"] = 542,
+	["Дыццӕг"] = 543,
+	["Rebo"] = 544,
+	["Fimmtudagur"] = 545,
+	["金曜日"] = 546,
+	["Thứ Bảy"] = 547,
+	["일요일"] = 548,
+	["Jökulhlaup"] = 549,
 }
+
+--aliases of symbolic signs to their english alias.
+--for example: [🔥:"flame"]
+module.signName2Alias = {}
+module.signName2Alias["💀"] = "skull"
+module.signName2Alias["人"] = "person"
+module.signName2Alias["დიუნი"] = "dune"
+module.signName2Alias["الكثيب"] = "arabic"
+module.signName2Alias["෴☃❽"] = "squiggle"
+module.signName2Alias["凸"] = "bumpout"
+module.signName2Alias["凹"] = "bumpin"
+module.signName2Alias["👍"] = "thumbsup"
+module.signName2Alias["🔥"] = "flame"
+module.signName2Alias["ディズニー"] = "disney"
+module.signName2Alias["ඞ"] = "sus"
+module.signName2Alias["Ø"] = "nullity"
+module.signName2Alias["👻"] = "ghost"
+module.signName2Alias["ataasinngorneq"] = "Monday - Greenlandic"
+module.signName2Alias["Дыццӕг"] = "Tuesday - Ossettian"
+module.signName2Alias["Rebo"] = "Wednesday - Indonesian"
+module.signName2Alias["Fimmtudagur"] = "Thursday - Icelandic"
+module.signName2Alias["金曜日"] = "Friday - Japanese"
+module.signName2Alias["Thứ Bảy"] = "Saturday - Vietnamese"
+module.signName2Alias["일요일"] = "Sunday - Korean"
+
+--probably put this in a bucket saying to NOT repeat its alias.
+module.signName2Alias["Jökulhlaup"] = "Jokulhlaup"
+
+-- exclusion list.
+module.aliasesWhichAreVeryCloseSoDontNeedToBeShown = {}
+table.insert(module.aliasesWhichAreVeryCloseSoDontNeedToBeShown, "Jökulhlaup")
+
+local alternateNames = [[Tiramisu Parboil
+Turin Parchment
+Tar Heel Parker
+Tureen Parfait
+Terrapin Parrot
+Tarragon Partake
+Terrene Parka
+Terrain Parsley
+Tern Parquet
+Tarantula Parturition]]
 
 --⚔
 --♦ ♣ ♠ ♥⅖♾¥€ß
@@ -519,7 +633,7 @@ module.ExcludeSignNamesFromStartingAt = {
 	"Mauna Loa",
 	"Hosho",
 	"Roblox",
-	"Aorta",
+	-- "Aorta",
 	"Pretzel",
 	"Beehive",
 	"Pharoah",
@@ -538,11 +652,11 @@ module.ExcludeSignNamesFromStartingAt = {
 	"Olympus",
 	"Summit",
 	"Vesuvius",
-	"Wozniak",
-	"Klytus",
-	"Tapochki",
-	"Cinchona",
-	"Sciocchi",
+	-- "Wozniak",
+	-- "Klytus",
+	-- "Tapochki",
+	-- "Cinchona",
+	-- "Sciocchi",
 	"Erg",
 	"Sakura",
 	"Slig",
@@ -611,11 +725,15 @@ module.signCount = signCount
 
 local objects = {}
 
+--users
 objects.TerrainParkour = 164062733
+objects.Brouhahaha = 90115385
+objects.terrainparkorffc = 7030441423
+
 module.objects = objects
 
 --amount of time to do green 'something changed' ui
-module.greenTime = 14
+module.greenTime = 20
 
 local releaseNotes: { [number]: string } = {
 	[185] = [[* fix challenge for long sign names
@@ -641,7 +759,42 @@ local releaseNotes: { [number]: string } = {
 ]],
 	[191] = [[* server events interactive loop with payouts]],
 	[192] = [[* fix bugs when someone leaves the server who had dynamic running on]],
+	[194] = [[* improve dynamic running]],
+	[195] = [[* Fix dynamic running more.]],
+	[196] = [[* Other small fixes and server event badges.
+* webhooks for server event completion]],
+	[197] = [[* New signs 
+* New areas
+* New slogans
+* New badges
+* Badge for being the first person to win a certain badge
+* Improved UI for badge notifications
+* "beckon" command
+* Special signs with badges
+* Improvement to discord webhooks
+* <tab> now only toggles LB, not LB+Chat
+* Server events can only be started from signs which someone in the server has found
+* Shrunk LB somewhat to handle more people
+* Fixed mouseovers
+* Fixed mouseover and green highlighting
+* Cleaned up a bunch of old code - test warping
+* Warning: disable dynamic running if you have performance problems with it
+]],
+	[198] = [[* Bugfixes for resetting
+* fix dynamic running efficiency
+* fix beckon terminology
+* redo movement setup (?)
+]],
+	[202] = [[* Various bugfixes]],
+	[203] = [[* Sign lore badge]],
+	[205] = [[* Survey server integration]],
+	[206] = [[* Freedom]],
+	[208] = [[* Badge fixes]],
+	[211] = [[* Add other server user info into sign history lookups
+* starting on user sign profiles. try "/sign tripool"]],
+	[216] = [[* First release in a while, new sign, catching up.]],
 }
+
 module.releaseNotes = releaseNotes
 
 return module

@@ -19,30 +19,30 @@ local function makeRowFrame(setting: tt.userSettingValue, player: Player, n: num
 	vv.FillDirection = Enum.FillDirection.Horizontal
 	vv.SortOrder = Enum.SortOrder.Name
 	vv.Parent = fr
-	local label = guiUtil.getTl("0", UDim2.new(0.2, 0, 1, 0), 4, fr, colors.defaultGrey, 1)
-	label.TextScaled = false
-	label.Text = setting.domain
-	label.FontSize = Enum.FontSize.Size18
-	label.TextXAlignment = Enum.TextXAlignment.Center
-	label.TextYAlignment = Enum.TextYAlignment.Center
+	local domainTl = guiUtil.getTl("0", UDim2.new(0.22, 0, 1, 0), 4, fr, colors.defaultGrey, 1)
+	domainTl.TextScaled = false
+	domainTl.Text = setting.domain
+	domainTl.FontSize = Enum.FontSize.Size18
+	domainTl.TextXAlignment = Enum.TextXAlignment.Center
+	domainTl.TextYAlignment = Enum.TextYAlignment.Center
 
-	local tl = guiUtil.getTl("1", UDim2.new(0.5, 0, 1, 0), 4, fr, colors.defaultGrey, 1)
-	tl.Text = setting.name
-	tl.TextXAlignment = Enum.TextXAlignment.Left
+	local nameTl = guiUtil.getTl("1", UDim2.new(0.52, 0, 1, 0), 4, fr, colors.defaultGrey, 1)
+	nameTl.Text = setting.name
+	nameTl.TextXAlignment = Enum.TextXAlignment.Left
 	local usecolor: Color3
 	if setting.value then
 		usecolor = colors.greenGo
 	else
 		usecolor = colors.redStop
 	end
-	local toggleButton = guiUtil.getTb("SettingToggle" .. setting.name, UDim2.new(0.3, 0, 1, 0), 0, fr, usecolor, 1)
+	local toggleButton = guiUtil.getTb("SettingToggle" .. setting.name, UDim2.new(0.26, 0, 1, 0), 0, fr, usecolor, 1)
 	if setting.value then
 		toggleButton.Text = "Yes"
 	else
 		toggleButton.Text = "No"
 	end
 	--just get marathon settings.
-	
+
 	local localFunctions = require(game.ReplicatedStorage.localFunctions)
 	toggleButton.Activated:Connect(function()
 		if toggleButton.Text == "No" then
@@ -52,7 +52,6 @@ local function makeRowFrame(setting: tt.userSettingValue, player: Player, n: num
 			par.BackgroundColor3 = colors.greenGo
 			setting.value = true
 			localFunctions.setSetting(setting)
-			
 		else
 			toggleButton.Text = "No"
 			toggleButton.BackgroundColor3 = colors.redStop
@@ -74,7 +73,8 @@ local getUserSettingsModal = function(localPlayer: Player): ScreenGui
 
 	local localFunctions = require(game.ReplicatedStorage.localFunctions)
 	--just get marathon settings.
-	local userSettings: { [string]: tt.userSettingValue } = localFunctions.getSettingByDomain(settingEnums.settingDomains.USERSETTINGS)
+	local userSettings: { [string]: tt.userSettingValue } =
+		localFunctions.getSettingByDomain(settingEnums.settingDomains.USERSETTINGS)
 
 	local outerFrame = Instance.new("Frame")
 	outerFrame.Parent = sg
@@ -86,19 +86,19 @@ local getUserSettingsModal = function(localPlayer: Player): ScreenGui
 
 	local headerFrame = Instance.new("Frame")
 	headerFrame.Parent = outerFrame
-	headerFrame.Name = "1"
-	headerFrame.Size = UDim2.new(1, 0, 0, 20)
+	headerFrame.Name = "01.Settings.Header"
+	headerFrame.Size = UDim2.new(1, 0, 0, 45)
 	local vv = Instance.new("UIListLayout")
 	vv.FillDirection = Enum.FillDirection.Horizontal
 	vv.Parent = headerFrame
-	local tl = guiUtil.getTl("1", UDim2.new(0.2, 0, 0, 20), 4, headerFrame, colors.blueDone, 1)
-	tl.Text = "Type"
+	local typeTl = guiUtil.getTl("1", UDim2.new(0.22, 0, 1, 0), 4, headerFrame, colors.blueDone, 1)
+	typeTl.Text = "Domain"
 
-	local tl = guiUtil.getTl("2", UDim2.new(0.5, 0, 0, 20), 4, headerFrame, colors.blueDone, 1)
-	tl.Text = "Name"
+	local nameTl = guiUtil.getTl("2", UDim2.new(0.52, 0, 1, 0), 4, headerFrame, colors.blueDone, 1)
+	nameTl.Text = "Name"
 
-	local tl = guiUtil.getTl("3", UDim2.new(0.3, 0, 0, 20), 4, headerFrame, colors.blueDone, 1)
-	tl.Text = "Value"
+	local valueTl = guiUtil.getTl("3", UDim2.new(0.26, 0, 1, 0), 4, headerFrame, colors.blueDone, 1)
+	valueTl.Text = "Value"
 
 	--scrolling setting frame
 	local frameName = "SettingsModal"
@@ -116,9 +116,9 @@ local getUserSettingsModal = function(localPlayer: Player): ScreenGui
 	vv.Parent = scrollingFrame
 
 	local player: Player = PlayersService:GetPlayerByUserId(userId)
-	local ii=0
-	for name, setting in pairs(userSettings) do
-		ii+=1
+	local ii = 0
+	for _, setting in pairs(userSettings) do
+		ii += 1
 		local rowFrame = makeRowFrame(setting, player, ii)
 		rowFrame.Parent = scrollingFrame
 	end

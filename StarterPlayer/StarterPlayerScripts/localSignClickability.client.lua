@@ -3,16 +3,30 @@
 --eval 9.25.22
 --used for sign click ui.
 
-local colors = require(game.ReplicatedStorage.util.colors)
+local emojis = require(game.ReplicatedStorage.enums.emojis)
 
+local colors = require(game.ReplicatedStorage.util.colors)
+local tt = require(game.ReplicatedStorage.types.gametypes)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 
 local PlayersService = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+repeat
+	game:GetService("RunService").RenderStepped:wait()
+until game.Players.LocalPlayer.Character ~= nil
 local localPlayer = PlayersService.LocalPlayer
+
 local playerGui = localPlayer:WaitForChild("PlayerGui")
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+
+--signid:bool
+local toggledOnSigns = {}
+local setupSigns = {}
+
+local remotes = require(game.ReplicatedStorage.util.remotes)
+local clickSignRemoteFunction = remotes.getRemoteFunction("ClickSignRemoteFunction")
 
 local YOULEAD = 1
 local YOUPLACE = 2
@@ -190,7 +204,7 @@ local function generateRowForRelatedSign(sign: any, ct: number, youlead: boolean
 				if sign.your_place == 0 then
 					yt.Text = yt.Text .. " " .. "11th+"
 				else
-					yt.Text = yt.Text .. " " .. tpUtil.getCardinal(sign.your_place)
+					yt.Text = yt.Text .. " " .. tpUtil.getCardinalEmoji(sign.your_place)
 				end
 			end
 		end
@@ -336,13 +350,17 @@ local function DisplaySignRelatedData(signRelatedData, sign)
 
 	local leader = leaderdata[1]
 	local wrRelatedBgColor = colors.grey
-	if localPlayer.UserId == leader.userId then
+	if localPlayer == nil then
+		warn("no localplayer")
+		return bbg
+	end
+	if leader.userId and localPlayer.UserId == leader.userId then
 		wrRelatedBgColor = colors.meColor
 	end
 
 	--header
 	local header = guiUtil.getTl("01-leader-announcement", UDim2.new(1, 0, 0.1, 0), 1, leftFrame, wrRelatedBgColor, 1)
-	header.Text = "WR Leader"
+	header.Text = "WR Leader" .. emojis.emojis.CROWN
 
 	--signname+wrcount
 	local ff = Instance.new("Frame")
@@ -397,6 +415,10 @@ local function DisplaySignRelatedData(signRelatedData, sign)
 		local rank = 1
 		for index, el in ipairs(leaderdata) do
 			if index == 1 then
+				continue
+			end
+			if el == nil then
+				warn("nill")
 				continue
 			end
 			rank = rank + 1
@@ -488,23 +510,63 @@ local function DisplaySignRelatedData(signRelatedData, sign)
 	return bbg
 end
 
---signid:bool
-local toggledOnSigns = {}
-local setupSigns = {}
+local function rightClickSign(signId, sign)
+	local signClickMessage: tt.signClickMessage =
+		{ leftClick = false, signId = signId, userId = game.Players.LocalPlayer.UserId }
+	clickSignRemoteFunction:InvokeServer(signClickMessage)
+end
 
-local clickSignRemoteFunction: RemoteFunction = ReplicatedStorage:WaitForChild("RemoteFunctions")
-	:WaitForChild("ClickSignRemoteFunction")
+local function leftClickSign(signId: number, sign: Part)
+	if toggledOnSigns[signId] == true then
+		toggledOnSigns[signId] = false
+		local gg = sign:FindFirstChild("LeaderGuiFrame")
+		if gg == nil then
+			return
+		end
+		gg:Destroy()
+		return
+	end
+	--also destroy it here.
+	local gg = sign:FindFirstChild("LeaderGuiFrame")
+	if gg ~= nil then
+		gg:Destroy()
+	end
+
+	local signClickMessage: tt.signClickMessage =
+		{ leftClick = true, signId = signId, userId = game.Players.LocalPlayer.UserId }
+	local signRelatedData = clickSignRemoteFunction:InvokeServer(signClickMessage)
+	DisplaySignRelatedData(signRelatedData, sign)
+
+	toggledOnSigns[signId] = true
+
+	spawn(function()
+		while true do
+			local dist = tpUtil.getDist(sign.Position, localPlayer.Character.PrimaryPart.Position)
+
+			if dist > 30 then
+				local gg = sign:FindFirstChild("LeaderGuiFrame")
+				if gg ~= nil then
+					gg:Destroy()
+				end
+				toggledOnSigns[signId] = false
+				break
+			end
+			wait(1)
+		end
+	end)
+end
 
 --2022 signs stream in as you move around, so need to run this periodically.
 --2022 POST streaming enabled disablement is that true?
-local function SetupSignsThatHaventBeenYet()
+local function SetupSigns()
 	--when the response from the click with data to display comes back.
 	--set up each sign to be clickable by this user individually.
 	for _, sign: Part in ipairs(game.Workspace:WaitForChild("Signs"):GetChildren()) do
 		if setupSigns[sign.Name] then
 			continue
 		end
-		sign=sign::Part
+
+		sign = sign :: Part
 
 		local sg = Instance.new("SurfaceGui")
 		sg.Parent = playerGui
@@ -519,50 +581,13 @@ local function SetupSignsThatHaventBeenYet()
 		cd.Name = sign.Name .. tostring(signId)
 
 		cd.MouseClick:Connect(function(e)
-			if toggledOnSigns[signId] == true then
-				toggledOnSigns[signId] = false
-				local gg = sign:FindFirstChild("LeaderGuiFrame")
-				if gg == nil then
-					return
-				end
-				gg:Destroy()
-				return
-			end
-			--also destroy it here.
-			local gg = sign:FindFirstChild("LeaderGuiFrame")
-			if gg ~= nil then
-				gg:Destroy()
-			end
-
-			local signRelatedData = clickSignRemoteFunction:InvokeServer(signId)
-			DisplaySignRelatedData(signRelatedData, sign)
-
-			toggledOnSigns[signId] = true
-
-			spawn(function()
-				while true do
-					local dist = tpUtil.getDist(sign.Position, localPlayer.Character.PrimaryPart.Position)
-
-					if dist > 30 then
-						local gg = sign:FindFirstChild("LeaderGuiFrame")
-						if gg ~= nil then
-							gg:Destroy()
-						end
-						toggledOnSigns[signId] = false
-						break
-					end
-					wait(1)
-				end
-			end)
+			return leftClickSign(signId, sign)
+		end)
+		cd.RightMouseClick:Connect(function(e)
+			return rightClickSign(signId, sign)
 		end)
 		setupSigns[sign.Name] = true
 	end
 end
 
-spawn(function()
-	while true do
-		wait(1)
-		SetupSignsThatHaventBeenYet()
-		wait(6)
-	end
-end)
+SetupSigns()

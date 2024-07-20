@@ -6,16 +6,22 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local enums = require(game.ReplicatedStorage.util.enums)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local remotes = require(game.ReplicatedStorage.util.remotes)
+local rdb = require(game.ServerScriptService.rdb)
 local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
 local config = require(game.ReplicatedStorage.config)
 local vscdebug = require(game.ReplicatedStorage.vscdebug)
 local rdb = require(game.ServerScriptService.rdb)
 local PlayersService = game:GetService("Players")
 local lbupdater = require(game.ServerScriptService.lbupdater)
+local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
 
 local serverEventRemoteEvent = remotes.getRemoteEvent("ServerEventRemoteEvent")
 local serverEventRemoteFunction = remotes.getRemoteFunction("ServerEventRemoteFunction")
 local serverEventLimitCount = 3
+
+local module = {}
+
+type ServerEventCreateType = { userId: number }
 
 local desc = [[
   serverEvents are:
@@ -32,17 +38,22 @@ local desc = [[
 	and for runcount
   single people doing events is okay, but it gets more profitable if many people do it.
   we track event earnings (in tix) in BE and display it as a new toplevel score metric
+
+  QUESTION: how do clients find out about server events? we send events to them.
+	Update 2024: we need to modify them so that when a user gets the event, we also
+	tell them if they have found the target sign
+	SO that we can temporarily highlight it in their UI. Users are going to love this!
+	more generally, we are adding that capacity to warper generally, so that when you warp,
+	there can be an optional highlight target signId.
 ]]
 
 --PARAMETERS
 local serverEventMaxLength = 750
 if config.isInStudio() then
-	serverEventMaxLength = 45
+	serverEventMaxLength = 645
 end
-local serverEventIdleTimeout = 120
 
 --STATE TRACKING GLOBALS
-
 local serverEventNumberCounter = 1
 local activeRunningServerEvents: { tt.runningServerEvent } = {}
 
@@ -61,9 +72,12 @@ local function annotate(s: string | any)
 	end
 end
 
+--called every 5 seconds, polling on server.
 local function shouldEndServerEvent(event: tt.runningServerEvent): boolean
 	-- annotate("should end event?: " .. serverEventGuis.replServerEvent(event))
-	if tick() > event.startedTick + serverEventMaxLength then
+	event.remainingTick = event.startedTick + serverEventMaxLength - tick()
+
+	if event.remainingTick < 0 then
 		return true
 	end
 
@@ -93,9 +107,10 @@ local function endServerEvent(serverEvent: tt.runningServerEvent): boolean
 	serverEventRemoteEvent:FireAllClients(serverEventEnums.messageTypes.END, serverEvent)
 	local allocations = serverEventEnums.getTixAllocation(serverEvent)
 
+	badgeCheckers.CheckServerEventAllocations(allocations, serverEvent.distance)
+
 	local res = rdb.reportServerEventEnd(serverEvent, allocations)
 
-	-- vscdebug.debug()
 	if res.userLbStats then
 		for _, otherPlayer in ipairs(PlayersService:GetPlayers()) do
 			local otherStats = res.userLbStats[tostring(otherPlayer.UserId)]
@@ -108,7 +123,7 @@ local function endServerEvent(serverEvent: tt.runningServerEvent): boolean
 	return true
 end
 
-local function setupKiller()
+local function setupRunningServerEventKiller()
 	--event killer monitor
 	spawn(function()
 		while true do
@@ -117,7 +132,6 @@ local function setupKiller()
 					local s, e = pcall(function()
 						local res = endServerEvent(serverEvent)
 						if not res then
-							vscdebug.debug()
 							endServerEvent(serverEvent)
 						end
 					end)
@@ -132,39 +146,82 @@ local function setupKiller()
 	end)
 end
 
-local module = {}
-
-type ServerEventCreateType = { userId: number }
-
+--factors: repeated runs, distance, number of runners.
 local function getTixValueOfServerEvent(ev: tt.runningServerEvent): number
-	local res = 0
 	local w1 = 0
 	local seenUsers = 0
 	for _, bestRunData in pairs(ev.userBests) do
 		w1 += math.sqrt(bestRunData.runCount) + 1
 		seenUsers += 1
 	end
-	res = res + math.floor(w1 * math.sqrt(seenUsers))
+	local distmultipler = 1
+	if ev.distance > 1000 then
+		distmultipler = math.sqrt(ev.distance / 1000)
+	end
+	local res = math.floor(w1 * math.sqrt(seenUsers) * distmultipler)
 	annotate("new tix value of event. " .. tostring(res))
 	annotate(ev)
 	return res
 end
 
-local function startServerEvent(data: ServerEventCreateType): (tt.runningServerEvent)?
+local function startServerEvent(data: ServerEventCreateType): tt.runningServerEvent?
 	--pick a random start and randome end, set it up dumbly as possible.
 	annotate("startevent " .. tostring(data.userId))
 	if #activeRunningServerEvents >= serverEventLimitCount then
+		print("startevent.over the limit")
 		annotate("startevent.over the limit")
 		return
 	end
 
+	--can only make random runs TO signs which at least one player in the server has found.
+	local allFoundSignIds = {}
+	local foundSigns = {}
+	for _, player in ipairs(PlayersService:GetPlayers()) do
+		local finds = rdb.getUserSignFinds(player.UserId)
+		for signId, _ in pairs(finds) do
+			if not foundSigns[signId] then
+				foundSigns[signId] = true
+				table.insert(allFoundSignIds, signId)
+				--ah at least we just do each one once, not all finds by all players.
+			end
+		end
+	end
+
 	local st = tick()
-	local allSigns: Array<Part> = game.Workspace:FindFirstChild("Signs"):GetChildren()
+
+	--for local, and sanity, ALSO filter input signids by existence in the game
+	-- AND by cancollide and canX
+	local signsFolder: Folder = game.Workspace:FindFirstChild("Signs")
+	local allSigns: { Part } = {}
+	for _, sign: Part in ipairs(signsFolder:GetChildren()) do
+		if not tpUtil.isSignPartValidRightNow(sign) then
+			continue
+		end
+
+		-- Part: CanQuery is a property that determines if a part can be queried by the physics engine.
+		-- In general, it allows the part to be detected by the physics engine for collision detection and raycasting.
+		-- In the context of this script, it is used to filter out signs that cannot be interacted with or detected by the physics engine.
+		-- This ensures that only signs that are physically present and can be interacted with are considered for the server event.
+		table.insert(allSigns, sign)
+	end
+
+	local existingAllFoundSignIds: { number } = {}
+	for _, signId in ipairs(allFoundSignIds) do
+		local sn = enums.signId2name[signId]
+		if sn == nil then
+			continue
+		end
+		local exi = signsFolder:FindFirstChild(sn)
+		if exi == nil then
+			continue
+		end
+		table.insert(existingAllFoundSignIds, signId)
+	end
 
 	local hasShort = false
 	local hasMed = false
-	local shortDistance = 1500
-	local medDistance = 4000
+	local shortDistance = 1150
+	local medDistance = 1800
 
 	for _, ev in ipairs(activeRunningServerEvents) do
 		if ev.distance < shortDistance then
@@ -178,8 +235,13 @@ local function startServerEvent(data: ServerEventCreateType): (tt.runningServerE
 	local endSignId
 	local dist
 
+	local tries = 0
 	--pick among candidates based on length criteria.
 	while true do
+		tries += 1
+		if tries > 100 then
+			return nil
+		end
 		local startSign = nil
 		local endSign = nil
 		startSignId = 0
@@ -187,14 +249,14 @@ local function startServerEvent(data: ServerEventCreateType): (tt.runningServerE
 
 		-- pick candidates
 		while true do
-			local canSign = allSigns[math.random(1, #allSigns)]
-			local candidateSignId = enums.name2signId[canSign.Name]
-
+			local candidateSignId = existingAllFoundSignIds[math.random(1, #existingAllFoundSignIds)]
 			if enums.SignIdIsExcludedFromStart[candidateSignId] then
 				continue
 			end
 
 			startSignId = candidateSignId
+			local canSignName = enums.signId2name[startSignId]
+			local canSign = signsFolder:FindFirstChild(canSignName)
 			startSign = canSign
 			break
 		end
@@ -248,7 +310,6 @@ local function startServerEvent(data: ServerEventCreateType): (tt.runningServerE
 		serverEventNumber = serverEventNumberCounter,
 		startedTick = st,
 		remainingTick = st + serverEventMaxLength - tick(),
-		lastActiveTick = st,
 		startSignId = startSignId,
 		endSignId = endSignId,
 		userBests = {},
@@ -267,6 +328,8 @@ end
 local function serverReceiveFunction(player: Player, message: string, data: any): any
 	annotate("receive event " .. message)
 	annotate(data)
+	--hhmm maybe overkill here, but why not just periodally
+
 	if message == serverEventEnums.messageTypes.CREATE then
 		data = data :: ServerEventCreateType
 		local serverEvent = startServerEvent(data)
@@ -284,8 +347,12 @@ local function integrateRun(ev: tt.runningServerEvent, data: tt.serverFinishRunN
 	local changed = false
 	--figure out if we need to add or update userbests
 	if ev.userBests[data.userId] == nil then
-		ev.userBests[data.userId] =
-			{ userId = data.userId, username = data.username, timeMs = data.timeMs, runCount = 1 }
+		ev.userBests[data.userId] = {
+			userId = data.userId,
+			username = data.username,
+			timeMs = data.timeMs,
+			runCount = 1,
+		}
 		changed = true
 	else
 		changed = true
@@ -329,15 +396,8 @@ end
 
 module.init = function()
 	annotate("setup serverEvents")
-	setupKiller()
-	--listen to client events
-	--set up events to talk to client
-
-	--using generic event names with a router here.
-
+	setupRunningServerEventKiller()
 	serverEventRemoteFunction.OnServerInvoke = serverReceiveFunction
-
-	--TEMP disable
 	local serverEventBindableEvent = remotes.getBindableEvent("ServerEventBindableEvent")
 	serverEventBindableEvent.Event:Connect(receiveRunFinishFromServer)
 	annotate("setup serverEvents.done")

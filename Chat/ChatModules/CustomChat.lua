@@ -1,6 +1,6 @@
 --!strict
 
-local channelDefinitions = require(game.ReplicatedStorage.chat.channelDefinitions)
+local channeldefinitions = require(game.ReplicatedStorage.chat.channeldefinitions)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local banning = require(game.ServerScriptService.banning)
 
@@ -16,7 +16,7 @@ local function Run(ChatService)
 	end
 	channelsSetUp = true
 
-	local defs = channelDefinitions.getChannelDefinitions()
+	local defs = channeldefinitions.getChannelDefinitions()
 
 	local function getDef(channelName)
 		for _, def in ipairs(defs) do
@@ -65,7 +65,7 @@ local function Run(ChatService)
 		return false
 	end)
 
-	channelDefinitions.sendChannels(channels)
+	channeldefinitions.sendChannels(channels)
 
 	local validNames = {}
 	for _, def in ipairs(defs) do

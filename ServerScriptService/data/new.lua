@@ -2,7 +2,7 @@
 
 --eval 9.24.22
 
-local rf = require(game.ReplicatedStorage.util.remotes)
+local remotes = require(game.ReplicatedStorage.util.remotes)
 local rdb = require(game.ServerScriptService.rdb)
 local remoteDbInternal = require(game.ServerScriptService.remoteDbInternal)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
@@ -43,7 +43,7 @@ module.GetNew = function(player: Player, userIds: { number }): { PopularResponse
 end
 
 module.init = function()
-	local getNewRunsFunction = rf.getRemoteFunction("GetNewRunsFunction") :: RemoteFunction
+	local getNewRunsFunction = remotes.getRemoteFunction("GetNewRunsFunction") :: RemoteFunction
 	getNewRunsFunction.OnServerInvoke = function(player: Player, userIds: { number }): any
 		return module.GetNew(player, userIds)
 	end

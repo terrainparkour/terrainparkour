@@ -77,7 +77,7 @@ if forceSpawnJumpingToUnfound then
 					continue
 				end
 			end
-			serverwarping.WarpToSignId(lp, ii, false)
+			serverwarping.WarpToSignId(lp, ii)
 
 			wait(2.5)
 		end

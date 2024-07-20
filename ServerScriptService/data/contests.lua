@@ -1,7 +1,7 @@
 --!strict
 --eval 9.24.22
 
-local rf = require(game.ReplicatedStorage.util.remotes)
+local remotes = require(game.ReplicatedStorage.util.remotes)
 local remoteDbInternal = require(game.ServerScriptService.remoteDbInternal)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local ContestResponseTypes = require(game.ReplicatedStorage.types.ContestResponseTypes)
@@ -82,12 +82,12 @@ local function GetContests(player: Player, userIds: { number }): { ContestRespon
 end
 
 module.init = function()
-	local func = rf.getRemoteFunction("GetContestsFunction") :: RemoteFunction
+	local func = remotes.getRemoteFunction("GetContestsFunction") :: RemoteFunction
 	func.OnServerInvoke = function(player: Player, userIds: { number }): any
 		return GetContests(player, userIds)
 	end
 
-	local func2 = rf.getRemoteFunction("GetSingleContestFunction") :: RemoteFunction
+	local func2 = remotes.getRemoteFunction("GetSingleContestFunction") :: RemoteFunction
 	func2.OnServerInvoke = function(player: Player, userIds: { number }, contestId: number): any
 		return GetSingleContest(player, userIds, contestId)
 	end

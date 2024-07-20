@@ -72,6 +72,9 @@ module.getRandomFoundSignName = function(userId: number): string
 	end
 	local signId = choices[math.random(#choices)]
 	local signName = tpUtil.signId2signName(signId)
+	if signName == nil or signName == "" then
+		warn("bad.")
+	end
 	return signName
 end
 
@@ -103,6 +106,7 @@ module.userSentMessage = function(data: any): any
 	return res
 end
 
+--this is only available on the server unfortunately.
 local playerUsernames = {}
 module.getUsernameByUserId = function(userId: number)
 	if not playerUsernames[userId] then
@@ -115,15 +119,17 @@ module.getUsernameByUserId = function(userId: number)
 			--missing userid escalate to shedletsky
 			userId = 261
 		end
+		local res
 		local s, e = pcall(function()
-			local res = PlayersService:GetNameFromUserIdAsync(userId)
-			playerUsernames[userId] = res
-			return res
+			res = PlayersService:GetNameFromUserIdAsync(userId)
 		end)
 		if not s then
 			warn(e)
 			return "Unknown Username for " .. userId
 		end
+
+		playerUsernames[userId] = res
+		return res
 	end
 
 	return playerUsernames[userId]
@@ -246,11 +252,63 @@ module.dynamicRunFrom = function(userId: number, startSignId: number, targetSign
 	return res
 end
 
+module.reportServerError = function(ev: tt.robloxServerError)
+	local combined = { ev = ev }
+	combined.remoteActionName = "reportServerError"
+	local res = remoteDbInternal.remotePost("postEndpoint", combined)
+	return res
+end
+
 module.reportServerEventEnd = function(ev: tt.runningServerEvent, allocations)
 	local combined = { ev = ev, allocations = allocations }
 	combined.remoteActionName = "reportServerEventEnd"
 	local res = remoteDbInternal.remotePost("postEndpoint", combined)
 	return res
+end
+
+module.beckon = function(userId: number, message: string)
+	local data = { remoteActionName = "beckon", userId = userId, message = message }
+	remoteDbInternal.remotePost("postEndpoint", data)
+	local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
+	local grantBadge = require(game.ServerScriptService.grantBadge)
+	grantBadge.GrantBadge(userId, badgeEnums.badges.Beckoner)
+end
+
+local function checkBadgesForBadIds()
+	local counts = {}
+	-- print("doing badge duplication check since you're in studio.!")
+	local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
+	for _, el in pairs(badgeEnums.badges) do
+		if not counts[el.assetId] then
+			counts[el.assetId] = 0
+		end
+		counts[el.assetId] = counts[el.assetId] + 1
+	end
+
+	for a, b in pairs(counts) do
+		if b > 1 then
+			warn(string.format("badge id %d appears %d times", a, b))
+		end
+	end
+end
+
+module.getSignProfileForUser = function(userId: number, signId: number)
+	local data = { userId = userId, signId = signId }
+	return remoteDbInternal.remoteGet("getSignProfileForUser", data)
+end
+
+local config = require(game.ReplicatedStorage.config)
+if config.isInStudio() then
+	checkBadgesForBadIds()
+end
+
+local testRemoteErrorSending = function()
+	local ev: tt.robloxServerError = {}
+	ev.code = "code"
+	ev.version = enums.gameVersion
+	ev.message = "helly."
+	ev.data = "data"
+	ev.userId = 123
 end
 
 return module

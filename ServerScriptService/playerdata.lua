@@ -5,11 +5,12 @@
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
+local emojis = require(game.ReplicatedStorage.enums.emojis)
 
-local rdb = require(game.ServerScriptService.rdb)
 local remoteDbInternal = require(game.ServerScriptService.remoteDbInternal)
+local textUtil = require(game.ReplicatedStorage.util.textUtil)
+local colors = require(game.ReplicatedStorage.util.colors)
 
-local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
 local PlayersService = game:GetService("Players")
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
@@ -20,7 +21,7 @@ module.getGameStats = function()
 	local allTimeRuns = remoteDbInternal.remoteGet("getTotalRunCount", {})["count"]
 	local totalRaces = remoteDbInternal.remoteGet("getTotalRaceCount", {})["count"]
 	local text = tostring(todayRuns) .. " runs today\n"
-	text = text .. tostring(allTimeRuns) .. " races have been run ever!\n"
+	text = text .. tostring(allTimeRuns) .. " runs have been done ever!\n"
 	text = text .. tostring(totalRaces) .. " different races have been discovered."
 	return text
 end
@@ -40,6 +41,7 @@ end
 module.getPlayerStatsByUserId = function(userId: number, kind: string): tt.afterData_getStatsByUser
 	local stats: tt.afterData_getStatsByUser = remoteDbInternal.remoteGet("getStatsByUser", { userId = userId })
 	stats.kind = kind
+	local rdb = require(game.ServerScriptService.rdb)
 	local totalSignCount = rdb.getGameSignCount()
 	stats.totalSignCount = totalSignCount
 	return stats
@@ -125,7 +127,6 @@ local function serverInvokeClickSignRemote(player: Player, signId: number)
 
 	local s2, e2 = pcall(function()
 		signWRLeaderData = module.getSignWRLeader(signId)
-		badgeCheckers.checkBadgeGrantingFromSignWrLeaderData(signWRLeaderData, player.UserId)
 		got = got + 1
 	end)
 
@@ -135,6 +136,9 @@ local function serverInvokeClickSignRemote(player: Player, signId: number)
 		got = got + 1
 	end
 
+	local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
+	badgeCheckers.checkBadgeGrantingFromSignWrLeaderData(signWRLeaderData, player.UserId)
+
 	while true do
 		if got == 2 then
 			local res = {
@@ -143,92 +147,23 @@ local function serverInvokeClickSignRemote(player: Player, signId: number)
 			}
 			return res
 		end
+		wait(0.3)
 	end
 end
 
-clickSignRemoteFunction.OnServerInvoke = function(player: Player, signId: number): any
-	return serverInvokeClickSignRemote(player, signId)
-end
-
---whats the difference between this and "+s"
---2021: add top leaders for starts.
-module.describeSignText = function(userId: number, signname: string): string
-	local signId = tpUtil.looseSignName2SignId(signname)
-	if signId == nil then
-		return "unknown"
+clickSignRemoteFunction.OnServerInvoke = function(player: Player, signClickMessage: tt.signClickMessage): any
+	if signClickMessage.leftClick then
+		return serverInvokeClickSignRemote(player, signClickMessage.signId)
+	else
+		local profile = require(game.ReplicatedStorage.commands.signProfileCommand)
+		profile.signProfileCommand(player.UserId, signClickMessage.signId, player)
 	end
-	if not rdb.hasUserFoundSign(userId, signId) then
-		return "You haven't found this sign yet, so can't look up information on it."
-	end
-	local realSignName = enums.signId2name[signId]
-	local signFindCount = remoteDbInternal.remoteGet("getTotalFindCountBySign", { signId = signId })["count"]
-
-	local fromleaders = remoteDbInternal.remoteGet("getSignStartLeader", { signId = signId })
-	local toleaders = remoteDbInternal.remoteGet("getSignEndLeader", { signId = signId })
-
-	local counts: { [string]: { to: number, from: number, username: string } } = {}
-	local text = "\nSign Leader for "
-		.. realSignName
-		.. "!\n"
-		.. tostring(signFindCount)
-		.. " players have found "
-		.. realSignName
-		.. "\nrank name total (from/to)"
-	for _, leader in ipairs(fromleaders.res) do
-		local username: string
-		if leader.userId < 0 then
-			username = "player" .. leader.userId
-		else
-			username = rdb.getUsernameByUserId(leader.userId)
-		end
-		if counts[username] == nil then
-			counts[username] = { to = 0, from = 0, username = username }
-		end
-
-		counts[username].from = counts[username].from + leader.count
-	end
-
-	for _, leader in ipairs(toleaders.res) do
-		local username: string
-		if leader.userId < 0 then
-			username = "player" .. leader.userId
-		else
-			username = rdb.getUsernameByUserId(leader.userId)
-		end
-		if counts[username] == nil then
-			counts[username] = { to = 0, from = 0, username = username }
-		end
-		counts[username].to = counts[username].to + leader.count
-	end
-	local tbl = {}
-	for username, item in pairs(counts) do
-		table.insert(tbl, item)
-	end
-	table.sort(tbl, function(a, b)
-		return a.to + a.from > b.to + b.from
-	end)
-
-	for ii, item in ipairs(tbl) do
-		text = text
-			.. "\n"
-			.. ii
-			.. ". "
-			.. item.username
-			.. " - "
-			.. item.to + item.from
-			.. " "
-			.. "("
-			.. item.from
-			.. "/"
-			.. item.to
-			.. ")"
-	end
-	return text
 end
 
 module.getCommonFoundSignNames = function(): any
 	local res = {} --signId : bool
 	local playerCount = 0
+	local rdb = require(game.ServerScriptService.rdb)
 	for _, player in ipairs(PlayersService:GetPlayers()) do
 		local base = rdb.getUserSignFinds(player.UserId)
 		for signId: number, _ in pairs(base) do
@@ -252,6 +187,7 @@ end
 
 module.getCommonFoundSignIdsExcludingNoobs = function(requiredFinderUserId)
 	local targetFounds = {}
+	local rdb = require(game.ServerScriptService.rdb)
 	local userFinds = rdb.getUserSignFinds(requiredFinderUserId)
 	for signId: number, _ in pairs(userFinds) do
 		local name = tpUtil.signId2signName(signId)
@@ -296,13 +232,18 @@ end
 
 --later this should be an autocompleter
 --signnames = "A-B"
-module.describeRaceHistoryMultilineText = function(signId1: number, signId2: number): string
+module.describeRaceHistoryMultilineText = function(
+	signId1: number,
+	signId2: number,
+	playerUserId: number,
+	userIdsInServer: { number }
+): { { message: string, options: {} | nil } }
 	if signId1 == signId2 then
-		return "Nice try mister. You can't race from a sign to itself."
+		return { { message = "Nice try mister. You can't race from a sign to itself." } }
 	end
 
 	if signId1 == nil or signId2 == nil then
-		return "unknown"
+		return { { message = "unknown" } }
 	end
 
 	local real1: string = enums.signId2name[signId1]
@@ -310,41 +251,81 @@ module.describeRaceHistoryMultilineText = function(signId1: number, signId2: num
 
 	local sign1: Part = game.Workspace:FindFirstChild("Signs"):FindFirstChild(real1) :: Part
 	local sign2: Part = game.Workspace:FindFirstChild("Signs"):FindFirstChild(real2) :: Part
-	local runEntries = remoteDbInternal.remoteGet("getBestTimesByRace", { startId = signId1, endId = signId2 })["res"]
+	local dist
 
-	local dist = tpUtil.getDist(sign1.Position, sign2.Position)
-	local topList = string.format("Top Runs for the race from: %s to %s (%0.1fd)\n", real1, real2, dist)
-	for ii = 1, 11 do
-		local res = runEntries[ii]
-		if not res then
+	--protect dev plcae
+	if sign1 == nil or sign2 == nil then
+		warn("no such sign")
+		dist = 987654
+		-- return ""
+	else
+		dist = tpUtil.getDist(sign1.Position, sign2.Position)
+	end
+	local runEntries = remoteDbInternal.remoteGet(
+		"getBestTimesByRace",
+		{ startId = signId1, endId = signId2, userIdsCsv = textUtil.stringJoin(",", userIdsInServer) }
+	)["res"]
+	local headerRow = string.format("Top Runs for the race from: %s to %s (%0.1fd)\n", real1, real2, dist)
+	local entries = {}
+	table.insert(entries, { message = headerRow, options = { ChatColor = colors.white } })
+	for ii, entry in ipairs(runEntries) do
+		if not entry then
 			break
 		end
-		local placeText = tostring(ii)
-		local speed = dist / res.runMilliseconds * 1000
-		local row =
-			string.format("%s: %s - %s - (%0.1fd/s)", placeText, tpUtil.fmtms(res.runMilliseconds), res.username, speed)
-		topList = topList .. row .. "\n"
+		local placeText = tpUtil.getCardinalEmoji(ii)
+		if ii > 10 then
+			placeText = emojis.emojis.BOMB
+		end
+		local speed = dist / entry.runMilliseconds * 1000
+		local row = string.format(
+			"%s %s - %s - (%0.1fd/s)",
+			placeText,
+			tpUtil.fmtms(entry.runMilliseconds),
+			entry.username,
+			speed
+		)
+		local options = { ChatColor = colors.white }
+		if playerUserId == entry.userId then
+			options.ChatColor = colors.meColor
+		end
+
+		for _, u in pairs(userIdsInServer) do
+			if u == entry.userId then
+				options.ChatColor = colors.greenGo
+				break
+			end
+		end
+		table.insert(entries, { message = row, options = options })
 	end
+
 	local runCount =
 		remoteDbInternal.remoteGet("getTotalRunCountByRace", { startId = signId1, endId = signId2 })["count"]
 	if runCount == 0 then
-		return "Nobody has ever run the race from " .. real1 .. " to " .. real2 .. "!  You can be the first!"
+		return {
+			{
+				message = "Nobody has ever run the race from "
+					.. real1
+					.. " to "
+					.. real2
+					.. "!  You can be the first!",
+			},
+		}
 	end
 
 	if runCount == 1 then
-		topList = topList .. "This race has only been run once!"
+		table.insert(entries, { message = "This race has only been run once!", options = { ChatColor = colors.white } })
 	else
 		local runnerCount =
 			remoteDbInternal.remoteGet("getTotalBestRunCountByRace", { startId = signId1, endId = signId2 })["count"]
-		topList = topList
-			.. "This race has been run "
+		local last = "This race has been run "
 			.. tostring(runCount)
 			.. " times, by "
 			.. tostring(runnerCount)
 			.. " racers!"
+		table.insert(entries, { message = last, options = { ChatColor = colors.white } })
 	end
 
-	return topList
+	return entries
 end
 
 return module

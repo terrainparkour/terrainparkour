@@ -4,13 +4,23 @@
 -- hide chat window and leaderboard when the user hits tab.
 
 local UserInputService = game:GetService("UserInputService")
-local showUI: boolean = true
+local showLB: boolean = true
+local showChat: boolean = true
 
-local players = game:GetService("Players")
-local localplayer = players.LocalPlayer
+local PlayersService = game:GetService("Players")
+repeat
+	game:GetService("RunService").RenderStepped:wait()
+until game.Players.LocalPlayer.Character ~= nil
+local localPlayer = PlayersService.LocalPlayer
 
-local function ToggleUI(intendedState: boolean)
-	local items = { localplayer.PlayerGui:FindFirstChild("LeaderboardScreenGui") }
+local function ToggleChat(intendedState: boolean)
+	local ChatMain =
+		require(game.Players.LocalPlayer.PlayerScripts:FindFirstChild("ChatScript"):WaitForChild("ChatMain"))
+	ChatMain:SetVisible(intendedState)
+end
+
+local function ToggleLB(intendedState: boolean)
+	local items = { localPlayer.PlayerGui:FindFirstChild("LeaderboardScreenGui") }
 	for _, el in ipairs(items) do
 		if el == nil then
 			print("bad item.")
@@ -18,17 +28,18 @@ local function ToggleUI(intendedState: boolean)
 		end
 		el.Enabled = intendedState
 	end
-	local ChatMain =
-		require(game.Players.LocalPlayer.PlayerScripts:FindFirstChild("ChatScript"):WaitForChild("ChatMain"))
-	ChatMain:SetVisible(intendedState)
-	--ChatMain:ToggleVisibility()
 end
 
+--2023.03 also kill cwrs UI
 local function KillPopups()
-	for _, el in ipairs(localplayer.PlayerGui:GetChildren()) do
-		if el.Name == "RaceResultSgui" then
+	for _, el in ipairs(localPlayer.PlayerGui:GetChildren()) do
+		if string.sub(el.Name, 0, 14) == "RaceResultSgui" then
 			el:Destroy()
 		end
+		if string.sub(el.Name, 0, 16) == "SignStatusSgui" then
+			el:Destroy()
+		end
+
 		if el.Name == "EphemeralNotificationSgui" then
 			el:Destroy()
 		end
@@ -38,7 +49,11 @@ local function KillPopups()
 		if el.Name == "NewFindSgui" then
 			el:Destroy()
 		end
+		if el.Name == "EphemeralTooltip" then
+			el:Destroy()
+		end
 	end
+	ToggleChat(false)
 end
 
 local function onInputBegin(inputObject, gameProcessedEvent)
@@ -48,8 +63,8 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 
 	if inputObject.UserInputType == Enum.UserInputType.Keyboard then
 		if inputObject.KeyCode == Enum.KeyCode.Tab then
-			showUI = not showUI
-			ToggleUI(showUI)
+			showLB = not showLB
+			ToggleLB(showLB)
 		end
 
 		if inputObject.KeyCode == Enum.KeyCode.X then

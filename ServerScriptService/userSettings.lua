@@ -49,6 +49,7 @@ local defaultSettingsValues: { tt.userSettingValue } = {
 	{ name = "enable find200", domain = settingEnums.settingDomains.MARATHONS },
 	{ name = "enable find300", domain = settingEnums.settingDomains.MARATHONS },
 	{ name = "enable find380", domain = settingEnums.settingDomains.MARATHONS },
+	{ name = "enable find500", domain = settingEnums.settingDomains.MARATHONS },
 	{ name = "enable find10s", domain = settingEnums.settingDomains.MARATHONS },
 	{ name = "enable find10t", domain = settingEnums.settingDomains.MARATHONS },
 	{ name = "enable exactly40letters", domain = settingEnums.settingDomains.MARATHONS },
@@ -73,6 +74,8 @@ local defaultSettingsValues: { tt.userSettingValue } = {
 	{ name = "should the game have more badges", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "have you found the chomik", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "should the game have more signs", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "should the game have more ice", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "should the game have fewer signs", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "should the game have more new areas", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "should the game have more marathons", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "should the game have more water areas", domain = settingEnums.settingDomains.SURVEYS },
@@ -91,7 +94,26 @@ local defaultSettingsValues: { tt.userSettingValue } = {
 	{ name = "have you played for more than a year", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "have you played among us", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "have you played factorio", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "have you beaten factorio", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "have you played slay the spire", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "have you beaten slay the spire ascension 20", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more special signs", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more limited signs", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "moveable signs", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more lava", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more ice", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more players", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more advertisements", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more sounds", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more music", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more configuration options", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more UIs", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more commands", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "more user generated content", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "Verv will get better", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "you like ai", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "you have tried midjourney", domain = settingEnums.settingDomains.SURVEYS },
+	{ name = "you have used chatGPT", domain = settingEnums.settingDomains.SURVEYS },
 
 	--a real impactful user setting
 	{
@@ -119,6 +141,8 @@ end
 
 local debounceInnerSetup = false
 
+--just call this to get settings and it will handle caching.
+--src is just for debugging.
 local function innerSetupSettings(player: Player, src: string): { [string]: tt.userSettingValue }
 	while debounceInnerSetup do
 		annotate("settings.innersetup.wait " .. src)
@@ -141,8 +165,6 @@ local function innerSetupSettings(player: Player, src: string): { [string]: tt.u
 			if userSettingsCache[userId][defaultSetting.name] == nil then
 				userSettingsCache[userId][defaultSetting.name] = copySetting(defaultSetting)
 			end
-
-			--TODO optionally should we store these in BE?  might be nice, then we'd know we served fake defaults to a user
 		end
 	end
 
@@ -150,7 +172,7 @@ local function innerSetupSettings(player: Player, src: string): { [string]: tt.u
 	return userSettingsCache[userId]
 end
 
-module.getUserSettingByName = function(player: Player, settingName: string): tt.userSettingValue
+local getUserSettingByName = function(player: Player, settingName: string): tt.userSettingValue
 	local userSettings = innerSetupSettings(player, "getUserSettingByName " .. settingName)
 	for _, s in userSettings do
 		if s.name == settingName then
@@ -160,7 +182,7 @@ module.getUserSettingByName = function(player: Player, settingName: string): tt.
 	error("missing setting of name " .. settingName)
 end
 
-module.getUserSettingsByDomain = function(player: Player, domain: string): { [string]: tt.userSettingValue }
+local getUserSettingsByDomain = function(player: Player, domain: string): { [string]: tt.userSettingValue }
 	local userSettings = innerSetupSettings(player, "getUserSettingsByDomain " .. domain)
 	local res = {}
 	for _, s in pairs(userSettings) do
@@ -171,13 +193,22 @@ module.getUserSettingsByDomain = function(player: Player, domain: string): { [st
 	return res
 end
 
-module.getUserSettingsRouter = function(player: Player, domain: string?, settingName: string?): any
-	if domain ~= nil and domain ~= "" then
-		return module.getUserSettingsByDomain(player, domain)
+module.getUserSettingsRouter = function(player: Player, data: settingEnums.settingRequest): any
+	if data.includeDistributions then
+		if data.domain == settingEnums.settingDomains.SURVEYS then
+			local got = rdb.getSurveyResults(player.UserId)
+
+			return got
+		else
+			error("cant get distributions for other settings.")
+		end
+	end
+	if data.domain ~= nil and data.domain ~= "" then
+		return getUserSettingsByDomain(player, data.domain)
 	end
 
-	if settingName ~= nil and settingName ~= "" then
-		return module.getUserSettingByName(player, settingName)
+	if data.settingName ~= nil and data.settingName ~= "" then
+		return getUserSettingByName(player, data.settingName)
 	end
 
 	local userSettings = innerSetupSettings(player, "getUserSettingsRouter.all")
@@ -186,19 +217,34 @@ end
 
 local function userChangedSettingFromUI(userId: number, setting: tt.userSettingValue)
 	if userSettingsCache[userId] == nil then
-		warn("empty should not happen")
-		userSettingsCache[userId] = {}
+		error("empty should not happen")
 	end
 	rdb.updateSettingForUser(userId, setting.value, setting.name, setting.domain)
 	userSettingsCache[userId][setting.name] = setting
+	local grantBadge = require(game.ServerScriptService.grantBadge)
+	local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
+	grantBadge.GrantBadge(userId, badgeEnums.badges.TakeSurvey)
+	local ct = 0
+	for _, item: tt.userSettingValue in userSettingsCache[userId] do
+		if item.domain ~= settingEnums.settingDomains.SURVEYS then
+			continue
+		end
+		if item.value ~= nil then
+			ct += 1
+		end
+		if ct + 20 then
+			grantBadge.GrantBadge(userId, badgeEnums.badges.SurveyKing)
+			break
+		end
+	end
 end
 
 module.init = function()
-	local rf = require(game.ReplicatedStorage.util.remotes)
-	local getUserSettingsFunction = rf.getRemoteFunction("GetUserSettingsFunction") :: RemoteFunction
+	local remotes = require(game.ReplicatedStorage.util.remotes)
+	local getUserSettingsFunction = remotes.getRemoteFunction("GetUserSettingsFunction") :: RemoteFunction
 	getUserSettingsFunction.OnServerInvoke = module.getUserSettingsRouter
 
-	local userSettingsChangedFunction = rf.getRemoteFunction("UserSettingsChangedFunction")
+	local userSettingsChangedFunction = remotes.getRemoteFunction("UserSettingsChangedFunction")
 	userSettingsChangedFunction.OnServerInvoke = function(player: Player, setting: tt.userSettingValue)
 		return userChangedSettingFromUI(player.UserId, setting)
 	end

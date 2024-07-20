@@ -1,5 +1,5 @@
 --!strict
---eval 9.25.22
+--serversign player joining setup - subbing to events, etc.
 
 local leaderboardEvents = require(game.ServerScriptService.leaderboardEvents)
 local leaderboardBadgeEvents = require(game.ServerScriptService.leaderboardBadgeEvents)
@@ -16,45 +16,33 @@ local playerAddFuncs: { storedFunc } = {}
 local playerRemovingFuncs: { storedFunc } = {}
 
 local doAnnotation = false
+-- doAnnotation = true
 local annotationStart = tick()
 local function annotate(s: string)
 	if doAnnotation then
-		print("presence.func: " .. string.format("%.3f", tick() - annotationStart) .. " : " .. s)
+		print("joinSetup: " .. string.format("%.2f", tick() - annotationStart) .. " : " .. s)
 	end
 end
 
-local function applyPlayerJoiningFuncs(player: Player?)
-	if player == nil then
-		warn("nil player.join")
-		return
-	end
-	assert(player)
+local function applyPlayerAddFuncs(player: Player)
 	for _, storedFunc: storedFunc in pairs(playerAddFuncs) do
 		spawn(function()
-			annotate("running.Join " .. storedFunc.name .. " on " .. player.Name)
+			annotate("running.Add " .. storedFunc.name .. " on " .. player.Name)
 			storedFunc.func(player)
 		end)
 	end
 end
 
-local function applyPlayerRemovingFuncs(player)
-	if player == nil then
-		warn("nil player.removing")
-		return
-	end
+local function applyPlayerRemovingFuncs(player: Player)
 	for _, storedFunc in pairs(playerRemovingFuncs) do
+		annotate("running.Removing " .. storedFunc.name .. " on " .. player.Name)
 		spawn(function()
-			annotate("running.Leave " .. storedFunc.name .. " on " .. player.Name)
 			storedFunc.func(player)
 		end)
 	end
 end
 
 module.init = function()
-	--initial lookup of web data.
-
-	--the action may take place anytime - but we set it up when they join.
-	-- (maybe because it has to actually be set up on their character, etc.)
 	table.insert(playerAddFuncs, { func = playerMonitoring.PreloadFinds, name = "preloadFinds" })
 	table.insert(playerAddFuncs, { func = playerMonitoring.LogJoin, name = "logJoin" })
 	table.insert(playerAddFuncs, { func = playerMonitoring.BackfillBadges, name = "BackfillBadges" })
@@ -62,39 +50,49 @@ module.init = function()
 	table.insert(playerAddFuncs, { func = badgeCheckers.MetCreatorChecker, name = "setupMetCreatorChecker" })
 	table.insert(playerAddFuncs, { func = badgeCheckers.BumpedCreatorChecker, name = "setupBumpedCreatorChecker" })
 	table.insert(playerAddFuncs, { func = badgeCheckers.CrowdedHouseChecker, name = "setupCrowdedHouseChecker" })
-	table.insert(playerAddFuncs, { func = playerMonitoring.CancelRunOnDeath, name = "cancelOnDeath" })
 	table.insert(playerAddFuncs, { func = playerMonitoring.LogLocationOnDeath, name = "logLocationOnDeath" })
 	table.insert(
 		playerAddFuncs,
 		{ func = leaderboardEvents.UpdateOthersAboutJoinerLb, name = "UpdateOthersAboutJoinerLb" }
 	)
-	table.insert(playerAddFuncs, { func = leaderboardEvents.UpdateOwnLeaderboard, name = "UpdateOwnLeaderboard" })
-	table.insert(playerAddFuncs, { func = leaderboardBadgeEvents.TellAllAboutMeBadges, name = "TellAllAboutMeBadges" })
+	table.insert(playerAddFuncs, { func = leaderboardEvents.SetPlayerToReceiveUpdates, name = "UpdateOwnLeaderboard" })
+	table.insert(
+		playerAddFuncs,
+		{ func = leaderboardBadgeEvents.TellPlayerAboutAllOthersBadges, name = "TellAllAboutMeBadges" }
+	)
 	table.insert(playerAddFuncs, { func = leaderboardBadgeEvents.TellMeAboutOBadges, name = "TellMeAboutOBadges" })
-	table.insert(playerAddFuncs, { func = leaderboardEvents.PostJoinToRacers, name = "PostJoinToRacers" })
+	table.insert(playerAddFuncs, { func = leaderboardEvents.PostJoinToRacersImmediate, name = "PostJoinToRacers" })
 
-	table.insert(playerRemovingFuncs, { func = playerMonitoring.LogQuit, name = "LogQuit" })
-	table.insert(
-		playerRemovingFuncs,
-		{ func = playerMonitoring.CancelRunOnPlayerRemove, name = "CancelRunOnPlayerRemove" }
-	)
-	table.insert(playerRemovingFuncs, { func = playerMonitoring.LogPlayerLeft, name = "LogPlayerLeft" })
-	table.insert(
-		playerRemovingFuncs,
-		{ func = leaderboardEvents.RemoveFromLeaderboard, name = "RemoveFromLeaderboard" }
-	)
-	table.insert(playerRemovingFuncs, { func = leaderboardEvents.PostLeaveToRacers, name = "PostLeaveToRacers" })
-
-	--players joining here will not have any joinfunc run.
-	PlayersService.PlayerAdded:Connect(applyPlayerJoiningFuncs)
-	PlayersService.PlayerRemoving:Connect(applyPlayerRemovingFuncs)
-	-- PlayersService.PlayerDisconnecting:Connect(applyPlayerRemovingFuncs)
+	PlayersService.PlayerAdded:Connect(applyPlayerAddFuncs)
 
 	--backfill.
 	for _, player: Player in ipairs(PlayersService:GetPlayers()) do
 		--"retroactive" re-simulate them joining.
-		applyPlayerJoiningFuncs(player)
+		applyPlayerAddFuncs(player)
 	end
+
+	table.insert(playerRemovingFuncs, { func = playerMonitoring.LogQuit, name = "LogQuit" })
+	table.insert(playerRemovingFuncs, { func = playerMonitoring.LogPlayerLeft, name = "LogPlayerLeft" })
+	table.insert(
+		playerRemovingFuncs,
+		{ func = leaderboardEvents.RemoveFromLeaderboardImmediate, name = "RemoveFromLeaderboard" }
+	)
+	table.insert(
+		playerRemovingFuncs,
+		{ func = leaderboardEvents.PostLeaveToRacersImmediate, name = "PostLeaveToRacers" }
+	)
+
+	PlayersService.PlayerRemoving:Connect(applyPlayerRemovingFuncs)
+
+	--players 100% gone by this point but whatever.
+	game:BindToClose(function()
+		for _, player in pairs(game.Players:GetPlayers()) do
+			for _, func in ipairs(playerRemovingFuncs) do
+				print("calling final server close: " .. func.name .. " on " .. player.Name)
+				func.func(player)
+			end
+		end
+	end)
 end
 
 return module

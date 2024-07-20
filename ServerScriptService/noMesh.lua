@@ -15,6 +15,7 @@ local function handle(character)
 			if hum ~= nil then
 				break
 			end
+			print("W")
 			wait(0.1)
 		end
 
@@ -36,10 +37,6 @@ local function handle(character)
 				if el.ClassName == "MeshPart" then
 					continue
 				end
-				--TODO oops
-				if el.ClassName == "eshPart" then
-					continue
-				end
 				if el.ClassName == "Accessory" then
 					local el2: Accessory = el :: Accessory
 					if
@@ -51,19 +48,19 @@ local function handle(character)
 					end
 				end
 			end
+			-- print("char children: " .. el.Name)
 		end
 	end)
 end
 
-module.StandardizeCharacter = function(joiner: Player)
-	joiner.CharacterAdded:Connect(function(character)
+module.StandardizeCharacter = function(player: Player)
+	player.CharacterAdded:Connect(function(character)
 		handle(character)
 	end)
-
-	local char = joiner.Character
+	local character = player.Character or player.CharacterAdded:Wait()
 	while true do
-		if char ~= nil then
-			handle(char)
+		if character ~= nil then
+			handle(character)
 			break
 		end
 		wait(0.1)

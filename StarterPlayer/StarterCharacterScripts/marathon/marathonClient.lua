@@ -5,22 +5,25 @@
 local module = {}
 
 local PlayersService = game:GetService("Players")
+repeat
+	game:GetService("RunService").RenderStepped:wait()
+until game.Players.LocalPlayer.Character ~= nil
 local localPlayer = PlayersService.LocalPlayer
 
 local enums = require(game.ReplicatedStorage.util.enums)
 local colors = require(game.ReplicatedStorage.util.colors)
 
 local marathonstatic = require(game.StarterPlayer.StarterCharacterScripts.marathon["marathon.static"])
-local warper = require(game.ReplicatedStorage.warper)
+local warper = require(game.StarterPlayer.StarterPlayerScripts.util.warperClient)
 
 local lbMarathonRowY = 18
-local rf = require(game.ReplicatedStorage.util.remotes)
+local remotes = require(game.ReplicatedStorage.util.remotes)
 
 local mt = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonTypes)
 local joinableMarathonKinds: { mt.marathonDescriptor } = {}
 
-local marathonCompleteEvent = rf.getRemoteEvent("MarathonCompleteEvent")
-local ephemeralMarathonCompleteEvent = rf.getRemoteEvent("EphemeralMarathonCompleteEvent")
+local marathonCompleteEvent = remotes.getRemoteEvent("MarathonCompleteEvent")
+local ephemeralMarathonCompleteEvent = remotes.getRemoteEvent("EphemeralMarathonCompleteEvent")
 if marathonCompleteEvent == nil or ephemeralMarathonCompleteEvent == nil then
 	warn("FAIL")
 end
@@ -254,18 +257,18 @@ local function innerReceiveHit(desc: mt.marathonDescriptor, signName: string, in
 end
 
 --blocker to confirm the user has completed warp
-local canDoAnything = true
+local canDoMarathonStuff = true
 
 module.receiveHit = function(signName: string, innerTick: number)
 	-- annotate("marathon receive hit ." .. signName)
 
-	if not canDoAnything then
+	if not canDoMarathonStuff then
 		-- annotate("can't do anything while warping so skipping.")
 		return
 	end
 	-- annotate("received hit in marathon.")
 	for _, desc: mt.marathonDescriptor in ipairs(joinableMarathonKinds) do
-		if warper.isWarping() then
+		if warper.isAlreadyWarping() then
 			break
 		end
 		-- annotate("receiveHit " .. desc.kind .. signName)
@@ -273,8 +276,8 @@ module.receiveHit = function(signName: string, innerTick: number)
 	end
 end
 
-local function onWarpStart()
-	canDoAnything = false
+local function onWarpStart(msg: string)
+	canDoMarathonStuff = false
 	for _, desc: mt.marathonDescriptor in ipairs(joinableMarathonKinds) do
 		spawn(function()
 			resetMarathonProgress(desc)
@@ -282,11 +285,9 @@ local function onWarpStart()
 	end
 end
 
-local function onWarpEnd()
-	canDoAnything = true
+local function onWarpEnd(msg: string)
+	canDoMarathonStuff = true
 end
-
-
 
 --BOTH tell the system that the setting value is this, AND init it visually.
 module.InitMarathon = function(desc: mt.marathonDescriptor, forceDisplay: boolean)
@@ -352,9 +353,12 @@ module.ReInitActiveMarathons = function()
 end
 
 -- when user warps, kill outstanding marathons.
-module.Init = function(): nil
-	warper.addCallbackToWarpStart(onWarpStart)
-	warper.addCallbackToWarpEnd(onWarpEnd)
+module.Init = function()
+	local warpStartingBindableEvent = remotes.getBindableEvent("warpStartingBindableEvent")
+	warpStartingBindableEvent.Event:Connect(onWarpStart)
+
+	local warpDoneBindableEvent = remotes.getBindableEvent("warpDoneBindableEvent")
+	warpDoneBindableEvent.Event:Connect(onWarpEnd)
 end
 
 return module

@@ -1,7 +1,9 @@
 --!strict
 --eval 9.25.22
 
---hook in events from server so that they update lb on client efficiently.
+--any backend that notices something happening that is part of the leaderboard should import this
+--list of events and call the appropriate one, with the appropriate luau typed data on it,
+--so that all users currently connected to that instance will get the LB update.
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local mt = require(game.ServerScriptService.EphemeralMarathons.ephemeralMarathonTypes)
@@ -19,6 +21,7 @@ module.updateLeaderboardForRun = function(player: Player, data: tt.lbUpdateFromR
 	end)
 end
 
+--ie tell player p about (their or another user's) find, with details within "data."
 module.updateLeaderboardForFind = function(player: Player, data: tt.signFindOptions)
 	spawn(function()
 		leaderboardUpdateEvent:FireClient(player, data)
@@ -37,14 +40,14 @@ module.updateLeaderboardForMarathon = function(player: Player, data: tt.pyUserFi
 	end)
 end
 
-module.updateLeaderboardForLeave = function(player: Player, userId: number)
+module.sendLeaveInfoToSomeone = function(player: Player, userId: number)
 	spawn(function()
 		local data: tt.leaveOptions = { userId = userId, kind = "leave" }
 		leaderboardUpdateEvent:FireClient(player, data)
 	end)
 end
 
-module.updateLeaderboardForJoin = function(player: Player, data: tt.afterData_getStatsByUser)
+module.sendUpdateToPlayer = function(player: Player, data: tt.afterData_getStatsByUser)
 	spawn(function()
 		leaderboardUpdateEvent:FireClient(player, data)
 	end)

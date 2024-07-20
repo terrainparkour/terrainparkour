@@ -4,91 +4,125 @@
 local vscdebug = require(game.ReplicatedStorage.vscdebug)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local refolder: Folder = ReplicatedStorage:WaitForChild("RemoteEvents")
+local rffolder: RemoteFunction = ReplicatedStorage:WaitForChild("RemoteFunctions")
+local befolder: Folder = ReplicatedStorage:WaitForChild("BindableEvents")
 
 local module = {}
 
-module.registerRemoteFunction = function(name: string): RemoteFunction
-	if name:sub(-8) ~= "Function" then
-		error("bad remote Function name. " .. name)
+local debounce = false
+-- local holder = ""
+
+--problem: this is not shared between client and server.
+local function getDebounce(name: string)
+	if debounce then
+		while debounce do
+			wait(0.1)
+			-- print("remote debounce " .. name .. " holder: " .. holder)
+		end
+	else
+		-- print("no debounce for " .. name)
 	end
-	local rffolder: RemoteFunction = ReplicatedStorage:WaitForChild("RemoteFunctions")
-	local exi: RemoteFunction = rffolder:FindFirstChild(name) :: RemoteFunction
-	if exi == nil then
-		local rf = Instance.new("RemoteFunction")
-		rf.Name = name
-		rf.Parent = rffolder
-		return rf
-	end
-	return exi
+	-- holder = name
+	debounce = true
 end
 
-module.getRemoteFunction = function(name: string): RemoteFunction
-	if name:sub(-8) ~= "Function" then
-		error("bad remote Function name. " .. name)
-	end
-	local rffolder: Folder = ReplicatedStorage:WaitForChild("RemoteFunctions")
-	local exi: RemoteFunction = rffolder:FindFirstChild(name) :: RemoteFunction
-	if exi == nil then
-		error("no such remote function: " .. name)
-	end
-
-	return exi
+local done = function(name: string)
+	-- holder = ""
+	debounce = false
+	-- print("done. " .. name)
 end
 
---seems to work better than the prior method
---todo convert everything.
-module.registerRemoteEvent = function(name: string): RemoteEvent
+local registerRemoteEvent = function(name: string): RemoteEvent
 	if name:sub(-5) ~= "Event" then
 		error("bad remote event name. " .. name)
 	end
-	local refolder: Folder = ReplicatedStorage:WaitForChild("RemoteEvents")
 
 	local exi: RemoteEvent = refolder:FindFirstChild(name) :: RemoteEvent
 	if exi == nil then
 		local re = Instance.new("RemoteEvent")
 		re.Name = name
 		re.Parent = refolder
+		done("exi" .. name)
 		return re
 	end
+	done("new " .. name)
 	return exi
 end
 
-module.getRemoteEvent = function(name: string): RemoteEvent
-	if name:sub(-5) ~= "Event" then
-		error("bad remote event name. " .. name)
+local registerRemoteFunction = function(name: string): RemoteFunction
+	if name:sub(-8) ~= "Function" then
+		error("bad remote Function name. " .. name)
 	end
-	local refolder: Folder = ReplicatedStorage:WaitForChild("RemoteEvents")
-	local exi = refolder:FindFirstChild(name) :: RemoteEvent
+
+	local exi: RemoteFunction = rffolder:FindFirstChild(name) :: RemoteFunction
 	if exi == nil then
-		error("No such event.")
+		local remotes = Instance.new("RemoteFunction")
+		remotes.Name = name
+		remotes.Parent = rffolder
+		done("exi" .. name)
+		return remotes
 	end
+	done("new " .. name)
 	return exi
 end
 
-module.registerBindableEvent = function(name: string): BindableEvent
+local registerBindableEvent = function(name: string): BindableEvent
 	if name:sub(-13) ~= "BindableEvent" then
 		error("bad bindable event name. " .. name)
 	end
-	local befolder: Folder = ReplicatedStorage:WaitForChild("BindableEvents")
+
 	local exi: BindableEvent = befolder:FindFirstChild(name) :: BindableEvent
 	if exi == nil then
 		local be = Instance.new("BindableEvent")
 		be.Name = name
 		be.Parent = befolder
+		done("exi" .. name)
 		return be
 	end
+	done("new " .. name)
+	return exi
+end
+
+module.getRemoteEvent = function(name: string): RemoteEvent
+	getDebounce("get " .. name)
+	if name:sub(-5) ~= "Event" then
+		error("bad remote event name. " .. name)
+	end
+
+	local exi = refolder:FindFirstChild(name) :: RemoteEvent
+	if exi == nil then
+		return registerRemoteEvent(name)
+	end
+	done(name)
+	return exi
+end
+
+module.getRemoteFunction = function(name: string): RemoteFunction
+	getDebounce("get " .. name)
+	if name:sub(-8) ~= "Function" then
+		error("bad remote Function name. " .. name)
+	end
+
+	local exi: RemoteFunction = rffolder:FindFirstChild(name) :: RemoteFunction
+	if exi == nil then
+		return registerRemoteFunction(name)
+	end
+	done(name)
 	return exi
 end
 
 module.getBindableEvent = function(name: string): BindableEvent
+	getDebounce("get " .. name)
 	if name:sub(-13) ~= "BindableEvent" then
 		error("bad remote event name. " .. name)
 	end
-	local refolder: Folder = ReplicatedStorage:WaitForChild("BindableEvents")
+
 	local exi = refolder:FindFirstChild(name) :: BindableEvent
 	if exi == nil then
-		error("No such event.")
+		return registerBindableEvent(name)
 	end
+	done(name)
 	return exi
 end
 

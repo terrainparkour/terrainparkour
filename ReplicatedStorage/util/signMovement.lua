@@ -5,13 +5,14 @@
 
 local sendMessageModule = require(game.ReplicatedStorage.chat.sendMessage)
 local sm = sendMessageModule.sendMessage
-local channelDefinitions = require(game.ReplicatedStorage.chat.channelDefinitions)
-local channel = channelDefinitions.getChannel("All")
+local channeldefinitions = require(game.ReplicatedStorage.chat.channeldefinitions)
+local channel = channeldefinitions.getChannel("All")
+local config = require(game.ReplicatedStorage.config)
 
 local module = {}
 
 module.rotate = function(sign: Part)
-	if not sign then
+	if not sign and not config.isInStudio() then
 		warn("no sign")
 		return
 	end
@@ -26,7 +27,7 @@ module.rotate = function(sign: Part)
 end
 
 module.rotateMeshpart = function(sign: MeshPart)
-	if not sign then
+	if not sign and not config.isInStudio() then
 		warn("no sign")
 		return
 	end
@@ -41,7 +42,7 @@ module.rotateMeshpart = function(sign: MeshPart)
 end
 
 module.riseandspin = function(sign: Part)
-	if not sign then
+	if not sign and config.isInStudio() then
 		warn("no sign")
 		return
 	end
@@ -56,6 +57,7 @@ module.riseandspin = function(sign: Part)
 				local frac = (deg / 360) * 2 * math.pi
 				local val = math.sin(frac)
 				sign.Position = adjustedOrig + Vector3.new(val * vec.X, val * vec.Y, val * vec.Z)
+				--TODO this should be physics stepped.
 				wait(1 / 60)
 			end
 		end
@@ -64,7 +66,7 @@ end
 
 --following for 007 mystery sign.
 module.fadeInSign = function(sign: Part)
-	if not sign then
+	if not sign and config.isInStudio() then
 		warn("no sign")
 		return
 	end
@@ -110,6 +112,70 @@ module.fadeOutSign = function(sign: Part?, first: boolean)
 	if not first then
 		sm(channel, "007 has disappeared")
 	end
+end
+
+local terrainChoices = {
+	Enum.Material.Cobblestone,
+	Enum.Material.Cobblestone,
+	Enum.Material.Cobblestone,
+	Enum.Material.Asphalt,
+	Enum.Material.Asphalt,
+	Enum.Material.Asphalt,
+	Enum.Material.Concrete,
+	Enum.Material.Ground,
+}
+
+local function rndTerrain()
+	local res = terrainChoices[math.random(#terrainChoices)]
+	return res
+end
+
+local angleMap = {}
+angleMap[Enum.Material.Cobblestone] = Vector3.new(10, 0, 0)
+angleMap[Enum.Material.Asphalt] = Vector3.new(-5, 0, 0)
+angleMap[Enum.Material.Concrete] = Vector3.new(5, 0, 0)
+angleMap[Enum.Material.Ground] = Vector3.new(-10, 0, 0)
+angleMap[Enum.Material.Ice] = Vector3.new(15, 0, 0)
+
+module.setupGrowingDistantPinnacle = function()
+	local doNotCheckInGameIdentifier = require(game.ReplicatedStorage:FindFirstChild("doNotCheckInGameIdentifier"))
+	local target = Vector3.new(861.401, -129.206, 6254.898)
+	local addVector = Vector3.new(3, 1, 17)
+	local ballSize = 10
+	local waitTime = 1
+	local mult = 1
+	local maxAdditions = 1000
+	if doNotCheckInGameIdentifier.useTestDb() then --test game
+		target = Vector3.new(836.921, 3.393, -635.989)
+		addVector = Vector3.new(3, 1, 17) / 5
+		ballSize = 14
+		waitTime = 0.2
+		mult = 2.3
+		-- mult = 10
+	else --prod game, grows near equal temperament.
+		target = Vector3.new(874.401, -134.206, 6254.898)
+		addVector = Vector3.new(17, 1, 3) / 5
+		ballSize = 14
+		waitTime = 1.6
+		mult = 0.01
+	end
+
+	spawn(function()
+		local additions = 0
+		while true do
+			local ter = rndTerrain()
+			target += addVector
+			--don't permanently change basis.
+			local extra = angleMap[ter] * mult
+				+ Vector3.new(math.sin(target.X / 1000) * 10, math.cos(target.Y / 6), math.tan(target.Z / 70))
+			workspace.Terrain:FillBall(target + extra, ballSize, ter)
+			additions += 1
+			if additions > maxAdditions then
+				break
+			end
+			wait(waitTime)
+		end
+	end)
 end
 
 return module

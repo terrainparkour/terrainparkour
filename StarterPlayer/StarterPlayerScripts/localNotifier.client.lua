@@ -12,16 +12,20 @@ local findResultsCreator = require(game.ReplicatedStorage.gui.runresults.findGui
 local ephemeralNotifications = require(game.ReplicatedStorage.gui.ephemeralNotificationCreator)
 
 local PlayersService = game:GetService("Players")
-
+repeat
+	game:GetService("RunService").RenderStepped:wait()
+until game.Players.LocalPlayer.Character ~= nil
 local localPlayer = PlayersService.LocalPlayer
+
 local playerGui = localPlayer:WaitForChild("PlayerGui")
-local warper = require(game.ReplicatedStorage.warper)
+local warper = require(game.StarterPlayer.StarterPlayerScripts.util.warperClient)
+
 type legacyOptions = {}
 
 --notify player of something.
 local function clientReceiveNotification(options: any)
 	if config.isInStudio() then
-		print("client receive notifications:" .. options.kind)
+		-- print("client receive notifications:" .. options.kind)
 		-- print(options)
 	end
 	if options.kind == "race results" then
@@ -52,8 +56,8 @@ end
 
 --set up events.
 local function init()
-	local rf = require(game.ReplicatedStorage.util.remotes)
-	local messageReceivedEvent = rf.getRemoteEvent("MessageReceivedEvent")
+	local remotes = require(game.ReplicatedStorage.util.remotes)
+	local messageReceivedEvent = remotes.getRemoteEvent("MessageReceivedEvent")
 	messageReceivedEvent.OnClientEvent:Connect(function(options)
 		clientReceiveNotification(options)
 	end)

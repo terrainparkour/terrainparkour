@@ -137,29 +137,31 @@ local evaluateFindInFixedOrder = function(desc: mt.marathonDescriptor, signName:
 	warn("should not get here.")
 end
 
-local evaluateFindInFixedOrderByFirstLetter =
-	function(desc: mt.marathonDescriptor, signName: string): mt.userFoundSignResult
-		local targetOrder = desc.orderedTargets
-		local firstLetterOfSign = textUtil.getFirstCodepointAsString(signName):lower()
-		--iterate through all keys til you get to the first null
-		--then check if the find matches.
-		for index, key in ipairs(targetOrder) do
-			local targetFind = desc.finds[index]
-			if targetFind ~= nil then
-				continue
-			end
-
-			if firstLetterOfSign == key then
-				desc.AddSignToFinds(desc, signName)
-				local marathonDone = desc.IsDone(desc)
-				return { added = true, marathonDone = marathonDone, started = desc.count == 1 }
-			end
-
-			--you touched an irrelevant sign.
-			return { added = false, marathonDone = false, started = false }
+local evaluateFindInFixedOrderByFirstLetter = function(
+	desc: mt.marathonDescriptor,
+	signName: string
+): mt.userFoundSignResult
+	local targetOrder = desc.orderedTargets
+	local firstLetterOfSign = textUtil.getFirstCodepointAsString(signName):lower()
+	--iterate through all keys til you get to the first null
+	--then check if the find matches.
+	for index, key in ipairs(targetOrder) do
+		local targetFind = desc.finds[index]
+		if targetFind ~= nil then
+			continue
 		end
-		warn("should not get here.")
+
+		if firstLetterOfSign == key then
+			desc.AddSignToFinds(desc, signName)
+			local marathonDone = desc.IsDone(desc)
+			return { added = true, marathonDone = marathonDone, started = desc.count == 1 }
+		end
+
+		--you touched an irrelevant sign.
+		return { added = false, marathonDone = false, started = false }
 	end
+	warn("should not get here.")
+end
 
 --the most naive method of pairing up signids after a marathon is done.
 local sequentialSummarizeResults = function(desc: mt.marathonDescriptor): { string }
@@ -454,7 +456,7 @@ local alphaReverse: mt.marathonDescriptor = {
 	sequenceNumber = "Alpha Reverse",
 }
 
-local function mkFindN(n: number, badge: (tt.badgeDescriptor)?): mt.marathonDescriptor
+local function mkFindN(n: number, badge: tt.badgeDescriptor?): mt.marathonDescriptor
 	local inner: mt.marathonDescriptor = {
 		kind = string.format("find%d", n),
 		highLevelType = "findn",
@@ -574,27 +576,31 @@ local function countFullLengthOfFoundSigns(desc: mt.marathonDescriptor)
 	end
 	return ret
 end
-local FindLetterCountUpdateRow =
-	function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string, limit: number): nil
-		--get the tl
-		local targetName = marathonstatic.getMarathonComponentName(desc, desc.humanName)
-		local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
-		if exiTile == nil then
-			warn("bad.FindNUpdateRow")
-			return
-		end
-		local inner: TextLabel = exiTile:FindFirstChild("Inner")
-		local ct = countFullLengthOfFoundSigns(desc)
-		inner.Text = ct .. " / " .. limit
-		inner.TextScaled = true
-		local bgcolor = colors.yellowFind
-		exiTile.BackgroundColor3 = colors.greenGo
-		inner.BackgroundColor3 = colors.greenGo
-		local Tween = TweenService:Create(exiTile, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
-		Tween:Play()
-		local Tween2 = TweenService:Create(inner, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
-		Tween2:Play()
+local FindLetterCountUpdateRow = function(
+	desc: mt.marathonDescriptor,
+	frame: Frame,
+	foundSignName: string,
+	limit: number
+): nil
+	--get the tl
+	local targetName = marathonstatic.getMarathonComponentName(desc, desc.humanName)
+	local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
+	if exiTile == nil then
+		warn("bad.FindNUpdateRow")
+		return
 	end
+	local inner: TextLabel = exiTile:FindFirstChild("Inner")
+	local ct = countFullLengthOfFoundSigns(desc)
+	inner.Text = ct .. " / " .. limit
+	inner.TextScaled = true
+	local bgcolor = colors.yellowFind
+	exiTile.BackgroundColor3 = colors.greenGo
+	inner.BackgroundColor3 = colors.greenGo
+	local Tween = TweenService:Create(exiTile, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+	Tween:Play()
+	local Tween2 = TweenService:Create(inner, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+	Tween2:Play()
+end
 
 --evaluate a find and accept it if necessary, purely considering if its new to the list of finds.
 local function EvaluteFindBasedOnIfItsLetterCountIsUnderLimit(
@@ -719,33 +725,36 @@ local function evaluateIfSignHasAnyNewLetters(desc: mt.marathonDescriptor, signN
 end
 
 --for an sign you just hit, figure out what new alpha chips you should highlight.
-local FindAlphabeticalAndAddAllChipsRow =
-	function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string): nil
-		local coverage = getLetterCoverage(desc, foundSignName)
-		for _, c in ipairs(foundSignName:split("")) do
-			c = c:lower()
-			if isNonAlphabeticalSignCharacters(c) then
-				continue
-			end
-			if coverage[c] ~= nil then
-				continue
-			end
-			local targetName = marathonstatic.getMarathonComponentName(desc, c)
-			local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
-			if exiTile == nil then
-				warn("bad.foundSignName")
-			end
-			local inner: TextLabel = exiTile:FindFirstChild("Inner")
-
-			local bgcolor = colors.yellowFind
-			exiTile.BackgroundColor3 = colors.greenGo
-			inner.BackgroundColor3 = colors.greenGo
-			local Tween = TweenService:Create(exiTile, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
-			Tween:Play()
-			local Tween2 = TweenService:Create(inner, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
-			Tween2:Play()
+local FindAlphabeticalAndAddAllChipsRow = function(
+	desc: mt.marathonDescriptor,
+	frame: Frame,
+	foundSignName: string
+): nil
+	local coverage = getLetterCoverage(desc, foundSignName)
+	for _, c in ipairs(foundSignName:split("")) do
+		c = c:lower()
+		if isNonAlphabeticalSignCharacters(c) then
+			continue
 		end
+		if coverage[c] ~= nil then
+			continue
+		end
+		local targetName = marathonstatic.getMarathonComponentName(desc, c)
+		local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
+		if exiTile == nil then
+			warn("bad.foundSignName")
+		end
+		local inner: TextLabel = exiTile:FindFirstChild("Inner")
+
+		local bgcolor = colors.yellowFind
+		exiTile.BackgroundColor3 = colors.greenGo
+		inner.BackgroundColor3 = colors.greenGo
+		local Tween = TweenService:Create(exiTile, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+		Tween:Play()
+		local Tween2 = TweenService:Create(inner, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+		Tween2:Play()
 	end
+end
 
 local alphabeticalAllLetters: mt.marathonDescriptor = {
 	kind = "alphabeticalallletters",
@@ -775,6 +784,29 @@ local alphabeticalAllLetters: mt.marathonDescriptor = {
 	sequenceNumber = "Find all letters",
 }
 
+local function getSignsWithTrait(trait): { string }
+	local res = {}
+	local enums = require(game.ReplicatedStorage.util.enums)
+	local signFolder = game.Workspace:FindFirstChild("Signs")
+	for signName, signId in pairs(enums.name2signId) do
+		if not trait(signName) then
+			continue
+		end
+		local candidateSign = tpUtil.looseSignName2Sign(signName)
+		if candidateSign == nil then
+			continue
+		end
+		if not tpUtil.isSignPartValidRightNow(candidateSign) then
+			continue
+		end
+
+		if candidateSign ~= nil then
+			table.insert(res, signName)
+		end
+	end
+	return res
+end
+
 module.find4 = mkFindN(4)
 module.find10 = mkFindN(10, badgeEnums.badges.MarathonCompletionFind10)
 module.find20 = mkFindN(20, badgeEnums.badges.MarathonCompletionFind20)
@@ -783,6 +815,7 @@ module.find100 = mkFindN(100, badgeEnums.badges.MarathonCompletionFind100)
 module.find200 = mkFindN(200, badgeEnums.badges.MarathonCompletionFind200)
 module.find300 = mkFindN(300, badgeEnums.badges.MarathonCompletionFind300)
 module.find380 = mkFindN(380, badgeEnums.badges.MarathonCompletionFind380)
+module.find500 = mkFindN(500, badgeEnums.badges.MarathonCompletionFind500)
 
 module.find10s = find10s
 module.find10t = find10t
@@ -823,7 +856,9 @@ module.findsetfirstcontest = mkFindSetMarathon("firstevent", "First Event Marath
 module.findsetsingleletter = mkFindSetMarathon(
 	"singleletter",
 	"Single-Letters",
-	{ "A", "B", "C", "D", "E", "F" },
+	getSignsWithTrait(function(s)
+		return utf8.len(s) == 1
+	end),
 	badgeEnums.badges.MarathonCompletionSingleLetter
 )
 
@@ -847,34 +882,25 @@ module.findsetcave = mkFindSetMarathon("cave", "Caves", {
 	"Lava Tube",
 }, badgeEnums.badges.MarathonCompletionCave)
 
-module.findsetaofb = mkFindSetMarathon("aofb", "A of B", {
-	"Angle of Repose",
-	"Steps of Infinity",
-	"World of Molecules",
-	"Journey to the Center of the Earth",
-	"Cliffs of Insanity",
-	"Sands of Mars",
-	"Cave of Forgotten Dreams",
-}, badgeEnums.badges.MarathonCompletionAOfB)
+local findsetAOfB = getSignsWithTrait(function(s)
+	--the sign has to be <something> of <something else> so check for that.
+	local split = s:split(" of ")
+	if #split ~= 2 then
+		return false
+	end
+	return true
+end)
 
-module.findsetthreeletter = mkFindSetMarathon("threeletter", "Find ten 3-letter signs", {
-	"Why",
-	"Nyx",
-	"STS",
-	"Erg",
-	"Kit",
-	"Lem",
-	"Osu",
-	"Oki",
-	"Kew",
-	"Asp",
-	"Eno",
-	"IPO",
-	"Joe",
-	"Eve",
-	"888",
-	"Bit",
-	"Yap",
-}, badgeEnums.badges.MarathonCompletionThreeLetter, 10)
+module.findsetaofb = mkFindSetMarathon("aofb", "A of B", findsetAOfB, badgeEnums.badges.MarathonCompletionAOfB)
+
+module.findsetthreeletter = mkFindSetMarathon(
+	"threeletter",
+	"Find ten 3-letter signs",
+	getSignsWithTrait(function(s)
+		return utf8.len(s) == 3
+	end),
+	badgeEnums.badges.MarathonCompletionThreeLetter,
+	10
+)
 
 return module

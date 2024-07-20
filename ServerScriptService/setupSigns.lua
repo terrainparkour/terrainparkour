@@ -8,13 +8,16 @@ local lbupdater = require(game.ServerScriptService.lbupdater)
 local enums = require(game.ReplicatedStorage.util.enums)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local notify = require(game.ReplicatedStorage.notify)
+local setupSpecialSigns = require(game.ServerScriptService.setupSpecialSigns)
 local signInfo = require(game.ReplicatedStorage.signInfo)
 local colors = require(game.ReplicatedStorage.util.colors)
 local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
+local signEnums = require(game.ReplicatedStorage.enums.signEnums)
 
 local banning = require(game.ServerScriptService.banning)
 local rdb = require(game.ServerScriptService.rdb)
 local timers = require(game.ServerScriptService.timers)
+local sound = require(game.ServerScriptService.sounds)
 
 -- from the POV of physical hit monitor, have we already most recently logged the user as touching this sign?
 -- if so, don't trigger new race starts from it.
@@ -25,6 +28,7 @@ local module = {}
 
 --how often is player location modified? every frame I guess?
 --this is used to investigate feasibility of using location rather than :touched as a sign touch modifier.
+--actually, 2024, this may be useful to detect Feodora's hack where he temporarily disconnects, too?
 if false then
 	local pp = Vector3.new(0, 0, 0)
 	spawn(function()
@@ -94,7 +98,7 @@ module.touchedSign = function(player: Player, sign: Part, theHitTick: number)
 	end
 
 	--exclude dead players from touching a sign.
-	local hum: Humanoid = player.Character.Humanoid
+	local hum: Humanoid = player.Character:WaitForChild("Humanoid") :: Humanoid
 	if not hum or hum.Health <= 0 then
 		return false
 	end
@@ -151,66 +155,39 @@ module.touchedSign = function(player: Player, sign: Part, theHitTick: number)
 	--ah, the hits are still being processed when this rolls out!
 end
 
---dump this into command bar to fix all edit-time signs.
-if false then
-	for _, part: Part in ipairs(game.Workspace:FindFirstChild("Signs"):GetChildren()) do
-		part.Material = Enum.Material.Granite
-		part.Color = Color3.fromRGB(255, 89, 89)
-		local sguiName = "SignGui_" .. part.Name
-		local sGui = part:FindFirstChildOfClass("SurfaceGui")
-		if sGui ~= nil then
-			sGui:Destroy()
-		end
+local useLeftFaceSignNames = { ["cOld mOld on a sLate pLate"] = 1, ["Tetromino"] = 2 }
+local unanchoredSignNames = { ["Freedom"] = 1 }
 
-		sGui = Instance.new("SurfaceGui")
-		sGui.Name = sguiName
-		sGui.Parent = part
-
-		local canvasSize = Vector2.new(part.Size.Z * 30, part.Size.X * 30)
-		sGui.CanvasSize = canvasSize
-		sGui.Face = Enum.NormalId.Top
-		sGui.Brightness = 1.5
-
-		sGui.Parent.TopSurface = Enum.SurfaceType.Smooth
-		sGui.Parent.BottomSurface = Enum.SurfaceType.Smooth
-		sGui.Parent.LeftSurface = Enum.SurfaceType.Smooth
-		sGui.Parent.RightSurface = Enum.SurfaceType.Smooth
-		sGui.Parent.FrontSurface = Enum.SurfaceType.Smooth
-		sGui.Parent.BackSurface = Enum.SurfaceType.Smooth
-
-		local textLabel = sGui:FindFirstChildOfClass("TextLabel")
-		if textLabel ~= nil then
-			textLabel:Destroy()
-		end
-
-		textLabel = Instance.new("TextLabel")
-		textLabel.Parent = sGui
-		textLabel.AutoLocalize = false
-		textLabel.Text = part.Name
-		textLabel.Font = Enum.Font.Gotham
-		textLabel.BackgroundTransparency = 1
-		textLabel.Size = UDim2.new(1, 0, 1, 0)
-		textLabel.TextScaled = true
-		textLabel.RichText = true
-		textLabel.TextColor3 = Color3.fromRGB(255, 240, 241)
+local function SetupASignVisually(part: Part)
+	if unanchoredSignNames[part.Name] then
+		part.Anchored = false
+	else
 		part.Anchored = true
 	end
-end
 
-local function SetupSignVisually(part: Part)
 	part.Material = Enum.Material.Granite
 	part.Color = Color3.fromRGB(255, 89, 89)
-	local sguiName = "SignGui_" .. part.Name
-	local sGui = part:FindFirstChild(sguiName)
-	if sGui == nil then
-		sGui = Instance.new("SurfaceGui")
-		sGui.Name = sguiName
-		sGui.Parent = part
+
+	local childs = part:GetChildren()
+	for _, child in ipairs(childs) do
+		child:Destroy()
 	end
 
-	local canvasSize = Vector2.new(part.Size.Z * 30, part.Size.X * 30)
+	local sguiName = "SignGui_" .. part.Name
+	local sGui = Instance.new("SurfaceGui")
+	sGui.Name = sguiName
+	sGui.Parent = part
+
+	local canvasSize: Vector2
+
+	if useLeftFaceSignNames[part.Name] then
+		canvasSize = Vector2.new(part.Size.Y * 30, part.Size.X * 30)
+		sGui.Face = Enum.NormalId.Left
+	else
+		canvasSize = Vector2.new(part.Size.Z * 30, part.Size.X * 30)
+		sGui.Face = Enum.NormalId.Top
+	end
 	sGui.CanvasSize = canvasSize
-	sGui.Face = Enum.NormalId.Top
 	sGui.Brightness = 1.5
 
 	sGui.Parent.TopSurface = Enum.SurfaceType.Smooth
@@ -220,13 +197,16 @@ local function SetupSignVisually(part: Part)
 	sGui.Parent.FrontSurface = Enum.SurfaceType.Smooth
 	sGui.Parent.BackSurface = Enum.SurfaceType.Smooth
 
-	local textLabel = part:FindFirstChild(part.Name)
-	if textLabel == nil then
-		textLabel = Instance.new("TextLabel")
-		textLabel.Parent = sGui
+	local children = sGui:GetChildren()
+	for _, c in ipairs(children) do
+		if c:IsA("TextLabel") then
+			c:Destroy()
+		end
 	end
 
-	textLabel.AutoLocalize = false
+	local textLabel = Instance.new("TextLabel")
+	textLabel.Parent = sGui
+	textLabel.AutoLocalize = true
 	textLabel.Text = part.Name
 	textLabel.Font = Enum.Font.Gotham
 	textLabel.BackgroundTransparency = 1
@@ -234,18 +214,33 @@ local function SetupSignVisually(part: Part)
 	textLabel.TextScaled = true
 	textLabel.RichText = true
 	textLabel.TextColor3 = colors.signTextColor
-	part.Anchored = true
-
 	--I shold add a touch sound TODO
-	--i should add a touch visual
+	--i should add a touch visual +3 years good idea.
 end
 
-local setupSignMovement = {}
+--for dev only, if you forgot this.
+local function checkMissingSigns()
+	local signFolder = game.Workspace:FindFirstChild("Signs")
+	local badct = 0
+	for signId, signName in ipairs(enums.signId2name) do
+		local exiSign = signFolder:FindFirstChild(signName)
+		if not exiSign then
+			badct += 1
+			if badct > 2 then
+				break
+			end
+			warn("did you remember to put the sign " .. signName .. " into workspace.Signs?")
+		end
+	end
+end
 
 --setupSigns
 module.init = function()
+	local r = require(game.ReplicatedStorage.util.signMovement)
+	r.setupGrowingDistantPinnacle()
+
 	for _, sign: Part in ipairs(game.Workspace:WaitForChild("Signs"):GetChildren()) do
-		SetupSignVisually(sign)
+		SetupASignVisually(sign)
 		local signId = enums.name2signId[sign.Name]
 		if signId == nil then
 			warn("bad" .. tostring(sign.Name))
@@ -261,60 +256,10 @@ module.init = function()
 		end
 	end
 
-	spawn(function()
-		--rotate the meme sign.
-		local meme: Part = game.Workspace:WaitForChild("Signs"):WaitForChild("Meme", 2)
+	--we set them up after all the normal stuff is done.
+	setupSpecialSigns.init()
 
-		if meme then
-			if setupSignMovement[meme.Name] == nil then
-				local r = require(game.ReplicatedStorage.util.signMovement)
-				r.rotate(meme)
-				setupSignMovement[meme.Name] = true
-			end
-		end
-
-		local osign: MeshPart = game.Workspace:WaitForChild("Signs"):WaitForChild("O", 2)
-		if osign then
-			if setupSignMovement[osign.Name] == nil then
-				local r = require(game.ReplicatedStorage.util.signMovement)
-				r.rotateMeshpart(osign)
-				setupSignMovement[osign.Name] = true
-			end
-		end
-
-		local chiralitySign: Part = game.Workspace:WaitForChild("Signs"):WaitForChild("Chirality", 2)
-		if chiralitySign then
-			if setupSignMovement[chiralitySign.Name] == nil then
-				local r = require(game.ReplicatedStorage.util.signMovement)
-				r.riseandspin(chiralitySign)
-				setupSignMovement[chiralitySign.Name] = true
-			end
-		end
-
-		spawn(function()
-			local doubleO7Sign = game.Workspace:WaitForChild("Signs"):WaitForChild("007", 2)
-			local r = require(game.ReplicatedStorage.util.signMovement)
-			r.fadeOutSign(doubleO7Sign, true)
-			local signVisible = false
-			while true do
-				local minute = os.date("%M", tick())
-				local minnum = tonumber(minute)
-				if minnum == 1 then
-					if not signVisible then
-						signVisible = true
-						r.fadeInSign(doubleO7Sign)
-					end
-				else
-					if signVisible then
-						r.fadeOutSign(doubleO7Sign, false)
-						signVisible = false
-					end
-				end
-
-				wait(1)
-			end
-		end)
-	end)
+	checkMissingSigns()
 end
 
 return module

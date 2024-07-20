@@ -28,6 +28,13 @@ local NEW = 1
 local BETTER = 2
 local WORSE = 3
 
+local function setYourText(val: string, existingYourText: string, marker: string)
+	if existingYourText ~= "" and existingYourText ~= nil then
+		print("resetting yt from '" .. existingYourText .. "' to '" .. val .. "'" .. " \tMarker: " .. marker)
+	end
+	return val
+end
+
 -- calculate a ton of text strings and send them eventually to a user localscript for display there.
 -- TODO 2022 3 19 massive refactor to make this dumb and dependent on python only.
 module.showBestTimes = function(
@@ -86,37 +93,42 @@ module.showBestTimes = function(
 		pastPlaceText = tpUtil.getPlaceText(pastRun.place)
 	end
 
-	local playerText = raceName .. ": " .. formattedRunMilliseconds
+	local raceName = raceName
 	local yourText = "" --summary of the race, time, speed, results from racer's POV
 	local otherText = "" --same from other's POV
 	local otherKind = ""
 	local knockoutText = "" --description of knockout "X was knocked out of top 10"
-	local lossText = "" -- "You missed top10 by X seconds"
 
 	if otherRunnerCount == 0 then
 		grantBadge.GrantBadge(racerUserId, badgeEnums.badges.NewRace)
 	end
 
 	if pyUserFinishedRunResponse.totalRunsOfThisRaceCount == 1 then
-		yourText = "Ran a race for the first time!"
-		otherText = racerUsername .. " ran a race for the first time: " .. raceName
+		yourText = setYourText("Found a new race", yourText, "a")
+		otherText = string.format("%s ran the race %s for the first time", racerUsername, raceName)
 		otherKind = "first time WR"
 	else
 		if pyUserFinishedRunResponse.mode == NEW then
 			if thisRun.place == 1 then --you got WR
-				yourText = "First time WR!"
+				yourText = setYourText("First time WR!", yourText, "b")
 				otherText = racerUsername .. " got a first time WR on " .. raceName
 				otherKind = "first time WR"
-			end
-			if thisRun.place > 0 and thisRun.place < 11 then
-				yourText = "You finished " .. placeText .. "! Very nice!"
-				otherText = racerUsername .. " got " .. placeText .. " in the race " .. raceName .. "!"
+			elseif thisRun.place > 0 and thisRun.place < 11 then
+				if thisRun.place == 1 then
+					yourText = setYourText("You got a World Record!", yourText, "c")
+					otherText = string.format("%s got a WR in %s!", racerUsername, raceName)
+				else
+					yourText = setYourText("You finished " .. placeText .. "! Very nice!", yourText, "d")
+					otherText = string.format("%s got %s in %s!", racerUsername, placeText, raceName)
+				end
+
 				otherKind = "got place"
 			end
 			if thisRun.place > 10 or thisRun.place == 0 then
-				lossText = "You didn't finish in the top 10. You missed tenth place by "
+				local yt = "You didn't finish in the top 10. You missed tenth place by "
 					.. tpUtil.fmt(thisRun.runMilliseconds - legitEntries[10].runMilliseconds)
 					.. "! Don't give up!"
+				yourText = setYourText(yt, yourText, "e")
 			end
 		end
 	end
@@ -125,7 +137,11 @@ module.showBestTimes = function(
 		local improvementMilliseconds = pastRun.runMilliseconds - thisRun.runMilliseconds
 		if thisRun.place == 1 then
 			if pastRun.virtualPlace == 1 then --had WR before
-				yourText = "Better world record! Your time was " .. tpUtil.fmt(improvementMilliseconds) .. " better!"
+				yourText = setYourText(
+					"Better world record! Your time was " .. tpUtil.fmt(improvementMilliseconds) .. " better!",
+					yourText,
+					"f"
+				)
 				otherText = racerUsername
 					.. " improved their world record in the race from "
 					.. raceName
@@ -133,13 +149,14 @@ module.showBestTimes = function(
 					.. tpUtil.fmt(improvementMilliseconds)
 				otherKind = "improved WR"
 			else --didn't have WR before but had run before
-				yourText = "World record! Amazing! Your time was "
+				local yt = "World record! Amazing! Your time was "
 					.. tpUtil.fmt(improvementMilliseconds)
 					.. " faster, improving your prior "
-					.. tpUtil.getCardinal(pastRun.virtualPlace - 1)
+					.. tpUtil.getCardinalEmoji(pastRun.virtualPlace - 1)
 					.. ", and you took the WR from "
 					.. legitEntries[2].username
 					.. "!"
+				yourText = setYourText(yt, yourText, "g")
 
 				otherText = racerUsername
 					.. " took the world record away from "
@@ -156,13 +173,15 @@ module.showBestTimes = function(
 			if pastRun == nil then --finished in a place for the first time
 			else --have run before
 				if thisRun.place == pastRun.virtualPlace then --same place, slight improvement
-					yourText = "You got another "
-						.. tpUtil.getCardinal(thisRun.place)
+					local yt = "You got another "
+						.. tpUtil.getCardinalEmoji(thisRun.place)
 						.. ", and improved your time by "
 						.. tpUtil.fmt(pastRun.runMilliseconds - thisRun.runMilliseconds)
+					yourText = setYourText(yt, yourText, "h")
+
 					otherText = racerUsername
 						.. " improved their "
-						.. tpUtil.getCardinal(thisRun.place)
+						.. tpUtil.getCardinalEmoji(thisRun.place)
 						.. " time in the race from "
 						.. raceName
 						.. " by "
@@ -170,13 +189,14 @@ module.showBestTimes = function(
 					otherKind = "improved time"
 				end
 				if thisRun.place < pastRun.virtualPlace then --beat past place
-					yourText = "You finished in "
-						.. tpUtil.getCardinal(thisRun.place)
+					local yt = "You finished in "
+						.. tpUtil.getCardinalEmoji(thisRun.place)
 						.. ", better than your previous best of "
-						.. tpUtil.getCardinal(pastRun.virtualPlace)
+						.. tpUtil.getCardinalEmoji(pastRun.virtualPlace)
 						.. "! Your time improved by "
 						.. tpUtil.fmt(pastRun.runMilliseconds - thisRun.runMilliseconds)
 						.. "!"
+					yourText = setYourText(yt, yourText, "i")
 					otherText = racerUsername
 						.. " got "
 						.. virtualPlaceText
@@ -190,9 +210,10 @@ module.showBestTimes = function(
 			end
 		end
 		if thisRun.place > 10 or thisRun.place == 0 then
-			lossText = "You didn't finish in the top 10. You missed tenth place by "
+			local yt = "You didn't finish in the top 10. You missed tenth place by "
 				.. tpUtil.fmt(thisRun.runMilliseconds - legitEntries[10].runMilliseconds)
 				.. "! Don't give up!"
+			yourText = setYourText(yt, yourText, "j")
 		end
 	end
 
@@ -202,25 +223,26 @@ module.showBestTimes = function(
 				print("weirdly nil virtualrun.")
 			else
 				if thisRun.virtualPlace == pastRun.place then --same place, slight improvement
-					yourText = "You got another "
-						.. tpUtil.getCardinal(thisRun.virtualPlace)
+					local yt = "You got another "
+						.. tpUtil.getCardinalEmoji(thisRun.virtualPlace)
 						.. ", with a worse time by "
 						.. tpUtil.fmt(thisRun.runMilliseconds - pastRun.runMilliseconds)
-				end
-
-				if thisRun.virtualPlace < 11 then --you were 2-10th
-					yourText = "You finished in "
-						.. tpUtil.getCardinal(thisRun.virtualPlace)
+					yourText = setYourText(yt, yourText, "k")
+				elseif thisRun.virtualPlace < 11 then --you were 2-10th
+					local yt = "You finished in "
+						.. tpUtil.getCardinalEmoji(thisRun.virtualPlace)
 						.. " which didn't beat your previous best of "
-						.. tpUtil.getCardinal(pastRun.place)
+						.. tpUtil.getCardinalEmoji(pastRun.place)
 						.. ". Your time was worse by "
 						.. tpUtil.fmt(thisRun.runMilliseconds - pastRun.runMilliseconds)
 						.. "."
+					yourText = setYourText(yt, yourText, "l")
 				end
 				if thisRun.virtualPlace > 10 or thisRun.virtualPlace == 0 then
-					lossText = "You didn't finish in the top 10. You missed tenth place by "
+					local yt = "You didn't finish in the top 10. You missed tenth place by "
 						.. tpUtil.fmt(thisRun.runMilliseconds - legitEntries[10].runMilliseconds)
 						.. "! Don't give up!"
+					yourText = setYourText(yt, yourText, "m")
 				end
 			end
 		end
@@ -228,7 +250,7 @@ module.showBestTimes = function(
 
 	--todo also think about specific text for the recipient. i.e. "YOU were knocked out by X".
 	if #legitEntries >= 11 then
-		knockoutText = string.format("%s was knocked out of the top ten on %s!", legitEntries[11].username, raceName)
+		knockoutText = string.format("%s was knocked out of the top 10 on %s!", legitEntries[11].username, raceName)
 	end
 
 	if otherText ~= "" then
@@ -265,40 +287,25 @@ module.showBestTimes = function(
 		end
 	end
 
-	local personalRaceHistoryText = ""
+	-- local personalRaceHistoryText = ""
 
-	local ofDistance = string.format("of distance %0.1fd", distance)
-	if pyUserFinishedRunResponse.createdRace then
-		personalRaceHistoryText = "Nobody has run this race " .. ofDistance .. " before you!"
-	else
-		if pyUserFinishedRunResponse.userRaceRunCount == 1 then
-			personalRaceHistoryText = "Your first time running this race " .. ofDistance .. "!"
-		else
-			personalRaceHistoryText = "You have run this race "
-				.. ofDistance
-				.. " "
-				.. tostring(pyUserFinishedRunResponse.userRaceRunCount)
-				.. " times"
-		end
-	end
+	-- local ofDistance = string.format("of distance %0.1fd", distance)
+	-- if pyUserFinishedRunResponse.createdRace then
+	-- 	personalRaceHistoryText = "Nobody has run this race " .. ofDistance .. " before you!"
+	-- else
+	-- 	if pyUserFinishedRunResponse.userRaceRunCount == 1 then
+	-- 		personalRaceHistoryText = "Your first time running this race " .. ofDistance .. "!"
+	-- 	else
+	-- 		personalRaceHistoryText = "You have run this race "
+	-- 			.. ofDistance
+	-- 			.. " "
+	-- 			.. tostring(pyUserFinishedRunResponse.userRaceRunCount)
+	-- 			.. " times"
+	-- 	end
+	-- end
 
 	-- show other racer counts.
-	local raceTotalHistoryText = ""
-
-	if not pyUserFinishedRunResponse.createdRace then
-		local totalRacersOfThisRaceCount = pyUserFinishedRunResponse.totalRacersOfThisRaceCount
-		if totalRacersOfThisRaceCount == 1 then --one total racer.
-			--you are the only runner
-			if pyUserFinishedRunResponse.createdRace == false then --if i just created it, do nothing
-				raceTotalHistoryText = "You are the only runner." --this is my Nth try
-			end
-		else
-			raceTotalHistoryText = tostring(totalRacersOfThisRaceCount)
-				.. " racers have run this race, "
-				.. tostring(pyUserFinishedRunResponse.totalRunsOfThisRaceCount)
-				.. " times."
-		end
-	end
+	-- local raceTotalHistoryText = ""
 
 	--pull out my ARs and include them for extra rows on the end
 
@@ -306,11 +313,9 @@ module.showBestTimes = function(
 	pyUserFinishedRunResponse.speed = spd
 	pyUserFinishedRunResponse.startSignId = startSignId
 	pyUserFinishedRunResponse.endSignId = endSignId
-	pyUserFinishedRunResponse.playerText = playerText
+	pyUserFinishedRunResponse.raceName = raceName
 	pyUserFinishedRunResponse.yourText = yourText
-	pyUserFinishedRunResponse.lossText = lossText
-	pyUserFinishedRunResponse.personalRaceHistoryText = personalRaceHistoryText
-	pyUserFinishedRunResponse.raceTotalHistoryText = raceTotalHistoryText
+	-- pyUserFinishedRunResponse.raceTotalHistoryText = raceTotalHistoryText
 
 	-- print("handoff optitons and future")
 	-- print(options)

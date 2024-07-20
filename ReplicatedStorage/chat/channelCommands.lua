@@ -8,6 +8,7 @@ local grantBadge = require(game.ServerScriptService.grantBadge)
 local enums = require(game.ReplicatedStorage.util.enums)
 local text = require(game.ReplicatedStorage.util.text)
 local config = require(game.ReplicatedStorage.config)
+local colors = require(game.ReplicatedStorage.util.colors)
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local playerdata = require(game.ServerScriptService.playerdata)
@@ -39,6 +40,11 @@ end
 local function GrandUndocumentedCommandBadge(userId: number)
 	grantBadge.GrantBadge(userId, badgeEnums.badges.UndocumentedCommand)
 	GrandCmdlineBadge(userId)
+end
+
+local freedomBuffer = {}
+module.freedom = function(speaker: Player, channel)
+	freedomBuffer = {}
 end
 
 module.hint = function(speaker: Player, channel, parts: { string }): boolean
@@ -112,6 +118,90 @@ module.wrs = function(speaker: Player, channel): boolean
 	return true
 end
 
+--e.g. (sign leaders for X with highlights, to/from WR summaries)
+module.describeSingleSign = function(speaker: Player, signId: number, channel)
+	local userIdsInServer = {}
+	for _, player in ipairs(PlayersService:GetPlayers()) do
+		userIdsInServer[player.UserId] = true
+	end
+	if config.isInStudio() then
+		userIdsInServer[enums.objects.Brouhahaha] = true
+	end
+
+	local signFindCount = remoteDbInternal.remoteGet("getTotalFindCountBySign", { signId = signId })["count"]
+	local signName = enums.signId2name[signId]
+	if not rdb.hasUserFoundSign(speaker.UserId, signId) then
+		local ret = string.format(
+			"You haven't found %s yet, so can't look up information on it. But %d people have found it.",
+			signName,
+			signFindCount
+		)
+		sm(channel, ret)
+		return
+	end
+
+	local fromleaders = remoteDbInternal.remoteGet("getSignStartLeader", { signId = signId })
+	local toleaders = remoteDbInternal.remoteGet("getSignEndLeader", { signId = signId })
+	local counts: { [string]: { to: number, from: number, username: string, inServer: boolean } } = {}
+	local text = "\nSign Leader for "
+		.. signName
+		.. "!\n"
+		.. tostring(signFindCount)
+		.. " players have found "
+		.. signName
+		.. "\nrank name total (from/to)"
+	sm(channel, text)
+	for _, leader in ipairs(fromleaders.res) do
+		local username: string
+		if leader.userId < 0 then
+			username = "player" .. leader.userId
+		else
+			username = rdb.getUsernameByUserId(leader.userId)
+		end
+		if counts[username] == nil then
+			counts[username] = { to = 0, from = 0, username = username, inServer = false }
+		end
+		if userIdsInServer[leader.userId] then
+			counts[username].inServer = true
+		end
+
+		counts[username].from = counts[username].from + leader.count
+	end
+
+	for _, leader in ipairs(toleaders.res) do
+		local username: string
+
+		if leader.userId < 0 then
+			username = "player" .. leader.userId
+		else
+			username = rdb.getUsernameByUserId(leader.userId)
+		end
+		if counts[username] == nil then
+			counts[username] = { to = 0, from = 0, username = username, inServer = false }
+		end
+		if userIdsInServer[leader.userId] then
+			counts[username].inServer = true
+		end
+		counts[username].to = counts[username].to + leader.count
+	end
+	local tbl = {}
+	for username, item in pairs(counts) do
+		table.insert(tbl, item)
+	end
+	table.sort(tbl, function(a, b)
+		return a.to + a.from > b.to + b.from
+	end)
+
+	for ii, item in ipairs(tbl) do
+		local options = { ChatColor = colors.white }
+		if item.inServer then
+			options.ChatColor = colors.greenGo
+		end
+		local line = string.format("%d. %s - %d (%d/%d)", ii, item.username, item.to + item.from, item.from, item.to)
+		sm(channel, line, options)
+	end
+end
+
 module.missingTop10s = function(speaker: Player, channel): boolean
 	sm(channel, "NonTop10 races for: " .. speaker.Name)
 	local data: tt.getNonTop10RacesByUser = playerdata.getNonTop10RacesByUserId(speaker.UserId, "nontop10_command")
@@ -142,20 +232,103 @@ module.missingWrs = function(speaker: Player, to: string, signId: number, channe
 	return true
 end
 
+local function getClosestSignToPlayer(player: Player): (number, Instance)
+	local root = player.Character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		warn("no humanoid in describe clsoest!")
+	end
+	local playerPos = root.Position
+	local bestsign = nil
+	local bestdist = nil
+	for _, sign: Part in ipairs(workspace:WaitForChild("Signs"):GetChildren()) do
+		local signId = tpUtil.looseSignName2SignId(sign.Name)
+		if not rdb.hasUserFoundSign(player.UserId, signId :: number) then
+			continue
+		end
+		local dist = tpUtil.getDist(sign.Position, playerPos)
+		if bestdist == nil or dist < bestdist then
+			bestdist = dist
+			bestsign = sign
+		end
+	end
+	return bestdist, bestsign
+end
+
+local beckontimes = {}
+module.beckon = function(speaker: Player, channel): boolean
+	if beckontimes[speaker.UserId] then
+		local gap = tick() - beckontimes[speaker.UserId]
+		local limit = 180
+		if config.isInStudio() then
+			limit = 3
+		end
+		if gap < limit then
+			sm(channel, "You can beckon every 3 minutes.")
+			return true
+		end
+	end
+	beckontimes[speaker.UserId] = tick()
+	local d, s = getClosestSignToPlayer(speaker)
+	local players = PlayersService:GetPlayers()
+	local occupancySentence = ""
+	if #players == 1 then
+		occupancySentence = ""
+	elseif #players == 2 then
+		occupancySentence = string.format(" The server has 1 other player, too.")
+	else
+		occupancySentence = string.format(" The server has %d other players, too.", #players - 1)
+	end
+	local mat = "*unknown material"
+	local hum: Humanoid = speaker.Character:FindFirstChild("Humanoid")
+	if hum ~= nil then
+		mat = hum.FloorMaterial.Name
+	end
+	local msg = string.format(
+		"%s beckons you to join the server. They are standing on %s, %0.0fd from %s.%s",
+		speaker.Name,
+		mat,
+		d,
+		s.Name,
+		occupancySentence
+	)
+	rdb.beckon(speaker.UserId, msg)
+	sm(channel, speaker.Name .. " beckons distant friends to join.")
+
+	return true
+end
+
 module.badges = function(speaker: Player, channel): boolean
-	local res = badges.getBadgeAttainment(speaker.UserId, "cmdline")
+	local allBadgeAttainments = badges.getBadgeAttainmentForUserId(speaker.UserId, "cmdline")
 	sm(channel, "Badge status for: " .. speaker.Name)
 	local gotStr = "Got badges:"
 	local ungotStr = "Not got badges:"
 	local gotct = 0
 	local ungotct = 0
-	for _, bd in ipairs(res) do
-		if bd.got then
-			gotct += 1
-			gotStr = gotStr .. ", " .. bd.badge.name
-		else
-			ungotct += 1
-			ungotStr = ungotStr .. ", " .. bd.badge.name
+
+	local allBadgeClasses = {}
+
+	for _, attainment in ipairs(allBadgeAttainments) do
+		allBadgeClasses[attainment.badge.badgeClass] = true
+		continue
+	end
+	for badgeClass, _ in pairs(allBadgeClasses) do
+		local hasOneThisClass = false
+		for _, ba in pairs(allBadgeAttainments) do
+			if ba.badge.badgeClass ~= badgeClass then
+				continue
+			end
+
+			if not hasOneThisClass then
+				gotStr = gotStr .. "\r\n" .. badgeClass .. ": => "
+				hasOneThisClass = true
+			end
+			if ba.got then
+				gotct += 1
+				gotStr = gotStr .. ", " .. ba.badge.name
+			else
+				ungotct += 1
+				ungotStr = ungotStr .. ", " .. ba.badge.name
+			end
 		end
 	end
 
@@ -167,7 +340,7 @@ module.badges = function(speaker: Player, channel): boolean
 
 	local badgecount = badges.getBadgeCountByUser(speaker.UserId)
 	for _, otherPlayer: Player in ipairs(PlayersService:GetPlayers()) do
-		leaderboardBadgeEvents.updateBadgeLb(speaker.UserId, otherPlayer, badgecount)
+		leaderboardBadgeEvents.updateBadgeLb(speaker, otherPlayer.UserId, badgecount)
 	end
 	GrandCmdlineBadge(speaker.UserId)
 	return true
@@ -194,7 +367,7 @@ module.warp = function(cmd, object, speaker): boolean
 	local res = serverwarping.WarpToSignName(speaker, object)
 	if not res then
 		local num: number = tonumber(object) :: number
-		res = serverwarping.WarpToSignId(speaker, num, false)
+		res = serverwarping.WarpToSignId(speaker, num)
 		if not res then
 			res = serverwarping.WarpToUsername(speaker, object)
 		end
@@ -222,7 +395,7 @@ module.chomik = function(speaker: Player, channel: any): boolean
 	local signs: Folder = game.Workspace:FindFirstChild("Signs")
 	local chomik: Part = signs:FindFirstChild("Chomik")
 	local dist = tpUtil.getDist(root.Position, chomik.Position)
-	local message = string.format("The Chomik is %dd away", dist)
+	local message = string.format("The Chomik is %dd away from %s", dist, speaker.Name)
 	sm(channel, message)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
@@ -302,26 +475,7 @@ module.meta = function(speaker: Player, channel): boolean
 end
 
 module.closest = function(speaker: Player, channel): boolean
-	local root = speaker.Character:FindFirstChild("HumanoidRootPart")
-	if not root then
-		warn("no humanoid in describe clsoest!")
-		return false
-	end
-	local playerPos = root.Position
-	local bestsign = nil
-	local bestdist = nil
-	for _, sign: Part in ipairs(workspace:WaitForChild("Signs"):GetChildren()) do
-		local signId = tpUtil.looseSignName2SignId(sign.Name)
-		if not rdb.hasUserFoundSign(speaker.UserId, signId :: number) then
-			continue
-		end
-		local dist = tpUtil.getDist(sign.Position, playerPos)
-		if bestdist == nil or dist < bestdist then
-			bestdist = dist
-			bestsign = sign
-		end
-	end
-
+	local bestdist, bestsign, y = getClosestSignToPlayer(speaker)
 	local message = ""
 	if bestsign == nil then
 		message = "You have not found any signs."
@@ -359,6 +513,7 @@ module.showInteresting = function(speaker: Player, channel, params: tt.missingRu
 		warn(params)
 		return false
 	end
+	return true
 end
 
 module.challenge = function(speaker: Player, channel, parts): boolean
@@ -384,6 +539,138 @@ module.random = function(speaker: Player, channel): boolean
 	sm(channel, res)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
+end
+
+--lastrandom caching.
+local lastRandomSignId1: number
+local lastRandomSignId2: number
+local lastRandomTicks: number
+module.randomRace = function(speaker: Player, channel): boolean
+	local runTimeInSecondsWithoutBump = 16.6666 --todo lengthen  this
+	if config.isInStudio() then
+		runTimeInSecondsWithoutBump = 5
+	end
+	local candidateSignId1: number
+	local candidateSignId2: number
+	local myTick = tick()
+	local reusingRace = false
+
+	--we just redo the last one if it's not out of horizon?
+	if lastRandomTicks ~= nil and myTick - lastRandomTicks < runTimeInSecondsWithoutBump then
+		--reuse last time signs
+		candidateSignId1 = lastRandomSignId1
+		candidateSignId2 = lastRandomSignId2
+		lastRandomTicks = myTick
+		reusingRace = true
+		return true
+	else
+		reusingRace = false
+		local signIdChoices = playerdata.getCommonFoundSignIdsExcludingNoobs(speaker.UserId)
+		--choices which actually exist in the game:
+
+		--if we are in test mode game, we need to do this filter also:
+		local signFolder = game.Workspace:FindFirstChild("Signs")
+		if config.isInStudio() then
+			local existingSignIdChoices = {}
+			for _, signId in ipairs(signIdChoices) do
+				local sn = tpUtil.signId2signName(signId)
+				if not sn then
+					continue
+				end
+				if not signFolder:FindFirstChild(sn) then
+					continue
+				end
+				table.insert(existingSignIdChoices, signId)
+			end
+			print("out.")
+			signIdChoices = existingSignIdChoices
+			print("filtered first sign choices down to: ", signIdChoices)
+		end
+
+		if #signIdChoices < 1 then
+			return false
+		end
+
+		local tries = 0
+		while true do
+			candidateSignId1 = signIdChoices[math.random(#signIdChoices)]
+			candidateSignId2 = signIdChoices[math.random(#signIdChoices)]
+
+			if candidateSignId1 == nil or candidateSignId1 == "" then
+				print("bad sign 1")
+				continue
+			end
+			if candidateSignId2 == nil or candidateSignId2 == "" then
+				print("bad sign can 2id.")
+				continue
+			end
+
+			if candidateSignId2 ~= candidateSignId1 then
+				print("diff, keeping.", candidateSignId1, candidateSignId2)
+				break
+			end
+			tries = tries + 1
+			if tries > 20 then
+				warn("failure to gen rr race sign.")
+				break
+			end
+		end
+		lastRandomTicks = myTick
+	end
+
+	if candidateSignId1 ~= nil and candidateSignId2 ~= nil then
+		lastRandomSignId1 = candidateSignId1
+		lastRandomSignId2 = candidateSignId2
+		local userIdsInServer = {}
+		for _, player in ipairs(PlayersService:GetPlayers()) do
+			table.insert(userIdsInServer, player.UserId)
+		end
+		if config.isInStudio then
+			table.insert(userIdsInServer, enums.objects.Brouhahaha)
+		end
+
+		local entries = playerdata.describeRaceHistoryMultilineText(
+			candidateSignId1,
+			candidateSignId2,
+			speaker.UserId,
+			userIdsInServer
+		)
+
+		if not reusingRace then
+			for _, el in pairs(entries) do
+				sm(channel, el.message, el.options)
+			end
+		end
+		local userJoinMes = speaker.Name
+			.. " joined the random race from "
+			.. tpUtil.signId2signName(candidateSignId1)
+			.. " to "
+			.. tpUtil.signId2signName(candidateSignId2)
+			.. '. Use "/rr" to join too!'
+		sm(channel, userJoinMes)
+		GrandCmdlineBadge(speaker.UserId)
+		serverwarping.WarpToSignName(speaker, tpUtil.signId2signName(candidateSignId1))
+
+		--this thing notifies the channel about 15 second countdown ending.
+		if not reusingRace then
+			spawn(function()
+				while true do
+					if candidateSignId1 ~= lastRandomSignId1 or candidateSignId2 ~= lastRandomSignId2 then
+						return
+					end
+					if tick() - lastRandomTicks > runTimeInSecondsWithoutBump then
+						sm(channel, "Next race ready to start.")
+						break
+					end
+					wait(1)
+				end
+			end)
+		end
+
+		return true
+	end
+
+	error("fell through generating rr?")
 end
 
 module.popular = function(speaker: Player, channel): boolean
@@ -414,7 +701,7 @@ module.popular = function(speaker: Player, channel): boolean
 			elseif userPlace > 10 then
 				usePlace = "DNP"
 			else
-				usePlace = tpUtil.getCardinal(userPlace)
+				usePlace = tpUtil.getCardinalEmoji(userPlace)
 			end
 			local msg = username .. ":" .. usePlace
 			table.insert(userPlaces, msg)
@@ -462,96 +749,6 @@ module.common = function(speaker: Player, channel): boolean
 	sm(channel, res)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
-end
-
---lastrandom caching.
-local lastRandomSign1
-local lastRandomSign2
-local lastRandomTicks
-module.randomRace = function(speaker: Player, channel): boolean
-	local runTimeInSecondsWithoutBump = 16.6666 --todo lengthen  this
-	-- runTimeInSecondsWithoutBump=1
-	if config.isInStudio() then
-		runTimeInSecondsWithoutBump = 5
-	end
-	local rndSign1 = nil
-	local rndSign2 = nil
-	local myTick = tick()
-	local reusingRace = false
-
-	if lastRandomTicks ~= nil and myTick - lastRandomTicks < runTimeInSecondsWithoutBump then
-		--reuse last time signs
-		rndSign1 = lastRandomSign1
-		rndSign2 = lastRandomSign2
-		lastRandomTicks = myTick
-		reusingRace = true
-	else
-		reusingRace = false
-		local choices = playerdata.getCommonFoundSignIdsExcludingNoobs(speaker.UserId)
-		if #choices < 1 then
-			return false
-		end
-		local rndSignId1 = choices[math.random(#choices)]
-		rndSign1 = tpUtil.signId2signName(rndSignId1)
-
-		--rndsign2 is scoped to the initiator's found set.
-		local tries = 0
-		while true do
-			rndSign2 = rdb.getRandomFoundSignName(speaker.UserId)
-			if rndSign2 ~= rndSign1 then
-				break
-			end
-			tries = tries + 1
-			if tries > 10 then
-				break
-			end
-		end
-		lastRandomSign1 = rndSign1
-		lastRandomSign2 = rndSign2
-		lastRandomTicks = myTick
-	end
-
-	if rndSign1 ~= nil and rndSign2 ~= nil then
-		local r1Name = enums.name2signId[rndSign1]
-		local r2Name = enums.name2signId[rndSign2]
-		local scoretext = playerdata.describeRaceHistoryMultilineText(r1Name, r2Name)
-		if scoretext ~= "unknown" then
-			if not reusingRace then
-				sm(channel, scoretext)
-			end
-			local userJoinMes = speaker.Name
-				.. " joined the random race from "
-				.. rndSign1
-				.. " to "
-				.. rndSign2
-				.. '. Use "/rr" to join!'
-			sm(channel, userJoinMes)
-			GrandCmdlineBadge(speaker.UserId)
-			-- local originSignId = tpUtil.looseGetSignId(rndSign)
-			-- local originSign = game.Workspace.Signs:FindFirstChild(rndSign)
-			serverwarping.WarpToSignName(speaker, rndSign1)
-
-			--this thing notifies the channel about 15 second countdown ending.
-			if not reusingRace then
-				spawn(function()
-					local myS1 = rndSign1
-					local myS2 = rndSign2
-					while true do
-						if myS1 ~= lastRandomSign1 or myS2 ~= lastRandomSign2 then
-							return
-						end
-						if tick() - lastRandomTicks > runTimeInSecondsWithoutBump then
-							sm(channel, "Next race ready to start.")
-							break
-						end
-						wait(1)
-					end
-				end)
-			end
-
-			return true
-		end
-	end
 end
 
 return module

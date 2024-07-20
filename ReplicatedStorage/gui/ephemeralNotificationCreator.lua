@@ -12,6 +12,9 @@ local enums = require(game.ReplicatedStorage.util.enums)
 
 local PlayersService = game:GetService("Players")
 
+repeat
+	game:GetService("RunService").RenderStepped:wait()
+until game.Players.LocalPlayer.Character ~= nil
 local localPlayer = PlayersService.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
 
@@ -110,7 +113,7 @@ module.notify = function(options: tt.ephemeralNotificationOptions, warpWrapper: 
 		warpTl.Size = UDim2.new(1, 0, 0.2, 0)
 
 		warpTl.Position = UDim2.new(0, 0, 0.8, 0)
-		warpTl.ZIndex = 2
+		warpTl.ZIndex = 20
 		warpTl.Parent = frame
 		warpTl.Activated:Connect(function()
 			warpWrapper.requestWarpToSign(options.warpToSignId)

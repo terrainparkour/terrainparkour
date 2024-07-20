@@ -6,6 +6,7 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
 local badgeSorts = require(game.ReplicatedStorage.util.badgeSorts)
 local rdb = require(game.ServerScriptService.rdb)
+local remotes = require(game.ReplicatedStorage.util.remotes)
 
 local module = {}
 
@@ -33,7 +34,6 @@ local positiveBadgeAttainments: { [number]: { [number]: boolean } } = {}
 --2022.05 - adding new layer - positive only badge grant cache on remote server
 --effectively multigetBadgeGrants
 module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor): boolean?
-	-- annotate("Looking up user has badge." .. userId .. "\t" .. badge.name)
 	if positiveBadgeAttainments[userId] ~= nil then
 		if positiveBadgeAttainments[userId][badge.assetId] then
 			annotate("served from positive server cache.yes." .. badge.name)
@@ -55,7 +55,6 @@ module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor): boole
 		wait(1)
 	end
 	if grantedBadges[userId][badge.assetId] == nil then
-		-- annotate("\tDoing expensive lookup user has badge\t" .. userId .. "\t" .. badge.name)
 		badgeLookupLocks[userId][badge.assetId] = true
 		local s, e = pcall(function()
 			local res = BadgeService:UserHasBadgeAsync(userId, badge.assetId)
@@ -107,26 +106,28 @@ local function getProgressForStatsKindAndNumber(el: tt.badgeDescriptor, stats: t
 	if el.badgeClass == "runs" then
 		return math.min(stats.runs, el.baseNumber)
 	end
-	warn("fail")
+	warn("fail badgeClass progress lookup.")
 	return 0
 end
 
 --for a bunch of users at once.
-module.getBadgeAttainments =
-	function(userIdsInServer: { number }, rationale: string): { [number]: { tt.badgeAttainment } }
-		local res: { [number]: { tt.badgeAttainment } } = {}
-		for _, oUserId: number in ipairs(userIdsInServer) do
-			local badgeAttainments = module.getBadgeAttainment(oUserId, rationale)
-			res[oUserId] = badgeAttainments
-		end
-		return res
+module.getBadgeAttainmentsForUserIds = function(
+	userIdsInServer: { number },
+	rationale: string
+): { [number]: { tt.badgeAttainment } }
+	local res: { [number]: { tt.badgeAttainment } } = {}
+	for _, oUserId: number in ipairs(userIdsInServer) do
+		local badgeAttainments = module.getBadgeAttainmentForUserId(oUserId, rationale)
+		res[oUserId] = badgeAttainments
 	end
+	return res
+end
 
-local globalBadgeGrantCountsByAssetId: { [number]: number } = {}
+-- local globalBadgeGrantCountsByAssetId: { [number]: number } = {}
 
 --relies on badges being sorted such that attainment is sequential for cases where badgeClass and baseNumber is defined
 --uses this fact to skip out of calculating level N+1 if level N of sequential class badges fails
-module.getBadgeAttainment = function(userId: number, rationale: string): { tt.badgeAttainment }
+module.getBadgeAttainmentForUserId = function(userId: number, rationale: string): { tt.badgeAttainment }
 	-- annotate("get badge statuses." .. rationale .. " for " .. userId)
 	--if type is identical to last, and last was a no, just return false.
 
@@ -135,7 +136,7 @@ module.getBadgeAttainment = function(userId: number, rationale: string): { tt.ba
 		local pos: { tt.pyUserBadgeGrant } = rdb.getBadgesByUser(userId)
 		local map: { [number]: boolean } = {}
 		for _, el in ipairs(pos) do
-			globalBadgeGrantCountsByAssetId[el.badgeAssetId] = el.badgeTotalGrantCount
+			-- globalBadgeGrantCountsByAssetId[el.badgeAssetId] = el.badgeTotalGrantCount
 			map[el.badgeAssetId] = true
 		end
 		positiveBadgeAttainments[userId] = map
@@ -197,8 +198,9 @@ module.getBadgeAttainment = function(userId: number, rationale: string): { tt.ba
 end
 
 module.getBadgeCountByUser = function(userId: number): number
-	local allBadges: { tt.badgeAttainment } = module.getBadgeAttainment(userId, "badgeCount")
+	local allBadges: { tt.badgeAttainment } = module.getBadgeAttainmentForUserId(userId, "badgeCount")
 	local hasBadgeCount = 0
+	
 	for _, attainment in ipairs(allBadges) do
 		if attainment.got then
 			hasBadgeCount += 1
@@ -207,11 +209,9 @@ module.getBadgeCountByUser = function(userId: number): number
 	return hasBadgeCount
 end
 
-local rf = require(game.ReplicatedStorage.util.remotes)
-local badgeAttainmentsFunction = rf.getRemoteFunction("BadgeAttainmentsFunction") :: RemoteFunction
-
+local badgeAttainmentsFunction = remotes.getRemoteFunction("BadgeAttainmentsFunction") :: RemoteFunction
 badgeAttainmentsFunction.OnServerInvoke = function(player: Player, userIdsInServer: { number }, rationale: string): any
-	return module.getBadgeAttainments(userIdsInServer, rationale)
+	return module.getBadgeAttainmentsForUserIds(userIdsInServer, rationale)
 end
 
 return module

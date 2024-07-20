@@ -13,8 +13,13 @@ module.getTl = function(
 	padding: number,
 	parent: Frame | ScrollingFrame,
 	bgcolor: Color3,
-	borderSizePixel: number?
+	borderSizePixel: number?,
+	transparency: number?
 ): TextLabel
+	if transparency == nil then
+		transparency = 0
+	end
+	assert(transparency ~= nil)
 	local tl = Instance.new("TextLabel")
 	tl.ZIndex = 1
 	tl.TextTransparency = 1
@@ -24,6 +29,8 @@ module.getTl = function(
 	tl.BackgroundColor3 = bgcolor
 	tl.BorderMode = Enum.BorderMode.Inset
 	tl.BorderSizePixel = 1
+	tl.BackgroundTransparency = transparency
+
 	if borderSizePixel ~= nil then
 		tl.BorderSizePixel = borderSizePixel
 		tl.BorderMode = Enum.BorderMode.Outline
@@ -39,6 +46,10 @@ module.getTl = function(
 	innerTl.Position = UDim2.new(0, padding, 0, padding)
 	innerTl.BackgroundColor3 = bgcolor
 	innerTl.BorderSizePixel = 0
+	innerTl.AutoLocalize=true
+	if transparency ~= 0 then
+		innerTl.BackgroundTransparency = 1
+	end
 
 	return innerTl
 end
@@ -60,33 +71,45 @@ module.getTb = function(
 	padding: number,
 	parent: Frame | ScrollingFrame,
 	bgcolor: Color3,
-	borderSizePixel: number?
+	borderSizePixel: number?,
+	transparency: number?
 ): TextButton
-	local tl = Instance.new("TextLabel")
-	tl.ZIndex = 1
-	tl.TextTransparency = 1
-	tl.Size = size
-	tl.Parent = parent
-	tl.Name = name
-	tl.BackgroundColor3 = bgcolor
-	tl.BorderMode = Enum.BorderMode.Inset
-	tl.BorderSizePixel = 1
-	if borderSizePixel ~= nil then
-		tl.BorderSizePixel = borderSizePixel
-		tl.BorderMode = Enum.BorderMode.Outline
+	if transparency == nil then
+		transparency = 0
 	end
-	local innerTl = Instance.new("TextButton")
-	innerTl.Parent = tl
-	innerTl.TextScaled = true
-	innerTl.ZIndex = 2
-	innerTl.Name = "Inner"
-	innerTl.Font = Enum.Font.Gotham
-	innerTl.Size = UDim2.new(1, -2 * padding, 1, -2 * padding)
-	innerTl.Position = UDim2.new(0, padding, 0, padding)
-	innerTl.BackgroundColor3 = bgcolor
-	innerTl.BorderSizePixel = 0
-	innerTl.BorderMode = Enum.BorderMode.Inset
-	return innerTl
+	assert(transparency~=nil)
+	local outerTb = Instance.new("TextButton")
+	outerTb.ZIndex = 1
+	outerTb.TextTransparency = 1
+	outerTb.Size = size
+	outerTb.Parent = parent
+	outerTb.Name = name
+	outerTb.BackgroundColor3 = bgcolor
+	outerTb.BorderMode = Enum.BorderMode.Inset
+	outerTb.BorderSizePixel = 1
+
+	outerTb.BackgroundTransparency = transparency
+
+	if borderSizePixel ~= nil then
+		outerTb.BorderSizePixel = borderSizePixel
+		outerTb.BorderMode = Enum.BorderMode.Outline
+	end
+
+	local innerTb = Instance.new("TextButton")
+	innerTb.Parent = outerTb
+	innerTb.TextScaled = true
+	innerTb.ZIndex = 2
+	innerTb.Name = "Inner"
+	innerTb.Font = Enum.Font.Gotham
+	innerTb.Size = UDim2.new(1, -2 * padding, 1, -2 * padding)
+	innerTb.Position = UDim2.new(0, padding, 0, padding)
+	innerTb.BackgroundColor3 = bgcolor
+	innerTb.BorderSizePixel = 0
+	innerTb.BorderMode = Enum.BorderMode.Inset
+	if transparency ~= 0 then
+		innerTb.BackgroundTransparency = 1
+	end
+	return innerTb
 end
 
 --kill a sgui with an invisible textbutton on top of it.
@@ -97,30 +120,8 @@ module.setupKillOnClick = function(sgui: ScreenGui, excludeElementName: string?,
 	local mainFrame = sgui:FindFirstChildOfClass("Frame")
 	assert(mainFrame)
 	invisibleCloseModalButton.Position = mainFrame.Position
-	local additionalYScaleReduction = 0
-	local additionalYOffsetReduction = 0
 
-	if excludeElementName and excludeElementName ~= "" then
-		assert(excludeElementName)
-		local excluded: Frame
-		excluded = sgui:FindFirstChild(excludeElementName) :: Frame
-		if excluded then
-			additionalYScaleReduction += excluded.Size.Height.Scale
-			warn("yscale.")
-			--2022 apparently this never happens
-		end
-	end
-	if actualExcludedFrame then
-		additionalYScaleReduction += actualExcludedFrame.Size.Height.Scale * mainFrame.Size.Height.Scale
-		additionalYOffsetReduction += actualExcludedFrame.Size.Height.Offset
-	end
-	local newYScale = mainFrame.Size.Y.Scale - additionalYScaleReduction - additionalYOffsetReduction
-
-	if newYScale < 0 then
-		warn("bad scale.")
-	end
-	invisibleCloseModalButton.Size =
-		UDim2.new(mainFrame.Size.X.Scale, mainFrame.Size.X.Offset, newYScale, mainFrame.Size.Y.Offset)
+	invisibleCloseModalButton.Size = mainFrame.Size
 	invisibleCloseModalButton.Name = "invisibleCloseModalButton"
 	invisibleCloseModalButton.Transparency = 1.0
 	invisibleCloseModalButton.Text = "kill but can't see"
@@ -129,6 +130,7 @@ module.setupKillOnClick = function(sgui: ScreenGui, excludeElementName: string?,
 	invisibleCloseModalButton.Activated:Connect(function()
 		sgui:Destroy()
 	end)
+	invisibleCloseModalButton.ZIndex=10
 end
 
 --pixel-sized udim creator

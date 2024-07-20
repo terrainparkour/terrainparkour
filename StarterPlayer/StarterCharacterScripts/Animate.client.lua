@@ -17,7 +17,7 @@ local function setupValues()
 			"fall",
 			"idle",
 			"jump",
-			"laugh",
+			-- "laugh",
 			"point",
 			"run",
 			"sit",
@@ -154,9 +154,9 @@ local animNames = {
 		{ id = "http://www.roblox.com/asset/?id=507777451", weight = 10 },
 		{ id = "http://www.roblox.com/asset/?id=507777623", weight = 10 },
 	},
-	laugh = {
-		{ id = "http://www.roblox.com/asset/?id=507770818", weight = 10 },
-	},
+	-- laugh = {
+	-- 	{ id = "http://www.roblox.com/asset/?id=507770818", weight = 10 },
+	-- },
 	cheer = {
 		{ id = "http://www.roblox.com/asset/?id=507770677", weight = 10 },
 	},
@@ -169,7 +169,7 @@ local loopEmote = {
 	dance = true,
 	dance2 = true,
 	dance3 = true,
-	laugh = true,
+	-- laugh = false,
 	cheer = true,
 }
 
@@ -323,6 +323,9 @@ if false then
 			if exi[1] == last then
 				continue
 			end
+			-- print(exi[1])
+			print(" anim tracks: " .. tostring(exi))
+			print(exi)
 			print(exi[1])
 			last = exi[1]
 		end
@@ -501,19 +504,34 @@ function rollAnimation(animName)
 	return idx
 end
 
-local function switchToAnim(anim, animName, transitionTime, humanoid)
+local function switchToAnim(anim, animName, transitionTime: number, humanoid)
 	-- switch animation
+	if
+		animName == "idle"
+		or animName == "walk"
+		or animName == "jump"
+		or animName == "run"
+		or animName == "fall"
+		or animName == "sit"
+		or animName == "swim"
+		or animName == "swimidle"
+	then
+	else
+		print("skipping: " .. animName)
+		return
+	end
+
 	if anim == currentAnimInstance then
 		return
 	end
 
 	if currentAnimTrack ~= nil then
-		currentAnimTrack:Stop(transitionTime)
+		currentAnimTrack:Stop()
 		currentAnimTrack:Destroy()
 	end
 
 	if runAnimTrack ~= nil then
-		runAnimTrack:Stop(transitionTime)
+		runAnimTrack:Stop()
 		runAnimTrack:Destroy()
 		if userNoUpdateOnLoop == true then
 			runAnimTrack = nil

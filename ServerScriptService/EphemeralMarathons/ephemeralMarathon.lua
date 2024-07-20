@@ -22,10 +22,8 @@ local integrateRun = function(run: mt.lbUpdateFromEphemeralMarathonRun): mt.emRu
 		userId = run.userId,
 		formattedRunMilliseconds = "100",
 		kind = "",
-		playerText = "",
+		raceName = "",
 		yourText = "",
-		personalRaceHistoryText = "",
-		raceTotalHistoryText = "",
 		runEntries = {},
 		afterRunData = {},
 		username = "Username",
@@ -84,13 +82,13 @@ local serverInvokeEphemeralMarathonComplete = function(player: Player, marathonI
 	end
 end
 
-local rf = require(game.ReplicatedStorage.util.remotes)
+local remotes = require(game.ReplicatedStorage.util.remotes)
 
 module.init = function()
-	local ephemeralMarathonCompleteEvent = rf.getRemoteEvent("EphemeralMarathonCompleteEvent")
+	local ephemeralMarathonCompleteEvent = remotes.getRemoteEvent("EphemeralMarathonCompleteEvent")
 	ephemeralMarathonCompleteEvent.OnServerEvent:Connect(serverInvokeEphemeralMarathonComplete)
 
-	local ephemeralMarathonCreateFunction = rf.getRemoteFunction("EphemeralMarathonCreateFunction")
+	local ephemeralMarathonCreateFunction = remotes.getRemoteFunction("EphemeralMarathonCreateFunction")
 	ephemeralMarathonCreateFunction.OnServerInvoke = serverInvokeCreateEphemeralMarathon
 end
 

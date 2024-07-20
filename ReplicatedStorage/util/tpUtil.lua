@@ -6,6 +6,7 @@
 
 local module = {}
 local enums = require(game.ReplicatedStorage.util.enums)
+local emojis = require(game.ReplicatedStorage.enums.emojis)
 
 local PlayersService = game:GetService("Players")
 
@@ -51,6 +52,7 @@ module.signName2SignId = function(signName: string)
 end
 
 --stemming from the front, first match
+--return nil if no match
 module.looseSignName2SignId = function(signSearchText: string): number?
 	--return exact if matches.
 	if enums.namelower2signId[signSearchText:lower()] ~= nil then
@@ -64,12 +66,37 @@ module.looseSignName2SignId = function(signSearchText: string): number?
 			return signId
 		end
 	end
+
+	for signName, signAlias in pairs(enums.signName2Alias) do
+		if string.sub(signAlias, 1, len):lower() == signSearchText:lower() then
+			--we found the sign name.
+			local signId = enums.namelower2signId[signName:lower()]
+			return signId
+		end
+	end
 	return nil
+end
+
+--also takes into account aliases.
+module.looseSignName2Sign = function(signSearchText: string): Part?
+	local signId = module.looseSignName2SignId(signSearchText)
+	if signId == nil then
+		return nil
+	end
+	return game.Workspace:WaitForChild("Signs"):FindFirstChild(enums.signId2name[signId])
 end
 
 module.signId2signName = function(signId: number): string
 	local res = enums.signId2name[signId]
 	return res
+end
+
+module.signId2Sign = function(signId: number): Part
+	return game.Workspace:WaitForChild("Signs"):FindFirstChild(enums.signId2name[signId])
+end
+
+module.signName2Sign = function(signName: string): Part
+	return game.Workspace:WaitForChild("Signs"):FindFirstChild(signName)
 end
 
 module.looseGetPlayerFromUsername = function(playerName: string): Player?
@@ -139,6 +166,92 @@ module.getCardinal = function(place: number): string
 	return tostring(place) .. stem
 end
 
+local function digit2emoji(digit: number): string
+	if digit == 0 then
+		return emojis.emojis.DIGIT_ZERO
+	end
+	if digit == 1 then
+		return emojis.emojis.DIGIT_ONE
+	end
+	if digit == 2 then
+		return emojis.emojis.DIGIT_TWO
+	end
+	if digit == 3 then
+		return emojis.emojis.DIGIT_THREE
+	end
+	if digit == 4 then
+		return emojis.emojis.DIGIT_FOUR
+	end
+	if digit == 5 then
+		return emojis.emojis.DIGIT_FIVE
+	end
+	if digit == 6 then
+		return emojis.emojis.DIGIT_SIX
+	end
+	if digit == 7 then
+		return emojis.emojis.DIGIT_SEVEN
+	end
+	if digit == 8 then
+		return emojis.emojis.DIGIT_EIGHT
+	end
+	if digit == 9 then
+		return emojis.emojis.DIGIT_NINE
+	end
+	error("no")
+end
+
+module.getNumberEmojis = function(number: number): string
+	local res = ""
+	while number > 0 do
+		local digit = number % 10
+		res = digit2emoji(digit) .. res
+		number = math.floor(number / 10)
+	end
+	return res
+end
+
+--including medals for early places
+module.getCardinalEmoji = function(place: number): string
+	if place == nil then
+		return ""
+	end
+
+	if place == 1 then
+		return emojis.emojis.FIRST_PLACE
+	end
+	if place == 2 then
+		return emojis.emojis.SECOND_PLACE
+	end
+	if place == 3 then
+		return emojis.emojis.THIRD_PLACE
+	end
+	return module.getCardinal(place)
+	-- local emojiNumber = module.getNumberEmojis(place)
+	-- local stem = "th"
+
+	-- local lastDigit = place % 10
+	-- if lastDigit == 1 then
+	-- 	stem = "st"
+	-- end
+	-- if lastDigit == 2 then
+	-- 	stem = "nd"
+	-- end
+	-- if lastDigit == 3 then
+	-- 	stem = "rd"
+	-- end
+	-- local smallPlace = place % 100
+	-- if smallPlace == 11 then
+	-- 	stem = "th"
+	-- end
+	-- if smallPlace == 12 then
+	-- 	stem = "th"
+	-- end
+	-- if smallPlace == 13 then
+	-- 	stem = "th"
+	-- end
+	-- return emojiNumber .. stem
+end
+
 module.getPlaceText = function(place: number): string
 	if place == 0 then
 		return "*"
@@ -147,6 +260,11 @@ module.getPlaceText = function(place: number): string
 		return "-"
 	end
 	return module.getCardinal(place) .. " Place"
+end
+
+--ie is the sign disabled somehow?
+module.isSignPartValidRightNow = function(sign: Part): boolean
+	return sign.CanCollide and sign.CanTouch and sign.CanQuery
 end
 
 return module

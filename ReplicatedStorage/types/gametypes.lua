@@ -4,7 +4,7 @@
 --TODO: synchronize this with python return types too!
 --eval 9.21
 
-export type warperWrapper = { requestWarpToSign: (signId: number) -> nil }
+export type warperWrapper = { requestWarpToSign: (signId: number, highlightSignId: number?) -> nil }
 
 export type signFindOptions = {
 	kind: string,
@@ -89,10 +89,8 @@ export type pyUserFinishedRunResponse = {
 	userTotalFindCount: number,
 
 	--for display options
-	playerText: string,
+	raceName: string,
 	yourText: string,
-	lossText: string,
-	personalRaceHistoryText: string,
 	raceTotalHistoryText: string,
 }
 
@@ -166,6 +164,7 @@ export type afterData_getStatsByUser = {
 	wrRank: number,
 	totalSignCount: number,
 	awardCount: number,
+	--I believe badges come later, via another async process
 }
 
 --every time a run happens, update everyone about this user's changed scoreboard.
@@ -181,7 +180,7 @@ export type lbUpdateFromRun = {
 	awardCount: number,
 }
 
-export type lbUserStats={
+export type lbUserStats = {
 	kind: string,
 	userId: number,
 	userTix: number,
@@ -190,7 +189,7 @@ export type lbUserStats={
 	runs: number,
 	userCompetitiveWRCount: number,
 	userTotalWRCount: number,
-	awardCount: number
+	awardCount: number,
 }
 
 export type lbUpdateFromFind = {
@@ -207,6 +206,7 @@ export type badgeDescriptor = {
 	badgeClass: string,
 	baseNumber: number?,
 	hint: string?,
+	order: number?,
 }
 
 export type badgeAttainment = {
@@ -223,6 +223,7 @@ export type badgeOptions = {
 }
 
 export type userSettingValue = { name: string, domain: string, value: boolean? }
+export type userSettingValuesWithDistributions = { name: string, domain: string, value: boolean?, percentage: number }
 
 --for the left side of a sign popup.
 export type signWrStatus = { userId: number, count: number }
@@ -256,12 +257,22 @@ export type dynamicRunningControlType = { action: string, fromSignId: number, us
 
 --SERVEREVENTS
 export type runningServerEventUserBest = { userId: number, username: string, timeMs: number, runCount: number }
+
+--when reporting (either from server or client)
+--also, userId is optional; when sending from client, why not include it!
+export type robloxServerError = {
+	version: string,
+	code: string,
+	data: string,
+	message: string,
+	userId: number?,
+}
+
 export type runningServerEvent = {
 	name: string,
 	serverEventNumber: number,
 	startedTick: number,
 	remainingTick: number,
-	lastActiveTick: number,
 	startSignId: number,
 	endSignId: number,
 	userBests: { [number]: runningServerEventUserBest },
@@ -273,7 +284,7 @@ export type serverEventUpdateType = string
 
 export type serverEventUpdates = { { serverEvent: runningServerEvent, updateType: serverEventUpdateType } }
 
---used from localtimer => server consumers who want to know when runs complete.
+--used from raceRunner => server consumers who want to know when runs complete.
 export type serverFinishRunNotifierType = {
 	startSignId: number,
 	endSignId: number,
@@ -281,5 +292,39 @@ export type serverFinishRunNotifierType = {
 	userId: number,
 	username: string,
 }
+
+export type serverEventTixAllocation = { userId: number, username: string, tixallocation: number, eventPlace: number }
+
+export type playerProfileData = {}
+
+export type userSignSignRelationship = {
+	startSignId: number,
+	endSignId: number,
+	endSignName: string,
+	runCount: number,
+	bestPlace: number?,
+	bestTimeMs: number,
+	dist: number,
+	isCwr: boolean,
+}
+
+export type playerSignProfileData = {
+	signName: string,
+	signId: number,
+	relationships: { userSignSignRelationship },
+	unrunCwrs: { string }, --limited selection
+	unrunSigns: { string },
+}
+
+--local sign clickability - left and right clicks do diff things.
+export type signClickMessage = {
+	leftClick: boolean,
+	signId: number,
+	userId: number,
+}
+export type chipType = { text: string, widthWeight: number?, bgcolor: Color3?, toolTip: string? }
+export type rowDescriptor = (playerSignProfileData) -> { chipType }
+
+export type movementHistoryQueueItem = { action: number, time: number }
 
 return {}
