@@ -126,8 +126,8 @@ module.setupMold = function()
 			end
 			wait(0.1)
 			for k, num in pairs(timesSeenTerrainFloorTypeCounts) do
-				print(k)
-				print(num)
+				-- print(k)
+				-- print(num)
 				if k == Enum.Material.Slate then
 					continue
 				end

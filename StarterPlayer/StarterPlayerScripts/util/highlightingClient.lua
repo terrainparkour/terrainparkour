@@ -13,7 +13,7 @@ local userHasFoundSignCache = {}
 
 local RunService = game:GetService("RunService")
 
-local function createRainbowHighlightEffect(highlight)
+local function createHighlightEffect(highlight)
 	local tweenInfo = TweenInfo.new(
 		2,
 		Enum.EasingStyle.Linear,
@@ -26,7 +26,7 @@ local function createRainbowHighlightEffect(highlight)
 		return Color3.new(c1.R + (c2.R - c1.R) * alpha, c1.G + (c2.G - c1.G) * alpha, c1.B + (c2.B - c1.B) * alpha)
 	end
 
-	local rainbowColors = {
+	local colorPattern = {
 		Color3.fromRGB(255, 0, 0), -- Red
 		Color3.fromRGB(255, 165, 0), -- Orange
 		Color3.fromRGB(255, 255, 0), -- Yellow
@@ -36,10 +36,10 @@ local function createRainbowHighlightEffect(highlight)
 	}
 
 	local function updateColor(alpha)
-		local index = math.floor(alpha * (#rainbowColors - 1)) + 1
-		local nextIndex = index % #rainbowColors + 1
-		local localAlpha = (alpha * (#rainbowColors - 1)) % 1
-		local color = lerpColor(rainbowColors[index], rainbowColors[nextIndex], localAlpha)
+		local index = math.floor(alpha * (#colorPattern - 1)) + 1
+		local nextIndex = index % #colorPattern + 1
+		local localAlpha = (alpha * (#colorPattern - 1)) % 1
+		local color = lerpColor(colorPattern[index], colorPattern[nextIndex], localAlpha)
 		-- print("updateColor:" .. tostring(color))
 		highlight.OutlineColor = color
 	end
@@ -68,7 +68,7 @@ module.doHighlight = function(signId: number)
 	end
 
 	local sign = tpUtil.signId2Sign(signId)
-	if sign == nil then
+	if not sign then
 		warn("warping to highlight an unseen sign?")
 		return
 	end
@@ -89,7 +89,7 @@ module.doHighlight = function(signId: number)
 
 	spawn(function()
 		while true do
-			hh.FillTransparency += 0.001
+			hh.FillTransparency += 0.005
 
 			hh.OutlineTransparency += 0.001
 			wait(0.1)
@@ -100,7 +100,7 @@ module.doHighlight = function(signId: number)
 		end
 	end)
 
-	createRainbowHighlightEffect(hh)
+	createHighlightEffect(hh)
 end
 
 return module

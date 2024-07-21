@@ -99,6 +99,7 @@ export type ephemeralNotificationOptions = {
 	text: string,
 	kind: string,
 	warpToSignId: number,
+	highlightSignId: number?,
 }
 
 export type userFinishedRunOptions = {

@@ -85,7 +85,7 @@ UserInputService.InputBegan:Connect(onInputBegin)
 local handleUserSettingChanged = function(item: tt.userSettingValue)
 	if ignoreChatWhenHittingX ~= item.value then
 		ignoreChatWhenHittingX = item.value
-		print("changed x button ignore chat to " .. tostring(item.value))
+		-- print("changed x button ignore chat to " .. tostring(item.value))
 	end
 end
 

@@ -261,7 +261,7 @@ local function getPopularContents(player: Player, userIds: { number }): ScreenGu
 	for ii, pop in ipairs(popResults) do
 		local rowFrame = makePopRowFrame(pop, ii, sg, scrollingFrame, {
 			requestWarpToSign = function(signId: number, highlightSignId: number?)
-				warper.requestWarpToSign(signId, highlightSignId)
+				warper.requestWarpToSign(signId, nil)
 				--we make this new enclosure to make sure the type manager realizes taht in this case
 				--we don't care about the return value.
 			end,

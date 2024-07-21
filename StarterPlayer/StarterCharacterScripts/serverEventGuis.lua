@@ -295,7 +295,7 @@ module.endEventVisually = function(serverEvent: tt.runningServerEvent)
 	if exi then
 		exi:Destroy()
 	else
-		warn("no serverEvent to descroy. hmm.")
+		-- warn("no serverEvent to descroy. hmm.")
 	end
 end
 

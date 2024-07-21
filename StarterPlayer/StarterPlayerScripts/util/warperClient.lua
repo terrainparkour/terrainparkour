@@ -4,7 +4,7 @@
 --server validates it
 
 local annotationStart = tick()
-local doAnnotation = true
+local doAnnotation = false
 local localPlayer = game.Players.LocalPlayer
 
 local function annotate(s: string)
@@ -27,6 +27,7 @@ local warpDoneBindableEvent = remotes.getBindableEvent("warpDoneBindableEvent")
 local warpRequestFunction = remotes.getRemoteFunction("warpRequestFunction")
 local serverWantsWarpFunction = remotes.getRemoteFunction("serverWantsWarpFunction")
 local highlighting = require(game.StarterPlayer.StarterPlayerScripts.util.highlightingClient)
+local textHighlighting = require(game.StarterPlayer.StarterPlayerScripts.util.textHighlightingClient)
 
 local isWarpingBlocked = false
 
@@ -40,12 +41,17 @@ module.requestWarpToSign = function(signId: number, highlightSignId: number?): b
 		annotate("fail cause warping blocked.")
 		return false
 	end
-	highlighting.doHighlight(signId)
+	-- textHighlighting.doHighlight(signId)
 	isWarpingBlocked = true
 	annotate("set warping blocked.")
 
 	--tell everyone who cares that warping is happening now.
 	warpStartingBindableEvent:Fire("requesting warp to sign.")
+
+	if highlightSignId and highlightSignId ~= 0 then
+		-- highlighting.doHighlight(highlightSignId)
+		textHighlighting.doHighlight(highlightSignId)
+	end
 
 	--we block on the server returning from this function call.
 	annotate("warpRequestFunction:InvokeServer")
@@ -55,14 +61,12 @@ module.requestWarpToSign = function(signId: number, highlightSignId: number?): b
 	--what is even the intended patter?
 	---action starts on the client? have to think about this?
 
-	if succeededInWarp then
-		if highlightSignId then
-			highlighting.doHighlight(highlightSignId)
-		end
-		print("client side warp success")
-	else
-		print("client side warp failed")
-	end
+	-- if succeededInWarp then
+
+	-- 	print("client side warp success")
+	-- else
+	-- 	print("client side warp failed")
+	-- end
 	--when we return, we are done.
 
 	warpDoneBindableEvent:Fire()

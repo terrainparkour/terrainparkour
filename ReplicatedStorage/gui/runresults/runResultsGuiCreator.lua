@@ -332,7 +332,7 @@ module.createNewRunResultSgui = function(
 			lastWarpTarget = options.startSignId
 			lastWarperWrapper = warperWrapper
 			invisibleTextButton.Activated:Connect(function()
-				warperWrapper.requestWarpToSign(options.startSignId, options.endSignId)
+				warperWrapper.requestWarpToSign(options.startSignId)
 			end)
 		end
 	end

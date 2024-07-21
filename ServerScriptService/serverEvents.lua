@@ -197,11 +197,6 @@ local function startServerEvent(data: ServerEventCreateType): tt.runningServerEv
 		if not tpUtil.isSignPartValidRightNow(sign) then
 			continue
 		end
-
-		-- Part: CanQuery is a property that determines if a part can be queried by the physics engine.
-		-- In general, it allows the part to be detected by the physics engine for collision detection and raycasting.
-		-- In the context of this script, it is used to filter out signs that cannot be interacted with or detected by the physics engine.
-		-- This ensures that only signs that are physically present and can be interacted with are considered for the server event.
 		table.insert(allSigns, sign)
 	end
 

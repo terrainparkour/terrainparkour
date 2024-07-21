@@ -182,7 +182,7 @@ end
 --when a special movement sign race is stopped, call this.
 --NOTE: this also modifies lots of globals related to movement!
 local FullyResetAllMovementProperties = function(reason: string)
-	print(reason)
+	annotate(reason)
 	vscdebug.debug()
 	local character = localPlayer.Character
 	annotate("rescale to 1.0")
@@ -253,11 +253,11 @@ local externallyControlUserMovementMode = function(msg: signMovementEnums.moveme
 		and lastExternalMovementControlActionReceived == signMovementEnums.movementModes.RESTORE
 	then
 		--we just skip repeated resets cause it's annoying.
-		print("SKIP", msg.reason, msg)
+		-- annotate("SKIP", msg.reason, msg)
 		--really, this might be too aggressive and may open the door to too many non-restores.
 		--really, well, i suppose it's that if there are other methods of modifying avatar traits, then this might inadvertently
 		--omit the re-doing of restorating even when it was called for!
-		return
+		-- return
 	end
 	lastExternalMovementControlActionReceived = msg.action
 
@@ -529,26 +529,32 @@ local CalculateAndApplyMovement = function(humanoid: Humanoid)
 
 	------------DISABLED: Global run length speed up ----- too confusing & unnatural------------
 	local speedMultiplerFromRunLength = 1
-	if false then
-		--note that this will continuously increase if the player just sits around...
-		--should we just not have speedups / changes at all when a player is exploring? Hmm.
+	-- if false then
+	-- 	--note that this will continuously increase if the player just sits around...
+	-- 	--should we just not have speedups / changes at all when a player is exploring? Hmm.
 
-		if runLengthInS < 20 then
-			--from 1.0 to 1.02
-			speedMultiplerFromRunLength = 1 + (runLengthInS / 1000)
-		else
-			speedMultiplerFromRunLength = 1.02 + (math.log(runLengthInS) - math.log(20)) / 100
-		end
+	-- 	if runLengthInS < 20 then
+	-- 		--from 1.0 to 1.02
+	-- 		speedMultiplerFromRunLength = 1 + (runLengthInS / 1000)
+	-- 	else
+	-- 		speedMultiplerFromRunLength = 1.02 + (math.log(runLengthInS) - math.log(20)) / 100
+	-- 	end
 
-		if speedMultiplerFromRunLength > 1 then
-			table.insert(
-				listOfReasonsForSpeed,
-				string.format("speedup by %0.2f%% due to run length", 100 * (speedMultiplerFromRunLength - 1))
-			)
-		end
-	end
+	-- 	if speedMultiplerFromRunLength > 1 then
+	-- 		table.insert(
+	-- 			listOfReasonsForSpeed,
+	-- 			string.format("speedup by %0.2f%% due to run length", 100 * (speedMultiplerFromRunLength - 1))
+	-- 		)
+	-- 	end
+	-- end
 
 	----------Perhaps this doesn't need to be very strong, given a global speed increase over life of run, too?-------------
+
+	-----------2023.03.23 adjust this so that speedups vary by terrain type.
+	---- they all must surpass the values from release
+	------ degrees of freedom: how fast you accelerate (>= the prior)
+	------ how long til the slower speedup regime starts (>= the prior)
+
 	local speedMultiplierFromSameTerrain = 1
 	local timeAfterWhichSpeedupIsntLinear = 11
 	if effectiveTimeOnCurrentTerrain < timeAfterWhichSpeedupIsntLinear then
@@ -715,8 +721,6 @@ function init()
 		FullyResetAllMovementProperties("reset on character added.")
 		local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 		local humanoid = character:WaitForChild("Humanoid") :: Humanoid
-
-		
 
 		humanoid.Jumping:Connect(function(isActive)
 			if isActive then

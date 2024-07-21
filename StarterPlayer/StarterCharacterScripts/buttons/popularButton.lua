@@ -175,7 +175,7 @@ local function makePopRowFrame(
 		warp.Text = "Warp"
 
 		warp.Activated:Connect(function()
-			warper.requestWarpToSign(pop.startSignId, pop.endSignId)
+			warper.requestWarpToSign(pop.startSignId, nil)
 			lastCanvasPosition = scrollingFrame.CanvasPosition
 			parentSgui:Destroy()
 		end)

@@ -614,8 +614,10 @@ local function clientReceiveNewLeaderboardData(lbUpdateData: genericLbUpdateData
 		initial = true
 	elseif lbUpdateData.kind == "badge update" then
 		initial = false
+	elseif lbUpdateData.kind == "Update from run" then
+		initial = false --not sure about this, just protecting.
 	else
-		print("unknown incoming data KIND. is this even needed (setup)?" .. lbUpdateData.kind)
+		annotate("unknown incoming data KIND. is this even needed (setup)?:: - " .. lbUpdateData.kind)
 		initial = false
 	end
 
@@ -751,6 +753,6 @@ local function init()
 	end
 end
 
-testJoinRejoinBugs()
+-- testJoinRejoinBugs()
 
 init()

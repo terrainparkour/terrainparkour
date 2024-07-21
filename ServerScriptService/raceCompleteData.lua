@@ -268,6 +268,10 @@ module.showBestTimes = function(
 				and startSignId
 			) or 0
 
+			local useHighlightTargetSignId = endSignId
+					and not enums.SignIdIsExcludedFromStart[startSignId]
+					and rdb.hasUserFoundSign(op.UserId, startSignId)
+				or 0
 			if knockoutText ~= "" then
 				notify.notifyPlayerAboutActionResult(op, {
 					userId = player.UserId,
@@ -283,6 +287,7 @@ module.showBestTimes = function(
 				text = otherText,
 				kind = otherKind,
 				warpToSignId = useWarpToSignId,
+				highlightSignId = useHighlightTargetSignId,
 			})
 		end
 	end

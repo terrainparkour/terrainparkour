@@ -56,7 +56,7 @@ module.getChannelDefinitions = function(): { channelDefinition }
 	local doNotCheckInGameIdentifier = require(game.ReplicatedStorage:FindFirstChild("doNotCheckInGameIdentifier"))
 	if doNotCheckInGameIdentifier.useTestDb() then
 		joinMessage =
-			"WARNING. This is the test game. Records and other items will be WIPED.  No guarantee of progress.  Also things will be broken.  WARNING\nWARNING.\nz to FallDown"
+			"WARNING. This is the test game. Records and other items will be WIPED.  No guarantee of progress.  Also things will be broken.  WARNING."
 	end
 
 	local serverTime = os.date("Server Time: %H:%M %d-%m-%Y", tick())

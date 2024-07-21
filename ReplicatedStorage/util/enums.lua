@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.231 July 2024"
+module.gameVersion = "1.234 July 21 2024"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -620,6 +620,11 @@ module.ExcludeSignNamesFromEndingAt = {
 
 --random race cannot start from these for preservation of sanctity reasons.
 module.ExcludeSignNamesFromStartingAt = {
+	"👻",
+	"💀",
+	"👍",
+	"🔥",
+	"Ø",
 	"Chirality",
 	"007",
 	"65536",
@@ -686,6 +691,7 @@ module.ExcludeSignNamesFromStartingAt = {
 	"Chomik",
 	"Neandertal",
 }
+
 local SignIdIsExcludedFromStart: { [number]: boolean } = {}
 module.SignIdIsExcludedFromStart = SignIdIsExcludedFromStart
 for ii, signName in ipairs(module.ExcludeSignNamesFromStartingAt) do

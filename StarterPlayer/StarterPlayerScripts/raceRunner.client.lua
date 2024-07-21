@@ -337,7 +337,7 @@ local function clientTouchedSign(humanoid: Humanoid, sign: BasePart)
 			--reset this otherwise they'll be permanently blocked from running.
 			--since we return early here.
 			clientTouchDebounce[pn] = false
-			annotate("blocked due to iswarping.")
+			annotate("blocked due to isAlreadyWarping.")
 			modeChanger.freeModeChangeLock("starting run from " .. sign.Name)
 			return false
 		end
@@ -349,6 +349,7 @@ local function clientTouchedSign(humanoid: Humanoid, sign: BasePart)
 			--so really, we just have to remember that after that one is done (the actual setup one)
 			--we just replay the request again and update the start time,
 			--but we don't have to do all the modification stuff.
+			ResetAllMovement("reset time.")
 			dynamicRunning.resetDynamicTiming(touchTimeTick)
 		else
 			--this block is for actual new unique setup.

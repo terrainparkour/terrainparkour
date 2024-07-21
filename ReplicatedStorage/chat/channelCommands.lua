@@ -582,9 +582,9 @@ module.randomRace = function(speaker: Player, channel): boolean
 				end
 				table.insert(existingSignIdChoices, signId)
 			end
-			print("out.")
+			-- print("out.")
 			signIdChoices = existingSignIdChoices
-			print("filtered first sign choices down to: ", signIdChoices)
+			-- print("filtered first sign choices down to: ", signIdChoices)
 		end
 
 		if #signIdChoices < 1 then
@@ -606,7 +606,7 @@ module.randomRace = function(speaker: Player, channel): boolean
 			end
 
 			if candidateSignId2 ~= candidateSignId1 then
-				print("diff, keeping.", candidateSignId1, candidateSignId2)
+				-- print("diff, keeping.", candidateSignId1, candidateSignId2)
 				break
 			end
 			tries = tries + 1
