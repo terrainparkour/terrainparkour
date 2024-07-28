@@ -2,19 +2,9 @@
 
 --2024.08 simplified everything to use serverwarp.
 --also added highlighting.
-local annotationStart = tick()
-local doAnnotation = false
 
-local function annotate(s: string)
-	if doAnnotation then
-		if typeof(s) == "string" then
-			print("serverWarping: " .. string.format("%.1fs ", tick() - annotationStart) .. "text:" .. s)
-		else
-			print("serverWarping: " .. string.format("%.1fs ", tick() - annotationStart) .. " : " .. tostring(s))
-			print(s)
-		end
-	end
-end
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local remotes = require(game.ReplicatedStorage.util.remotes)
@@ -43,10 +33,10 @@ local function CreateTemporaryLightPillar(pos: Vector3, desc: string)
 	elseif desc == "destination" then
 		part.Color = Color3.fromRGB(160, 250, 160)
 	else
-		annotate("bad")
+		_annotate("bad")
 	end
 
-	spawn(function()
+	task.spawn(function()
 		while true do
 			wait(1 / 37)
 			part.Transparency = part.Transparency + 0.009
@@ -59,32 +49,25 @@ local function CreateTemporaryLightPillar(pos: Vector3, desc: string)
 end
 
 local function InnerWarp(player: Player, pos: Vector3, randomize: boolean): boolean
-	annotate("innerwarp.")
-	annotate("invoke Client:serverWantsWarpFunction .")
-	serverWantsWarpFunction:InvokeClient(player)
 	if randomize then
 		pos = pos + Vector3.new(math.random(5), 25 + math.random(10), math.random(5))
 	end
 	if not player then
-		annotate("innerwarp.player nil")
+		_annotate("innerwarp.player nil")
 		return false
 	end
 	if not player.Character then
-		annotate("innerwarp.char nil")
+		_annotate("innerwarp.char nil")
 		return false
 	end
 	local character = player.Character or player.CharacterAdded:Wait()
 	if not character.HumanoidRootPart then
-		annotate("innerwarp.HRP nil")
+		_annotate("innerwarp.HRP nil")
 		return false
 	end
 	local rootPart = character.HumanoidRootPart
 
 	CreateTemporaryLightPillar(rootPart.Position, "source")
-
-	--TODO this is for cleaning up humanoid states. But it would be nice if it was cleaner
-	--i.e. cleaning up swimming state etc.
-
 	local hum = character:WaitForChild("Humanoid") :: Humanoid
 	hum:ChangeState(Enum.HumanoidStateType.GettingUp)
 
@@ -100,20 +83,20 @@ local function InnerWarp(player: Player, pos: Vector3, randomize: boolean): bool
 			or state == Enum.HumanoidStateType.Dead
 			or state == Enum.HumanoidStateType.Swimming
 		then
-			annotate("state passed.")
+			_annotate("state passed.")
 			break
 		end
 
 		wait(0.1)
-		annotate("while true loop")
+		_annotate("while true loop")
 	end
 	--actually move AFTER momentum gone.
-	annotate("Actually changing CFrame")
+	_annotate("Actually changing CFrame")
 	rootPart.CFrame = CFrame.new(pos)
-	annotate("Changed CFrame")
+	_annotate("Changed CFrame")
 
 	CreateTemporaryLightPillar(pos, "destination")
-	annotate("innerWarp done")
+	_annotate("innerWarp done")
 	return true
 end
 
@@ -146,30 +129,30 @@ module.WarpToSignName = function(player, signName: string)
 end
 
 --make this also warpable to signNumber
-module.WarpToSignId = function(player: Player, signId: number): boolean
-	annotate("start warpToSignId.")
+module.WarpToSignId = function(player: Player, signId: number)
 	if not signId then --do nothing, this was a reflected playerwarp (?)
-		annotate("no signId.")
+		warn("no signId.")
 		return false
 	end
 	local pos = tpUtil.signId2Position(signId) :: Vector3
 	if not pos then
-		annotate("no POS?")
+		_annotate("no POS?" .. tostring(signId))
 		return false
 	end
-	annotate("starting InnerWarp")
+	_annotate("starting InnerWarp")
 	local innerWarpRes = InnerWarp(player, pos, true)
-	annotate("end WarpToSignId with res: " .. tostring(innerWarpRes))
+	_annotate("end WarpToSignId with res: " .. tostring(innerWarpRes))
 	return innerWarpRes
 end
 
 module.init = function()
-	local warpRequestFunction = remotes.getRemoteFunction("warpRequestFunction")
+	local WarpRequestFunction = remotes.getRemoteFunction("WarpRequestFunction")
 	--when player clicks warp to <sign> they fire this event and go.
-	warpRequestFunction.OnServerInvoke = function(player: Player, signId: number): any
-		annotate("warpRequestFunction.OnServerInvoke")
+	WarpRequestFunction.OnServerInvoke = function(player: Player, signId: number): any
+		_annotate("WarpRequestFunction.OnServerInvoke")
 		module.WarpToSignId(player, signId)
 	end
 end
 
+_annotate("end")
 return module

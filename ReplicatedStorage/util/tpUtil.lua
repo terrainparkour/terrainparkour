@@ -1,8 +1,8 @@
 --!strict
 
---eval 9.21
-
 --why this naming? because the chat modules also have a script named 'util' which messes things up.
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 local enums = require(game.ReplicatedStorage.util.enums)
@@ -91,11 +91,11 @@ module.signId2signName = function(signId: number): string
 	return res
 end
 
-module.signId2Sign = function(signId: number): Part
+module.signId2Sign = function(signId: number): Part?
 	return game.Workspace:WaitForChild("Signs"):FindFirstChild(enums.signId2name[signId])
 end
 
-module.signName2Sign = function(signName: string): Part
+module.signName2Sign = function(signName: string): Part?
 	return game.Workspace:WaitForChild("Signs"):FindFirstChild(signName)
 end
 
@@ -264,7 +264,9 @@ end
 
 --ie is the sign disabled somehow?
 module.isSignPartValidRightNow = function(sign: Part): boolean
-	return sign.CanCollide and sign.CanTouch and sign.CanQuery
+	local res = sign.CanCollide and sign.CanTouch and sign.CanQuery
+	return res
 end
 
+_annotate("end")
 return module

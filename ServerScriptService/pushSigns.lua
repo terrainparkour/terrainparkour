@@ -1,6 +1,7 @@
 --!strict
---eval 9.25.22
 
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 local rdb = require(game.ServerScriptService.rdb)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
@@ -44,4 +45,5 @@ module.checkSignsNeedingPushing = function()
 	end
 end
 
+_annotate("end")
 return module

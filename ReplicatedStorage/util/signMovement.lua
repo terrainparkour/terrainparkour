@@ -1,7 +1,10 @@
 --!strict
 
 --copied onto signs which rotate.
---eval 9.24.22
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
+local doNotCheckInGameIdentifier = require(game.ReplicatedStorage.doNotCheckInGameIdentifier)
 
 local sendMessageModule = require(game.ReplicatedStorage.chat.sendMessage)
 local sm = sendMessageModule.sendMessage
@@ -16,11 +19,14 @@ module.rotate = function(sign: Part)
 		warn("no sign2")
 		return
 	end
-	spawn(function()
+	task.spawn(function()
 		while true do
+			if not sign then
+				return
+			end
 			for deg = 0, 360 do
 				sign.Rotation = Vector3.new(0, -1 * deg, 0)
-				wait()
+				wait(1)
 			end
 		end
 	end)
@@ -31,11 +37,14 @@ module.rotateMeshpart = function(sign: MeshPart)
 		warn("no sign3")
 		return
 	end
-	spawn(function()
+	task.spawn(function()
+		if not sign then
+			return
+		end
 		while true do
 			for deg = 0, 360 do
 				sign.Rotation = Vector3.new(0, -1 * deg, 0)
-				wait()
+				wait(1)
 			end
 		end
 	end)
@@ -46,7 +55,10 @@ module.riseandspin = function(sign: Part)
 		warn("no sign4")
 		return
 	end
-	spawn(function()
+	task.spawn(function()
+		if not sign then
+			return
+		end
 		local orig = sign.Position
 		local vec = Vector3.new(0, 200, 0)
 		sign.Position = Vector3.new(orig.X + vec.X, orig.Y + vec.Y, orig.Z + vec.Z)
@@ -66,11 +78,13 @@ end
 
 --following for 007 mystery sign.
 module.fadeInSign = function(sign: Part)
-	if not sign and config.isInStudio() then
-		warn("no sign5")
+	if not sign then
+		if config.isInStudio() and not config.isTestGame() then
+			warn("no sign5")
+		end
 		return
 	end
-	spawn(function()
+	task.spawn(function()
 		while sign.Transparency > 0 do
 			sign.Transparency -= 0.01
 			wait(0.03)
@@ -100,7 +114,7 @@ module.fadeOutSign = function(sign: Part?, first: boolean)
 	assert(sg)
 	sg.Enabled = false
 
-	spawn(function()
+	task.spawn(function()
 		while sign.Transparency < 1 do
 			sign.Transparency += 0.01
 			wait(0.03)
@@ -113,6 +127,8 @@ module.fadeOutSign = function(sign: Part?, first: boolean)
 		sm(channel, "007 has disappeared")
 	end
 end
+
+--this is some wild stuff about randomized terrain.
 
 local terrainChoices = {
 	Enum.Material.Cobblestone,
@@ -138,7 +154,6 @@ angleMap[Enum.Material.Ground] = Vector3.new(-10, 0, 0)
 angleMap[Enum.Material.Ice] = Vector3.new(15, 0, 0)
 
 module.setupGrowingDistantPinnacle = function()
-	local doNotCheckInGameIdentifier = require(game.ReplicatedStorage:FindFirstChild("doNotCheckInGameIdentifier"))
 	local target = Vector3.new(861.401, -129.206, 6254.898)
 	local addVector = Vector3.new(3, 1, 17)
 	local ballSize = 10
@@ -160,7 +175,7 @@ module.setupGrowingDistantPinnacle = function()
 		mult = 0.01
 	end
 
-	spawn(function()
+	task.spawn(function()
 		local additions = 0
 		while true do
 			local ter = rndTerrain()
@@ -178,4 +193,5 @@ module.setupGrowingDistantPinnacle = function()
 	end)
 end
 
+_annotate("end")
 return module

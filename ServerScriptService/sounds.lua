@@ -1,5 +1,8 @@
 --!strict
 
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 
 local module = {}
@@ -33,7 +36,7 @@ local function init()
 	for soundName, soundAssetId in pairs(sounds) do
 		local sound = getSound(soundAssetId)
 		sound.Name = soundName
-		-- print("preloading: " .. soundName)
+		_annotate("preloading: " .. soundName)
 		sound:Play() -- Preload the sound by playing it once
 		sound:Stop() -- Immediately stop the sound to prevent it from being heard
 	end
@@ -46,10 +49,10 @@ local function playSoundFromSign(sign: Part, soundName: string)
 	sound.Name = soundName
 	local exi = sign:FindFirstChild(soundName) :: Sound
 	if exi then
-		-- print("replaying old one.", sign.Name)
+		_annotate("replaying old one.", sign.Name)
 		exi:Play()
 	else
-		print("adding and play..", sign.Name)
+		_annotate("adding and play..", sign.Name)
 		sound.Parent = sign
 		sound:Play()
 	end
@@ -57,4 +60,5 @@ end
 
 module.playSoundFromSign = playSoundFromSign
 
+_annotate("end")
 return module

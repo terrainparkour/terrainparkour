@@ -1,7 +1,5 @@
 --!strict
 
---eval 9.25.22
-
 --[[
 	Author: @spotco
 	This script creates sounds which are placed under the character head.
@@ -10,7 +8,10 @@
 	To modify this script, copy it to your "StarterPlayer/StarterCharacterScripts" folder keeping the same script name ("Sound").
 	The default Sound script loaded for every character will then be replaced with your copy of the script.
 ]]
---
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
@@ -49,7 +50,7 @@ local function CreateNewSound(name, id, looped, pitch, parent, volume: number?)
 		volume = 0.65
 	end
 	sound.Volume = volume
-	-- print(name)
+	_annotate(name)
 	-- print(sound.Volume)
 	sound.Parent = parent
 
@@ -95,3 +96,4 @@ CreateNewSound("Splash", "rbxasset://sounds/impact_water.mp3", false, 1, head)
 CreateNewSound("Running", "rbxassetid://" .. tostring(audio.audios.runningConcrete.assetId), true, 1, head)
 CreateNewSound("Swimming", "rbxassetid://" .. tostring(audio.audios.runningMuddy.assetId), true, 1, head, 0.15)
 CreateNewSound("Climbing", "rbxasset://sounds/action_footsteps_plastic.mp3", true, 1, head)
+_annotate("end")

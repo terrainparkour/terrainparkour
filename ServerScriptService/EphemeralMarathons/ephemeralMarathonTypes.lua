@@ -1,6 +1,7 @@
 --!strict
---1.020 feb 25 22
---eval 9.24.22
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 export type createEphemeralMarathonResponse = { result: string }
 
@@ -42,4 +43,5 @@ export type emRunResults = {
 	run: lbUpdateFromEphemeralMarathonRun,
 }
 
+_annotate("end")
 return {}

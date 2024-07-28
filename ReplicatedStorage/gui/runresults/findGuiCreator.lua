@@ -1,10 +1,11 @@
 --!strict
 
---eval 9.21
+--player localscripts call this to generate a raceresult UI.
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
-
---player localscripts call this to generate a raceresult UI.
 
 local colors = require(game.ReplicatedStorage.util.colors)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
@@ -97,7 +98,8 @@ module.createFindScreenGui = function(options: tt.signFindOptions): ScreenGui
 	detailsTl.TextXAlignment = Enum.TextXAlignment.Center
 
 	--other finders of this sign
-	local finderMessageTl = guiUtil.getTl("02" .. finderMessage, UDim2.new(0.7, 0, 1, 0), 2, finderHFrame, colors.meColor, 1)
+	local finderMessageTl =
+		guiUtil.getTl("02" .. finderMessage, UDim2.new(0.7, 0, 1, 0), 2, finderHFrame, colors.meColor, 1)
 	finderMessageTl.Text = finderMessage
 	finderMessageTl.TextXAlignment = Enum.TextXAlignment.Center
 
@@ -131,4 +133,5 @@ module.createFindScreenGui = function(options: tt.signFindOptions): ScreenGui
 	return newFindSgui
 end
 
+_annotate("end")
 return module

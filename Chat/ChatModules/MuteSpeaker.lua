@@ -2,7 +2,8 @@
 --	// Written by: TheGamer101
 --	// Description: Module that handles all the mute and unmute commands.
 
---eval 9.24
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local Chat = game:GetService("Chat")
 local ReplicatedModules = Chat:WaitForChild("ClientChatModules")
@@ -90,5 +91,5 @@ local function Run(ChatService)
 
 	ChatService:RegisterProcessCommandsFunction("mute_commands", MuteCommandsFunction, ChatConstants.StandardPriority)
 end
-
+_annotate("end")
 return Run

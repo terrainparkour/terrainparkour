@@ -1,9 +1,9 @@
 --!strict
---eval 9.24.22
-
---9.24.22 is this even used? no.
 
 --monitors locations of players continuously
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
@@ -15,7 +15,8 @@ local playerLocations: { Vector3 } = {}
 
 module.init = function()
 	--this is disabled now.
-	spawn(function()
+	task.spawn(function()
+		_annotate("starting player location monitor.")
 		while true do
 			wait(1)
 			for _, player in ipairs(game.Players:GetPlayers()) do
@@ -43,7 +44,7 @@ end
 --for hacking sign found status.
 local forceSpawnJumpingToUnfound = false
 if forceSpawnJumpingToUnfound then
-	spawn(function()
+	task.spawn(function()
 		local PlayersService = game:GetService("Players")
 		wait(3)
 		local players = PlayersService:GetPlayers()
@@ -83,4 +84,6 @@ if forceSpawnJumpingToUnfound then
 		end
 	end)
 end
+
+_annotate("end")
 return module

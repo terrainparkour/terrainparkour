@@ -1,6 +1,7 @@
 --!strict
 
---eval 9.24.22
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local PlayersService = game:GetService("Players")
 local emt = require(game.ServerScriptService.EphemeralMarathons.ephemeralMarathonTypes)
@@ -8,13 +9,6 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
 local config = require(game.ReplicatedStorage.config)
-
-local doAnnotation = false
-local function annotate(s: string)
-	if doAnnotation then
-		print("notify.server: " .. string.format("%.0f", tick()) .. " : " .. s)
-	end
-end
 
 local module = {}
 
@@ -24,29 +18,21 @@ local messageReceivedEvent = re.getRemoteEvent("MessageReceivedEvent")
 --internal method to actually send notifications.
 
 module.notifyPlayerAboutMarathonResults = function(player: Player, options: tt.pyUserFinishedRunResponse)
-	spawn(function()
-		messageReceivedEvent:FireClient(player, options)
-	end)
+	messageReceivedEvent:FireClient(player, options)
 end
 
 module.notifyPlayerAboutBadge = function(player: Player, options: tt.badgeOptions)
-	-- print("badge notif")
-	-- print(options)
-	spawn(function()
-		messageReceivedEvent:FireClient(player, options)
-	end)
+	_annotate("badge notif")
+	_annotate(options)
+	messageReceivedEvent:FireClient(player, options)
 end
 
 module.notifyPlayerOfRunResults = function(player: Player, options: tt.pyUserFinishedRunResponse)
-	spawn(function()
-		messageReceivedEvent:FireClient(player, options)
-	end)
+	messageReceivedEvent:FireClient(player, options)
 end
 
 module.notifyPlayerOfSignFind = function(player: Player, options: tt.signFindOptions)
-	spawn(function()
-		messageReceivedEvent:FireClient(player, options)
-	end)
+	messageReceivedEvent:FireClient(player, options)
 end
 
 module.notifyPlayerOfEphemeralMarathonRun = function(player: Player, res: emt.emRunResults)
@@ -73,7 +59,7 @@ module.handleActionResults = function(actionResults: { tt.actionResult })
 		end
 		local arSubjectPlayer = tpUtil.getPlayerByUserId(arSubjectUserId)
 		if arSubjectPlayer == nil then
-			-- annotate("player was not in server, this is okay.")
+			-- _annotate("player was not in server, this is okay.")
 			continue
 		end
 		if actionResult.notifyAllExcept then
@@ -120,9 +106,8 @@ module.handleActionResults = function(actionResults: { tt.actionResult })
 end
 
 module.notifyPlayerAboutActionResult = function(player: Player, options: tt.ephemeralNotificationOptions)
-	spawn(function()
-		messageReceivedEvent:FireClient(player, options)
-	end)
+	messageReceivedEvent:FireClient(player, options)
 end
 
+_annotate("end")
 return module

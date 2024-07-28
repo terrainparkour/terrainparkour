@@ -1,8 +1,9 @@
 --!strict
 --fps monitor- mostly unreliable
-
---eval 9.25.22
 --DISABLED
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local config = require(game.ReplicatedStorage.config)
 
@@ -41,15 +42,16 @@ local function HeartbeatUpdate()
 	st = st2
 	-- print(lastFrames)
 end
-spawn(function()
+task.spawn(function()
 	wait(15)
 	RunService.Heartbeat:Connect(HeartbeatUpdate)
 end)
 
-spawn(function()
+task.spawn(function()
 	while true do
 		wait(10) --
 		print("physics FPS" .. tostring(game.Workspace:GetRealPhysicsFPS()))
 		break
 	end
 end)
+_annotate("end")

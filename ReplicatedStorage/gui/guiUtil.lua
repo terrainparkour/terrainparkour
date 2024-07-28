@@ -1,8 +1,8 @@
 --!strict
 
---eval 9.21
-
 --2022 centralize to this game's ui style.
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
@@ -46,7 +46,7 @@ module.getTl = function(
 	innerTl.Position = UDim2.new(0, padding, 0, padding)
 	innerTl.BackgroundColor3 = bgcolor
 	innerTl.BorderSizePixel = 0
-	innerTl.AutoLocalize=true
+	innerTl.AutoLocalize = true
 	if transparency ~= 0 then
 		innerTl.BackgroundTransparency = 1
 	end
@@ -77,7 +77,7 @@ module.getTb = function(
 	if transparency == nil then
 		transparency = 0
 	end
-	assert(transparency~=nil)
+	assert(transparency ~= nil)
 	local outerTb = Instance.new("TextButton")
 	outerTb.ZIndex = 1
 	outerTb.TextTransparency = 1
@@ -130,7 +130,7 @@ module.setupKillOnClick = function(sgui: ScreenGui, excludeElementName: string?,
 	invisibleCloseModalButton.Activated:Connect(function()
 		sgui:Destroy()
 	end)
-	invisibleCloseModalButton.ZIndex=10
+	invisibleCloseModalButton.ZIndex = 10
 end
 
 --pixel-sized udim creator
@@ -143,4 +143,5 @@ module.s = function(xscale: number, yscale: number): UDim2
 	return UDim2.new(xscale, 0, yscale, 0)
 end
 
+_annotate("end")
 return module

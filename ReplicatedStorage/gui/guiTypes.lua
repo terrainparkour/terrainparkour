@@ -1,6 +1,7 @@
 --!strict
 
---eval 9.21
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
@@ -14,4 +15,5 @@ export type actionButton = {
 	widthPixels: number,
 }
 
+_annotate("end")
 return module

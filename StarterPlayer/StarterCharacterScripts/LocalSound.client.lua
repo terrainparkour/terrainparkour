@@ -1,7 +1,5 @@
 --!strict
 
---eval 9.25.22
-
 --[[
 	Author: @spotco
 	This script runs locally for the player of the given humanoid.
@@ -12,7 +10,9 @@
 
 	This script is optimized to reduce network traffic through minimizing the amount of property replication.
 ]]
---
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 --All sounds are referenced by this ID
 local SFX = {
@@ -405,3 +405,4 @@ do
 		wait(TICK_SPEED_SECONDS)
 	end
 end
+_annotate("end")

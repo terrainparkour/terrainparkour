@@ -1,6 +1,7 @@
 --!strict
 
---eval 9.25.22
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
@@ -11,13 +12,6 @@ local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
-
-local doAnnotation = false
-local function annotate(s): nil
-	if doAnnotation then
-		print("marathon.client: " .. string.format("%.0f", tick()) .. " : " .. s)
-	end
-end
 
 ---------STATIC--------------
 -------NAMES----------
@@ -246,4 +240,5 @@ end
 
 ------------END STATIC
 
+_annotate("end")
 return module

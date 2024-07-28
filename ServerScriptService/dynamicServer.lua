@@ -1,5 +1,7 @@
 --!strict
---eval 9.24.22
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local PlayersService = game:GetService("Players")
 local tt = require(game.ReplicatedStorage.types.gametypes)
@@ -13,20 +15,6 @@ local signs: Folder = game.Workspace:FindFirstChild("Signs")
 local dynamicRunningEnums = require(game.ReplicatedStorage.dynamicRunningEnums)
 
 local module = {}
-
-local doAnnotation = false
--- doAnnotation = true
-local annotationStart = tick()
-local function annotate(s: string)
-	if doAnnotation then
-		if typeof(s) == "string" then
-			print("dynamicRunning.Client: " .. string.format("%.0f", tick() - annotationStart) .. " : " .. s)
-		else
-			print("dynamicRunning.Client.object: " .. string.format("%.0f", tick() - annotationStart) .. " : ")
-			print(s)
-		end
-	end
-end
 
 local function getPositionByUserId(userId: number): Vector3?
 	local player = PlayersService:GetPlayerByUserId(userId)
@@ -102,7 +90,7 @@ local function dynamicControlServer(player: Player, input: tt.dynamicRunningCont
 
 		activeLoopMarkers[input.userId] = input.fromSignId
 
-		spawn(function()
+		task.spawn(function()
 			local sentSignIds: { [number]: boolean } = {}
 			-- print("starting dynamic run for: " .. tostring(player.Name .. tostring(input.fromSignId)))
 			while true do
@@ -118,7 +106,7 @@ local function dynamicControlServer(player: Player, input: tt.dynamicRunningCont
 					break
 				end
 				if pos == nil then
-					annotate("player left." .. tostring(userId))
+					_annotate("player left." .. tostring(userId))
 					break
 				end
 				assert(pos)
@@ -143,7 +131,7 @@ local function dynamicControlServer(player: Player, input: tt.dynamicRunningCont
 					--send frames out.
 					local player = PlayersService:GetPlayerByUserId(userId)
 					local s, e = pcall(function()
-						annotate("fire frames to client.")
+						_annotate("fire frames to client.")
 						dynamicRunningEvent:FireClient(player, frames)
 					end)
 					if not s then
@@ -165,4 +153,5 @@ module.init = function()
 	dynamicRunningEvent.OnServerEvent:Connect(dynamicControlServer)
 end
 
+_annotate("end")
 return module

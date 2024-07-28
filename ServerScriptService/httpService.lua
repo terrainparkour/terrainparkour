@@ -1,5 +1,7 @@
 --!strict
---eval 9.25.22
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local config = require(game.ReplicatedStorage.config)
 
@@ -13,7 +15,7 @@ local httpPerMinMax = 480
 local httpaddPerTime = math.floor(httpPerMinMax / 60)
 local waitTime = 0.3
 
-spawn(function()
+task.spawn(function()
 	while true do
 		httpremaining = math.min(httpPerMinMax, httpremaining + httpaddPerTime)
 		wait(1)
@@ -38,7 +40,7 @@ local postWaitCounter = 0
 
 local doHttpMonitoring = false
 
-spawn(function()
+task.spawn(function()
 	if not doHttpMonitoring then
 		return
 	end
@@ -191,4 +193,5 @@ module.httpThrottledJsonPost = function(url: string, data: any): any
 	end
 end
 
+_annotate("end")
 return module

@@ -1,7 +1,9 @@
 --!strict
 
---eval 9.24.22
 --NOT WORKING, but should. TODO fix, not working for months now.
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local notify = require(game.ReplicatedStorage.notify)
 local lbupdater = require(game.ServerScriptService.lbupdater)
@@ -62,7 +64,7 @@ end
 local serverInvokeEphemeralMarathonComplete = function(player: Player, marathonId: number, runMilliseconds: number)
 	local can = findEphemeralMarathon(marathonId)
 	if can == nil then
-		print("no such")
+		_annotate("no such")
 		return
 	end
 	local em: mt.ephemeralMarathon = can :: mt.ephemeralMarathon
@@ -92,4 +94,5 @@ module.init = function()
 	ephemeralMarathonCreateFunction.OnServerInvoke = serverInvokeCreateEphemeralMarathon
 end
 
+_annotate("end")
 return module

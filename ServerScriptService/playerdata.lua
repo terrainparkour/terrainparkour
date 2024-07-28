@@ -1,7 +1,8 @@
 --!strict
 
---eval 9.25.22
 --generic getters for player information for use by commands or UIs or LBs
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
@@ -328,4 +329,5 @@ module.describeRaceHistoryMultilineText = function(
 	return entries
 end
 
+_annotate("end")
 return module

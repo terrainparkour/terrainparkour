@@ -1,61 +1,49 @@
 --!strict
 
---eval 9.25.22
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
-module.init = function()
-	local PhysicsService = game:GetService("PhysicsService")
-	local PlayersService = game:GetService("Players")
+local PhysicsService = game:GetService("PhysicsService")
+local Players = game:GetService("Players")
 
-	local playerCollisionGroupName = "Players"
-	PhysicsService:CreateCollisionGroup(playerCollisionGroupName)
-	PhysicsService:CollisionGroupSetCollidable(playerCollisionGroupName, playerCollisionGroupName, false)
+local PLAYER_GROUP = "Players"
 
-	local previousCollisionGroups = {}
+PhysicsService:RegisterCollisionGroup(PLAYER_GROUP)
+PhysicsService:CollisionGroupSetCollidable(PLAYER_GROUP, PLAYER_GROUP, false)
 
-	local function setCollisionGroup(object)
-		if object:IsA("BasePart") then
-			previousCollisionGroups[object] = object.CollisionGroupId
-			PhysicsService:SetPartCollisionGroup(object, playerCollisionGroupName)
+local function setPlayerCollisionGroup(character)
+	for _, part: BasePart in ipairs(character:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.CollisionGroup = PLAYER_GROUP
 		end
 	end
-
-	local function setCollisionGroupRecursive(object)
-		setCollisionGroup(object)
-
-		for _, child in ipairs(object:GetChildren()) do
-			setCollisionGroupRecursive(child)
-		end
-	end
-
-	local function resetCollisionGroup(object)
-		local previousCollisionGroupId = previousCollisionGroups[object]
-		if not previousCollisionGroupId then
-			return
-		end
-
-		local previousCollisionGroupName = PhysicsService:GetCollisionGroupName(previousCollisionGroupId)
-		if not previousCollisionGroupName then
-			return
-		end
-
-		PhysicsService:SetPartCollisionGroup(object, previousCollisionGroupName)
-		previousCollisionGroups[object] = nil
-	end
-
-	local function onCharacterAdded(character)
-		setCollisionGroupRecursive(character)
-
-		character.DescendantAdded:Connect(setCollisionGroup)
-		character.DescendantRemoving:Connect(resetCollisionGroup)
-	end
-
-	local function onPlayerAdded(player)
-		player.CharacterAdded:Connect(onCharacterAdded)
-	end
-
-	PlayersService.PlayerAdded:Connect(onPlayerAdded)
 end
 
+local function onCharacterAdded(character)
+	setPlayerCollisionGroup(character)
+	character.DescendantAdded:Connect(function(descendant: BasePart)
+		if descendant:IsA("BasePart") then
+			descendant.CollisionGroup = PLAYER_GROUP
+		end
+	end)
+end
+
+local function onPlayerAdded(player)
+	player.CharacterAdded:Connect(onCharacterAdded)
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+
+-- Handle existing players
+for _, player in ipairs(Players:GetPlayers()) do
+	if player.Character then
+		onCharacterAdded(player.Character)
+	end
+end
+
+module.init = function() end
+
+_annotate("end")
 return module

@@ -1,5 +1,7 @@
 --!strict
 
+--according to channel setup definitions do the thing.
+
 local channeldefinitions = require(game.ReplicatedStorage.chat.channeldefinitions)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local banning = require(game.ServerScriptService.banning)
@@ -7,9 +9,6 @@ local banning = require(game.ServerScriptService.banning)
 local channels = {}
 local channelsSetUp = false
 
---eval 9.24
-
---according to channel setup definitions do the thing.
 local function Run(ChatService)
 	if channelsSetUp then
 		return

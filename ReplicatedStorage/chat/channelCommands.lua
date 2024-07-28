@@ -1,8 +1,7 @@
 --!strict
 
---2022.03 pulled out commands from channel definitions
---eval 9.21
-
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local grantBadge = require(game.ServerScriptService.grantBadge)
 local enums = require(game.ReplicatedStorage.util.enums)
@@ -42,10 +41,10 @@ local function GrandUndocumentedCommandBadge(userId: number)
 	GrandCmdlineBadge(userId)
 end
 
-local freedomBuffer = {}
-module.freedom = function(speaker: Player, channel)
-	freedomBuffer = {}
-end
+-- local freedomBuffer = {}
+-- module.freedom = function(speaker: Player, channel)
+-- 	freedomBuffer = {}
+-- end
 
 module.hint = function(speaker: Player, channel, parts: { string }): boolean
 	local target: string
@@ -232,13 +231,17 @@ module.missingWrs = function(speaker: Player, to: string, signId: number, channe
 	return true
 end
 
-local function getClosestSignToPlayer(player: Player): (number, Instance)
-	local root = player.Character:FindFirstChild("HumanoidRootPart")
+local function getClosestSignToPlayer(player: Player): Instance?
+	local character: Model? = player.Character or player.CharacterAdded:Wait() :: Model
+	if not character then
+		return nil
+	end
+	local root: Part? = character:FindFirstChild("HumanoidRootPart") :: Part
 	if not root then
-		warn("no humanoid in describe clsoest!")
+		return nil
 	end
 	local playerPos = root.Position
-	local bestsign = nil
+	local bestSign = nil
 	local bestdist = nil
 	for _, sign: Part in ipairs(workspace:WaitForChild("Signs"):GetChildren()) do
 		local signId = tpUtil.looseSignName2SignId(sign.Name)
@@ -248,10 +251,10 @@ local function getClosestSignToPlayer(player: Player): (number, Instance)
 		local dist = tpUtil.getDist(sign.Position, playerPos)
 		if bestdist == nil or dist < bestdist then
 			bestdist = dist
-			bestsign = sign
+			bestSign = sign
 		end
 	end
-	return bestdist, bestsign
+	return bestSign
 end
 
 local beckontimes = {}
@@ -268,7 +271,6 @@ module.beckon = function(speaker: Player, channel): boolean
 		end
 	end
 	beckontimes[speaker.UserId] = tick()
-	local d, s = getClosestSignToPlayer(speaker)
 	local players = PlayersService:GetPlayers()
 	local occupancySentence = ""
 	if #players == 1 then
@@ -279,16 +281,18 @@ module.beckon = function(speaker: Player, channel): boolean
 		occupancySentence = string.format(" The server has %d other players, too.", #players - 1)
 	end
 	local mat = "*unknown material"
-	local hum: Humanoid = speaker.Character:FindFirstChild("Humanoid")
+	local character: Model? = speaker.Character or speaker.CharacterAdded:Wait() :: Model
+	if not character then
+		error("no character.")
+	end
+	local hum: Humanoid? = character:FindFirstChild("Humanoid") :: Humanoid
 	if hum ~= nil then
 		mat = hum.FloorMaterial.Name
 	end
 	local msg = string.format(
-		"%s beckons you to join the server. They are standing on %s, %0.0fd from %s.%s",
+		"%s beckons you to join the server. They are standing on %s, %s",
 		speaker.Name,
 		mat,
-		d,
-		s.Name,
 		occupancySentence
 	)
 	rdb.beckon(speaker.UserId, msg)
@@ -391,9 +395,16 @@ module.time = function(speaker: Player, channel: any): boolean
 end
 
 module.chomik = function(speaker: Player, channel: any): boolean
-	local root = speaker.Character:FindFirstChild("HumanoidRootPart")
+	local character: Model? = speaker.Character or speaker.CharacterAdded:Wait() :: Model
+	if not character then
+		error("no character.")
+	end
+	local root = character:FindFirstChild("HumanoidRootPart") :: Part
+	if not root then
+		error("no root")
+	end
 	local signs: Folder = game.Workspace:FindFirstChild("Signs")
-	local chomik: Part = signs:FindFirstChild("Chomik")
+	local chomik: Part = signs:FindFirstChild("Chomik") :: Part
 	local dist = tpUtil.getDist(root.Position, chomik.Position)
 	local message = string.format("The Chomik is %dd away from %s", dist, speaker.Name)
 	sm(channel, message)
@@ -416,8 +427,8 @@ end
 -- 	return true
 -- end
 
+local doNotCheckInGameIdentifier = require(game.ReplicatedStorage:FindFirstChild("doNotCheckInGameIdentifier"))
 module.version = function(speaker: Player, channel: any): boolean
-	local doNotCheckInGameIdentifier = require(game.ReplicatedStorage:FindFirstChild("doNotCheckInGameIdentifier"))
 	local testMessage = ""
 	if doNotCheckInGameIdentifier.useTestDb() then
 		testMessage = " TEST VERSION, db will be wiped"
@@ -475,7 +486,7 @@ module.meta = function(speaker: Player, channel): boolean
 end
 
 module.closest = function(speaker: Player, channel): boolean
-	local bestdist, bestsign, y = getClosestSignToPlayer(speaker)
+	local bestsign: Instance? = getClosestSignToPlayer(speaker)
 	local message = ""
 	if bestsign == nil then
 		message = "You have not found any signs."
@@ -596,11 +607,11 @@ module.randomRace = function(speaker: Player, channel): boolean
 			candidateSignId1 = signIdChoices[math.random(#signIdChoices)]
 			candidateSignId2 = signIdChoices[math.random(#signIdChoices)]
 
-			if candidateSignId1 == nil or candidateSignId1 == "" then
+			if candidateSignId1 == nil then
 				print("bad sign 1")
 				continue
 			end
-			if candidateSignId2 == nil or candidateSignId2 == "" then
+			if candidateSignId2 == nil then
 				print("bad sign can 2id.")
 				continue
 			end
@@ -653,7 +664,7 @@ module.randomRace = function(speaker: Player, channel): boolean
 
 		--this thing notifies the channel about 15 second countdown ending.
 		if not reusingRace then
-			spawn(function()
+			task.spawn(function()
 				while true do
 					if candidateSignId1 ~= lastRandomSignId1 or candidateSignId2 ~= lastRandomSignId2 then
 						return
@@ -751,4 +762,5 @@ module.common = function(speaker: Player, channel): boolean
 	return true
 end
 
+_annotate("end")
 return module

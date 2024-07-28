@@ -1,11 +1,12 @@
 --!strict
+
 --a button that will pop a UI for showing popular top runs in game
---eval 9.25.22
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local PlayersService = game:GetService("Players")
-repeat
-	game:GetService("RunService").RenderStepped:wait()
-until game.Players.LocalPlayer.Character ~= nil
+
 local localPlayer = PlayersService.LocalPlayer
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
@@ -22,7 +23,7 @@ local thumbnails = require(game.ReplicatedStorage.thumbnails)
 
 local getNewRunsFunction = remotes.getRemoteFunction("GetNewRunsFunction")
 
-local warper = require(game.StarterPlayer.StarterPlayerScripts.util.warperClient)
+local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 
 local module = {}
 
@@ -98,7 +99,7 @@ local function makePopRowFrame(
 	ii: number,
 	parentSgui: ScreenGui,
 	scrollingFrame: ScrollingFrame,
-	warper: tt.warperWrapper
+	warper: (startSignId: number, endSignId: number) -> ()
 ): Frame
 	local fr = Instance.new("Frame")
 	-- fr.BorderMode = Enum.BorderMode.Inset
@@ -177,7 +178,7 @@ local function makePopRowFrame(
 		warp.Text = "Warp"
 
 		warp.Activated:Connect(function()
-			warper.requestWarpToSign(pop.startSignId, pop.endSignId)
+			warper(pop.startSignId, pop.endSignId)
 			lastCanvasPosition = scrollingFrame.CanvasPosition
 			parentSgui:Destroy()
 		end)
@@ -259,13 +260,15 @@ local function getPopularContents(player: Player, userIds: { number }): ScreenGu
 	vv.Parent = scrollingFrame
 
 	for ii, pop in ipairs(popResults) do
-		local rowFrame = makePopRowFrame(pop, ii, sg, scrollingFrame, {
-			requestWarpToSign = function(signId: number, highlightSignId: number?)
-				warper.requestWarpToSign(signId, nil)
-				--we make this new enclosure to make sure the type manager realizes taht in this case
-				--we don't care about the return value.
-			end,
-		})
+		local rowFrame = makePopRowFrame(
+			pop,
+			ii,
+			sg,
+			scrollingFrame,
+			warper.WarpToSign
+			--we make this new enclosure to make sure the type manager realizes taht in this case
+			--we don't care about the return value.
+		)
 		rowFrame.Parent = scrollingFrame
 	end
 
@@ -298,4 +301,5 @@ local newButton: gt.actionButton = {
 
 module.newButton = newButton
 
+_annotate("end")
 return module

@@ -1,6 +1,7 @@
 --!strict
 
---eval 9.24.22
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local mt = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonTypes)
@@ -13,13 +14,6 @@ local TweenService = game:GetService("TweenService")
 local colors = require(game.ReplicatedStorage.util.colors)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local module = {}
-
-local doAnnotation = false
-local function annotate(s): nil
-	if doAnnotation then
-		print("marathon.client: " .. string.format("%.0f", tick()) .. " : " .. s)
-	end
-end
 
 --return if you have found a sign of this length yet.
 local SignsOfLengthEvaluateFind = function(desc: mt.marathonDescriptor, signName: string): mt.userFoundSignResult
@@ -86,17 +80,17 @@ end
 
 --just adds sign if not a duplicate.
 local function DefaultAddSignToFinds(desc: mt.marathonDescriptor, signName: string): boolean
-	-- annotate("DefaultAddSignToFinds.start. " .. desc.kind .. signName)
+	-- _annotate("DefaultAddSignToFinds.start. " .. desc.kind .. signName)
 	local key = desc.kind .. "__" .. signName
 	if desc.addDebounce[key] then
-		-- annotate("DefaultAddSignToFinds.debounce. " .. desc.kind .. signName)
+		-- _annotate("DefaultAddSignToFinds.debounce. " .. desc.kind .. signName)
 		return false
 	end
 	desc.addDebounce[key] = true
 
 	for _, el in ipairs(desc.finds) do
 		if el.signName == signName then
-			-- annotate("DefaultAddSignToFinds.doible try. " .. desc.kind .. signName)
+			-- _annotate("DefaultAddSignToFinds.doible try. " .. desc.kind .. signName)
 			return false
 		end
 	end
@@ -107,7 +101,7 @@ local function DefaultAddSignToFinds(desc: mt.marathonDescriptor, signName: stri
 		findOrder = desc.count,
 	}
 	table.insert(desc.finds, targetFind)
-	-- annotate("DefaultAddSignToFinds.added-. " .. desc.kind .. signName .. " NOw have; " .. #desc.finds)
+	-- _annotate("DefaultAddSignToFinds.added-. " .. desc.kind .. signName .. " NOw have; " .. #desc.finds)
 	desc.addDebounce[key] = false
 	return true
 end
@@ -903,4 +897,5 @@ module.findsetthreeletter = mkFindSetMarathon(
 	10
 )
 
+_annotate("end")
 return module

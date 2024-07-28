@@ -1,16 +1,16 @@
 --!strict
 
---eval 9.25.22
 -- hide chat window and leaderboard when the user hits tab.
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local UserInputService = game:GetService("UserInputService")
 local showLB: boolean = true
 local showChat: boolean = true
 
 local PlayersService = game:GetService("Players")
-repeat
-	game:GetService("RunService").RenderStepped:wait()
-until game.Players.LocalPlayer.Character ~= nil
+
 local localPlayer = PlayersService.LocalPlayer
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local localFunctions = require(game.ReplicatedStorage.localFunctions)
@@ -95,3 +95,4 @@ end, "handleXButtonEffectSettingChanged")
 
 local sval = localFunctions.getSettingByName(settingEnums.settingNames.X_BUTTON_IGNORES_CHAT)
 handleUserSettingChanged(sval)
+_annotate("end")

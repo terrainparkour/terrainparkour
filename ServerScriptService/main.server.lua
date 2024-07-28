@@ -1,6 +1,8 @@
 --!strict
 
---eval 9.25.22
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+annotater.init()
 
 local nocol = require(game.ServerScriptService.nocollide)
 nocol.init()
@@ -13,6 +15,9 @@ local locationMonitor = require(game.ReplicatedStorage.locationMonitor)
 
 local setupSigns = require(game.ServerScriptService.setupSigns)
 setupSigns.init()
+
+local setupFindTouchMonitoring = require(game.ServerScriptService.setupFindTouchMonitoring)
+setupFindTouchMonitoring.init()
 
 local sounds = require(game.ServerScriptService.sounds)
 sounds.init()
@@ -35,8 +40,8 @@ ephemeralMarathon.init()
 locationMonitor.init()
 
 --include these to initialize listeners despite not being "used".
-local us = require(game.ServerScriptService.userSettings)
-us.init()
+local userSettings = require(game.ServerScriptService.userSettings)
+userSettings.init()
 
 local popularListener = require(game.ServerScriptService.data.popular)
 popularListener.init()
@@ -53,8 +58,14 @@ dynamic.init()
 local serverEvents = require(game.ServerScriptService.serverEvents)
 serverEvents.init()
 
-local serverwarping = require(game.ServerScriptService.serverWarping)
-serverwarping.init()
+local serverWarping = require(game.ServerScriptService.serverWarping)
+serverWarping.init()
+
+local raceEnding = require(game.ServerScriptService.raceEnding)
+raceEnding.init()
+
+local setupSpecialSigns = require(game.ServerScriptService.setupSpecialSigns)
+setupSpecialSigns.init()
 
 --how  does the game work?
 --good question.  mainly it's in lua client/server scripts, but via certain calls made from BE, you hit a python mysql db server you also have to have set up.  this is where all your real records and data are stored.
@@ -64,3 +75,4 @@ serverwarping.init()
 
 --will you make the backend open source too?
 --I'm thinking about this.  it's possible. it would be cool to see what people could do with this setup.
+_annotate("end")

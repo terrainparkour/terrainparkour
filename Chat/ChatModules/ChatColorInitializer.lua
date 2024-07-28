@@ -2,7 +2,8 @@
 --	// Written by: Xsitsu
 --	// Description: Module that sets some basic ExtraData such as name color, and chat color.
 
---eval 9.24
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local SpecialChatColors = {
 	Groups = {
@@ -158,4 +159,5 @@ local function Run(ChatService)
 	end)
 end
 
+_annotate("end")
 return Run

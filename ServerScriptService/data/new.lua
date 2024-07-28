@@ -1,6 +1,7 @@
 --!strict
 
---eval 9.24.22
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local rdb = require(game.ServerScriptService.rdb)
@@ -49,4 +50,5 @@ module.init = function()
 	end
 end
 
+_annotate("end")
 return module

@@ -1,6 +1,7 @@
 --!strict
 
---eval 9.25.22
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
@@ -40,4 +41,5 @@ export type marathonDescriptor = {
 	sequenceNumber: string, --for types whihc have multiple variants (find<N>, etc.) what seq number should it be?. for some use str(name) for others str(seq)
 }
 
+_annotate("end")
 return {}

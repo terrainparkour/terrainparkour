@@ -1,6 +1,7 @@
 --!strict
 
---eval 9.21
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
@@ -30,4 +31,5 @@ module.BadgeAttainmentSort = function(a: tt.badgeAttainment, b: tt.badgeAttainme
 	return module.BadgeSort(a.badge, b.badge)
 end
 
+_annotate("end")
 return module

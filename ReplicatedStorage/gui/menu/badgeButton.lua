@@ -1,6 +1,7 @@
 --!strict
 
---eval 9.24.22
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local PlayersService = game:GetService("Players")
 local colors = require(game.ReplicatedStorage.util.colors)
@@ -351,4 +352,5 @@ local badgeButton: gt.button = {
 
 module.badgeButton = badgeButton
 
+_annotate("end")
 return module

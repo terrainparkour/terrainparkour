@@ -1,6 +1,7 @@
 --!strict
 
---eval 9.21
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
@@ -27,4 +28,5 @@ music.marimbaloop = { assetId = 10800200350 }
 
 module.music = music
 
+_annotate("end")
 return module

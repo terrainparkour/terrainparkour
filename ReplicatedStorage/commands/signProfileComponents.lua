@@ -1,7 +1,9 @@
 --!strict
 
 --2022.03 pulled out commands from channel definitions
---eval 9.21
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
@@ -179,4 +181,5 @@ table.insert(rowGenerators, cwrProfiler)
 
 module.rowGenerators = rowGenerators
 
+_annotate("end")
 return module

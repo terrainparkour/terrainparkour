@@ -1,5 +1,8 @@
 --!strict
 
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
 local notify = require(game.ReplicatedStorage.notify)
 local badges = require(game.ServerScriptService.badges)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
@@ -43,7 +46,9 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 		if config.isInStudio() then
 			print("in studio, has is nil, why are we bailing" .. badge.name)
 		end
-		warn("failed to grant badge " .. tostring(userId) .. "  " .. badge.name)
+		if not config.isInStudio() then
+			warn("failed to grant badge " .. tostring(userId) .. "  " .. badge.name)
+		end
 		return false
 	end
 
@@ -64,7 +69,7 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 	end
 
 	local saveBadgeGrantRes = rdb.saveUserBadgeGrant(userId, badge.assetId, badge.name)
-	spawn(function()
+	task.spawn(function()
 		if saveBadgeGrantRes.priorAwardCount == 0 and badge.assetId ~= badgeEnums.badges.FirstBadgeWinner.assetId then
 			module.GrantBadge(userId, badgeEnums.badges.FirstBadgeWinner)
 		end
@@ -125,4 +130,5 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 	return true
 end
 
+_annotate("end")
 return module

@@ -1,9 +1,11 @@
 --!strict
 
---eval 9.24.22
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local rdb = require(game.ServerScriptService.rdb)
 local remoteDbInternal = require(game.ServerScriptService.remoteDbInternal)
+local remotes = require(game.ReplicatedStorage.util.remotes)
 
 local module = {}
 
@@ -46,8 +48,7 @@ module.hardBanUser = function(userId: number)
 end
 
 module.init = function()
-	local re = require(game.ReplicatedStorage.util.remotes)
-	local getBanStatusRemoteFunction = re.getRemoteFunction("GetBanStatusRemoteFunction")
+	local getBanStatusRemoteFunction = remotes.getRemoteFunction("GetBanStatusRemoteFunction")
 
 	getBanStatusRemoteFunction.OnServerInvoke = function(player: Player): any
 		local res = module.getBanLevel(player.UserId)
@@ -55,4 +56,5 @@ module.init = function()
 	end
 end
 
+_annotate("end")
 return module

@@ -1,9 +1,9 @@
 --!strict
 
---eval 9.24.22
-
 --bunch of text block renderers, annoyingly coupled with some game logic (rdb)
 --maybe shouuld be in a commands section instead?
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local rdb = require(game.ServerScriptService.rdb)
 local colors = require(game.ReplicatedStorage.util.colors)
@@ -183,4 +183,5 @@ module.generateTextForRankedList = function(
 	return messageItems
 end
 
+_annotate("end")
 return module

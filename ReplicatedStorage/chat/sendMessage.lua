@@ -1,9 +1,9 @@
 --!strict
 
---eval 9.24.22
-
 -- centralize all coms to player through this, for font/size/etc.
 
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 --simple method to write text to output. better than assembing a giant string all at once.
@@ -55,4 +55,5 @@ module.usageCommandDesc = [[Admin Command examples:
 /? - list all commands again.
 ]]
 
+_annotate("end")
 return module

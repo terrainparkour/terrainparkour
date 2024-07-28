@@ -1,15 +1,15 @@
 --!strict
 
 --this is about server-wide events particularly FIND and RUNs
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local enums = require(game.ReplicatedStorage.util.enums)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local remotes = require(game.ReplicatedStorage.util.remotes)
-local rdb = require(game.ServerScriptService.rdb)
 local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
 local config = require(game.ReplicatedStorage.config)
-local vscdebug = require(game.ReplicatedStorage.vscdebug)
 local rdb = require(game.ServerScriptService.rdb)
 local PlayersService = game:GetService("Players")
 local lbupdater = require(game.ServerScriptService.lbupdater)
@@ -23,7 +23,7 @@ local module = {}
 
 type ServerEventCreateType = { userId: number }
 
-local desc = [[
+local _desc = [[
   serverEvents are:
   anyone clicks a button which creates a random race serverside
   there's a UI which allows warping to start
@@ -57,24 +57,9 @@ end
 local serverEventNumberCounter = 1
 local activeRunningServerEvents: { tt.runningServerEvent } = {}
 
----------ANNOTATION----------------
-local doAnnotation = false
-doAnnotation = false
-local annotationStart = tick()
-local function annotate(s: string | any)
-	if doAnnotation then
-		if typeof(s) == "string" then
-			print("serverEvents.: " .. string.format("%.0f", tick() - annotationStart) .. " : " .. s)
-		else
-			print("serverEvents.object. " .. string.format("%.0f", tick() - annotationStart) .. " : ")
-			print(s)
-		end
-	end
-end
-
 --called every 5 seconds, polling on server.
 local function shouldEndServerEvent(event: tt.runningServerEvent): boolean
-	-- annotate("should end event?: " .. serverEventGuis.replServerEvent(event))
+	-- _annotate("should end event?: " .. serverEventGuis.replServerEvent(event))
 	event.remainingTick = event.startedTick + serverEventMaxLength - tick()
 
 	if event.remainingTick < 0 then
@@ -103,7 +88,7 @@ local function endServerEvent(serverEvent: tt.runningServerEvent): boolean
 	end
 	table.remove(activeRunningServerEvents, pos)
 	debounceEventUpdater = false
-	annotate("senidng end from server for: " .. serverEvent.name)
+	_annotate("senidng end from server for: " .. serverEvent.name)
 	serverEventRemoteEvent:FireAllClients(serverEventEnums.messageTypes.END, serverEvent)
 	local allocations = serverEventEnums.getTixAllocation(serverEvent)
 
@@ -125,7 +110,7 @@ end
 
 local function setupRunningServerEventKiller()
 	--event killer monitor
-	spawn(function()
+	task.spawn(function()
 		while true do
 			for _, serverEvent in ipairs(activeRunningServerEvents) do
 				if shouldEndServerEvent(serverEvent) then
@@ -159,17 +144,17 @@ local function getTixValueOfServerEvent(ev: tt.runningServerEvent): number
 		distmultipler = math.sqrt(ev.distance / 1000)
 	end
 	local res = math.floor(w1 * math.sqrt(seenUsers) * distmultipler)
-	annotate("new tix value of event. " .. tostring(res))
-	annotate(ev)
+	_annotate("new tix value of event. " .. tostring(res))
+	_annotate(ev)
 	return res
 end
 
 local function startServerEvent(data: ServerEventCreateType): tt.runningServerEvent?
 	--pick a random start and randome end, set it up dumbly as possible.
-	annotate("startevent " .. tostring(data.userId))
+	_annotate("startevent " .. tostring(data.userId))
 	if #activeRunningServerEvents >= serverEventLimitCount then
 		print("startevent.over the limit")
-		annotate("startevent.over the limit")
+		_annotate("startevent.over the limit")
 		return
 	end
 
@@ -191,13 +176,14 @@ local function startServerEvent(data: ServerEventCreateType): tt.runningServerEv
 
 	--for local, and sanity, ALSO filter input signids by existence in the game
 	-- AND by cancollide and canX
-	local signsFolder: Folder = game.Workspace:FindFirstChild("Signs")
+	local signsFolder: Folder = game.Workspace:FindFirstChild("Signs") :: Folder
 	local allSigns: { Part } = {}
-	for _, sign: Part in ipairs(signsFolder:GetChildren()) do
-		if not tpUtil.isSignPartValidRightNow(sign) then
+	for _, sign: Instance in ipairs(signsFolder:GetChildren()) do
+		local signPart = sign :: Part
+		if not tpUtil.isSignPartValidRightNow(signPart) then
 			continue
 		end
-		table.insert(allSigns, sign)
+		table.insert(allSigns, signPart)
 	end
 
 	local existingAllFoundSignIds: { number } = {}
@@ -208,6 +194,9 @@ local function startServerEvent(data: ServerEventCreateType): tt.runningServerEv
 		end
 		local exi = signsFolder:FindFirstChild(sn)
 		if exi == nil then
+			continue
+		end
+		if not tpUtil.isSignPartValidRightNow(exi) then
 			continue
 		end
 		table.insert(existingAllFoundSignIds, signId)
@@ -237,8 +226,8 @@ local function startServerEvent(data: ServerEventCreateType): tt.runningServerEv
 		if tries > 100 then
 			return nil
 		end
-		local startSign = nil
-		local endSign = nil
+		local startSign: Part? = nil
+		local endSign: Part? = nil
 		startSignId = 0
 		endSignId = 0
 
@@ -251,7 +240,7 @@ local function startServerEvent(data: ServerEventCreateType): tt.runningServerEv
 
 			startSignId = candidateSignId
 			local canSignName = enums.signId2name[startSignId]
-			local canSign = signsFolder:FindFirstChild(canSignName)
+			local canSign = signsFolder:FindFirstChild(canSignName) :: Part
 			startSign = canSign
 			break
 		end
@@ -271,7 +260,9 @@ local function startServerEvent(data: ServerEventCreateType): tt.runningServerEv
 			endSign = canSign
 			break
 		end
-
+		if startSign == nil or endSign == nil then
+			continue
+		end
 		dist = tpUtil.getDist(startSign.Position, endSign.Position)
 
 		--if we need short and it is, keep it.
@@ -320,9 +311,9 @@ local function startServerEvent(data: ServerEventCreateType): tt.runningServerEv
 end
 
 --version which returns.
-local function serverReceiveFunction(player: Player, message: string, data: any): any
-	annotate("receive event " .. message)
-	annotate(data)
+local function serverReceiveFunction(player: Player, message: string, data: any)
+	_annotate("receive event " .. message)
+	_annotate(data)
 	--hhmm maybe overkill here, but why not just periodally
 
 	if message == serverEventEnums.messageTypes.CREATE then
@@ -390,12 +381,13 @@ local function receiveRunFinishFromServer(data: tt.serverFinishRunNotifierType)
 end
 
 module.init = function()
-	annotate("setup serverEvents")
+	_annotate("setup serverEvents")
 	setupRunningServerEventKiller()
 	serverEventRemoteFunction.OnServerInvoke = serverReceiveFunction
-	local serverEventBindableEvent = remotes.getBindableEvent("ServerEventBindableEvent")
-	serverEventBindableEvent.Event:Connect(receiveRunFinishFromServer)
-	annotate("setup serverEvents.done")
+	local ServerEventBindableEvent = remotes.getBindableEvent("ServerEventBindableEvent")
+	ServerEventBindableEvent.Event:Connect(receiveRunFinishFromServer)
+	_annotate("setup serverEvents.done")
 end
 
+_annotate("end")
 return module

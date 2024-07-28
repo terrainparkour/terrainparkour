@@ -1,38 +1,39 @@
 --!strict
---eval 9.25.22
+
 --2022.02.13 split it from main leaderboard code.
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
-local PlayersService = game:GetService("Players")
-repeat
-	game:GetService("RunService").RenderStepped:wait()
-until game.Players.LocalPlayer.Character ~= nil
-local localPlayer = PlayersService.LocalPlayer
-
-local enums = require(game.ReplicatedStorage.util.enums)
+-- local enums = require(game.ReplicatedStorage.util.enums)
 local colors = require(game.ReplicatedStorage.util.colors)
-
+local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
+local fireEvent = avatarEventFiring.FireEvent
 local marathonstatic = require(game.StarterPlayer.StarterCharacterScripts.marathon["marathon.static"])
-local warper = require(game.StarterPlayer.StarterPlayerScripts.util.warperClient)
 
 local lbMarathonRowY = 18
 local remotes = require(game.ReplicatedStorage.util.remotes)
 
-local mt = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonTypes)
-local joinableMarathonKinds: { mt.marathonDescriptor } = {}
+local marathonTypes = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonTypes)
+local mt = require(game.ReplicatedStorage.avatarEventTypes)
+
+local joinableMarathonKinds: { marathonTypes.marathonDescriptor } = {}
 
 local marathonCompleteEvent = remotes.getRemoteEvent("MarathonCompleteEvent")
 local ephemeralMarathonCompleteEvent = remotes.getRemoteEvent("EphemeralMarathonCompleteEvent")
+local PlayersService = game:GetService("Players")
+local localPlayer = PlayersService.LocalPlayer
+
+------------------------ GLOBALS ------------------------
+
+local disabledMarathons = {}
+--blocker to confirm the user has completed warp
+local canDoMarathonStuff = true
+local isMarathonBlockedByWarp = false
+
 if marathonCompleteEvent == nil or ephemeralMarathonCompleteEvent == nil then
 	warn("FAIL")
-end
-
-local doAnnotation = localPlayer.UserId == enums.objects.TerrainParkour and false
-local function annotate(s): nil
-	if doAnnotation then
-		print("marathon.client: " .. string.format("%.0f", tick()) .. " : " .. s)
-	end
 end
 
 --just re-get the outer lbframe by name.
@@ -45,20 +46,20 @@ local function getLbFrame(): Frame
 	return ret
 end
 
-local function startMarathonRunTimer(desc: mt.marathonDescriptor, baseTime: number)
+local function startMarathonRunTimer(desc: marathonTypes.marathonDescriptor, baseTime: number)
 	desc.startTime = baseTime
 	if desc.runningTimeTileUpdater then
-		-- annotate("runtimer.not start for." .. desc.kind)
+		-- _annotate("runtimer.not start for." .. desc.kind)
 		return
 	end
 
 	--loop spawn to measure timing for a marathon
-	spawn(function()
-		-- annotate("runtimer.start for." .. desc.kind)
+	task.spawn(function()
+		-- _annotate("runtimer.start for." .. desc.kind)
 		desc.runningTimeTileUpdater = true
 		while true do
 			if desc.killTimerSemaphore then
-				-- annotate("runtimer.break for." .. desc.kind)
+				-- _annotate("runtimer.break for." .. desc.kind)
 				desc.killTimerSemaphore = false
 				desc.runningTimeTileUpdater = false
 				break
@@ -70,13 +71,13 @@ local function startMarathonRunTimer(desc: mt.marathonDescriptor, baseTime: numb
 	end)
 end
 
-local function stopTimerForKind(desc: mt.marathonDescriptor): boolean
-	-- annotate("stopTimerForKind.start." .. desc.kind)
+local function stopTimerForKind(desc: marathonTypes.marathonDescriptor): boolean
+	-- _annotate("stopTimerForKind.start." .. desc.kind)
 	if not desc.runningTimeTileUpdater then
-		-- annotate("stopTimerForKind.was not running." .. desc.kind)
+		-- _annotate("stopTimerForKind.was not running." .. desc.kind)
 		return true
 	end
-	-- annotate("stopTimerForKind.set semaphore." .. desc.kind)
+	-- _annotate("stopTimerForKind.set semaphore." .. desc.kind)
 	desc.killTimerSemaphore = true --wait til the timer catches this and dies.
 	local ii = 0
 	while true do
@@ -92,7 +93,7 @@ local function stopTimerForKind(desc: mt.marathonDescriptor): boolean
 	end
 end
 
-local function resetMarathonProgress(desc: mt.marathonDescriptor)
+local function resetMarathonProgress(desc: marathonTypes.marathonDescriptor)
 	stopTimerForKind(desc)
 	module.InitMarathonVisually(desc)
 	desc.startTime = nil
@@ -101,16 +102,16 @@ local function resetMarathonProgress(desc: mt.marathonDescriptor)
 	desc.finds = {}
 	desc.addDebounce = {}
 
-	-- annotate("resetMarathon.end." .. desc.kind)
+	-- _annotate("resetMarathon.end." .. desc.kind)
 end
 
 --get or create frame; swap out the tiles with new ones.
 --does it do deduplication?
-module.InitMarathonVisually = function(desc: mt.marathonDescriptor)
-	annotate("initMarathonVisually.start." .. desc.highLevelType .. "_" .. desc.sequenceNumber)
+module.InitMarathonVisually = function(desc: marathonTypes.marathonDescriptor)
+	_annotate("initMarathonVisually.start." .. desc.highLevelType .. "_" .. desc.sequenceNumber)
 
 	local frameName = marathonstatic.getMarathonKindFrameName(desc)
-	annotate("init visual marathon: " .. frameName)
+	_annotate("init visual marathon: " .. frameName)
 	local exi: Frame = getLbFrame():FindFirstChild(frameName)
 	if exi == nil then
 		--this happens the first time you start a marathon from client-side.
@@ -136,9 +137,9 @@ module.InitMarathonVisually = function(desc: mt.marathonDescriptor)
 		exiTile:Destroy()
 	end
 	resetTile.Activated:Connect(function()
-		-- annotate("resetTile.clicked.")
+		-- _annotate("resetTile.clicked.")
 		resetMarathonProgress(desc)
-		-- annotate("resetTile.done")
+		-- _annotate("resetTile.done")
 	end)
 	resetTile.Parent = exi
 
@@ -152,15 +153,22 @@ local function updateTimeTileForKindToCompletion(runMilliseconds: number, timeTi
 end
 
 --kill the ongoing update timer.  set  the final time and background blue.
-local function finishMarathonVisually(desc: mt.marathonDescriptor, runMilliseconds: number, marathonRow: Frame)
-	-- annotate("finishMarathonVisually.start." .. desc.kind)
+local function finishMarathonVisually(
+	desc: marathonTypes.marathonDescriptor,
+	runMilliseconds: number,
+	marathonRow: Frame
+)
+	-- _annotate("finishMarathonVisually.start." .. desc.kind)
 	stopTimerForKind(desc)
 	updateTimeTileForKindToCompletion(runMilliseconds, desc.timeTile)
-	-- annotate("finishMarathonVisually.end." .. desc.kind)
+	-- _annotate("finishMarathonVisually.end." .. desc.kind)
 end
 
 --handle the juggling of marathonKindFinds keys and stuff.
-local function tellDescAboutFind(desc: mt.marathonDescriptor, signName: string): mt.userFoundSignResult
+local function tellDescAboutFind(
+	desc: marathonTypes.marathonDescriptor,
+	signName: string
+): marathonTypes.userFoundSignResult
 	if desc.addDebounce[signName] then
 		return { added = false, marathonDone = false, started = false }
 	end
@@ -170,7 +178,7 @@ local function tellDescAboutFind(desc: mt.marathonDescriptor, signName: string):
 	if not desc.runningTimeTileUpdater then --not being updated atm.
 		if desc.count ~= nil and desc.count > 0 then
 			--note that this will spam logs for hitting sign 20 times while first one is being processed
-			-- annotate("dofind.skipping find due to marathon being done. kind" .. desc.kind)
+			-- _annotate("dofind.skipping find due to marathon being done. kind" .. desc.kind)
 			return { added = false, marathonDone = false, started = false }
 		end
 	end
@@ -184,7 +192,7 @@ local function tellDescAboutFind(desc: mt.marathonDescriptor, signName: string):
 	return ret
 end
 
-local function reportEphemeralMarathonResults(desc: mt.marathonDescriptor, runMilliseconds)
+local function reportEphemeralMarathonResults(desc: marathonTypes.marathonDescriptor, runMilliseconds)
 	local orderedSignIds = desc.SummarizeResults(desc)
 	local joined = table.concat(orderedSignIds, ",")
 	local s, e = pcall(function()
@@ -197,7 +205,7 @@ end
 
 --look in the datastores and figure out something to upload to the endpoint.
 --can require munging aound
-local function reportMarathonResults(desc: mt.marathonDescriptor, runMilliseconds)
+local function reportMarathonResults(desc: marathonTypes.marathonDescriptor, runMilliseconds)
 	local reportingSignIds = desc.SummarizeResults(desc)
 	local joined = table.concat(reportingSignIds, ",")
 	local s, e = pcall(function()
@@ -209,7 +217,7 @@ local function reportMarathonResults(desc: mt.marathonDescriptor, runMillisecond
 end
 
 --receive a touch on a sign for a given marathon.
-local function innerReceiveHit(desc: mt.marathonDescriptor, signName: string, innerTick: number)
+local function innerReceiveHit(desc: marathonTypes.marathonDescriptor, signName: string, innerTick: number)
 	local res = tellDescAboutFind(desc, signName)
 	if res == nil then
 		warn("NIL")
@@ -218,10 +226,10 @@ local function innerReceiveHit(desc: mt.marathonDescriptor, signName: string, in
 	if not res.added then
 		return
 	end
-	-- annotate("innerReceiveHit.signName=" .. signName .. " kind=" .. desc.kind)
-	-- annotate("innerReceiveHit.added?" .. tostring(res.added))
-	-- annotate("innerReceiveHit.marathonDone?" .. tostring(res.marathonDone))
-	-- annotate("innerReceiveHit.started?" .. tostring(res.started))
+	-- _annotate("innerReceiveHit.signName=" .. signName .. " kind=" .. desc.kind)
+	-- _annotate("innerReceiveHit.added?" .. tostring(res.added))
+	-- _annotate("innerReceiveHit.marathonDone?" .. tostring(res.marathonDone))
+	-- _annotate("innerReceiveHit.started?" .. tostring(res.started))
 
 	local frameName = marathonstatic.getMarathonKindFrameName(desc)
 	local marathonRow: Frame = getLbFrame():FindFirstChild(frameName)
@@ -236,13 +244,13 @@ local function innerReceiveHit(desc: mt.marathonDescriptor, signName: string, in
 	--previously this also initialized them visually.
 
 	if res.started then
-		-- annotate("innerReceiveHit.res-started.start")
+		-- _annotate("innerReceiveHit.res-started.start")
 		startMarathonRunTimer(desc, innerTick)
-		-- annotate("innerReceiveHit.res-started.end")
+		-- _annotate("innerReceiveHit.res-started.end")
 	end
 
 	if res.marathonDone then
-		-- annotate("innerReceiveHit.marathonDone.start")
+		-- _annotate("innerReceiveHit.marathonDone.start")
 		local completionTime = innerTick - desc.startTime
 		local runMilliseconds = math.round(completionTime * 1000)
 		finishMarathonVisually(desc, runMilliseconds, marathonRow)
@@ -251,46 +259,22 @@ local function innerReceiveHit(desc: mt.marathonDescriptor, signName: string, in
 		else
 			reportMarathonResults(desc, runMilliseconds)
 		end
-		-- annotate("innerReceiveHit.marathonDone.end")
+		-- _annotate("innerReceiveHit.marathonDone.end")
 	end
-	-- annotate("innerReceiveHit.end")
+	-- _annotate("innerReceiveHit.end")
 end
 
---blocker to confirm the user has completed warp
-local canDoMarathonStuff = true
-
 module.receiveHit = function(signName: string, innerTick: number)
-	-- annotate("marathon receive hit ." .. signName)
-
-	if not canDoMarathonStuff then
-		-- annotate("can't do anything while warping so skipping.")
+	if not canDoMarathonStuff or isMarathonBlockedByWarp then
 		return
 	end
-	-- annotate("received hit in marathon.")
-	for _, desc: mt.marathonDescriptor in ipairs(joinableMarathonKinds) do
-		if warper.isAlreadyWarping() then
-			break
-		end
-		-- annotate("receiveHit " .. desc.kind .. signName)
+	for _, desc: marathonTypes.marathonDescriptor in ipairs(joinableMarathonKinds) do
 		innerReceiveHit(desc, signName, innerTick)
 	end
 end
 
-local function onWarpStart(msg: string)
-	canDoMarathonStuff = false
-	for _, desc: mt.marathonDescriptor in ipairs(joinableMarathonKinds) do
-		spawn(function()
-			resetMarathonProgress(desc)
-		end)
-	end
-end
-
-local function onWarpEnd(msg: string)
-	canDoMarathonStuff = true
-end
-
 --BOTH tell the system that the setting value is this, AND init it visually.
-module.InitMarathon = function(desc: mt.marathonDescriptor, forceDisplay: boolean)
+module.InitMarathon = function(desc: marathonTypes.marathonDescriptor, forceDisplay: boolean)
 	local intable = false
 	for _, joinable in ipairs(joinableMarathonKinds) do
 		if joinable.humanName == desc.humanName then
@@ -298,19 +282,19 @@ module.InitMarathon = function(desc: mt.marathonDescriptor, forceDisplay: boolea
 			break
 		end
 	end
-	-- annotate("marathon.init.start")
+	-- _annotate("marathon.init.start")
 	resetMarathonProgress(desc)
 	if not intable then
 		table.insert(joinableMarathonKinds, desc)
 	end
-	-- annotate("marathon.init.end" .. desc.kind)
+	-- _annotate("marathon.init.end" .. desc.kind)
 	if forceDisplay then
 		module.InitMarathonVisually(desc)
 	end
 end
 
 --disable from the UI
-module.DisableMarathon = function(desc: mt.marathonDescriptor)
+module.DisableMarathon = function(desc: marathonTypes.marathonDescriptor)
 	local target = 0
 	for ii, d in pairs(joinableMarathonKinds) do
 		if d.humanName == desc.humanName then
@@ -319,7 +303,7 @@ module.DisableMarathon = function(desc: mt.marathonDescriptor)
 		end
 	end
 	if target == 0 then
-		-- warn("could not find marathon to remove.")
+		_annotate("could not find marathon to remove.")
 		return
 	end
 	resetMarathonProgress(desc)
@@ -332,7 +316,6 @@ module.DisableMarathon = function(desc: mt.marathonDescriptor)
 	table.remove(joinableMarathonKinds, target)
 end
 
-local disabledMarathons = {}
 module.CloseAllMarathons = function()
 	while #joinableMarathonKinds > 0 do
 		local item = joinableMarathonKinds[1]
@@ -352,13 +335,31 @@ module.ReInitActiveMarathons = function()
 	end
 end
 
+local function receiveAvatarEvent(ev: mt.avatarEvent)
+	if ev.eventType == mt.avatarEventTypes.GET_READY_FOR_WARP then
+		isMarathonBlockedByWarp = true
+		for _, desc: marathonTypes.marathonDescriptor in ipairs(joinableMarathonKinds) do
+			resetMarathonProgress(desc)
+		end
+		fireEvent(mt.avatarEventTypes.MARATHON_WARPER_READY, {})
+		return
+	elseif ev.eventType == mt.avatarEventTypes.WARP_DONE then
+		for _, desc: marathonTypes.marathonDescriptor in ipairs(joinableMarathonKinds) do
+			resetMarathonProgress(desc)
+		end
+		isMarathonBlockedByWarp = false
+		return
+	elseif ev.eventType == mt.avatarEventTypes.CHARACTER_REMOVING then
+		canDoMarathonStuff = false
+	end
+end
+
 -- when user warps, kill outstanding marathons.
 module.Init = function()
-	local warpStartingBindableEvent = remotes.getBindableEvent("warpStartingBindableEvent")
-	warpStartingBindableEvent.Event:Connect(onWarpStart)
-
-	local warpDoneBindableEvent = remotes.getBindableEvent("warpDoneBindableEvent")
-	warpDoneBindableEvent.Event:Connect(onWarpEnd)
+	local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
+	AvatarEventBindableEvent.Event:Connect(receiveAvatarEvent)
 end
+
+_annotate("end")
 
 return module

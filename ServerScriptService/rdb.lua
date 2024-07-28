@@ -1,8 +1,9 @@
 --!strict
---eval 9.25.22
 
 --RemoteDb Wrappers
 --ideally all things which require direct network calls should have sensible normal layers here incl caching
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local PlayersService = game:GetService("Players")
 
@@ -11,20 +12,9 @@ local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local remoteDbInternal = require(game.ServerScriptService.remoteDbInternal)
+local enums = require(game.ReplicatedStorage.util.enums)
 
 local module = {}
-
-local doAnnotation = false
-local function annotate(s): nil
-	if doAnnotation then
-		if typeof(s) == "string" then
-			print("remoteDb: " .. string.format("%.0f", tick()) .. " : " .. s)
-		else
-			print("remoteDb: " .. string.format("%.0f", tick()) .. " : ")
-			print(s)
-		end
-	end
-end
 
 ------------------HELPER LOGICAL METHODS----------------------------
 
@@ -36,7 +26,10 @@ module.getUserSignFinds = function(userId: number): { [number]: boolean }
 		local raw = remoteDbInternal.remoteGet("getUserSignFinds", { userId = userId })
 		findCache[userId] = {}
 		for strSignId, val in pairs(raw) do
-			findCache[userId][tonumber(strSignId :: string)] = true
+			local num = tonumber(strSignId)
+			if num then
+				findCache[userId][num] = true
+			end
 		end
 	end
 	return findCache[userId]
@@ -60,6 +53,11 @@ module.getGameSignCount = function(): number
 		gameTotalSigncount = #(game.Workspace:WaitForChild("Signs"):GetChildren())
 	end
 	return gameTotalSigncount
+end
+
+module.getFoundSignIdsByUserId = function(userId: number): { number }
+	local res = remoteDbInternal.remoteGet("getFoundSignIds", { userId = userId })
+	return res
 end
 
 module.getRandomFoundSignName = function(userId: number): string
@@ -303,12 +301,19 @@ if config.isInStudio() then
 end
 
 local testRemoteErrorSending = function()
-	local ev: tt.robloxServerError = {}
-	ev.code = "code"
-	ev.version = enums.gameVersion
-	ev.message = "helly."
-	ev.data = "data"
-	ev.userId = 123
+	local ev: tt.robloxServerError = {
+		code = "code",
+		version = enums.gameVersion,
+		message = "helly.",
+		data = "data",
+		userId = 123,
+	}
+	module.reportServerError(ev)
 end
 
+if false then
+	testRemoteErrorSending()
+end
+
+_annotate("end")
 return module

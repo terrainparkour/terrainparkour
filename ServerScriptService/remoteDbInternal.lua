@@ -1,9 +1,10 @@
 --!strict
---eval 9.25.22
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local httpservice = require(game.ServerScriptService.httpService)
 local HttpService = game:GetService("HttpService")
-local vscdebug = require(game.ReplicatedStorage.vscdebug)
+-- local vscdebug = require(game.ReplicatedStorage.vscdebug)
 
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 
@@ -22,18 +23,6 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local config = require(game.ReplicatedStorage.config)
 
 local module = {}
-
-local doAnnotation = false
-local function annotate(s): nil
-	if doAnnotation then
-		if typeof(s) == "string" then
-			print("remoteDb: " .. string.format("%.0f", tick()) .. " : " .. s)
-		else
-			print("remoteDb: " .. string.format("%.0f", tick()) .. " : ")
-			print(s)
-		end
-	end
-end
 
 local function getRemoteUrl(path: string)
 	local url = "http://" .. host.HOST .. "terrain/" .. path
@@ -311,8 +300,8 @@ module.remoteGet = function(kind: string, data: any): any
 	end
 	local res = httpservice.httpThrottledJsonGet(surl)
 	if config.isInStudio() or data.userId == enums.objects.TerrainParkour then
-		-- annotate(string.format("DONE %0.3f %s", tick() - st, url))
-		annotate(res)
+		-- _annotate(string.format("DONE %0.3f %s", tick() - st, url))
+		_annotate(res)
 	end
 	if not res.banned then
 		afterRemoteDbActions(kind, res)
@@ -335,13 +324,13 @@ module.remotePost = function(kind: string, data: any)
 	res.userId = tonumber(res.userId)
 	if config.isInStudio() or data.userId == enums.objects.TerrainParkour then
 		data.secret = nil
-		annotate(string.format("%0.3f kind: " .. kind .. " url:" .. url, tick() - st))
-		annotate(data)
-		annotate(res)
-		annotate(string.format("roundtrip endpoint time: %0.3f ", tick() - st))
+		_annotate(string.format("%0.3f kind: " .. kind .. " url:" .. url, tick() - st))
+		_annotate(data)
+		_annotate(res)
+		_annotate(string.format("roundtrip endpoint time: %0.3f ", tick() - st))
 	end
 
-	spawn(function()
+	task.spawn(function()
 		if not res.banned then
 			afterRemoteDbActions(kind, res)
 		end
@@ -349,4 +338,6 @@ module.remotePost = function(kind: string, data: any)
 
 	return res
 end
+
+_annotate("end")
 return module

@@ -1,14 +1,14 @@
 --!strict
---eval 9.25.22
 
 --draw an action button row with hints along the bottom of the local screen (popular, new)
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local PlayersService = game:GetService("Players")
 
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
-repeat
-	game:GetService("RunService").RenderStepped:wait()
-until game.Players.LocalPlayer.Character ~= nil
+
 local localPlayer = PlayersService.LocalPlayer
 local colors = require(game.ReplicatedStorage.util.colors)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
@@ -65,7 +65,7 @@ module.initActionButtons = function(lbframe: Frame, player: Player)
 		par.BackgroundTransparency = lbEnums.lbTransparency
 
 		buttonTb.Activated:Connect(function()
-			spawn(function()
+			task.spawn(function()
 				local userIds = {}
 				for _, pl in ipairs(PlayersService:GetPlayers()) do
 					table.insert(userIds, pl.UserId)
@@ -81,4 +81,5 @@ module.initActionButtons = function(lbframe: Frame, player: Player)
 	fr.Parent = lbframe
 end
 
+_annotate("end")
 return module

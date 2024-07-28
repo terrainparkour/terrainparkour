@@ -1,6 +1,7 @@
 --!strict
 
---eval 9.24.22
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
@@ -22,4 +23,12 @@ module.isInStudio = function()
 	return isInStudio
 end
 
+module.isTestGame = function()
+	if string.gmatch(game.Name, "Terrain Parkour Dev Place") then
+		return true
+	end
+	return false
+end
+
+_annotate("end")
 return module

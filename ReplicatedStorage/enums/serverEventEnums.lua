@@ -1,5 +1,8 @@
 --!strict
 
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local module = {}
@@ -165,4 +168,5 @@ module.getTixAllocation = function(ev: tt.runningServerEvent): { tt.serverEventT
 	return res
 end
 
+_annotate("end")
 return module

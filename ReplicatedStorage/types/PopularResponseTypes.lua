@@ -1,10 +1,11 @@
 --!strict
 
---eval 9.21
-
 --TODO new broken 9.22
-
 --also used for newRaceResult
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
 export type popularRaceResult = {
 	startSignName: string,
 	startSignId: number,
@@ -18,4 +19,5 @@ export type popularRaceResult = {
 	kind: string,
 }
 
+_annotate("end")
 return {}

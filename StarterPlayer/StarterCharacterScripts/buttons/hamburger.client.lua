@@ -1,13 +1,11 @@
 --!strict
 
---eval 9.25.22
 --the lower right S hamburger menu which contains info screens "ways to play", "badges", "surveys" and also the settings UI.
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local PlayersService = game:GetService("Players")
 
-repeat
-	game:GetService("RunService").RenderStepped:wait()
-until game.Players.LocalPlayer.Character ~= nil
 local localPlayer = PlayersService.LocalPlayer
 local pgui: PlayerGui = PlayersService.LocalPlayer:WaitForChild("PlayerGui")
 local menu = require(game.ReplicatedStorage.gui.menu.menu)
@@ -49,3 +47,4 @@ local function setupMenu()
 end
 
 setupMenu()
+_annotate("end")

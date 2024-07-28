@@ -1,7 +1,9 @@
 --!strict
 
 --2022.03 pulled out commands from channel definitions
---eval 9.21
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
@@ -90,7 +92,7 @@ module.createSgui = function(localPlayer: Player, data: tt.playerSignProfileData
 	local hframe = Instance.new("Frame")
 	hframe.Parent = fr
 	hframe.Name = "01SignProfile-header-row."
-	hframe.Size = UDim2.new(1, 0, 0, 40)
+	hframe.Size = UDim2.new(1, 0, 0, 120)
 	local hh = Instance.new("UIListLayout")
 	hh.Parent = hframe
 	hh.FillDirection = Enum.FillDirection.Horizontal
@@ -113,7 +115,7 @@ module.createSgui = function(localPlayer: Player, data: tt.playerSignProfileData
 	img.BorderSizePixel = 1
 
 	local title = guiUtil.getTl("02.SignProfile.Title", UDim2.new(0.4, 0, 1, 0), 2, hframe, colors.blueDone, 1, 0)
-	title.Text = string.format("%s Profile for", data.username)
+	title.Text = string.format("%s's Sign Profile for: ", data.username)
 
 	local signLabel = guiUtil.getTl("03.SignProfile.Title", UDim2.new(0.5, 0, 1, 0), 2, hframe, colors.signColor, 1, 0)
 	signLabel.TextColor3 = colors.white
@@ -144,4 +146,5 @@ module.createSgui = function(localPlayer: Player, data: tt.playerSignProfileData
 	end)
 end
 
+_annotate("end")
 return module

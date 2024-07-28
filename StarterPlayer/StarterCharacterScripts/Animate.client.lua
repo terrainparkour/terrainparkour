@@ -1,7 +1,8 @@
 --!strict
 
---eval 9.25.22
 --mainly original animation script, but with some hacks to handle the dumb crouching animation
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local function setupValues()
 	local em = Instance.new("BindableFunction")
@@ -312,7 +313,7 @@ end
 
 --script to constantly print the newly playing animation
 if false then
-	spawn(function()
+	task.spawn(function()
 		local last = ""
 		while true do
 			wait()
@@ -763,7 +764,7 @@ local lastPose = pose
 --apparently never used
 function stepAnimate(currentTime)
 	local dodoprint = false
-	local doprint = false
+	local doprint = true
 	if pose ~= lastPose then
 		-- print("StepAnimate pose: " .. tostring(pose))
 		lastPose = pose
@@ -902,3 +903,4 @@ while Character.Parent ~= nil do
 	local _, currentGameTime = wait(0.1)
 	stepAnimate(currentGameTime)
 end
+_annotate("end")

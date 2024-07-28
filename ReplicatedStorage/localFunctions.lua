@@ -9,6 +9,9 @@
 
 --i.e. one local ui to another.  this is likely not the ideal method.
 
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
@@ -56,4 +59,5 @@ module.setSetting = function(setting: tt.userSettingValue)
 	localNotifySettingChange(setting)
 end
 
+_annotate("end")
 return module

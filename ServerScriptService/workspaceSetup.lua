@@ -1,6 +1,7 @@
 --!strict
 
---eval 9.25.22
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
@@ -28,52 +29,42 @@ module.createEvents = function()
 
 	--blocks any timing stuff til return value comes in
 	--
-	remotes.getRemoteFunction("warpRequestFunction")
+	remotes.getRemoteFunction("WarpRequestFunction")
 
-	--server calls this to hook into normal client warp locking.
-	--then client calls back
-	remotes.getRemoteFunction("serverWantsWarpFunction")
 	remotes.getRemoteEvent("ShowClientSignProfileEvent")
 	remotes.getRemoteEvent("MarathonCompleteEvent")
 	remotes.getRemoteEvent("EphemeralMarathonCompleteEvent")
 	remotes.getRemoteFunction("DynamicRunningFunction")
 	remotes.getRemoteEvent("DynamicRunningEvent")
 
+	-- to get someone to download all their found signs? not sure.
+	remotes.getRemoteEvent("ShowSignProfileEvent")
+	remotes.getRemoteEvent("TellServerRunEndedRemoteEvent")
+
 	remotes.getRemoteEvent("ServerEventRemoteEvent")
 	remotes.getRemoteFunction("ServerEventRemoteFunction")
-	remotes.getBindableEvent("warpStartingBindableEvent")
-	remotes.getBindableEvent("warpDoneBindableEvent")
+
+	-- when a user finishes a race in raceEnding on server, we need to tell every player's local script about server events UI about it.
+	remotes.getBindableEvent("ServerEventBindableEvent")
 
 	remotes.getRemoteFunction("EphemeralMarathonCreateFunction")
 	remotes.getRemoteFunction("BadgeAttainmentsFunction")
 	remotes.getRemoteFunction("GetUserSettingsFunction") --look up user settings
-	remotes.getRemoteFunction("UserSettingsChangedFunction") --look up user settings
+	remotes.getRemoteFunction("UserSettingsChangedFunction")
 	remotes.getRemoteFunction("GetPopularRunsFunction")
 	remotes.getRemoteFunction("GetNewRunsFunction")
 	remotes.getRemoteFunction("GetContestsFunction")
 	remotes.getRemoteFunction("GetSingleContestFunction")
 
-	remotes.getRemoteEvent("RunStartEvent")
-
-	--used for tellign the client to stop displaying the run in progress..
-	remotes.getRemoteEvent("RunEndEvent")
-
-	--artificially tell server the actual runtime of an end
-	remotes.getRemoteEvent("ClientControlledRunEndEvent")
-
 	--send message from server to client (notifier, etc.)
 	remotes.getRemoteEvent("MessageReceivedEvent")
-
-	--TODO is this actually used and why is it a remote function at all?
-	remotes.getRemoteFunction("CancelRunRemoteFunction")
 
 	--send events to clients telling them to update their leaderboard with player stats and stuff.
 	remotes.getRemoteEvent("LeaderboardUpdateEvent")
 
 	--local player clicks sign, server generate signpopup, send it back to client
 	remotes.getRemoteFunction("ClickSignRemoteFunction")
-
-	remotes.getBindableEvent("ServerEventBindableEvent")
 end
 
+_annotate("end")
 return module

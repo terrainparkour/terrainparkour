@@ -2,7 +2,8 @@
 --	// Written by: TheGamer101
 --	// Description: Validate things such as no disallowed whitespace and chat message length on the server.
 
---eval 9.24
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local Chat = game:GetService("Chat")
 local RunService = game:GetService("RunService")
@@ -10,16 +11,17 @@ local ReplicatedModules = Chat:WaitForChild("ClientChatModules")
 local ChatSettings = require(ReplicatedModules:WaitForChild("ChatSettings"))
 local ChatConstants = require(ReplicatedModules:WaitForChild("ChatConstants"))
 
-local DISALLOWED_WHITESPACE = {"\n", "\r", "\t", "\v", "\f"}
+local DISALLOWED_WHITESPACE = { "\n", "\r", "\t", "\v", "\f" }
 
 if ChatSettings.DisallowedWhiteSpace then
 	DISALLOWED_WHITESPACE = ChatSettings.DisallowedWhiteSpace
 end
 
 local function Run(ChatService)
-
 	local function ChatSettingsEnabled()
-		local chatPrivacySettingsSuccess, chatPrivacySettingsValue = pcall(function() return UserSettings():IsUserFeatureEnabled("UserChatPrivacySetting") end)
+		local chatPrivacySettingsSuccess, chatPrivacySettingsValue = pcall(function()
+			return UserSettings():IsUserFeatureEnabled("UserChatPrivacySetting")
+		end)
 		local chatPrivacySettingsEnabled = true
 		if chatPrivacySettingsSuccess then
 			chatPrivacySettingsEnabled = chatPrivacySettingsValue
@@ -42,9 +44,13 @@ local function Run(ChatService)
 
 	local function ValidateChatFunction(speakerName, message, channel)
 		local speakerObj = ChatService:GetSpeaker(speakerName)
-		if not speakerObj then return false end
+		if not speakerObj then
+			return false
+		end
 		local playerObj = speakerObj:GetPlayer()
-		if not playerObj then return false end
+		if not playerObj then
+			return false
+		end
 
 		if not RunService:IsStudio() and playerObj.UserId < 1 then
 			return true
@@ -72,4 +78,5 @@ local function Run(ChatService)
 	ChatService:RegisterProcessCommandsFunction("message_validation", ValidateChatFunction, ChatSettings.LowPriority)
 end
 
+_annotate("end")
 return Run

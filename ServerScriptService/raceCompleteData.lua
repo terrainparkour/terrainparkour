@@ -1,9 +1,10 @@
 --!strict
 
---eval 9.25.22
 --calculating raceComplete GUI stuff like text descriptions of your relative placed, etc.
---split out 2021
 --2022 TODO is this all used? or is this in python now.  likely here.
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local PlayersService = game:GetService("Players")
@@ -15,14 +16,6 @@ local enums = require(game.ReplicatedStorage.util.enums)
 local grantBadge = require(game.ServerScriptService.grantBadge)
 
 local module = {}
-
-local doAnnotation = false
-
-local function annotate(s: string)
-	if doAnnotation then
-		print("server: " .. string.format("%.0f", tick()) .. " : " .. s)
-	end
-end
 
 local NEW = 1
 local BETTER = 2
@@ -326,8 +319,9 @@ module.showBestTimes = function(
 	-- print(options)
 	-- print(userFinishedRunResponse)
 
-	-- annotate("Notifying " .. tostring(racerUserId) .. "," .. racerUsername)
+	-- _annotate("Notifying " .. tostring(racerUserId) .. "," .. racerUsername)
 	notify.notifyPlayerOfRunResults(player, pyUserFinishedRunResponse)
 end
 
+_annotate("end")
 return module

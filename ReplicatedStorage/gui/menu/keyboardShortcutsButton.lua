@@ -1,7 +1,9 @@
 --!strict
 
 --keyboard shortcuts listing. ideally we can even keep track of how many times each one is used. most games don't do that
--- but i always wanted to get some kind of validation step where players could evaluate 
+-- but i always wanted to get some kind of validation step where players could evaluate
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local PlayersService = game:GetService("Players")
 local colors = require(game.ReplicatedStorage.util.colors)
@@ -352,4 +354,5 @@ local badgeButton: gt.button = {
 
 module.badgeButton = badgeButton
 
+_annotate("end")
 return module

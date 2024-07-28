@@ -1,11 +1,9 @@
 --!strict
 
---eval 9.25.22
 --a button that will pop a current contest, if any exists.
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
-repeat
-	game:GetService("RunService").RenderStepped:wait()
-until game.Players.LocalPlayer.Character ~= nil
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
@@ -26,7 +24,7 @@ local getContestsFunction = remotes.getRemoteFunction("GetContestsFunction")
 local getSingleContestFunction = remotes.getRemoteFunction("GetSingleContestFunction")
 local emojis = require(game.ReplicatedStorage.enums.emojis)
 
-local warper = require(game.StarterPlayer.StarterPlayerScripts.util.warperClient)
+local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 
 local module = {}
 
@@ -249,7 +247,7 @@ local function makeContestRow(
 
 	warp.Activated:Connect(function()
 		local signId = enums.namelower2signId[race.startSignName:lower()]
-		warper.requestWarpToSign(signId)
+		warper.WarpToSign(signId)
 		lastCanvasPosition = scrollingFrame.CanvasPosition
 		parentSgui:Destroy()
 	end)
@@ -311,7 +309,7 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 		1
 	)
 	if contest.contestremaining > 0 then
-		spawn(function()
+		task.spawn(function()
 			local ii = 0
 			while true do
 				ii += 1
@@ -442,7 +440,7 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 			ii + 10,
 			sg,
 			scrollingFrame,
-			{ requestWarpToSign = warper.requestWarpToSign },
+			{ WarpToSign = warper.WarpToSign },
 			showScrollbar
 		)
 		rowFrame.Parent = scrollingFrame
@@ -518,4 +516,5 @@ end
 
 init()
 
+_annotate("end")
 return module

@@ -2,7 +2,8 @@
 --	// Written by: Xsitsu
 --	// Description: Module that handles all private messaging.
 
---eval 9.24
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local Chat = game:GetService("Chat")
 local RunService = game:GetService("RunService")
@@ -169,5 +170,5 @@ local function Run(ChatService)
 		end
 	end)
 end
-
+_annotate("end")
 return Run

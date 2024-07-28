@@ -1,7 +1,8 @@
 --!strict
 
---eval 9.21
 --warning: 2022.10 sometimes needs to be loaded late for some reason.
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
@@ -102,4 +103,5 @@ module.setupToolTip = function(
 	end)
 end
 
+_annotate("end")
 return module

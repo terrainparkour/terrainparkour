@@ -1,6 +1,7 @@
 --!strict
 
---eval 9.21
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local colors = require(game.ReplicatedStorage.util.colors)
 
@@ -12,9 +13,6 @@ local enums = require(game.ReplicatedStorage.util.enums)
 
 local PlayersService = game:GetService("Players")
 
-repeat
-	game:GetService("RunService").RenderStepped:wait()
-until game.Players.LocalPlayer.Character ~= nil
 local localPlayer = PlayersService.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
 
@@ -117,11 +115,12 @@ module.notify = function(options: tt.ephemeralNotificationOptions, warpWrapper: 
 		warpTl.Parent = frame
 		-- local useHighlightSignId = options.highlightSignId and not enums.SignIdIsExcludedFromStart[options.highlightSignId] and rdb.hasUserFoundSign(op.UserId, startSignId)
 		warpTl.Activated:Connect(function()
-			warpWrapper.requestWarpToSign(options.warpToSignId, options.highlightSignId)
+			warpWrapper.WarpToSign(options.warpToSignId, options.highlightSignId)
 		end)
 	end
 
 	guiUtil.setupKillOnClick(sg, warpName)
 end
 
+_annotate("end")
 return module

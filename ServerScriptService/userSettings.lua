@@ -1,20 +1,14 @@
 --!strict
---eval 9.25.22
 
 --settings lookup on server
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local rdb = require(game.ServerScriptService.rdb)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
 local module = {}
-
-local doAnnotation = false
-local function annotate(s: string)
-	if doAnnotation then
-		print("playerSettings.server: " .. string.format("%.0f", tick()) .. " : " .. s)
-	end
-end
 
 -- TODO product goals 2022.10
 -- get all settings for user
@@ -150,7 +144,7 @@ local debounceInnerSetup = false
 --src is just for debugging.
 local function innerSetupSettings(player: Player, src: string): { [string]: tt.userSettingValue }
 	while debounceInnerSetup do
-		annotate("settings.innersetup.wait " .. src)
+		_annotate("settings.innersetup.wait " .. src)
 		wait(0.05)
 	end
 	debounceInnerSetup = true
@@ -255,4 +249,5 @@ module.init = function()
 	end
 end
 
+_annotate("end")
 return module

@@ -2,7 +2,8 @@
 --	// Written by: Xsitsu
 --	// Description: Main script to initialize ChatService and run ChatModules.
 
---eval 9.24
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local EventFolderName = "DefaultChatSystemChatEvents"
 local EventFolderParent = game:GetService("ReplicatedStorage")
@@ -349,3 +350,5 @@ Players.PlayerRemoving:connect(function(playerObj)
 		ChatService:RemoveSpeaker(playerObj.Name)
 	end
 end)
+
+_annotate("end")

@@ -1,6 +1,8 @@
 --!strict
 
-local signEnums = require(game.ReplicatedStorage.enums.signEnums)
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local sound = require(game.ServerScriptService.sounds)
 
@@ -12,12 +14,7 @@ local isWeirdSignSetupYet = {}
 --loop repeatedly, enabling new day of week signs when they come online.
 local function setupDayOfWeekSigns()
 	local daySigns = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" }
-	-- local hour = tonumber(os.date("%H", theTick))
-	-- local minute = tonumber(os.date("%M", theTick))
-	-- local date = tonumber(os.date("%d", theTick))
-	-- local month = tonumber(os.date("%m", theTick))
-	-- local year = tonumber(os.date("%Y", theTick))
-	spawn(function()
+	task.spawn(function()
 		local outerDayOfWeek
 		local n = 600
 		while true do
@@ -58,16 +55,15 @@ local function setupDayOfWeekSigns()
 	end)
 end
 
---setupSpecialSigns
 module.init = function()
-	spawn(function()
+	task.spawn(function()
 		local signFolder = game.Workspace:WaitForChild("Signs")
-		local cold_mold: Part = signFolder:WaitForChild(signEnums.signs.COLD_MOLD, 2)
+		local cold_mold: Part = signFolder:WaitForChild("cOld mOld on a sLate pLate", 2)
 		if cold_mold then
 			cold_mold.Material = Enum.Material.Slate
 		end
 
-		local ghost: Part = signFolder:WaitForChild(signEnums.signs.GHOST, 2)
+		local ghost: Part = signFolder:WaitForChild("👻", 2)
 		if ghost then
 			local ghostTextTransparency = 0.7
 			ghost.Color = Color3.fromRGB(255, 255, 255)
@@ -117,7 +113,7 @@ module.init = function()
 		end
 
 		-- set up 007 sign.
-		spawn(function()
+		task.spawn(function()
 			local doubleO7Sign = signFolder:WaitForChild("007", 2)
 			local r = require(game.ReplicatedStorage.util.signMovement)
 			r.fadeOutSign(doubleO7Sign, true)
@@ -143,4 +139,5 @@ module.init = function()
 	end)
 end
 
+_annotate("end")
 return module

@@ -1,7 +1,9 @@
 --!strict
 
---eval 9.21
 --excluded from source control
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
@@ -1005,4 +1007,5 @@ local badges: { [string]: tt.badgeDescriptor } = {
 
 module.badges = badges
 
+_annotate("end")
 return module

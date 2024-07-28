@@ -1,7 +1,9 @@
 --!strict
 
---eval 9.24.22
 --likely not used
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
@@ -30,4 +32,5 @@ module.ChatBotSendMessage = function(message, channel, color)
 	speaker:SayMessage(message, channel, { ChatColor = color })
 end
 
+_annotate("end")
 return module

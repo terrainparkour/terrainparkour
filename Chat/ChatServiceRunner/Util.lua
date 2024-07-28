@@ -2,7 +2,8 @@
 --	// Written by: TheGamer101
 --	// Description: Utility code used by the server side chat implementation.
 
---eval 9.24
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local Chat = game:GetService("Chat")
 local ReplicatedModules = Chat:WaitForChild("ClientChatModules")
@@ -110,4 +111,5 @@ function Util:NewSortedFunctionContainer()
 	return SortedFunctionContainer.new()
 end
 
+_annotate("end")
 return Util

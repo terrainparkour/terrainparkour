@@ -1,6 +1,7 @@
 --!strict
 
---eval 9.21
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 local vscdebug = require(game.ReplicatedStorage.vscdebug)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -113,12 +114,11 @@ module.getRemoteFunction = function(name: string): RemoteFunction
 end
 
 module.getBindableEvent = function(name: string): BindableEvent
-	getDebounce("get " .. name)
 	if name:sub(-13) ~= "BindableEvent" then
 		error("bad remote event name. " .. name)
 	end
-
-	local exi = refolder:FindFirstChild(name) :: BindableEvent
+	getDebounce("get " .. name)
+	local exi = befolder:FindFirstChild(name) :: BindableEvent
 	if exi == nil then
 		return registerBindableEvent(name)
 	end
@@ -126,4 +126,5 @@ module.getBindableEvent = function(name: string): BindableEvent
 	return exi
 end
 
+_annotate("end")
 return module

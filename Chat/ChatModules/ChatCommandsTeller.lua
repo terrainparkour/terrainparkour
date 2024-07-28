@@ -2,7 +2,8 @@
 --	// Written by: Xsitsu
 --	// Description: Module that provides information on default chat commands to players.
 
---eval 9.24
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local Chat = game:GetService("Chat")
 local ReplicatedModules = Chat:WaitForChild("ClientChatModules")
@@ -33,4 +34,5 @@ local function Run(ChatService)
 	end
 end
 
+_annotate("end")
 return Run

@@ -1,11 +1,11 @@
 --!strict
 --a button that will pop a UI for showing popular top runs in game
---eval 9.25.22
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local PlayersService = game:GetService("Players")
-repeat
-	game:GetService("RunService").RenderStepped:wait()
-until game.Players.LocalPlayer.Character ~= nil
+
 local localPlayer = PlayersService.LocalPlayer
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
@@ -13,7 +13,7 @@ local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
-local warper = require(game.StarterPlayer.StarterPlayerScripts.util.warperClient)
+local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 
 local PopularResponseTypes = require(game.ReplicatedStorage.types.PopularResponseTypes)
 local enums = require(game.ReplicatedStorage.util.enums)
@@ -96,7 +96,8 @@ local function makePopRowFrame(
 	pop: PopularResponseTypes.popularRaceResult,
 	ii: number,
 	parentSgui: ScreenGui,
-	scrollingFrame: ScrollingFrame
+	scrollingFrame: ScrollingFrame,
+	warper: (startSignId: number, endSignId: number) -> ()
 ): Frame
 	local fr = Instance.new("Frame")
 	-- fr.BorderMode = Enum.BorderMode.Inset
@@ -160,7 +161,7 @@ local function makePopRowFrame(
 		chip.AutomaticSize = Enum.AutomaticSize.Y
 		chip.Parent = leaderFrame
 	end
-	-- print("Pop:" .. tostring(pop.startSignId) .. " " .. pop.startSignName)
+	_annotate("Pop:" .. tostring(pop.startSignId) .. " " .. pop.startSignName)
 
 	local mode = "found"
 	if not pop.hasFoundStart then
@@ -175,7 +176,7 @@ local function makePopRowFrame(
 		warp.Text = "Warp"
 
 		warp.Activated:Connect(function()
-			warper.requestWarpToSign(pop.startSignId, nil)
+			warper(pop.startSignId, pop.endSignId)
 			lastCanvasPosition = scrollingFrame.CanvasPosition
 			parentSgui:Destroy()
 		end)
@@ -257,7 +258,7 @@ local function getPopularContents(player: Player, userIds: { number })
 	vv.Parent = scrollingFrame
 
 	for ii, pop in ipairs(popResults) do
-		local rowFrame = makePopRowFrame(pop, ii, sg, scrollingFrame)
+		local rowFrame = makePopRowFrame(pop, ii, sg, scrollingFrame, warper.WarpToSign)
 		rowFrame.Parent = scrollingFrame
 	end
 
@@ -290,4 +291,5 @@ local popularButton: gt.actionButton = {
 
 module.popularButton = popularButton
 
+_annotate("end")
 return module

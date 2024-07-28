@@ -1,14 +1,15 @@
 --!strict
 
---eval 9.25.22
-
 --some work to strip out meshes and other extraneous items from players.
 --allowing them makes flinging easier and messes up records.
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
 local function handle(character)
-	spawn(function()
+	task.spawn(function()
 		local hum: Humanoid
 		while true do
 			hum = character:WaitForChild("Humanoid")
@@ -67,4 +68,5 @@ module.StandardizeCharacter = function(player: Player)
 	end
 end
 
+_annotate("end")
 return module

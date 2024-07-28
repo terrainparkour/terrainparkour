@@ -1,8 +1,7 @@
 --!strict
---2021 reviewed mostly
 
---eval 9.24.22
-
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
 local text = require(game.ReplicatedStorage.util.text)
@@ -16,6 +15,7 @@ local rdb = require(game.ServerScriptService.rdb)
 local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
 local serverwarping = require(game.ServerScriptService.serverWarping)
 local channelCommands = require(game.ReplicatedStorage.chat.channelCommands)
+local textHighlighting = require(game.ReplicatedStorage.gui.textHighlighting)
 
 local sendMessageModule = require(game.ReplicatedStorage.chat.sendMessage)
 local sm = sendMessageModule.sendMessage
@@ -43,7 +43,7 @@ local function CheckInternalAdminCmd(speaker, message)
 		local parts = textUtil.stringSplit(message, " ")
 
 		local cmd: string = parts[1]
-
+		local object = ""
 		if #parts == 1 then
 			object = ""
 		end
@@ -147,7 +147,18 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 				return ret
 			end
 		end
-
+		if verb == "show" then
+			print("FIX")
+			local foundSigns = tpUtil.getF(speaker.UserId)
+			if foundSigns then
+				for _, signId in pairs(foundSigns) do
+					textHighlighting.doHighlight(signId)
+				end
+			end
+			local signId = tpUtil.looseSignName2SignId(textUtil.coalesceFrom(parts, 2))
+			textHighlighting.doHighlight(signId)
+			return true
+		end
 		if verb == "common" then
 			return channelCommands.common(speaker, channel)
 		end
@@ -307,7 +318,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 					target = targetPlayer.Name
 				end
 				if not target then
-					local res = "could not find player "
+					local res = "Could not find that."
 					sm(channel, res)
 					return true
 				end
@@ -401,4 +412,5 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 	return true --there are no other admin commands.
 end
 
+_annotate("end")
 return module

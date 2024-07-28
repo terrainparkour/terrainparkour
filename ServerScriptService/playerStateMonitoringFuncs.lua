@@ -1,7 +1,8 @@
 --!strict
 
---eval 9.25.22
 --2022 log joins, quits, quitlocation, etc.
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 -- local notify = require(game.ReplicatedStorage.notify)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
@@ -80,12 +81,9 @@ module.LogQuit = function(player: Player)
 	})
 end
 
--- module.CancelRunOnPlayerRemove = function(player)
--- 	timers.cancelRun(player, "removed")
--- end
-
 module.LogPlayerLeft = function(player)
 	remoteDbInternal.remoteGet("userLeft", { userId = player.UserId })
 end
 
+_annotate("end")
 return module

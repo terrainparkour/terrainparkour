@@ -1,16 +1,16 @@
 --!strict
 
 --2022.02.25 generic marathon descriptors
---1.020 first appearance.
 --TODO not working but would be nice if it were! it's close.
 -- generate random user-side marathon descriptors for managing touch, etc.
---eval 9.25.22
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
 local TweenService = game:GetService("TweenService")
 local PlayersService = game:GetService("Players")
-repeat game:GetService("RunService").RenderStepped:wait() until game.Players.LocalPlayer.Character ~= nil
 local localPlayer = PlayersService.LocalPlayer
 local enums = require(game.ReplicatedStorage.util.enums)
 local colors = require(game.ReplicatedStorage.util.colors)
@@ -19,13 +19,6 @@ local marathonDescriptors = require(game.ReplicatedStorage.marathonDescriptors)
 --global storage for user's lbframe
 
 local mt = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonTypes)
-
-local doAnnotation = localPlayer.UserId == enums.objects.TerrainParkour and false
-local function annotate(s): nil
-	if doAnnotation then
-		print("randomMarathon.client: " .. string.format("%.0f", tick()) .. " : " .. s)
-	end
-end
 
 local RRUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string): nil
 	local targetName = marathonstatic.getMarathonComponentName(desc, foundSignName)
@@ -88,4 +81,5 @@ module.CreateRandomRaceInMarathonUI = function(startSignName: string, endSignNam
 	return desc
 end
 
+_annotate("end")
 return module

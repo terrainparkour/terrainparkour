@@ -2,7 +2,8 @@
 --	// Written by: Xsitsu
 --	// Description: A representation of one entity that can chat in different ChatChannels.
 
---eval 9.24
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
@@ -267,4 +268,5 @@ function module.new(vChatService, name)
 	return obj
 end
 
+_annotate("end")
 return module

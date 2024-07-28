@@ -1,5 +1,7 @@
 --!strict
---eval 9.21
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
@@ -35,4 +37,5 @@ export type Contest = {
 	user: Runner,
 }
 
+_annotate("end")
 return module

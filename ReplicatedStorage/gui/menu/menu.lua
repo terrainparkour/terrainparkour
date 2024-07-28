@@ -1,5 +1,8 @@
 --!strict
 
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
 local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
@@ -59,7 +62,7 @@ module.getMenuList = function(localPlayer: Player, buttons: { gt.button }, pgui:
 		buttonTb.Size = UDim2.new(1, 0, 0, 50)
 		buttonTb.Parent = scrollingFrame
 		buttonTb.Activated:Connect(function()
-			spawn(function()
+			task.spawn(function()
 				local content = but.contentsGetter(localPlayer)
 				content.Parent = pgui
 				sg:Destroy()
@@ -78,4 +81,5 @@ module.getMenuList = function(localPlayer: Player, buttons: { gt.button }, pgui:
 	return sg
 end
 
+_annotate("end")
 return module

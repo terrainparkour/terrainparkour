@@ -1,7 +1,8 @@
 --!strict
 --2021 reviewed mostly
 
---eval 9.24.22
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
@@ -33,7 +34,6 @@ export type channelDefinition = {
 	AutoJoin: boolean,
 	WelcomeMessage: string,
 	adminFunc: any,
-	adminFuncName: string,
 	noTalkingInChannel: boolean,
 	BackupChats: boolean,
 }
@@ -72,7 +72,6 @@ module.getChannelDefinitions = function(): { channelDefinition }
 			.. "\n"
 			.. joinMessage,
 		adminFunc = commandParsing.DataAdminFunc,
-		adminFuncName = "AllAdminFunc",
 		noTalkingInChannel = false,
 		BackupChats = true,
 	})
@@ -82,15 +81,17 @@ module.getChannelDefinitions = function(): { channelDefinition }
 		AutoJoin = true,
 		WelcomeMessage = sendMessageModule.usageCommandDesc,
 		adminFunc = commandParsing.DataAdminFunc,
-		adminFuncName = "DataAdminFunc",
 		noTalkingInChannel = true,
+		BackupChats = true,
 	})
 
 	table.insert(res, {
 		Name = "Racers",
 		AutoJoin = true,
 		WelcomeMessage = "This channel shows joins and leaves!",
+		adminFunc = commandParsing.DataAdminFunc,
 		noTalkingInChannel = true,
+		BackupChats = false,
 	})
 	return res
 end
@@ -111,4 +112,5 @@ module.getChannel = function(name)
 	return nil
 end
 
+_annotate("end")
 return module

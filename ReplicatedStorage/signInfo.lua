@@ -1,7 +1,9 @@
 --!strict
---eval 9.24.22
 
 --splitting out sign position management
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 local positions: { [number]: Vector3 } = {}
@@ -31,4 +33,5 @@ module.getSignCountInGameForUserConsumption = function()
 	return signCount - 1
 end
 
+_annotate("end")
 return module

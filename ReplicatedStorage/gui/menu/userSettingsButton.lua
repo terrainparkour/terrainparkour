@@ -1,6 +1,7 @@
 --!strict
 
---eval 9.24.22
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
@@ -142,4 +143,5 @@ local userSettingsButton: gt.button = {
 
 module.userSettingsButton = userSettingsButton
 
+_annotate("end")
 return module

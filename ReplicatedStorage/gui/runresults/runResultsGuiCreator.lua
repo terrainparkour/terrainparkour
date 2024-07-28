@@ -1,8 +1,10 @@
 --!strict
 
---eval 9.21
-
 --player localscripts call this to generate a raceresult UI.
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
 local vscdebug = require(game.ReplicatedStorage.vscdebug)
 local emojis = require(game.ReplicatedStorage.enums.emojis)
 local colors = require(game.ReplicatedStorage.util.colors)
@@ -332,7 +334,7 @@ module.createNewRunResultSgui = function(
 			lastWarpTarget = options.startSignId
 			lastWarperWrapper = warperWrapper
 			invisibleTextButton.Activated:Connect(function()
-				warperWrapper.requestWarpToSign(options.startSignId)
+				warperWrapper.WarpToSign(options.startSignId, options.endSignId)
 			end)
 		end
 	end
@@ -371,7 +373,7 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 	if inputObject.UserInputType == Enum.UserInputType.Keyboard then
 		if inputObject.KeyCode == Enum.KeyCode.One then
 			if lastWarpTarget ~= nil then
-				lastWarperWrapper.requestWarpToSign(lastWarpTarget)
+				lastWarperWrapper.WarpToSign(lastWarpTarget)
 			end
 		end
 	end
@@ -379,4 +381,5 @@ end
 
 UserInputService.InputBegan:Connect(onInputBegin)
 
+_annotate("end")
 return module

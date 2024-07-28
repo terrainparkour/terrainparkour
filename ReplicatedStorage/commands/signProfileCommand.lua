@@ -1,10 +1,15 @@
 --!strict
 
+--hmm what actually is this?
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
 local rdb = require(game.ServerScriptService.rdb)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local remotes = require(game.ReplicatedStorage.util.remotes)
-local showClientSignProfileEvent = remotes.getRemoteEvent("ShowClientSignProfileEvent")
+local ShowClientSignProfileEvent = remotes.getRemoteEvent("ShowClientSignProfileEvent")
 
 local module = {}
 
@@ -16,7 +21,7 @@ end
 module.signProfileCommand = function(subjectUsername: string, signId: number, player: Player)
 	local data = prepareSignProfileData(subjectUsername, signId)
 	if data and data.username and data.signId then
-		showClientSignProfileEvent:FireClient(player, data)
+		ShowClientSignProfileEvent:FireClient(player, data)
 	else
 		-- player:SendChatMessage("No sign profile found for " .. subjectUsername .. " and signId " .. signId)
 		--why is this messed up, and we can't or don't give a proper response? because in this case unlike most others,
@@ -24,4 +29,5 @@ module.signProfileCommand = function(subjectUsername: string, signId: number, pl
 	end
 end
 
+_annotate("end")
 return module

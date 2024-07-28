@@ -2,7 +2,8 @@
 --	// Written by: Xsitsu
 --	// Description: Manages creating and destroying ChatChannels and Speakers.
 
---eval 9.24
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local rdb = require(game.ServerScriptService.rdb)
@@ -413,4 +414,5 @@ function module.new()
 	return obj
 end
 
+_annotate("end")
 return module.new()

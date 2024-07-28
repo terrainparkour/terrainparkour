@@ -1,6 +1,7 @@
 --!strict
 
---eval 9.21
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
@@ -43,4 +44,14 @@ module.lightYellow = Color3.fromRGB(255, 255, 10)
 module.signTextColor = Color3.fromRGB(255, 240, 241)
 module.signColor = Color3.fromRGB(255, 89, 89)
 
+module.brown = Color3.fromRGB(139, 69, 19)
+module.turquoise = Color3.fromRGB(0, 255, 255)
+module.magenta = Color3.fromRGB(255, 0, 255)
+module.subtlePink = Color3.fromRGB(255, 105, 180)
+module.pastel = Color3.fromRGB(255, 200, 150)
+module.navyGreen = Color3.fromRGB(0, 100, 100)
+module.lightGreenPlush = Color3.fromRGB(100, 255, 100)
+module.lightBlueGreen = Color3.fromRGB(100, 255, 255)
+
+_annotate("end")
 return module

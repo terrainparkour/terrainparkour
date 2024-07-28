@@ -1,6 +1,8 @@
 --!strict
 
---eval 9.24.22
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
 local vscdebug = require(game.ReplicatedStorage.vscdebug)
 
 local colors = require(game.ReplicatedStorage.util.colors)
@@ -48,7 +50,7 @@ local CreateServerEventButtonClicked = function(localPlayer: Player): ScreenGui
 	tb.Activated:Connect(function()
 		sg:Destroy()
 	end)
-	spawn(function()
+	task.spawn(function()
 		local amt = 0.035
 		while true do
 			tb.BackgroundTransparency = tb.BackgroundTransparency + amt
@@ -61,6 +63,8 @@ local CreateServerEventButtonClicked = function(localPlayer: Player): ScreenGui
 			if tb.BackgroundTransparency >= 1 then
 				break
 			end
+			local waitTime = wait(0.01)
+			amt = 0.035 * waitTime / 0.01
 		end
 		sg:Destroy()
 	end)
@@ -80,4 +84,5 @@ local serverEventButton: gt.actionButton = {
 
 module.serverEventButton = serverEventButton
 
+_annotate("end")
 return module

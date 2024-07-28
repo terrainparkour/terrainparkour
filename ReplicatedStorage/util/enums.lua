@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.234 July 21 2024"
+module.gameVersion = "1.235 July 28 2024"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -576,7 +576,7 @@ module.signName2Alias["🔥"] = "flame"
 module.signName2Alias["ディズニー"] = "disney"
 module.signName2Alias["Mægæ"] = "Maegae"
 module.signName2Alias["ඞ"] = "sus"
-module.signName2Alias["Ø"] = "nullity"
+module.signName2Alias["Ø"] = "null"
 module.signName2Alias["👻"] = "ghost"
 module.signName2Alias["ataasinngorneq"] = "Monday - Greenlandic"
 module.signName2Alias["Дыццӕг"] = "Tuesday - Ossettian"
@@ -590,7 +590,13 @@ module.signName2Alias["Jökulhlaup"] = "Jokulhlaup"
 
 -- exclusion list.
 module.aliasesWhichAreVeryCloseSoDontNeedToBeShown = {}
-table.insert(module.aliasesWhichAreVeryCloseSoDontNeedToBeShown, "Jökulhlaup")
+module.aliasesWhichAreVeryCloseSoDontNeedToBeShown["Jökulhlaup"] = true
+
+local useLeftFaceSignNames = { ["cOld mOld on a sLate pLate"] = 1, ["Tetromino"] = 2 }
+local unanchoredSignNames = { ["Freedom"] = 1 }
+
+module.useLeftFaceSignNames = useLeftFaceSignNames
+module.unanchoredSignNames = unanchoredSignNames
 
 local alternateNames = [[Tiramisu Parboil
 Turin Parchment
@@ -803,6 +809,18 @@ local releaseNotes: { [number]: string } = {
 	* Rewrote warping, movement, refactor lots of things, lots of new funky signs. 
 	* Some UI and cmdline fixes. Basically, this is about rebooting game development]],
 }
+
+local SpecialSignDescriptions = {
+	["Triple"] = "Limited to 3 terrain types:",
+	["Keep Off the Grass"] = "Don't touch Grass",
+	["Quadruple"] = "Limited to 4 terrain types:",
+	["cOld mOld on a sLate pLate"] = "Touch each terrain type only once.",
+	["Fosbury"] = "High Jump",
+	["Bolt"] = "faast",
+	["Salekhard"] = "slip",
+	["👻"] = "ghost",
+}
+module.SpecialSignDescriptions = SpecialSignDescriptions
 
 module.releaseNotes = releaseNotes
 

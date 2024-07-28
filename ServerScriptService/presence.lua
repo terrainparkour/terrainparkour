@@ -1,6 +1,9 @@
 --!strict
 --serversign player joining setup - subbing to events, etc.
 
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
 local leaderboardEvents = require(game.ServerScriptService.leaderboardEvents)
 local leaderboardBadgeEvents = require(game.ServerScriptService.leaderboardBadgeEvents)
 local playerMonitoring = require(game.ServerScriptService.playerStateMonitoringFuncs)
@@ -15,19 +18,10 @@ type storedFunc = { func: (player: Player) -> nil, name: string }
 local playerAddFuncs: { storedFunc } = {}
 local playerRemovingFuncs: { storedFunc } = {}
 
-local doAnnotation = false
--- doAnnotation = true
-local annotationStart = tick()
-local function annotate(s: string)
-	if doAnnotation then
-		print("joinSetup: " .. string.format("%.2f", tick() - annotationStart) .. " : " .. s)
-	end
-end
-
 local function applyPlayerAddFuncs(player: Player)
 	for _, storedFunc: storedFunc in pairs(playerAddFuncs) do
-		spawn(function()
-			annotate("running.Add " .. storedFunc.name .. " on " .. player.Name)
+		task.spawn(function()
+			_annotate("running.Add " .. storedFunc.name .. " on " .. player.Name)
 			storedFunc.func(player)
 		end)
 	end
@@ -35,8 +29,8 @@ end
 
 local function applyPlayerRemovingFuncs(player: Player)
 	for _, storedFunc in pairs(playerRemovingFuncs) do
-		annotate("running.Removing " .. storedFunc.name .. " on " .. player.Name)
-		spawn(function()
+		_annotate("running.Removing " .. storedFunc.name .. " on " .. player.Name)
+		task.spawn(function()
 			storedFunc.func(player)
 		end)
 	end
@@ -95,4 +89,5 @@ module.init = function()
 	end)
 end
 
+_annotate("end")
 return module

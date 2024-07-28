@@ -1,7 +1,7 @@
 --!strict
 
---eval 9.24.22
-
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local thumbnailMaps: { [Enum.ThumbnailType]: { [number]: string } } = {}
@@ -44,4 +44,5 @@ module.getBadgeAssetThumbnailContent = function(badgeAssetId: number): string
 	return content
 end
 
+_annotate("end")
 return module

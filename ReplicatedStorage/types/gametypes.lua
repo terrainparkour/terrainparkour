@@ -2,9 +2,11 @@
 
 --dumping ground for general response types
 --TODO: synchronize this with python return types too!
---eval 9.21
 
-export type warperWrapper = { requestWarpToSign: (signId: number, highlightSignId: number?) -> nil }
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
+export type warperWrapper = { WarpToSign: (warpToSignId: number, highlightSignId: number?) -> nil }
 
 export type signFindOptions = {
 	kind: string,
@@ -107,7 +109,7 @@ export type userFinishedRunOptions = {
 	startId: number,
 	endId: number,
 	runMilliseconds: number,
-	otherPlayerUserIds: string,
+	allPlayerUserIds: string,
 	remoteActionName: string,
 }
 
@@ -330,4 +332,5 @@ export type rowDescriptor = (playerSignProfileData) -> { chipType }
 
 export type movementHistoryQueueItem = { action: number, time: number }
 
+_annotate("end")
 return {}

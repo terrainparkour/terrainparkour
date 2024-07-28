@@ -1,9 +1,10 @@
 --!strict
 
---eval 9.25.22
-
 --constantly sets collidability of player torso
 --removing this spams server with fewer update hits - which makes run timing less accurate
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 if false then
 	local RunService = game:GetService("RunService")
@@ -22,3 +23,4 @@ if false then
 		end
 	end)
 end
+_annotate("end")

@@ -2,6 +2,9 @@
 
 --enums for usersetting domain and setting names.  gradually expand this.
 
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
 local module = {}
 
 local settingDomains: { [string]: string } = {
@@ -26,4 +29,5 @@ export type settingRequest = { domain: string?, settingName: string?, includeDis
 
 module.settingNames = settingNames
 
+_annotate("end")
 return module
