@@ -130,6 +130,21 @@ local defaultSettingsValues: { tt.userSettingValue } = {
 		domain = settingEnums.settingDomains.USERSETTINGS,
 		value = false,
 	},
+	{
+		name = settingEnums.settingNames.HIGHLIGHT_ON_RUN_COMPLETE_WARP,
+		domain = settingEnums.settingDomains.USERSETTINGS,
+		value = false,
+	},
+	{
+		name = settingEnums.settingNames.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP,
+		domain = settingEnums.settingDomains.USERSETTINGS,
+		value = false,
+	},
+	{
+		name = settingEnums.settingNames.HIGHLIGHT_AT_ALL,
+		domain = settingEnums.settingDomains.USERSETTINGS,
+		value = true,
+	},
 }
 
 --copy a setting based on template default.

@@ -3,6 +3,7 @@
 --runs on playerside for notifications
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
+local module = {}
 
 local config = require(game.ReplicatedStorage.config)
 local tt = require(game.ReplicatedStorage.types.gametypes)
@@ -12,13 +13,12 @@ local remotes = require(game.ReplicatedStorage.util.remotes)
 local runResultsGuiCreator = require(game.ReplicatedStorage.gui.runresults.runResultsGuiCreator)
 local findResultsCreator = require(game.ReplicatedStorage.gui.runresults.findGuiCreator)
 local ephemeralNotifications = require(game.ReplicatedStorage.gui.ephemeralNotificationCreator)
+local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 
 local PlayersService = game:GetService("Players")
 
 local localPlayer = PlayersService.LocalPlayer
-
 local playerGui = localPlayer:WaitForChild("PlayerGui")
-local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 
 type legacyOptions = {}
 
@@ -30,7 +30,7 @@ local function clientReceiveNotification(options: any)
 	end
 	if options.kind == "race results" then
 		options = options :: tt.pyUserFinishedRunResponse
-		local thing = runResultsGuiCreator.createNewRunResultSgui(options, warper)
+		local thing = runResultsGuiCreator.createNewRunResultSgui(options)
 		thing.Parent = playerGui
 		return
 	end
@@ -43,21 +43,23 @@ local function clientReceiveNotification(options: any)
 
 	if options.kind == "marathon results" then
 		options = options :: tt.pyUserFinishedRunResponse
-		local thing = runResultsGuiCreator.createNewRunResultSgui(options, { WarpToSign = warper.WarpToSign })
+		local thing = runResultsGuiCreator.createNewRunResultSgui(options)
 		thing.Parent = playerGui
 		return
 	end
 
 	--fallback to ephemeral
 	local actionResultOptions: tt.ephemeralNotificationOptions = options :: tt.ephemeralNotificationOptions
-	ephemeralNotifications.notify(actionResultOptions, warper)
+	ephemeralNotifications.notify(actionResultOptions)
 end
 
---set up events.
-local messageReceivedEvent = remotes.getRemoteEvent("MessageReceivedEvent")
-messageReceivedEvent.OnClientEvent:Connect(function(options)
-	clientReceiveNotification(options)
-end)
+module.Init = function()
+	playerGui = localPlayer:WaitForChild("PlayerGui")
+	local messageReceivedEvent = remotes.getRemoteEvent("MessageReceivedEvent")
+	messageReceivedEvent.OnClientEvent:Connect(function(options)
+		clientReceiveNotification(options)
+	end)
+end
 
 _annotate("end")
-return {}
+return module

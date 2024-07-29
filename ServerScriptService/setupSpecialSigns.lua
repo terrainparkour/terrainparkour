@@ -96,13 +96,6 @@ module.init = function()
 			end
 		end
 
-		local big: Part = signFolder:WaitForChild("Big", 2)
-		if big then
-		end
-		local small: Part = signFolder:WaitForChild("Small", 2)
-		if small then
-		end
-
 		local chiralitySign: Part = signFolder:WaitForChild("Chirality", 2)
 		if chiralitySign then
 			if isWeirdSignSetupYet[chiralitySign.Name] == nil then

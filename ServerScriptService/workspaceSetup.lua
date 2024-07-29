@@ -41,6 +41,9 @@ module.createEvents = function()
 	remotes.getRemoteEvent("ShowSignProfileEvent")
 	remotes.getRemoteEvent("TellServerRunEndedRemoteEvent")
 
+	-- for the server to tell the client to highlight something when the user does a command for example.
+	remotes.getRemoteEvent("HighlightSignIdEvent")
+
 	remotes.getRemoteEvent("ServerEventRemoteEvent")
 	remotes.getRemoteFunction("ServerEventRemoteFunction")
 

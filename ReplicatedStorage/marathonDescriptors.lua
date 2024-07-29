@@ -450,7 +450,7 @@ local alphaReverse: mt.marathonDescriptor = {
 	sequenceNumber = "Alpha Reverse",
 }
 
-local function mkFindN(n: number, badge: tt.badgeDescriptor?): mt.marathonDescriptor
+local function mkFindN(n: number, badge: tt.badgeDescriptor | nil): mt.marathonDescriptor
 	local inner: mt.marathonDescriptor = {
 		kind = string.format("find%d", n),
 		highLevelType = "findn",
@@ -801,7 +801,7 @@ local function getSignsWithTrait(trait): { string }
 	return res
 end
 
-module.find4 = mkFindN(4)
+module.find4 = mkFindN(4, nil)
 module.find10 = mkFindN(10, badgeEnums.badges.MarathonCompletionFind10)
 module.find20 = mkFindN(20, badgeEnums.badges.MarathonCompletionFind20)
 module.find40 = mkFindN(40, badgeEnums.badges.MarathonCompletionFind40)

@@ -23,7 +23,6 @@ local joinableMarathonKinds: { marathonTypes.marathonDescriptor } = {}
 local marathonCompleteEvent = remotes.getRemoteEvent("MarathonCompleteEvent")
 local ephemeralMarathonCompleteEvent = remotes.getRemoteEvent("EphemeralMarathonCompleteEvent")
 local PlayersService = game:GetService("Players")
-local localPlayer = PlayersService.LocalPlayer
 
 ------------------------ GLOBALS ------------------------
 
@@ -303,7 +302,7 @@ module.DisableMarathon = function(desc: marathonTypes.marathonDescriptor)
 		end
 	end
 	if target == 0 then
-		_annotate("could not find marathon to remove.")
+		-- _annotate(string.format("marathon.disable: could not find %s %s", desc.kind, desc.humanName))
 		return
 	end
 	resetMarathonProgress(desc)
@@ -312,7 +311,7 @@ module.DisableMarathon = function(desc: marathonTypes.marathonDescriptor)
 	if exi ~= nil then
 		exi:Destroy()
 	end
-
+	_annotate(string.format("marathon.disabled:%s", desc.kind))
 	table.remove(joinableMarathonKinds, target)
 end
 
@@ -356,6 +355,10 @@ end
 
 -- when user warps, kill outstanding marathons.
 module.Init = function()
+	disabledMarathons = {}
+	--blocker to confirm the user has completed warp
+	canDoMarathonStuff = true
+	isMarathonBlockedByWarp = false
 	local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
 	AvatarEventBindableEvent.Event:Connect(receiveAvatarEvent)
 end

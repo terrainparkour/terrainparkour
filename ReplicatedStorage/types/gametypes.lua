@@ -6,8 +6,6 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-export type warperWrapper = { WarpToSign: (warpToSignId: number, highlightSignId: number?) -> nil }
-
 export type signFindOptions = {
 	kind: string,
 	userId: number, --the user this find is in relation to.

@@ -3,15 +3,15 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
+local module = {}
+
 local mt = require(game.ReplicatedStorage.avatarEventTypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local colors = require(game.ReplicatedStorage.util.colors)
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
--- local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
--- local fireEvent = avatarEventFiring.FireEvent
 
-local particleEmitter
+local particleEmitter: ParticleEmitter? = nil
 
 local createParticleEmitter = function()
 	local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
@@ -40,7 +40,9 @@ local emitParticle = function(color: Color3)
 
 	task.spawn(function()
 		wait(0.7)
-		particleEmitter.Rate = 0
+		if particleEmitter then
+			particleEmitter.Rate = 0
+		end
 	end)
 end
 
@@ -120,8 +122,11 @@ local handleAvatarEvent = function(ev: mt.avatarEvent)
 	end
 end
 
-local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
-AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
+module.Init = function()
+	particleEmitter = nil
+	local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
+	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
+end
 
 _annotate("end")
-return {}
+return module

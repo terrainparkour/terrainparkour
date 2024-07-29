@@ -22,10 +22,11 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local vscdebug = require(game.ReplicatedStorage.vscdebug)
+local module = {}
 
+local config = require(game.ReplicatedStorage.config)
 local TweenService = game:GetService("TweenService")
-local PlayersService = game:GetService("Players")
+local Players = game:GetService("Players")
 
 local leaderboardButtons = require(game.StarterPlayer.StarterCharacterScripts.buttons.leaderboardButtons)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
@@ -43,17 +44,10 @@ local marathonClient = require(game.StarterPlayer.StarterCharacterScripts.marath
 local mds = require(game.ReplicatedStorage.marathonDescriptors)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local lbEnums = require(game.ReplicatedStorage.enums.lbEnums)
-
 local localRdb = require(game.ReplicatedStorage.localRdb)
+local localPlayer = Players.LocalPlayer
 
-local StarterPlayer = game:GetService("StarterPlayer")
-
-local localPlayer = PlayersService.LocalPlayer
-
-local lbIsEnabled = true
-
---used to do reverse ordering items in lb
-local bignum = 10000000
+---------------------- TYPES -----------------------
 
 -- this covers all the different types of lbupdates that can be sent. for example, one is tt_afterrundata, another is tt_inital join data + username,
 type genericLbUpdateDataType = { [string]: number | string }
@@ -67,23 +61,6 @@ local lbUserData: { [number]: genericLbUpdateDataType } = {}
 
 --test wrapping this here to force stronger typing
 type rowFrameType = { frame: Frame }
-
---the user-focused rowFrames go here.
-local userId2rowframe: { [number]: rowFrameType } = {}
-
---the outer, created on time lbframe.
-local lbframe: Frame
-
---active tracking
-local lbRowCount = 0
-
---pixel heights.
-local lbHeaderY = 19
-local lbPlayerRowY = 24
-local userLbRowCellWidth = 43
-local lbwidth = 0
-local lbtrans = 0.55
-
 --descriptors used for user-LB rows for which the later ones, updates come up from server.
 type lbUserCellDescriptorType = {
 	name: string,
@@ -93,6 +70,26 @@ type lbUserCellDescriptorType = {
 	tooltip: string,
 	transparency: number,
 }
+------------- GLOBAL STASTIC OBJECTS ----------------
+
+--used to do reverse ordering items in lb
+local bignum: number = 10000000
+--pixel heights.
+local lbHeaderY: number = 19
+local lbPlayerRowY: number = 24
+local userLbRowCellWidth: number = 43
+local lbwidth: number = -6
+local lbtrans: number = 0.55
+
+----------------------DYNAMIC---------------------
+
+--active tracking
+local lbRowCount: number = 0
+--the user-focused rowFrames go here.
+local userId2rowframe: { [number]: rowFrameType } = {}
+--the outer, created on time lbframe.
+local lbframe: Frame? = nil
+local lbIsEnabled: boolean = true
 
 --use num to artificially keep them separated
 --these are the horizontal sections of each row.
@@ -229,7 +226,7 @@ local function completelyResetUserLB()
 	--make initial row only. then as things happen (people join, or updates come in, apply them in-place)
 
 	local pgui: PlayerGui = localPlayer:WaitForChild("PlayerGui")
-	local oldLbSgui: ScreenGui? = pgui:FindFirstChild("LeaderboardScreenGui")
+	local oldLbSgui: ScreenGui? = pgui:FindFirstChild("LeaderboardScreenGui") :: ScreenGui?
 	if oldLbSgui ~= nil then
 		oldLbSgui:Destroy()
 	end
@@ -361,7 +358,7 @@ end
 
 --after receiving an lb update, figure out what changed relative to known data
 --store it and return a userDataChange for rendering into the LB
-local function storeUserData(userId: number, data: genericLbUpdateDataType): { userDataChange }
+local function StoreUserData(userId: number, data: genericLbUpdateDataType): { userDataChange }
 	local res: { userDataChange } = {}
 	if lbUserData[userId] == nil then --received new data.
 		lbUserData[userId] = {}
@@ -400,7 +397,11 @@ local function receivedLBUpdateAboutUser(userData: genericLbUpdateDataType, init
 		return
 	end
 	local subjectUserId = userData.userId
-	-- print("got info about: ", subjectUserId)
+	local receivedUserData = ""
+	for a, b in pairs(userData) do
+		receivedUserData = receivedUserData .. string.format("\t%s=%s ", a, b)
+	end
+	_annotate(string.format("got info about: %s: %s", subjectUserId, receivedUserData))
 	-- print(userData)
 	--check if this client's user has any lbframe.
 	if subjectUserId == nil then
@@ -417,9 +418,14 @@ local function receivedLBUpdateAboutUser(userData: genericLbUpdateDataType, init
 
 	--first check if there is anything worthwhile to draw - anything changed.
 
-	local userDataChanges = storeUserData(subjectUserId, userData)
-	if userDataChanges == {} then
-		warn("redrawUserLBRow.die since not different for target: " .. subjectUserId)
+	local userDataChanges: { userDataChange } = StoreUserData(subjectUserId, userData)
+	if userDataChanges == nil or #userDataChanges == 0 then
+		_annotate(
+			string.format(
+				"looks like we received information again which we already had, so the storeOperation returned nothing. Here is the data: %s",
+				receivedUserData
+			)
+		)
 		return
 	end
 
@@ -447,7 +453,7 @@ local function receivedLBUpdateAboutUser(userData: genericLbUpdateDataType, init
 		bgcolor = colors.meColor
 	end
 
-	for _, change in pairs(userDataChanges) do
+	for _, change: userDataChange in pairs(userDataChanges) do
 		-- find the userCellDescriptor corresponding to it.
 
 		local descriptor = nil
@@ -521,11 +527,7 @@ local function receivedLBUpdateAboutUser(userData: genericLbUpdateDataType, init
 		-- separated out. what's actually happening is that tix is showing up as loaded already
 		-- probably because the main user data stuff is slower than the tix load stuff.
 		if change.oldValue and initial then
-			warn("weird initial.")
-			print(userData)
-			print(userDataChanges)
-			print(change)
-			print(newIntermediateText)
+			_annotate("weird initial.")
 		end
 
 		local newTL = guiUtil.getTl(
@@ -623,9 +625,9 @@ end
 
 local function testJoinRejoinBugs()
 	task.spawn(function()
-		wait(5)
-		print("fake ,join.")
-		local thisDatatype = [[export type afterData_getStatsByUser = {
+		wait(4)
+		--[[ this is the datatype: 
+		{
 		kind: string,
 		userId: number,
 		runs: number,
@@ -638,7 +640,8 @@ local function testJoinRejoinBugs()
 		userTotalWRCount: number,
 		wrRank: number,
 		totalSignCount: number,
-		awardCount: number]]
+		awardCount: number
+		]]
 		local fakeDataUpdateData: tt.afterData_getStatsByUser = {
 			kind = "joiner update other lb",
 			userId = 90115385,
@@ -700,7 +703,6 @@ local function handleMarathonSettingsChanged(setting: tt.userSettingValue)
 	end
 end
 
-lbwidth = -6
 for _, lbUserCellDescriptor in pairs(lbUserCellDescriptors) do
 	lbwidth = lbwidth + lbUserCellDescriptor.width
 end
@@ -712,36 +714,49 @@ else
 	lbIsEnabled = true
 end
 
-localFunctions.registerLocalSettingChangeReceiver(function(item: tt.userSettingValue): any
-	return handleUserSettingChanged(item)
-end, "leaderboardSettingListener")
+module.Init = function()
+	localPlayer = Players.LocalPlayer
 
-localFunctions.registerLocalSettingChangeReceiver(function(item: tt.userSettingValue): any
-	return handleMarathonSettingsChanged(item)
-end, "handleMarathonSettingsChanged")
+	lbRowCount = 0
+	--the user-focused rowFrames go here.
+	userId2rowframe = {}
+	--the outer, created on time lbframe.
+	lbframe = nil
+	lbIsEnabled = true
+	localFunctions.registerLocalSettingChangeReceiver(function(item: tt.userSettingValue): any
+		return handleUserSettingChanged(item)
+	end, settingEnums.settingNames.HIDE_LEADERBOARD)
 
-completelyResetUserLB()
+	localFunctions.registerLocalSettingChangeReceiver(function(item: tt.userSettingValue): any
+		return handleMarathonSettingsChanged(item)
+	end, "handleMarathonSettingsChanged")
 
--- we setup the event, but what if upstream playerjoinfunc is called first?
-local leaderboardUpdateEvent = remotes.getRemoteEvent("LeaderboardUpdateEvent")
-leaderboardUpdateEvent.OnClientEvent:Connect(clientReceiveNewLeaderboardData)
+	completelyResetUserLB()
 
--- listen to racestart, raceendevent
-marathonClient.Init()
-local initialMarathonSettings = localFunctions.getSettingByDomain(settingEnums.settingDomains.MARATHONS)
+	-- we setup the event, but what if upstream playerjoinfunc is called first?
+	local leaderboardUpdateEvent = remotes.getRemoteEvent("LeaderboardUpdateEvent")
+	leaderboardUpdateEvent.OnClientEvent:Connect(clientReceiveNewLeaderboardData)
 
--- load marathons according to the users settings
-for _, userSetting in pairs(initialMarathonSettings) do
-	handleMarathonSettingsChanged(userSetting)
+	-- listen to racestart, raceendevent
+	marathonClient.Init()
+	local initialMarathonSettings = localFunctions.getSettingByDomain(settingEnums.settingDomains.MARATHONS)
+
+	-- load marathons according to the users settings
+	for _, userSetting in pairs(initialMarathonSettings) do
+		handleMarathonSettingsChanged(userSetting)
+	end
+
+	local userSettings = localFunctions.getSettingByDomain(settingEnums.settingDomains.USERSETTINGS)
+
+	for _, userSetting in pairs(userSettings) do
+		handleUserSettingChanged(userSetting)
+	end
 end
 
-local userSettings = localFunctions.getSettingByDomain(settingEnums.settingDomains.USERSETTINGS)
-
-for _, userSetting in pairs(userSettings) do
-	handleUserSettingChanged(userSetting)
+if config.isTestGame() then
+	testJoinRejoinBugs()
 end
-
--- testJoinRejoinBugs()
 
 _annotate("end")
-return {}
+
+return module

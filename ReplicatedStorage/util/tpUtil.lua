@@ -92,7 +92,14 @@ module.signId2signName = function(signId: number): string
 end
 
 module.signId2Sign = function(signId: number): Part?
-	return game.Workspace:WaitForChild("Signs"):FindFirstChild(enums.signId2name[signId])
+	if not signId then
+		return nil
+	end
+	local signName = enums.signId2name[signId]
+	if not signName then
+		return nil
+	end
+	return game.Workspace:WaitForChild("Signs"):FindFirstChild(signName)
 end
 
 module.signName2Sign = function(signName: string): Part?

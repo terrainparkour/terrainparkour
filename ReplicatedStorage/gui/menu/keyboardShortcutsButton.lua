@@ -2,6 +2,7 @@
 
 --keyboard shortcuts listing. ideally we can even keep track of how many times each one is used. most games don't do that
 -- but i always wanted to get some kind of validation step where players could evaluate
+-- TODO this is not enabled anwyhere. and not done either
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 

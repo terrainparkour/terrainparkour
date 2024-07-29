@@ -316,7 +316,7 @@ if false then
 	task.spawn(function()
 		local last = ""
 		while true do
-			wait()
+			task.wait()
 			local exi = animator:GetPlayingAnimationTracks()
 			if exi == nil then
 				continue

@@ -7,7 +7,8 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local vscdebug = require(game.ReplicatedStorage.vscdebug)
+local module = {}
+
 local colors = require(game.ReplicatedStorage.util.colors)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
@@ -20,26 +21,31 @@ local localPlayer = PlayersService.LocalPlayer
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local dynamicRunningEvent = remotes.getRemoteEvent("DynamicRunningEvent") :: RemoteEvent
 
+---------------- CONSTANTS--------------
+--max visualization (CAMERA, not PLAYER) range.
+local bbguiMaxDist = 250
+
+-------------- GLOBALS ----------------------
+
 --control settings, default start. modifiable by a setting.
 local dynamicRunningEnabled = false
 
 --global for tracking
 local dynamicStartTick: number = 0
 
---max visualization (CAMERA, not PLAYER) range.
-local bbguiMaxDist = 250
-
 local debounce = false
 local dynamicRunFrames: { tt.DynamicRunFrame } = {}
 --target sign name => TL;
 local tls: { [string]: TextLabel } = {}
 
-local module = {}
-
 --signName => ui outer frame
 local targetSignUis: { [string]: TextLabel } = {}
 
 local startDynamicDebounce = false
+local renderStepped: RBXScriptConnection? = nil
+local lastupdates = {}
+local hasReset = false
+-------------------- FUNCTIONS ----------------------
 
 --destroy all UIs and nuke the pointer dict to them
 module.endDynamic = function(force: boolean?)
@@ -102,8 +108,6 @@ module.startDynamic = function(player: Player, signName: string, startTick: numb
 end
 
 local function makeDynamicSignMouseoverUI(from: string, to: string): TextLabel?
-	-- print(from)
-	-- print(to)
 	local signs = game.Workspace:FindFirstChild("Signs")
 	local sign = signs:FindFirstChild(to) :: Part
 	if sign == nil or not sign.CanTouch then
@@ -258,8 +262,8 @@ local function lock(src: string?)
 		src = ""
 	end
 	while debounce do
-		_annotate("debounce " .. src)
-		wait(0.01)
+		_annotate("debounce lock. " .. src)
+		wait(0.05)
 	end
 	debounce = true
 end
@@ -269,17 +273,16 @@ local function unlock()
 end
 
 local function add(dynamicRunFrame: tt.DynamicRunFrame, from)
-	lock()
 	table.insert(dynamicRunFrames, dynamicRunFrame)
 	local tl = getOrCreateUI(from, dynamicRunFrame.targetSignName)
 	--this can happen sometimes - the client doesn't have the full DM yet somehow
 	if not tl then
 		--skip this UI.
+		-- warn("no")
 		return
 	end
 	tls[dynamicRunFrame.targetSignName] = tl
-	_annotate("added " .. dynamicRunFrame.targetSignName)
-	unlock()
+	-- _annotate("added " .. dynamicRunFrame.targetSignName)
 end
 
 local function handleOne(dynamicRunFrame: tt.DynamicRunFrame)
@@ -323,7 +326,7 @@ local function handleOne(dynamicRunFrame: tt.DynamicRunFrame)
 end
 
 local function fullReset()
-	_annotate("full reset")
+	_annotate("full dynamic running reset")
 	lock()
 	for _, item in ipairs(tls) do
 		item.Parent.Parent:Destroy()
@@ -334,12 +337,12 @@ local function fullReset()
 end
 
 local function receiveDynamicRunData(updates: tt.dynamicRunFromData)
-	_annotate("Receive " .. tostring(#updates.frames))
 	if not dynamicRunningEnabled then
+		_annotate("received but dynamic running disabled")
 		return
 	end
-	_annotate("add Receive " .. tostring(#updates.frames))
-
+	_annotate(string.format("Apply dynamicRunning %d %s", #updates.frames, updates.fromSignName))
+	lock()
 	for _, dynamicRunFrame: tt.DynamicRunFrame in ipairs(updates.frames) do
 		if dynamicRunFrame.targetSignName == "👻" then
 			--we just magically don't do dynamic running at all TO ghost.
@@ -347,13 +350,11 @@ local function receiveDynamicRunData(updates: tt.dynamicRunFromData)
 		end
 		add(dynamicRunFrame, updates.fromSignName)
 	end
+	unlock()
 end
 
-local renderStepped: RBXScriptConnection
-local lastupdates = {}
-local hasReset = false
 local function setupRenderStepped()
-	_annotate("strating render stepped")
+	_annotate("starting render stepped")
 
 	renderStepped = RunService.RenderStepped:Connect(function()
 		local st = tick()
@@ -405,7 +406,17 @@ local function handleUserSettingChanged(setting: tt.userSettingValue)
 	end
 end
 
-module.init = function()
+module.Init = function()
+	dynamicRunningEnabled = false
+	dynamicStartTick = 0
+	debounce = false
+	dynamicRunFrames = {}
+	tls = {}
+	targetSignUis = {}
+	renderStepped = nil
+	lastupdates = {}
+	hasReset = false
+	startDynamicDebounce = false
 	dynamicRunningEvent.OnClientEvent:Connect(receiveDynamicRunData)
 	local localFunctions = require(game.ReplicatedStorage.localFunctions)
 

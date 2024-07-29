@@ -10,7 +10,7 @@ module.SetCharacterTransparency = function(player: Player, target: number)
 	--or, if i were to allow users to wear accessories again, it would matter
 	--that i don't revert them to their original transparency but rather set to 0
 	local any = false
-	for i, v in pairs(character:GetDescendants()) do
+	for i, v: Decal | MeshPart in pairs(character:GetDescendants()) do
 		if v:IsA("Decal") or v:IsA("MeshPart") then --v:IsA("BasePart")
 			if v.Transparency ~= target then
 				any = true

@@ -9,6 +9,7 @@ local module = {}
 
 local TweenService = game:GetService("TweenService")
 
+local config = require(game.ReplicatedStorage.config)
 local colors = require(game.ReplicatedStorage.util.colors)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 
@@ -70,10 +71,12 @@ module.doHighlight = function(signId: number)
 		userHasFoundSignCache[signId] = userHasFoundSign
 	end
 
-	local sign = tpUtil.signId2Sign(signId)
+	local sign: Part? = tpUtil.signId2Sign(signId)
 	if not sign then
-		warn("warping to highlight an unseen sign?")
-		return
+		if not config.isTestGame() then
+			warn(string.format("doHighlight of missing sign. signId=%s", tostring(signId)))
+			return
+		end
 	end
 	--to highlight a sign we have to:
 	--verify the signId exists as a sign in this game

@@ -52,8 +52,6 @@ local function makeSettingRowFrame(setting: tt.userSettingValue, player: Player,
 			local par = toggleButton.Parent :: TextLabel
 			par.BackgroundColor3 = colors.greenGo
 			setting.value = true
-			-- localFunctions.notifySettingChange(player, setting)
-			-- userSettingsChangedFunction:InvokeServer(setting)
 			localFunctions.setSetting(setting)
 		else
 			toggleButton.Text = "No"
@@ -61,7 +59,6 @@ local function makeSettingRowFrame(setting: tt.userSettingValue, player: Player,
 			local par = toggleButton.Parent :: TextLabel
 			par.BackgroundColor3 = colors.redStop
 			setting.value = false
-			-- localFunctions.notifySettingChange(player, setting)
 			localFunctions.setSetting(setting)
 		end
 	end)

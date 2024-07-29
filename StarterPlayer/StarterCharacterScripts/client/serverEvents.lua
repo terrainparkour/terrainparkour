@@ -5,14 +5,16 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
+local module = {}
+
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local serverEventGuis = require(game.StarterPlayer.StarterPlayerScripts.guis.serverEventGuis)
 local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
-local vscdebug = require(game.ReplicatedStorage.vscdebug)
 
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
+local serverEventRemoteEvent = remotes.getRemoteEvent("ServerEventRemoteEvent")
 
 local function clientReceiveMessage(message: string, data: any)
 	_annotate("client received: " .. message)
@@ -29,10 +31,10 @@ local function clientReceiveMessage(message: string, data: any)
 	end
 end
 
-local serverEventRemoteEvent = remotes.getRemoteEvent("ServerEventRemoteEvent")
-
-_annotate("serverEvents init start")
-serverEventRemoteEvent.OnClientEvent:Connect(clientReceiveMessage)
+module.Init = function()
+	_annotate("serverEvents init start")
+	serverEventRemoteEvent.OnClientEvent:Connect(clientReceiveMessage)
+end
 
 _annotate("end")
-return {}
+return module

@@ -3,25 +3,29 @@ local module = {}
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
+local config = require(game.ReplicatedStorage.config)
 local enums = require(game.ReplicatedStorage.util.enums)
+local mt = require(game.ReplicatedStorage.avatarEventTypes)
+local tt = require(game.ReplicatedStorage.types.gametypes)
+local remotes = require(game.ReplicatedStorage.util.remotes)
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
+
+local localFunctions = require(game.ReplicatedStorage.localFunctions)
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 
+---------GLOBALS ---------------
+local currentHighlights = {}
+local doHighlightAtAll = false
+
 local function lerpColor(c1, c2, alpha)
 	return Color3.new(c1.R + (c2.R - c1.R) * alpha, c1.G + (c2.G - c1.G) * alpha, c1.B + (c2.B - c1.B) * alpha)
-end
-
-local currentHighlights = {}
-
-local function killAllExistingHighlights()
-	for _, el in pairs(currentHighlights) do
-		if el then
-			el:Destroy()
-		end
-	end
 end
 
 local colorPattern = {
@@ -33,7 +37,35 @@ local colorPattern = {
 	Color3.fromRGB(255, 0, 255), -- Purple
 }
 
+module.KillAllExistingHighlights = function()
+	_annotate("Killing all existing highlights")
+	for _, el in pairs(currentHighlights) do
+		if el then
+			el:Destroy()
+		end
+	end
+end
+
 local function innerDoHighlight(sign: Part)
+	if not sign then
+		if not config.isTestGame() then
+			warn("trying to highlight a nil sign?")
+		end
+		return
+	end
+	if not tpUtil.isSignPartValidRightNow(sign) then
+		_annotate("cannot highlight invalid sign." .. sign.Name)
+		return
+	end
+	if enums.ExcludeSignNamesFromStartingAt[sign.Name] then
+		_annotate("cannot highlight sign is ExcludeSignNamesFromStartingAt" .. sign.Name)
+		return
+	end
+	if enums.ExcludeSignNamesFromEndingAt[sign.Name] then
+		_annotate("cannot highlight sign is ExcludeSignNamesFromEndingAt" .. sign.Name)
+		return
+	end
+	_annotate(string.format("highlighting: %s", sign.Name))
 	local billboardGui = Instance.new("BillboardGui")
 	billboardGui.Name = "FloatingText"
 	billboardGui.AlwaysOnTop = true
@@ -89,6 +121,7 @@ local function innerDoHighlight(sign: Part)
 			-- Remove the effect after the total lifetime
 			if elapsedTime > totalLifetime then
 				billboardGui:Destroy()
+				_annotate(string.format("killing highlighting: %s", sign.Name))
 				connection:Disconnect()
 			end
 		end
@@ -96,51 +129,84 @@ local function innerDoHighlight(sign: Part)
 	table.insert(currentHighlights, billboardGui)
 end
 
-module.doHighlight = function(signId: number)
-	local sign = tpUtil.signId2Sign(signId)
+local function pointPlayerAtSign(sign: Part)
 	if not sign then
-		warn("warping to highlight an unseen sign?")
 		return
 	end
-	if not tpUtil.isSignPartValidRightNow(sign) then
-		_annotate("cannot highlight invalid sign.")
-		return
-	end
-	if enums.ExcludeSignNamesFromStartingAt[sign.Name] then
-		_annotate("cannot highlight sign is forbidden knowledge")
-		return
-	end
-	if enums.ExcludeSignNamesFromEndingAt[sign.Name] then
-		_annotate("cannot highlight sign is forbidden knowledge")
-		return
-	end
-	killAllExistingHighlights()
-	local player = Players.LocalPlayer
-	if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-		local character = player.Character
-		local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	_annotate("pointing player at sign" .. sign.Name)
+	local humanoidRootPart: Part? = nil
+	if localPlayer and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+		local character = localPlayer.Character
+		humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
 		if humanoidRootPart then
 			local direction = (sign.Position - humanoidRootPart.Position).Unit
 			humanoidRootPart.CFrame = CFrame.new(humanoidRootPart.Position, humanoidRootPart.Position + direction)
 		end
 	end
 
+	------ point the camera at the location. ------------
 	local camera = workspace.CurrentCamera
 	if camera then
-		camera.CFrame = CFrame.new(camera.CFrame.Position, sign.Position)
+		-- camera.CFrame = CFrame.new(camera.CFrame.Position, sign.Position)
+		if humanoidRootPart then
+			camera.CFrame = humanoidRootPart.CFrame
+		end
 	end
-	return innerDoHighlight(sign)
+end
+
+module.doHighlightSingle = function(signId: number)
+	module.KillAllExistingHighlights()
+	if not doHighlightAtAll then
+		return
+	end
+	local sign: Part? = tpUtil.signId2Sign(signId)
+	if not sign then
+		if not config.isTestGame() then
+			warn("trying to highlight an unseen sign?")
+		end
+		return
+	end
+	pointPlayerAtSign(sign)
+	innerDoHighlight(sign)
 end
 
 module.doHighlightMultiple = function(signIds: { number })
-	killAllExistingHighlights()
+	module.KillAllExistingHighlights()
 	for _, signId in pairs(signIds) do
-		local sign = tpUtil.signId2Sign(signId)
-		if not sign then
-			continue
-		end
+		local sign: Part? = tpUtil.signId2Sign(signId)
 		innerDoHighlight(sign)
 	end
+
+	-- when a player does /rr we reuse the multi-highlight showSignCommand.
+	if signIds and #signIds == 1 then
+		local sign: Part? = tpUtil.signId2Sign(signIds[1])
+		pointPlayerAtSign(sign)
+	end
+end
+
+local function receiveAvatarEvent(event: mt.avatarEvent)
+	if
+		event.eventType == mt.avatarEventTypes.DIED
+		or event.eventType == mt.avatarEventTypes.GET_READY_FOR_WARP
+		or event.eventType == mt.avatarEventTypes.RUN_COMPLETE
+		or event.eventType == mt.avatarEventTypes.RUN_KILL
+	then
+		module.KillAllExistingHighlights()
+	end
+end
+
+local function handleUserSettingChanged(userSetting: tt.userSettingValue)
+	doHighlightAtAll = userSetting.value
+end
+
+module.Init = function()
+	AvatarEventBindableEvent.Event:Connect(receiveAvatarEvent)
+	local userSettingValue = localFunctions.getSettingByName(settingEnums.settingNames.HIGHLIGHT_AT_ALL)
+	handleUserSettingChanged(userSettingValue)
+	localFunctions.registerLocalSettingChangeReceiver(
+		handleUserSettingChanged,
+		settingEnums.settingNames.HIGHLIGHT_AT_ALL
+	)
 end
 
 _annotate("end")

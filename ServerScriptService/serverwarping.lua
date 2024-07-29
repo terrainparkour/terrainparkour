@@ -8,8 +8,7 @@ local _annotate = annotater.getAnnotater(script)
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local remotes = require(game.ReplicatedStorage.util.remotes)
-
-local serverWantsWarpFunction = remotes.getRemoteFunction("serverWantsWarpFunction")
+local ShowSignsEvent = remotes.getRemoteEvent("ShowSignsEvent")
 
 local module = {}
 
@@ -49,6 +48,7 @@ local function CreateTemporaryLightPillar(pos: Vector3, desc: string)
 end
 
 local function InnerWarp(player: Player, pos: Vector3, randomize: boolean): boolean
+	_annotate(string.format("InnerWarp player=%s pos=%s randomize=%s", player.Name, tostring(pos), tostring(randomize)))
 	if randomize then
 		pos = pos + Vector3.new(math.random(5), 25 + math.random(10), math.random(5))
 	end
@@ -103,6 +103,7 @@ end
 --note that this does NOT clear client state and therefore is unsafe
 --2024.08 at onset of this version, this is only used by admins.
 module.WarpToUsername = function(player, username: string)
+	_annotate(string.format("WarpToUsername player=%s username=%s", player.Name, username))
 	local targetPlayer = tpUtil.looseGetPlayerFromUsername(username)
 	if targetPlayer == nil or targetPlayer.Character == nil then
 		return false
@@ -115,8 +116,16 @@ module.WarpToUsername = function(player, username: string)
 	return InnerWarp(player, pos, false)
 end
 
---this is the one players can use.
-module.WarpToSignName = function(player, signName: string)
+-- this is what's called when a player does "/rr".
+module.WarpToSignName = function(player, signName: string, hypotheticalTargetSignId: number?)
+	_annotate(
+		string.format(
+			"WarpToSignName player=%s signName=%s hypotheticalTargetSignId=%s",
+			player.Name,
+			signName,
+			tostring(hypotheticalTargetSignId)
+		)
+	)
 	local signId = tpUtil.looseSignName2SignId(signName)
 	if signId == nil then
 		return false
@@ -125,11 +134,22 @@ module.WarpToSignName = function(player, signName: string)
 	if not pos then
 		return false
 	end
-	return InnerWarp(player, pos, true)
+	local res = InnerWarp(player, pos, true)
+	if res then
+		ShowSignsEvent:FireClient(player, { hypotheticalTargetSignId })
+	end
+	return res
 end
 
---make this also warpable to signNumber
-module.WarpToSignId = function(player: Player, signId: number)
+module.WarpToSignId = function(player: Player, signId: number, hypotheticalTargetSignId: number?)
+	_annotate(
+		string.format(
+			"WarpToSignId player=%s signId=%s, hypotheticalTargetSignId=%s",
+			player.Name,
+			tostring(signId),
+			tostring(hypotheticalTargetSignId)
+		)
+	)
 	if not signId then --do nothing, this was a reflected playerwarp (?)
 		warn("no signId.")
 		return false
@@ -141,6 +161,10 @@ module.WarpToSignId = function(player: Player, signId: number)
 	end
 	_annotate("starting InnerWarp")
 	local innerWarpRes = InnerWarp(player, pos, true)
+	if innerWarpRes and hypotheticalTargetSignId then
+		_annotate("because we had innerWarpRes and hypothetical, we are: " .. tostring(hypotheticalTargetSignId))
+		ShowSignsEvent:FireClient(player, { hypotheticalTargetSignId })
+	end
 	_annotate("end WarpToSignId with res: " .. tostring(innerWarpRes))
 	return innerWarpRes
 end

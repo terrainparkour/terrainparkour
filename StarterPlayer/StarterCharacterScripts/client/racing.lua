@@ -15,17 +15,20 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
+local module = {}
+
 local remotes = require(game.ReplicatedStorage.util.remotes)
+
 local marathonClient = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonClient)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local dynamicRunning = require(game.StarterPlayer.StarterPlayerScripts.dynamicRunning)
-dynamicRunning.init()
-
+local mt = require(game.ReplicatedStorage.avatarEventTypes)
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
 local runProgressSgui = require(game.ReplicatedStorage.gui.runProgressSgui)
+local terrainTouchMonitor = require(game.ReplicatedStorage.terrainTouchMonitor)
 
-local mt = require(game.ReplicatedStorage.avatarEventTypes)
+local TellServerRunEndedRemoteEvent = remotes.getRemoteEvent("TellServerRunEndedRemoteEvent")
 
 ---------- CHARACTER -------------
 local localPlayer: Player = game.Players.LocalPlayer
@@ -33,24 +36,21 @@ local playerGui = localPlayer:WaitForChild("PlayerGui")
 local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
------------- GLOBALS ---------------
+-------------------------------------- GLOBALS --------------------------------------
 local isRacingBlockedByWarp = false
 
--------- RUNSTATE MONITORING ----------------
+----------- RUNSTATE MONITORING ----------------
 local currentRunStartTick: number = 0
 local currentRunSignName: string = ""
 -- the start position of the initial sign in a race - used for distance
 local lastRunCompleteTime = 0
 
 ---------- DEBOUNCERS ------------
------ i think this is just so we don't repeatedly call this function in overlapping ways. -----------------------
+-- so we don't repeatedly call this function in overlapping ways. -----------------------
 local clientTouchDebounce: { [string]: boolean } = {}
 
 ---------------- LEGALITY STATE MONITORING ---------------------------
 local isAvatarLegalToTouchSigns = true
-
------------- EVENTS TO TALK TO SERVER AND FINALIZE THE RUN ----------------
-local TellServerRunEndedRemoteEvent = remotes.getRemoteEvent("TellServerRunEndedRemoteEvent")
 
 ----------- this is for the special runs which have limitations on how many terrains you can see as you run and things like that.----------
 ---------- we probably should just monitor them ourselves ?--------------
@@ -63,8 +63,6 @@ local function killClientRun(context: string)
 	dynamicRunning.endDynamic()
 	runProgressSgui.Kill()
 end
-
-local terrainMonitor = require(game.ReplicatedStorage.terrainTouchMonitors)
 
 --- no interpretation yet - just that they touched.
 local function TouchedSign(signId: number, touchTimeTick: number)
@@ -91,7 +89,7 @@ local function TouchedSign(signId: number, touchTimeTick: number)
 	local signName: string = tpUtil.signId2signName(signId)
 	local sign: Part? = tpUtil.signId2Sign(signId)
 	if sign == nil then
-		error("no sign.")
+		warn("no sign.")
 	end
 	if not isAvatarLegalToTouchSigns then
 		_annotate("ignoring touch while not free to touch signs.")
@@ -118,7 +116,7 @@ local function TouchedSign(signId: number, touchTimeTick: number)
 		dynamicRunning.startDynamic(localPlayer, signName, touchTimeTick)
 		fireEvent(mt.avatarEventTypes.RUN_START, { relatedSignId = signId, relatedSignName = signName })
 		currentRunStartTick = touchTimeTick
-		terrainMonitor.initTracking(signName)
+		terrainTouchMonitor.initTracking(signName)
 		_annotate(string.format("started run from" .. currentRunSignName))
 	elseif currentRunSignName == signName then
 		--------- RETOUCH----------------------------
@@ -130,19 +128,23 @@ local function TouchedSign(signId: number, touchTimeTick: number)
 			fireEvent(mt.avatarEventTypes.RETOUCH_SIGN, { relatedSignId = signId, relatedSignName = signName })
 			runProgressSgui.UpdateStartTime(currentRunStartTick)
 		end
+		_annotate(string.format("touched sign again: %s", signName))
 		--------END RACE-------------
 	else
 		--locally calculated actual racing time.
 		local runMilliseconds: number = math.floor(1000 * (touchTimeTick - currentRunStartTick))
-		fireEvent(mt.avatarEventTypes.RUN_COMPLETE, {})
-		local floorSeen: number = terrainMonitor.GetSeenTerrainTypesThisRun()
+		local details: mt.avatarEventDetails = {
+			relatedSignId = tpUtil.signName2SignId(signName),
+			relatedSignName = signName,
+		}
+		fireEvent(mt.avatarEventTypes.RUN_COMPLETE, details)
+		local floorSeen: number = terrainTouchMonitor.GetSeenTerrainTypesThisRun()
 		if not currentRunSignName then
 			error("currentRunSignName is nil")
 		end
 		if not signName then
 			error("signName is nil")
 		end
-		dynamicRunning.endDynamic()
 		_annotate(string.format("end run from %s to %s in %dms", currentRunSignName, signName, runMilliseconds))
 		TellServerRunEndedRemoteEvent:FireServer(currentRunSignName, signName, runMilliseconds, floorSeen)
 		killClientRun("normal end run.")
@@ -227,7 +229,7 @@ local function receiveAvatarEvent(ev: mt.avatarEvent)
 		killClientRun(string.format("player %s so end run.", mt.avatarEventTypesReverse[ev.eventType]))
 		adjustPlayerFreedomToDoRuns(true, mt.avatarEventTypesReverse[ev.eventType])
 	elseif ev.eventType == mt.avatarEventTypes.FLOOR_CHANGED then
-		terrainMonitor.CountNewFloorMaterial(ev.details.floorMaterial)
+		terrainTouchMonitor.CountNewFloorMaterial(ev.details.floorMaterial)
 	elseif ev.eventType == mt.avatarEventTypes.TOUCH_SIGN then
 		if ev.details == nil or not ev.details.relatedSignId then
 			error("x")
@@ -238,11 +240,24 @@ local function receiveAvatarEvent(ev: mt.avatarEvent)
 	end
 end
 
------------------------ INIT -----------------------
+module.Init = function()
+	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	currentRunStartTick = 0
+	currentRunSignName = ""
+	-- the start position of the initial sign in a race - used for distance
+	lastRunCompleteTime = 0
+
+	isRacingBlockedByWarp = false
+	clientTouchDebounce = {}
+	isAvatarLegalToTouchSigns = true
+	terrainTouchMonitor.Init()
+	dynamicRunning.Init()
+end
 
 -------------LISTEN TO EVENTS-------------
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
 AvatarEventBindableEvent.Event:Connect(receiveAvatarEvent)
 
 _annotate("end")
-return {}
+return module

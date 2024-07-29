@@ -149,7 +149,7 @@ local function getTixValueOfServerEvent(ev: tt.runningServerEvent): number
 	return res
 end
 
-local function startServerEvent(data: ServerEventCreateType): tt.runningServerEvent?
+local function startServerEvent(data: ServerEventCreateType): tt.runningServerEvent | nil
 	--pick a random start and randome end, set it up dumbly as possible.
 	_annotate("startevent " .. tostring(data.userId))
 	if #activeRunningServerEvents >= serverEventLimitCount then
@@ -383,7 +383,9 @@ end
 module.init = function()
 	_annotate("setup serverEvents")
 	setupRunningServerEventKiller()
-	serverEventRemoteFunction.OnServerInvoke = serverReceiveFunction
+	serverEventRemoteFunction.OnServerInvoke = function(player: Player, message: string, data: any): any
+		return serverReceiveFunction(player, message, data)
+	end
 	local ServerEventBindableEvent = remotes.getBindableEvent("ServerEventBindableEvent")
 	ServerEventBindableEvent.Event:Connect(receiveRunFinishFromServer)
 	_annotate("setup serverEvents.done")

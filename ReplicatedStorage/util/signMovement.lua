@@ -4,10 +4,13 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
+--!nolint
+-- stylua: ignore
+--!nolint
 local doNotCheckInGameIdentifier = require(game.ReplicatedStorage.doNotCheckInGameIdentifier)
 
 local sendMessageModule = require(game.ReplicatedStorage.chat.sendMessage)
-local sm = sendMessageModule.sendMessage
+local sendMessage = sendMessageModule.sendMessage
 local channeldefinitions = require(game.ReplicatedStorage.chat.channeldefinitions)
 local channel = channeldefinitions.getChannel("All")
 local config = require(game.ReplicatedStorage.config)
@@ -99,7 +102,7 @@ module.fadeInSign = function(sign: Part)
 	end
 	assert(sg)
 	sg.Enabled = true
-	sm(channel, "007 has appeared")
+	sendMessage(channel, "007 has appeared")
 end
 
 module.fadeOutSign = function(sign: Part?, first: boolean)
@@ -124,7 +127,7 @@ module.fadeOutSign = function(sign: Part?, first: boolean)
 	sign.CanCollide = false
 	sign.CanTouch = false
 	if not first then
-		sm(channel, "007 has disappeared")
+		sendMessage(channel, "007 has disappeared")
 	end
 end
 

@@ -126,7 +126,6 @@ local function makeContestRow(
 	ii: number,
 	parentSgui: ScreenGui,
 	scrollingFrame: ScrollingFrame,
-	warper: tt.warperWrapper,
 	showScrollbar: boolean --wehter scrollbar is shown; i f so make num cell 10 pixels narroweer.
 ): Frame
 	local fr = Instance.new("Frame")
@@ -434,15 +433,7 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	vv.Parent = scrollingFrame
 
 	for ii, race: ContestResponseTypes.ContestRace in ipairs(contest.races) do
-		local rowFrame = makeContestRow(
-			contest,
-			race,
-			ii + 10,
-			sg,
-			scrollingFrame,
-			{ WarpToSign = warper.WarpToSign },
-			showScrollbar
-		)
+		local rowFrame = makeContestRow(contest, race, ii + 10, sg, scrollingFrame, showScrollbar)
 		rowFrame.Parent = scrollingFrame
 	end
 
@@ -491,13 +482,7 @@ module.getContestButtons = function(userIds: { number }): { gt.actionButton }
 end
 
 local function handleUserSettingChanged(setting: tt.userSettingValue)
-	if setting.name == settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY then
-		if setting.value then
-			shortenContestDigitDisplay = true
-		else
-			shortenContestDigitDisplay = false
-		end
-	end
+	shortenContestDigitDisplay = setting.value
 end
 
 local function init()
@@ -506,12 +491,12 @@ local function init()
 	-- second, get the initial value.
 	-- TODO obviously this still duplicates a lot of logic.
 	local localFunctions = require(game.ReplicatedStorage.localFunctions)
-	localFunctions.registerLocalSettingChangeReceiver(function(item: tt.userSettingValue)
-		return handleUserSettingChanged(item)
-	end, settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY)
+	localFunctions.registerLocalSettingChangeReceiver(
+		handleUserSettingChanged,
+		settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY
+	)
 
-	local sval = localFunctions.getSettingByName(settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY)
-	handleUserSettingChanged(sval)
+	handleUserSettingChanged(localFunctions.getSettingByName(settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY))
 end
 
 init()

@@ -62,7 +62,6 @@ local function touchedSignServer(hit: BasePart, sign: Part)
 	local player: Player = tpUtil.getPlayerForUsername(hit.Parent.Name)
 	if not player then
 		_annotate("there was a hit but not a player?")
-		_annotate(hit, hit.Name, hit.Parent.Name)
 		return false
 	end
 
@@ -78,7 +77,7 @@ local function touchedSignServer(hit: BasePart, sign: Part)
 
 	--exclude dead players from touching a sign.
 	local hum: Humanoid = player.Character:WaitForChild("Humanoid") :: Humanoid
-	local character = player.Character or player.WaitForChild("Character")
+	local character = player.Character or player.CharacterAdded:Wait()
 	if not character then
 		return false
 	end

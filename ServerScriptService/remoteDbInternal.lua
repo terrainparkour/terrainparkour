@@ -89,6 +89,8 @@ local function getPath(kind: string, data: any)
 		return kind .. "/" .. stringdata.userId .. "/" .. stringdata["banLevel"] .. "/"
 	elseif kind == "getUserBanLevel" then
 		return kind .. "/" .. stringdata.userId .. "/"
+	elseif kind == "getFoundSignIds" then
+		return kind .. "/" .. stringdata.userId .. "/"
 	elseif kind == "userDied" then
 		return kind
 			.. "/"
@@ -257,7 +259,7 @@ local function getPath(kind: string, data: any)
 		return kind .. "/" .. stringdata.username .. "/"
 	end
 
-	error("bad input. " .. tostring(kind) .. tostring(data))
+	error(string.format("bad input. kind=%s data=%s", tostring(kind), tostring(data)))
 	return "BAD FALLTHROUGH."
 end
 
@@ -298,10 +300,11 @@ module.remoteGet = function(kind: string, data: any): any
 		data.secret = nil
 		--clear secret for later printing.
 	end
+	local st = tick()
 	local res = httpservice.httpThrottledJsonGet(surl)
 	if config.isInStudio() or data.userId == enums.objects.TerrainParkour then
 		-- _annotate(string.format("DONE %0.3f %s", tick() - st, url))
-		_annotate(res)
+		_annotate(string.format("remoteDbInternal.remoteGet took: %0.3f %s", tick() - st, url))
 	end
 	if not res.banned then
 		afterRemoteDbActions(kind, res)

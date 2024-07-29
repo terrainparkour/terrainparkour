@@ -7,20 +7,6 @@ local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
-export type movementData = { acceleration: number, jumppower: number, materialid: number }
-
-export type terrainMovementSpec = {
-	material: Enum.Material,
-	acceleration: number,
-	maxspeed: number,
-	jumpheight: number,
-	d: number,
-	f: number,
-	e: number,
-	fweight: number,
-	eweight: number,
-}
-
 export type avatarEventDetails = {
 	relatedSignId: number?,
 	relatedSignName: string?,

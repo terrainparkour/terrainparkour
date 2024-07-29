@@ -9,6 +9,8 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
+local module = {}
+
 local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 
@@ -23,6 +25,7 @@ local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
 local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 local humanoid = character:WaitForChild("Humanoid") :: Humanoid
+
 --------- GLOBAL STATE VARS --------------
 local isMovementBlockedByWarp = false
 
@@ -100,13 +103,16 @@ end
 -- NOTE the normal run speed is technically called humanoid.WalkSpeed.
 local InternalSetSpeed = function(speed: number)
 	if speed == humanoid.WalkSpeed then
+		-- _annotate("skipping setting speed to identical value.")
 		return
 	end
 	local oldSpeed = humanoid.WalkSpeed
 	local gap = math.abs(speed - oldSpeed)
 	if gap < 0.01 then
+		-- _annotate(string.format("skipping setting speed to non-significantly changed value. %0.6f", gap))
 		return
 	end
+	_annotate(string.format("setting speed to %0.1f", speed))
 	humanoid.WalkSpeed = speed
 
 	-- Correcting the type of the details parameter to mt.avatarEventDetails
@@ -148,7 +154,7 @@ local ApplyFloorPhysics = function(ev: mt.avatarEvent)
 	if activeRunSignName ~= "Salekhard" then
 		ApplyNewPhysicsFloor(desiredPhysicsName, desiredPhysicsDetails.prop)
 	end
-
+	_annotate(string.format("applying physics for: %s", desiredPhysicsName))
 	lastTouchedFloor = eventFloor
 end
 
@@ -278,7 +284,7 @@ local adjustSpeed = function()
 		elseif ev.eventType == mt.avatarEventTypes.RETOUCH_SIGN or ev.eventType == mt.avatarEventTypes.TOUCH_SIGN then
 			startTimeOnThisTerrain = eventAge
 		else
-			_annotate("unhandled event type in adjustSpeed: " .. mt.avatarEventTypesReverse[ev.eventType])
+			warn("unhandled event type in adjustSpeed: " .. mt.avatarEventTypesReverse[ev.eventType])
 		end
 	end
 
@@ -400,7 +406,6 @@ local eventsWeCareAbout = {
 	mt.avatarEventTypes.CHARACTER_ADDED,
 	mt.avatarEventTypes.DIED,
 	mt.avatarEventTypes.CHARACTER_REMOVING,
-	mt.avatarEventTypes.CHARACTER_ADDED,
 
 	mt.avatarEventTypes.FLOOR_CHANGED,
 	mt.avatarEventTypes.KEYBOARD_RUN,
@@ -545,7 +550,7 @@ local receiveAvatarEvent = function(ev: mt.avatarEvent)
 		setRunEffectedSign("")
 		movementEventHistory = {}
 	else
-		_annotate("unhandled movement event:" .. mt.avatarEventTypesReverse[ev.eventType])
+		warn("unhandled movement event:" .. mt.avatarEventTypesReverse[ev.eventType])
 	end
 
 	-- we actually always want to adjust speed since it makes sense. you should still speedup,
@@ -553,19 +558,35 @@ local receiveAvatarEvent = function(ev: mt.avatarEvent)
 end
 
 ---------------------- START CONTINUOUS ADJUSTMENT ------------
-task.spawn(function()
-	while true do
-		adjustSpeed()
-		wait(1 / 60)
-	end
-end)
 
---------------------- LISTEN TO EVENTS ---------------------
+module.Init = function()
+	_annotate("start of movement.init.")
+	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
+	humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	isMovementBlockedByWarp = false
+	activeCurrentWorldPhysicsName = "default"
+	lastTouchedFloor = nil
+	movementEventHistory = {}
+	activeRunSignName = {}
+	debounceAdjustSpeed = false
 
-local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
-AvatarEventBindableEvent.Event:Connect(receiveAvatarEvent)
-InternalSetSpeed(movementEnums.constants.globalDefaultRunSpeed)
-ApplyNewPhysicsFloor("default", movementEnums.constants.DefaultPhysicalProperties)
+	task.spawn(function()
+		while true do
+			adjustSpeed()
+			wait(1 / 60)
+		end
+	end)
+
+	--------------------- LISTEN TO EVENTS ---------------------
+
+	_annotate("adjusted initial speed in movement.")
+	InternalSetSpeed(movementEnums.constants.globalDefaultRunSpeed)
+	ApplyNewPhysicsFloor("default", movementEnums.constants.DefaultPhysicalProperties)
+
+	local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
+	AvatarEventBindableEvent.Event:Connect(receiveAvatarEvent)
+	_annotate("End of movement.Init.")
+end
 
 _annotate("end")
-return {}
+return module

@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.235 July 28 2024"
+module.gameVersion = "1.240 July 28 2024"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -808,6 +808,34 @@ local releaseNotes: { [number]: string } = {
 	[231] = [[* First release in a very great while. 
 	* Rewrote warping, movement, refactor lots of things, lots of new funky signs. 
 	* Some UI and cmdline fixes. Basically, this is about rebooting game development]],
+	[235] = [[ Redid the way i manage movement, warping etc
+* Fixed special signs including mOld
+* Show command
+* Warping now highlights the related sign a lot of the time.
+* This should be configurable with a setting which is also easy to modify whether we highlight at all (and also kill active highlighting)
+* And rotates you and camera towards it
+* Particles changed
+* Excluded more signs from being involved in server events
+
+Internals
+* Added script load timing
+* Particles can do and see a lot more stuff now. Not optimized
+* Converted most scripts to be characterScripts not playerScripts
+* robloxServerError
+* ...getFoundSignIds
+* Delete a bunch of events in workspaceSetup
+* avatarEventMonitor
+* main.client.lua to clearly control order of client script loading 
+* cool features I can do
+]],
+	[236] = [[ * fix game even when the user dies or gets reset.
+* Fix aligning player to point at warp target
+* Optional highlight when doing /rr, joining a popular or new race, joining a server event, joining a race someone else ran, hitting 1 to rejoin your prior race, 
+* User settings for highlighting in some situations, plus globally
+* Sort user settings now
+* Global 'show' command
+* Keyboard command to kill highlight 'h'
+ ]],
 }
 
 local SpecialSignDescriptions = {

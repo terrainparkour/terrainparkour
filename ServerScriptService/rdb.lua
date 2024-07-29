@@ -55,11 +55,6 @@ module.getGameSignCount = function(): number
 	return gameTotalSigncount
 end
 
-module.getFoundSignIdsByUserId = function(userId: number): { number }
-	local res = remoteDbInternal.remoteGet("getFoundSignIds", { userId = userId })
-	return res
-end
-
 module.getRandomFoundSignName = function(userId: number): string
 	local items = module.getUserSignFinds(userId)
 	local choices = {}
@@ -228,7 +223,7 @@ module.dynamicRunFrom = function(userId: number, startSignId: number, targetSign
 	end
 
 	--this has string keys on the wire. how to generally make them show up as number, so types match?
-	for k, frame in ipairs(res.frames) do
+	for k, frame: tt.DynamicRunFrame in ipairs(res.frames) do
 		frame.targetSignId = tonumber(frame.targetSignId)
 		if frame.myplace ~= nil then
 			frame.myplace.place = tonumber(frame.myplace.place)
@@ -243,7 +238,7 @@ module.dynamicRunFrom = function(userId: number, startSignId: number, targetSign
 
 			-- its not actually a number at this point
 			-- this is rdb cleanup.  TODO find a way to deserialize into a class type.
-			frame.places[tostring(place)] = nil
+			-- frame.places[tostring(place)] = nil
 		end
 	end
 

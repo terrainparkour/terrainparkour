@@ -19,9 +19,12 @@ local mt = require(game.ReplicatedStorage.avatarEventTypes)
 
 ---------- CHARACTER -------------
 local localPlayer: Player = game.Players.LocalPlayer
-local playerGui = localPlayer:WaitForChild("PlayerGui")
 local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
+
+local WarpRequestFunction = remotes.getRemoteFunction("WarpRequestFunction")
+local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
+local HighlightSignIdEvent: RemoteEvent = remotes.getRemoteEvent("HighlightSignIdEvent")
 
 local module = {}
 
@@ -33,8 +36,9 @@ local morphingIsReady = false
 local marathonIsReady = false
 local warpTargetSignId: number? = nil
 local highlightTargetSignId: number? = nil
+local debounceHandleAvatarEvent = false
 
-local WarpRequestFunction = remotes.getRemoteFunction("WarpRequestFunction")
+--------------- FUNCTIONS ------------------
 
 local function LockEveryoneForWarp()
 	_annotate("locking everyone for warp")
@@ -53,7 +57,7 @@ local function TeardownWarpSetup()
 end
 
 local function HaveServerDoWarp()
-	_annotate("have server do warp, my local highlightSignId is: " .. tostring(highlightSignId))
+	_annotate("have server do warp, my local highlightSignId is: " .. tostring(highlightTargetSignId))
 	if not movementIsReady or not racingIsReady or not morphingIsReady then
 		error("somebody was not ready?")
 		return
@@ -67,7 +71,7 @@ local function HaveServerDoWarp()
 	_annotate("warp request done")
 	if highlightTargetSignId and highlightTargetSignId ~= 0 then
 		_annotate("highlighting " .. tostring(highlightTargetSignId))
-		textHighlighting.doHighlight(highlightTargetSignId)
+		textHighlighting.doHighlightSingle(highlightTargetSignId)
 	else
 		_annotate("not highlighting")
 	end
@@ -83,28 +87,18 @@ module.WarpToSign = function(warpToSignId: number, highlightSignId: number?)
 	warpTargetSignId = warpToSignId
 	highlightTargetSignId = highlightSignId
 	LockEveryoneForWarp()
-
-	--just loop here to get permission to do the warp that way we don't lost context.
-	while true do
-		task.wait()
-	end
 end
 
 -- when asked to warp we get everybody ready.
 -- when the last ready person tells me they are good to go, we do the warp and clear everything.
-local debounceHandle = false
+
 local function handleAvatarEvent(ev: mt.avatarEvent)
-	local waited = false
-	while debounceHandle do
-		waited = true
+	while debounceHandleAvatarEvent do
 		_annotate("handleAvatarEvent in warper" .. tostring(ev.eventType))
 		task.wait() -- Wait until the lock is released
 	end
-	if waited then
-		_annotate("waited but got out.")
-	end
 
-	debounceHandle = true
+	debounceHandleAvatarEvent = true
 	if ev.eventType == mt.avatarEventTypes.MOVEMENT_WARPER_READY then
 		movementIsReady = true
 	elseif ev.eventType == mt.avatarEventTypes.RACING_WARPER_READY then
@@ -121,11 +115,14 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 		fireEvent(mt.avatarEventTypes.WARP_DONE, {})
 		_annotate("warp done")
 	end
-	debounceHandle = false
+	debounceHandleAvatarEvent = false
 end
 
 module.Init = function()
-	local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
+	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	debounceHandleAvatarEvent = false
+
 	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 end
 

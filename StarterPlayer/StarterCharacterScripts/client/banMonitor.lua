@@ -6,7 +6,7 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 
-
+local module = {}
 
 --2022.04 unclear if works.
 task.spawn(function()
@@ -38,4 +38,4 @@ task.spawn(function()
 end)
 
 _annotate("end")
-return {}
+return module

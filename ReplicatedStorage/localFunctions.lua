@@ -25,38 +25,53 @@ local module = {}
 -- this NAME is just a placeholder for managing the settings handlers? rather than being the actual in-db name.
 local settingChangeFunctions: { [string]: (tt.userSettingValue) -> nil } = {}
 module.registerLocalSettingChangeReceiver = function(func: (tt.userSettingValue) -> nil, name: string)
-	-- if settingChangeFunctions[name] ~= nil then
-	-- print("reregistering setting change warning for " .. name)
-	-- end
+	-- let's make sure we're registering a setting which exists in the enums and things.
+
+	local exi = false
+	for settingCodeName, textName in pairs(settingEnums.settingNames) do
+		if textName == name then
+			exi = true
+			break
+		end
+	end
+
+	if not exi then
+		warn("trying to register a setting change receiver with a name that doesn't exist: " .. name)
+		return
+	end
 	settingChangeFunctions[name] = func
 end
 
 --also just tell registered scripts this change happened
-local function localNotifySettingChange(setting: tt.userSettingValue)
-	for name: string, otherFunc: (tt.userSettingValue) -> nil in pairs(settingChangeFunctions) do
-		otherFunc(setting)
+local function LocalNotifySettingChange(setting: tt.userSettingValue)
+	for name: string, funcWhichCaresAboutThisSettingChange: (tt.userSettingValue) -> nil in
+		pairs(settingChangeFunctions)
+	do
+		if setting.name == name then
+			funcWhichCaresAboutThisSettingChange(setting)
+		end
 	end
 end
 
-local getUserSettingsFunction: RemoteFunction = remotes.getRemoteFunction("GetUserSettingsFunction")
+local GetUserSettingsFunction: RemoteFunction = remotes.getRemoteFunction("GetUserSettingsFunction")
 
 --2024 is this safe to globally just use? like, in the chat toggler can I hit this and get some kind of useful or at least
 -- not super slow/not missing data way to get the current value?
 module.getSettingByName = function(settingName: string): tt.userSettingValue
 	local req: settingEnums.settingRequest = { settingName = settingName, includeDistributions = false }
-	return getUserSettingsFunction:InvokeServer(req)
+	return GetUserSettingsFunction:InvokeServer(req)
 end
 
 module.getSettingByDomain = function(domain: string): { [string]: tt.userSettingValue }
 	local req: settingEnums.settingRequest = { domain = domain, includeDistributions = false }
-	return getUserSettingsFunction:InvokeServer(req)
+	return GetUserSettingsFunction:InvokeServer(req)
 end
 
-local userSettingsChangedFunction = remotes.getRemoteFunction("UserSettingsChangedFunction") :: RemoteFunction
+local UserSettingsChangedFunction = remotes.getRemoteFunction("UserSettingsChangedFunction") :: RemoteFunction
 
 module.setSetting = function(setting: tt.userSettingValue)
-	userSettingsChangedFunction:InvokeServer(setting)
-	localNotifySettingChange(setting)
+	UserSettingsChangedFunction:InvokeServer(setting)
+	LocalNotifySettingChange(setting)
 end
 
 _annotate("end")

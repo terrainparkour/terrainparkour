@@ -1,36 +1,41 @@
 --!strict
 
+-- okay, new way to do this: by logic, morphs go away when a player gets out of a run in any way.
+-- either completing or killing it.
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
+
+local module = {}
 
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local AvatarEventBindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
 local mt = require(game.ReplicatedStorage.avatarEventTypes)
+local movementUtil = require(game.StarterPlayer.StarterPlayerScripts.util.movementUtil)
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
-local Players = game:GetService("Players")
 
+local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
 local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 local humanoid = character:WaitForChild("Humanoid") :: Humanoid
-local movementUtil = require(game.StarterPlayer.StarterPlayerScripts.util.movementUtil)
 
--- okay, new way to do this: by logic, morphs go away when a player gets out of a run in any way.
--- either completing or killing it.
+----------- GLOBALS -----------
 
 local originalScale = character:GetScale()
-if originalScale ~= 1 then
-	_annotate("player entered without initial scale of 1.0")
-end
 local activeScaleMultiplerAbsolute = originalScale
+local isMorphBlockedByWarp = false
+local resetPhysicalAvatarMorphsDebounce = false
+local pulseLaunchDebounce = false
+local resetMomentumDebounce = false
 
-local deb = false
+----------- INIT -----------
 local ResetPhysicalAvatarMorphs = function()
-	if deb then
+	if resetPhysicalAvatarMorphsDebounce then
 		return
 	end
 	_annotate("DEB.resetPhysicalAvatarMorphs")
-	deb = true
+	resetPhysicalAvatarMorphsDebounce = true
 	-- character:ScaleTo(originalScale / activeScaleMultiplerAbsolute)
 	character:ScaleTo(1)
 	activeScaleMultiplerAbsolute = 1
@@ -46,16 +51,15 @@ local ResetPhysicalAvatarMorphs = function()
 		--we should ban runs from this point, but don't currently.
 		humanoid:ChangeState(Enum.HumanoidStateType.Running)
 	end
-	deb = false
+	resetPhysicalAvatarMorphsDebounce = false
 end
 
-local deb2 = false
 local DoLaunchForPulse = function()
-	if deb2 then
+	if pulseLaunchDebounce then
 		return
 	end
 	_annotate("DEB.DoLaunchForPulse")
-	deb2 = true
+	pulseLaunchDebounce = true
 
 	local daysSince1970 = os.difftime(
 		os.time(),
@@ -75,16 +79,14 @@ local DoLaunchForPulse = function()
 	local direction = Vector3.new(x, y, z).Unit
 	local thisServerPulseVector = direction * pulsePower
 	character.PrimaryPart.AssemblyLinearVelocity = thisServerPulseVector
-	deb2 = false
+	pulseLaunchDebounce = false
 end
 
--- when a user even touches a sign at all, we reset
-local momdeb = false
 local ResetMomentum = function()
-	if momdeb then
+	if resetMomentumDebounce then
 		return
 	end
-	momdeb = true
+	resetMomentumDebounce = true
 	_annotate("\t\tresetMomentum")
 	local rootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
 	if rootPart == nil then
@@ -117,11 +119,10 @@ local ResetMomentum = function()
 		_annotate("waited.in resetMomentum")
 	end
 	_annotate("movement:\tmomentum has been reset.")
-	momdeb = false
+	resetMomentumDebounce = false
 end
 
-local isMorphBlockedByWarp = false
-AvatarEventBindableEvent.Event:Connect(function(ev: mt.avatarEvent)
+local function handleAvatarEvent(ev: mt.avatarEvent)
 	if ev.eventType == mt.avatarEventTypes.GET_READY_FOR_WARP then
 		isMorphBlockedByWarp = true
 		ResetPhysicalAvatarMorphs()
@@ -157,7 +158,24 @@ AvatarEventBindableEvent.Event:Connect(function(ev: mt.avatarEvent)
 			activeScaleMultiplerAbsolute = originalScale / 2
 		end
 	end
-end)
+end
+
+module.Init = function()
+	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
+	humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	originalScale = character:GetScale()
+	activeScaleMultiplerAbsolute = originalScale
+	isMorphBlockedByWarp = false
+	resetPhysicalAvatarMorphsDebounce = false
+	pulseLaunchDebounce = false
+	resetMomentumDebounce = false
+
+	if originalScale ~= 1 then
+		_annotate(string.format("player entered without initial scale of 1.0 - it was actually %s", originalScale))
+	end
+
+	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
+end
 
 _annotate("end")
-return {}
+return module

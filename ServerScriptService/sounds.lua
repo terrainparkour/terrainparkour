@@ -22,7 +22,7 @@ else
 	soundFolder.Parent = game.ReplicatedStorage
 end
 
-local function getSound(soundAssetId: number)
+local function getSound(soundAssetId: number): Sound
 	local sound = soundFolder:FindFirstChild(tostring(soundAssetId))
 	if sound == nil then
 		sound = Instance.new("Sound")
@@ -34,7 +34,7 @@ end
 
 local function init()
 	for soundName, soundAssetId in pairs(sounds) do
-		local sound = getSound(soundAssetId)
+		local sound: Sound = getSound(soundAssetId)
 		sound.Name = soundName
 		_annotate("preloading: " .. soundName)
 		sound:Play() -- Preload the sound by playing it once
@@ -49,10 +49,10 @@ local function playSoundFromSign(sign: Part, soundName: string)
 	sound.Name = soundName
 	local exi = sign:FindFirstChild(soundName) :: Sound
 	if exi then
-		_annotate("replaying old one.", sign.Name)
+		_annotate(string.format("replaying old one. %s", sign.Name))
 		exi:Play()
 	else
-		_annotate("adding and play..", sign.Name)
+		_annotate(string.format("adding and play.. %s", sign.Name))
 		sound.Parent = sign
 		sound:Play()
 	end

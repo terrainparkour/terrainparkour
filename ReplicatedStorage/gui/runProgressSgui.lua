@@ -44,8 +44,7 @@ module.Kill = function()
 	runShouldEndSemaphore = true
 	-- hard to communicate to the inside of the thing.
 	-- again, bindingEvents are the solution.
-	wait()
-	_annotate("Waiting in kill semaphore")
+	task.wait()
 end
 
 local lastUpdate = ""
@@ -112,16 +111,17 @@ local debounceCreateRunProgressSgui = false
 module.CreateRunProgressSgui = function(playerGui, startTimeTick, signName, pos)
 	-- store run const variables
 	-- non-const variables (such as the dynamic race text, etc.) will be updated via above.
+	if debounceCreateRunProgressSgui then
+		_annotate("debounceCreateRunProgressSgui.")
+		return
+	end
+	debounceCreateRunProgressSgui = true
 	currentRunSignName = signName
 	currentRunStartPosition = pos
 	module.Kill()
 	runShouldEndSemaphore = false
 	currentRunStartTick = startTimeTick
-	if debounceCreateRunProgressSgui then
-		warn("deb progress.")
-		return
-	end
-	debounceCreateRunProgressSgui = true
+
 	local sgui: ScreenGui = playerGui:FindFirstChild("ActiveRunSGui") :: ScreenGui
 	if not sgui then
 		sgui = Instance.new("ScreenGui") :: ScreenGui

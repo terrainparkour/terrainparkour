@@ -20,7 +20,7 @@ local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 local module = {}
 
--------------TRACKING-------------
+------------- GLOBALS -------------
 
 --boolean if they have touched the floor type at all.
 local seenTerrainFloorTypes: { [string]: boolean } = {}
@@ -33,6 +33,8 @@ local lastSeenTerrain = nil
 
 --list of the types they've seen.
 local allOrderedSeenFloorTypeSet: { [number]: Enum.Material } = {}
+
+------------- FUNCTIONS -------------
 
 local ResetFloorCounts = function()
 	seenTerrainFloorTypes = {}
@@ -50,8 +52,10 @@ module.initTracking = function(signName: string)
 	ResetFloorCounts()
 	currentRunSignName = signName
 	if signName == nil then
-		_annotate("make it empty string.")
+		warn("initTracking: nil signName")
+		return
 	end
+	_annotate(string.format("initTracking: %s", signName))
 end
 
 module.GetSeenTerrainTypesThisRun = function(): number
@@ -141,6 +145,18 @@ module.CountNewFloorMaterial = function(fm: Enum.Material?)
 			fireEvent(mt.avatarEventTypes.RUN_KILL, { reason = "quadruple terrainTouch" })
 		end
 	end
+end
+
+module.Init = function()
+	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	humanoid = character:WaitForChild("Humanoid")
+
+	seenTerrainFloorTypes = {}
+
+	timesSeenTerrainFloorTypeCounts = {}
+	seenFloorCount = 0
+	currentRunSignName = ""
+	lastSeenTerrain = nil
 end
 
 _annotate("end")

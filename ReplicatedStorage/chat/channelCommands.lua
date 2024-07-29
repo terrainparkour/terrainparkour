@@ -22,14 +22,14 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local PopularResponseTypes = require(game.ReplicatedStorage.types.PopularResponseTypes)
 local popular = require(game.ServerScriptService.data.popular)
 local sendMessageModule = require(game.ReplicatedStorage.chat.sendMessage)
-local sm = sendMessageModule.sendMessage
+local sendMessage = sendMessageModule.sendMessage
 
 local PlayersService = game:GetService("Players")
 
 local module = {}
 
 local function Usage(channel)
-	sm(channel, sendMessageModule.usageCommandDesc)
+	sendMessage(channel, sendMessageModule.usageCommandDesc)
 end
 
 local function GrandCmdlineBadge(userId: number)
@@ -61,7 +61,7 @@ module.hint = function(speaker: Player, channel, parts: { string }): boolean
 	if target then
 		local res = text.describeRemainingSigns(target, true, 100)
 		if res ~= "" then
-			sm(channel, res)
+			sendMessage(channel, res)
 			GrandCmdlineBadge(speaker.UserId)
 			return true
 		end
@@ -70,7 +70,7 @@ module.hint = function(speaker: Player, channel, parts: { string }): boolean
 	--target player not in server.
 	if not target then
 		local res = "Player not found in server."
-		sm(channel, res)
+		sendMessage(channel, res)
 		return true
 	end
 
@@ -93,13 +93,13 @@ module.awards = function(speaker: Player, channel: any, username: string): boole
 	end
 
 	local msg = textUtil.stringJoin("\n", res)
-	sm(channel, msg)
+	sendMessage(channel, msg)
 	return true
 end
 
 module.wrs = function(speaker: Player, channel): boolean
 	local data = remoteDbInternal.remoteGet("getWRLeaders", {})
-	sm(channel, "Top World Record Holders:")
+	sendMessage(channel, "Top World Record Holders:")
 	local playersInServer = {}
 	for _, player in ipairs(PlayersService:GetPlayers()) do
 		playersInServer[player.UserId] = true
@@ -110,7 +110,7 @@ module.wrs = function(speaker: Player, channel): boolean
 	end
 	local res = text.generateTextForRankedList(data.res, playersInServer, speaker.UserId, getter)
 	for _, el in ipairs(res) do
-		sm(channel, el.message, el.options)
+		sendMessage(channel, el.message, el.options)
 	end
 
 	GrandCmdlineBadge(speaker.UserId)
@@ -135,7 +135,7 @@ module.describeSingleSign = function(speaker: Player, signId: number, channel)
 			signName,
 			signFindCount
 		)
-		sm(channel, ret)
+		sendMessage(channel, ret)
 		return
 	end
 
@@ -149,7 +149,7 @@ module.describeSingleSign = function(speaker: Player, signId: number, channel)
 		.. " players have found "
 		.. signName
 		.. "\nrank name total (from/to)"
-	sm(channel, text)
+	sendMessage(channel, text)
 	for _, leader in ipairs(fromleaders.res) do
 		local username: string
 		if leader.userId < 0 then
@@ -197,12 +197,12 @@ module.describeSingleSign = function(speaker: Player, signId: number, channel)
 			options.ChatColor = colors.greenGo
 		end
 		local line = string.format("%d. %s - %d (%d/%d)", ii, item.username, item.to + item.from, item.from, item.to)
-		sm(channel, line, options)
+		sendMessage(channel, line, options)
 	end
 end
 
 module.missingTop10s = function(speaker: Player, channel): boolean
-	sm(channel, "NonTop10 races for: " .. speaker.Name)
+	sendMessage(channel, "NonTop10 races for: " .. speaker.Name)
 	local data: tt.getNonTop10RacesByUser = playerdata.getNonTop10RacesByUserId(speaker.UserId, "nontop10_command")
 	for _, runDesc in ipairs(data.raceDescriptions) do
 		channel:SendSystemMessage(" * " .. runDesc, {
@@ -219,7 +219,7 @@ module.missingWrs = function(speaker: Player, to: string, signId: number, channe
 	if to == "both" then
 		totext = "to/from"
 	end
-	sm(channel, "NonWR races " .. totext .. " " .. signName .. " for: " .. speaker.Name)
+	sendMessage(channel, "NonWR races " .. totext .. " " .. signName .. " for: " .. speaker.Name)
 	local data: tt.getNonTop10RacesByUser =
 		playerdata.getNonWRsByToSignIdAndUserId(to, signId, speaker.UserId, "nonwr_command")
 	for _, runDesc in ipairs(data.raceDescriptions) do
@@ -266,7 +266,7 @@ module.beckon = function(speaker: Player, channel): boolean
 			limit = 3
 		end
 		if gap < limit then
-			sm(channel, "You can beckon every 3 minutes.")
+			sendMessage(channel, "You can beckon every 3 minutes.")
 			return true
 		end
 	end
@@ -296,14 +296,14 @@ module.beckon = function(speaker: Player, channel): boolean
 		occupancySentence
 	)
 	rdb.beckon(speaker.UserId, msg)
-	sm(channel, speaker.Name .. " beckons distant friends to join.")
+	sendMessage(channel, speaker.Name .. " beckons distant friends to join.")
 
 	return true
 end
 
 module.badges = function(speaker: Player, channel): boolean
 	local allBadgeAttainments = badges.getBadgeAttainmentForUserId(speaker.UserId, "cmdline")
-	sm(channel, "Badge status for: " .. speaker.Name)
+	sendMessage(channel, "Badge status for: " .. speaker.Name)
 	local gotStr = "Got badges:"
 	local ungotStr = "Not got badges:"
 	local gotct = 0
@@ -336,11 +336,11 @@ module.badges = function(speaker: Player, channel): boolean
 		end
 	end
 
-	sm(channel, gotStr)
-	sm(channel, ungotStr)
+	sendMessage(channel, gotStr)
+	sendMessage(channel, ungotStr)
 
 	local total = "Got: " .. gotct .. " Not got: " .. ungotct
-	sm(channel, total)
+	sendMessage(channel, total)
 
 	local badgecount = badges.getBadgeCountByUser(speaker.UserId)
 	for _, otherPlayer: Player in ipairs(PlayersService:GetPlayers()) do
@@ -376,7 +376,7 @@ module.warp = function(cmd, object, speaker): boolean
 			res = serverwarping.WarpToUsername(speaker, object)
 		end
 	end
-	return true
+	return res
 end
 
 module.secret = function(speaker: Player, channel: any): boolean
@@ -389,7 +389,7 @@ end
 
 module.time = function(speaker: Player, channel: any): boolean
 	local serverTime = os.date("Server Time - %H:%M %d-%m-%Y", tick())
-	sm(channel, serverTime)
+	sendMessage(channel, serverTime)
 	GrandUndocumentedCommandBadge(speaker.UserId)
 	return true
 end
@@ -407,7 +407,7 @@ module.chomik = function(speaker: Player, channel: any): boolean
 	local chomik: Part = signs:FindFirstChild("Chomik") :: Part
 	local dist = tpUtil.getDist(root.Position, chomik.Position)
 	local message = string.format("The Chomik is %dd away from %s", dist, speaker.Name)
-	sm(channel, message)
+	sendMessage(channel, message)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end
@@ -435,7 +435,7 @@ module.version = function(speaker: Player, channel: any): boolean
 	end
 
 	local message = string.format("Terrain Parkour - Version %s%s", enums.gameVersion, testMessage)
-	sm(channel, message)
+	sendMessage(channel, message)
 	GrandUndocumentedCommandBadge(speaker.UserId)
 	return true
 end
@@ -465,14 +465,14 @@ module.uptime = function(speaker: Player, channel: any): boolean
 
 	local message =
 		string.format("Server Uptime:  - %d days %d hours %d minutes %d seconds", days, hours, minutes, uptimeTicks)
-	sm(channel, message)
+	sendMessage(channel, message)
 	GrandUndocumentedCommandBadge(speaker.UserId)
 	return true
 end
 
 module.today = function(speaker: Player, channel): boolean
 	local res = playerdata.getGameStats()
-	sm(channel, res)
+	sendMessage(channel, res)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end
@@ -480,7 +480,7 @@ end
 module.meta = function(speaker: Player, channel): boolean
 	local res =
 		"Principles of Terrain Parkour:\n\tNo Invisible Walls\n\tJust One More Race\n\tNo Dying\n\tRewards always happen\n\tFairness"
-	sm(channel, res)
+	sendMessage(channel, res)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end
@@ -494,7 +494,7 @@ module.closest = function(speaker: Player, channel): boolean
 		message = "The closest found sign to " .. speaker.Name .. " is " .. bestsign.Name .. "!"
 	end
 
-	sm(channel, message)
+	sendMessage(channel, message)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end
@@ -513,10 +513,10 @@ module.showInteresting = function(speaker: Player, channel, params: tt.missingRu
 		if res == nil then
 			warn("miss res")
 			message = "No result."
-			sm(channel, message)
+			sendMessage(channel, message)
 		else
 			message = res[1].startSignName .. "-" .. res[1].endSignName
-			sm(channel, message)
+			sendMessage(channel, message)
 		end
 		GrandCmdlineBadge(speaker.UserId)
 	else
@@ -534,7 +534,7 @@ module.challenge = function(speaker: Player, channel, parts): boolean
 	end
 	local res = text.describeChallenge(parts)
 	if res ~= "" then
-		sm(channel, res)
+		sendMessage(channel, res)
 		GrandCmdlineBadge(speaker.UserId)
 		--successfully showed challenge
 		return true
@@ -547,7 +547,7 @@ end
 module.random = function(speaker: Player, channel): boolean
 	local rndSign = rdb.getRandomFoundSignName(speaker.UserId) or ""
 	local res = "Random Sign You've found: " .. rndSign .. "."
-	sm(channel, res)
+	sendMessage(channel, res)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end
@@ -557,7 +557,7 @@ local lastRandomSignId1: number
 local lastRandomSignId2: number
 local lastRandomTicks: number
 module.randomRace = function(speaker: Player, channel): boolean
-	local runTimeInSecondsWithoutBump = 16.6666 --todo lengthen  this
+	local runTimeInSecondsWithoutBump = 36.6666 --todo lengthen  this
 	if config.isInStudio() then
 		runTimeInSecondsWithoutBump = 5
 	end
@@ -593,9 +593,7 @@ module.randomRace = function(speaker: Player, channel): boolean
 				end
 				table.insert(existingSignIdChoices, signId)
 			end
-			-- print("out.")
 			signIdChoices = existingSignIdChoices
-			-- print("filtered first sign choices down to: ", signIdChoices)
 		end
 
 		if #signIdChoices < 1 then
@@ -608,16 +606,16 @@ module.randomRace = function(speaker: Player, channel): boolean
 			candidateSignId2 = signIdChoices[math.random(#signIdChoices)]
 
 			if candidateSignId1 == nil then
-				print("bad sign 1")
+				_annotate("bad sign 1")
 				continue
 			end
 			if candidateSignId2 == nil then
-				print("bad sign can 2id.")
+				_annotate("bad sign can 2id.")
 				continue
 			end
 
 			if candidateSignId2 ~= candidateSignId1 then
-				-- print("diff, keeping.", candidateSignId1, candidateSignId2)
+				_annotate(string.format("diff, keeping serverRace.. %s %s", candidateSignId1, candidateSignId2))
 				break
 			end
 			tries = tries + 1
@@ -649,7 +647,7 @@ module.randomRace = function(speaker: Player, channel): boolean
 
 		if not reusingRace then
 			for _, el in pairs(entries) do
-				sm(channel, el.message, el.options)
+				sendMessage(channel, el.message, el.options)
 			end
 		end
 		local userJoinMes = speaker.Name
@@ -658,9 +656,9 @@ module.randomRace = function(speaker: Player, channel): boolean
 			.. " to "
 			.. tpUtil.signId2signName(candidateSignId2)
 			.. '. Use "/rr" to join too!'
-		sm(channel, userJoinMes)
+		sendMessage(channel, userJoinMes)
 		GrandCmdlineBadge(speaker.UserId)
-		serverwarping.WarpToSignName(speaker, tpUtil.signId2signName(candidateSignId1))
+		serverwarping.WarpToSignId(speaker, candidateSignId1, candidateSignId2)
 
 		--this thing notifies the channel about 15 second countdown ending.
 		if not reusingRace then
@@ -670,7 +668,7 @@ module.randomRace = function(speaker: Player, channel): boolean
 						return
 					end
 					if tick() - lastRandomTicks > runTimeInSecondsWithoutBump then
-						sm(channel, "Next race ready to start.")
+						sendMessage(channel, "Next race ready to start.")
 						break
 					end
 					wait(1)
@@ -723,7 +721,7 @@ module.popular = function(speaker: Player, channel): boolean
 		table.insert(messages, msg)
 	end
 	local res = textUtil.stringJoin("\n", messages)
-	sm(channel, res)
+	sendMessage(channel, res)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end
@@ -731,7 +729,7 @@ end
 module.finders = function(speaker: Player, channel): boolean
 	local data = playerdata.getFinderLeaders()
 
-	sm(channel, "Top Finders:")
+	sendMessage(channel, "Top Finders:")
 	local playersInServer = {}
 	for _, player in ipairs(PlayersService:GetPlayers()) do
 		playersInServer[player.UserId] = true
@@ -742,7 +740,7 @@ module.finders = function(speaker: Player, channel): boolean
 	end
 	local res = text.generateTextForRankedList(data.res, playersInServer, speaker.UserId, getter)
 	for _, el in ipairs(res) do
-		sm(channel, el.message, el.options)
+		sendMessage(channel, el.message, el.options)
 	end
 
 	GrandCmdlineBadge(speaker.UserId)
@@ -757,7 +755,7 @@ module.common = function(speaker: Player, channel): boolean
 	for _, signName in ipairs(signNames) do
 		res = res .. signName .. ", "
 	end
-	sm(channel, res)
+	sendMessage(channel, res)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end

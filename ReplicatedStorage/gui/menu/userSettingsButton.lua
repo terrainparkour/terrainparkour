@@ -66,6 +66,13 @@ local function makeRowFrame(setting: tt.userSettingValue, player: Player, n: num
 	return fr
 end
 
+local function settingSort(a: tt.userSettingValue, b: tt.userSettingValue): boolean
+	if a.domain ~= b.domain then
+		return a.domain < b.domain
+	end
+	return a.name < b.name
+end
+
 --we already have clientside stuff whic hgets initial settings value.
 local getUserSettingsModal = function(localPlayer: Player): ScreenGui
 	local userId = localPlayer.UserId
@@ -118,7 +125,13 @@ local getUserSettingsModal = function(localPlayer: Player): ScreenGui
 
 	local player: Player = PlayersService:GetPlayerByUserId(userId)
 	local ii = 0
+	local settings = {}
 	for _, setting in pairs(userSettings) do
+		table.insert(settings, setting)
+	end
+	table.sort(settings, settingSort)
+
+	for _, setting in pairs(settings) do
 		ii += 1
 		local rowFrame = makeRowFrame(setting, player, ii)
 		rowFrame.Parent = scrollingFrame

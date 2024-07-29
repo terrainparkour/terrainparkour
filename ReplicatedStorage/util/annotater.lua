@@ -6,7 +6,16 @@ local module = {}
 
 local aliases = { LocalScript = "local", Script = "script", ModuleScript = "module" }
 
-local register = function(s: { Script | ModuleScript | LocalScript }): string
+-- this controls which annotate calls are actually shown. Enter the minimal script name here regardless of client/module/script etc.
+local goodScripts = { "movement", "avatarEventMonitor", "avatarEventFiring", "serverWarping" }
+goodScripts = { "warper", "dynamicRunning", "main", "movement" }
+goodScripts = { "keyboard" }
+goodScripts = {}
+
+local showAllRegardless = false
+-- showAllRegardless = true
+
+local register = function(s: Script | ModuleScript | LocalScript): string
 	local scriptType = ""
 	local sname = ""
 	if not s or s == nil then
@@ -30,8 +39,6 @@ local register = function(s: { Script | ModuleScript | LocalScript }): string
 		inheritanceTree = parent.Name .. "." .. inheritanceTree
 		parent = parent.Parent
 	end
-
-	local oi = inheritanceTree
 
 	inheritanceTree = inheritanceTree:sub(1, string.len(inheritanceTree) - 1)
 
@@ -67,15 +74,16 @@ local register = function(s: { Script | ModuleScript | LocalScript }): string
 	return sname
 end
 
-local totalDone: { string: boolean } = {}
+local totalDone: { [string]: boolean } = {}
 
-module.getAnnotater = function(s: Script)
+module.getAnnotater = function(s: Script | ModuleScript | LocalScript)
 	local myname: string = register(s)
 	local doAnnotation = false
-	local goodScripts = { "movement", "avatarEventMonitor", "avatarEventFiring", "serverWarping" }
-	goodScripts = { "warper" }
-	goodScripts = { "" }
+
 	if table.find(goodScripts, s.Name) then
+		doAnnotation = true
+	end
+	if showAllRegardless then
 		doAnnotation = true
 	end
 
@@ -91,6 +99,7 @@ module.getAnnotater = function(s: Script)
 				print(string.format("%s (%s) done in %0.2fs", myname, s.ClassName, gap))
 			end
 			totalDone[myname] = true
+			return
 		end
 		if doAnnotation then
 			if typeof(input) == "string" then

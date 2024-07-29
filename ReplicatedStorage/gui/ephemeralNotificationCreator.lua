@@ -10,7 +10,7 @@ local config = require(game.ReplicatedStorage.config)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local enums = require(game.ReplicatedStorage.util.enums)
-
+local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 local PlayersService = game:GetService("Players")
 
 local localPlayer = PlayersService.LocalPlayer
@@ -33,7 +33,7 @@ then
 	-- mobile device, busted
 end
 
-module.notify = function(options: tt.ephemeralNotificationOptions, warpWrapper: tt.warperWrapper)
+module.notify = function(options: tt.ephemeralNotificationOptions)
 	--no mobile player-side notifications
 	if isMobile then
 		return
@@ -115,7 +115,7 @@ module.notify = function(options: tt.ephemeralNotificationOptions, warpWrapper: 
 		warpTl.Parent = frame
 		-- local useHighlightSignId = options.highlightSignId and not enums.SignIdIsExcludedFromStart[options.highlightSignId] and rdb.hasUserFoundSign(op.UserId, startSignId)
 		warpTl.Activated:Connect(function()
-			warpWrapper.WarpToSign(options.warpToSignId, options.highlightSignId)
+			warper.WarpToSign(options.warpToSignId, options.highlightSignId)
 		end)
 	end
 

@@ -15,10 +15,11 @@ local rdb = require(game.ServerScriptService.rdb)
 local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
 local serverwarping = require(game.ServerScriptService.serverWarping)
 local channelCommands = require(game.ReplicatedStorage.chat.channelCommands)
-local textHighlighting = require(game.ReplicatedStorage.gui.textHighlighting)
+local signProfileCommand = require(game.ReplicatedStorage.commands.signProfileCommand)
+local showSignsCommand = require(game.ReplicatedStorage.commands.showSignsCommand)
 
 local sendMessageModule = require(game.ReplicatedStorage.chat.sendMessage)
-local sm = sendMessageModule.sendMessage
+local sendMessage = sendMessageModule.sendMessage
 local PlayersService = game:GetService("Players")
 
 local module = {}
@@ -30,7 +31,7 @@ local function Usage(channel)
 		warn("Nil channel")
 		return
 	end
-	sm(channel, sendMessageModule.usageCommandDesc)
+	sendMessage(channel, sendMessageModule.usageCommandDesc)
 end
 
 local function GrandCmdlineBadge(userId: number)
@@ -133,67 +134,42 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 
 		if verb == "challenge" then
 			return channelCommands.challenge(speaker, channel, parts)
-		end
-
-		if verb == "random" then
+		elseif verb == "random" then
 			return channelCommands.random(speaker, channel)
-		end
 
 		--the new version which scopes race start to those signs found by most people in server.
 		--this method is not guaranteed to work if there are people hanging around with no found signs at all.
-		if verb == "randomrace" or verb == "rr" then
-			local ret = channelCommands.randomRace(speaker, channel)
-			if ret ~= nil then
-				return ret
-			end
-		end
-		if verb == "show" then
-			print("FIX")
-			local foundSigns = tpUtil.getF(speaker.UserId)
-			if foundSigns then
-				for _, signId in pairs(foundSigns) do
-					textHighlighting.doHighlight(signId)
-				end
-			end
-			local signId = tpUtil.looseSignName2SignId(textUtil.coalesceFrom(parts, 2))
-			textHighlighting.doHighlight(signId)
+		elseif verb == "randomrace" or verb == "rr" then
 			return true
-		end
-		if verb == "common" then
+			-- local ret = channelCommands.randomRace(speaker, channel)
+			-- if ret ~= nil then
+			-- 	return ret
+			-- end
+		elseif verb == "show" then
+			return showSignsCommand.ShowSignCommand(speaker)
+		elseif verb == "common" then
 			return channelCommands.common(speaker, channel)
-		end
-		if verb == "finders" then
+		elseif verb == "finders" then
 			return channelCommands.finders(speaker, channel)
-		end
-		if verb == "badges" then
+		elseif verb == "badges" then
 			return channelCommands.badges(speaker, channel)
-		end
-		if verb == "version" then
+		elseif verb == "version" then
 			return channelCommands.version(speaker, channel)
-		end
-		if verb == "uptime" then
+		elseif verb == "uptime" then
 			return channelCommands.uptime(speaker, channel)
-		end
 
 		-- if verb == "longest" then
 		-- 	return channelCommands.longest(speaker, channel)
 		-- end
-		if verb == "chomik" then
+		elseif verb == "chomik" then
 			return channelCommands.chomik(speaker, channel)
-		end
-
-		if verb == "wrs" then
+		elseif verb == "wrs" then
 			return channelCommands.wrs(speaker, channel)
-		end
-
-		if verb == "missing" then
+		elseif verb == "missing" then
 			return channelCommands.missingTop10s(speaker, channel)
-		end
-
-		if verb == "beckon" then
+		elseif verb == "beckon" then
 			return channelCommands.beckon(speaker, channel)
-		end
-		if verb == "nonwrs" then
+		elseif verb == "nonwrs" then
 			local to: string
 			local signId: number = 0
 			local signName: string = ""
@@ -216,30 +192,22 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 			end
 
 			return channelCommands.missingWrs(speaker, to, signId, channel)
-		end
-
-		if verb == "hint" then
+		elseif verb == "hint" then
 			return channelCommands.hint(speaker, channel, parts)
-		end
-
-		if verb == "marathons" then
+		elseif verb == "marathons" then
 			GrandCmdlineBadge(speaker.UserId)
 			local res = rdb.getMarathonKinds()
-			sm(channel, res["message"])
+			sendMessage(channel, res["message"])
 			return true
-		end
-
-		if verb == "marathon" then
+		elseif verb == "marathon" then
 			GrandCmdlineBadge(speaker.UserId)
 			if parts[2] == nil or parts[2] == "" then
 				return false
 			end
 			local res = rdb.getMarathonKindLeaders(parts[2])
-			sm(channel, res["message"])
+			sendMessage(channel, res["message"])
 			return true
-		end
-
-		if verb == "awards" then
+		elseif verb == "awards" then
 			GrandCmdlineBadge(speaker.UserId)
 			local username: string = ""
 			if parts[2] == nil or parts[2] == "" then
@@ -249,9 +217,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 			end
 			channelCommands.awards(speaker, channel, username)
 			return true
-		end
-
-		if verb == "tix" then
+		elseif verb == "tix" then
 			local target
 			if #parts == 1 then
 				target = speaker.Name
@@ -261,25 +227,21 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 			end
 			local res = rdb.getTixBalanceByUsername(target)
 			if res.success then
-				sm(channel, res.message)
+				sendMessage(channel, res.message)
 				GrandCmdlineBadge(speaker.UserId)
 			end
 			if not res.success then
 				if res.message then
-					sm(channel, res.message)
+					sendMessage(channel, res.message)
 				end
 			end
 			return true
-		end
-
-		if verb == "events" then
+		elseif verb == "events" then
 			module.ShowEvents(channelName, speaker.UserId)
 			return true
-		end
 
 		--this is another way to get the right-click sign UI to pop up.
-		if verb == "sign" then
-			local signProfileCommand = require(game.ReplicatedStorage.commands.signProfileCommand)
+		elseif verb == "sign" then
 			if #parts <= 1 then
 				return false
 			end
@@ -319,13 +281,13 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 				end
 				if not target then
 					local res = "Could not find that."
-					sm(channel, res)
+					sendMessage(channel, res)
 					return true
 				end
 			end
 			local res = text.describeRemainingSigns(target, false, 500)
 			if res ~= "" then
-				sm(channel, res)
+				sendMessage(channel, res)
 				GrandCmdlineBadge(speaker.UserId)
 				return true
 			end
@@ -339,7 +301,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 				local playerDescription = playerdata.getPlayerDescriptionMultiline(player.UserId)
 				if playerDescription ~= "unknown" then
 					local res = player.Name .. " stats: " .. playerDescription
-					sm(channel, res)
+					sendMessage(channel, res)
 					GrandCmdlineBadge(speaker.UserId)
 					return true
 				end
@@ -361,7 +323,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 			local playerDescription = playerdata.getPlayerDescriptionMultiline(messageplayer.UserId)
 			if playerDescription ~= "unknown" then
 				local res = messageplayer.Name .. " stats: " .. playerDescription
-				sm(channel, res)
+				sendMessage(channel, res)
 				GrandCmdlineBadge(speaker.UserId)
 				return true
 			end
@@ -381,7 +343,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 			if
 				not rdb.hasUserFoundSign(speaker.UserId, signId1) or not rdb.hasUserFoundSign(speaker.UserId, signId2)
 			then
-				sm(channel, "You haven't found one of those signs.")
+				sendMessage(channel, "You haven't found one of those signs.")
 				GrandCmdlineBadge(speaker.UserId)
 				return true
 			end
@@ -396,7 +358,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 			local entries =
 				playerdata.describeRaceHistoryMultilineText(signId1, signId2, speaker.UserId, userIdsInServer)
 			for _, el in pairs(entries) do
-				sm(channel, el.message, el.options)
+				sendMessage(channel, el.message, el.options)
 			end
 			GrandCmdlineBadge(speaker.UserId)
 			return true

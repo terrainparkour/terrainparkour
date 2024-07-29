@@ -37,32 +37,34 @@ module.FireEvent = function(avatarEventType: number, details: mt.avatarEventDeta
 	}
 
 	local excludedDescriptionTypesFromDescriptions = {
-		mt.avatarEventTypes.CHANGE_DIRECTION,
-		mt.avatarEventTypes.STATE_CHANGED,
-		mt.avatarEventTypes.DO_SPEED_CHANGE,
-		mt.avatarEventTypes.DO_JUMPPOWER_CHANGE,
-		mt.avatarEventTypes.FLOOR_CHANGE,
+		-- mt.avatarEventTypes.CHANGE_DIRECTION,
+		-- mt.avatarEventTypes.STATE_CHANGED,
+		-- mt.avatarEventTypes.DO_SPEED_CHANGE,
+		-- mt.avatarEventTypes.DO_JUMPPOWER_CHANGE,
+		-- mt.avatarEventTypes.FLOOR_CHANGE,
 	}
-	local inList = false
+	local blocked = false
 	for _, type in ipairs(excludedDescriptionTypesFromDescriptions) do
 		if actualEv.eventType == type then
-			inList = true
+			blocked = true
 			break
 		end
 	end
-	if not inList then
+	if not blocked then
 		local details = ""
 		if actualEv.details ~= {} then
 			if actualEv.details then
 				for a, b in pairs(actualEv.details) do
-					details = details .. string.format("\t%s: %s", a, tostring(b)) .. "\t"
+					details = details .. string.format("%s: %s", a, tostring(b)) .. "\t"
 				end
 			end
 		end
 		if details then
 			details = " (" .. details .. ")"
 		end
-		_annotate(string.format("Firing: %s%s", tostring(mt.avatarEventTypesReverse[actualEv.eventType]), details))
+		_annotate(
+			string.format("AvatarEventFiring: %s%s", tostring(mt.avatarEventTypesReverse[actualEv.eventType]), details)
+		)
 	end
 	AvatarEventBindableEvent:Fire(actualEv)
 end

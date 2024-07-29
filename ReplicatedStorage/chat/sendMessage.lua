@@ -7,7 +7,7 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 --simple method to write text to output. better than assembing a giant string all at once.
-local innerSendMsg = function(channel, msg: string, options: {} | nil)
+local innerSendMsg = function(channel, msg: string, options: any)
 	if options == nil then
 		options = {}
 	end
@@ -51,6 +51,11 @@ module.usageCommandDesc = [[Admin Command examples:
 /version - show server version
 /wrs - List top world record holders.
 /chomik - find the Chomik!
+h to remove sign highlights
+1 to warp to the last completed run
+x to remove popped up UIs and notifications
+<tab> to toggle leaderboard off and on
+(click S in lower right for more options, including your settings.)
 
 /? - list all commands again.
 ]]

@@ -30,7 +30,7 @@ local positiveBadgeAttainments: { [number]: { [number]: boolean } } = {}
 module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor): boolean?
 	if positiveBadgeAttainments[userId] ~= nil then
 		if positiveBadgeAttainments[userId][badge.assetId] then
-			_annotate("served from positive server cache.yes." .. badge.name)
+			-- _annotate("served from positive server cache.yes." .. badge.name)
 			return true
 		end
 	end
@@ -59,7 +59,7 @@ module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor): boole
 				end)
 			end
 			grantedBadges[userId][badge.assetId] = res
-			_annotate("\tDone with expensive lookup: " .. badge.name)
+			-- _annotate("\tDone with expensive lookup: " .. badge.name)
 			badgeLookupLocks[userId][badge.assetId] = false
 		end)
 		if e then
@@ -72,7 +72,7 @@ module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor): boole
 		error("nil still.")
 	end
 	-- print(tostring(userId) .. " " .. badge.name .. "--" .. tostring(grantedBadges[userId][badge.assetId]))
-	_annotate("\tfallthrough to use stored data.\t" .. badge.name)
+	-- _annotate("\tfallthrough to use stored data.\t" .. badge.name)
 	return grantedBadges[userId][badge.assetId]
 end
 
@@ -151,8 +151,7 @@ module.getBadgeAttainmentForUserId = function(userId: number, rationale: string)
 		ii += 1
 		if completeClasses[badge.badgeClass] then
 			--artificially set them having it false.
-			-- print("artificially set" .. badge.name .. " false")
-			_annotate(" artifically complete class due to order." .. badge.badgeClass)
+			-- _annotate(" artifically complete class due to order." .. badge.badgeClass)
 			grantedBadges[userId][badge.assetId] = false
 		end
 		local userHasBadge: boolean? = module.UserHasBadge(userId, badge)
@@ -164,7 +163,7 @@ module.getBadgeAttainmentForUserId = function(userId: number, rationale: string)
 		local progress = -1 --guard value
 		if badge.baseNumber ~= nil then
 			progress = getProgressForStatsKindAndNumber(badge, stats)
-			_annotate(badge.name .. " progress " .. tostring(progress) .. " out of " .. tostring(badge.baseNumber))
+			-- _annotate(badge.name .. " progress " .. tostring(progress) .. " out of " .. tostring(badge.baseNumber))
 		end
 		local attainment: tt.badgeAttainment = {
 			badge = badge,
@@ -175,7 +174,7 @@ module.getBadgeAttainmentForUserId = function(userId: number, rationale: string)
 		table.insert(attainments, attainment)
 		if not userHasBadge then
 			if badge.baseNumber ~= nil then
-				_annotate(" set artificially complete class due to baseNumber." .. badge.badgeClass)
+				-- _annotate(" set artificially complete class due to baseNumber." .. badge.badgeClass)
 				completeClasses[badge.badgeClass] = true
 			end
 		end

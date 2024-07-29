@@ -5,29 +5,28 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local vscdebug = require(game.ReplicatedStorage.vscdebug)
 local emojis = require(game.ReplicatedStorage.enums.emojis)
 local colors = require(game.ReplicatedStorage.util.colors)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 local enums = require(game.ReplicatedStorage.util.enums)
--- local PlayersService = game:GetService("Players")
+local localFunctions = require(game.ReplicatedStorage.localFunctions)
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
+
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
 local codeFont = Font.new("Code", Enum.FontWeight.Bold)
 local codeFontLight = Font.new("Code")
 
+------------------------- live-monitor this setting value. -------------
+local userWantsHighlightingWhenWarpingFromRunResults = false
+
 --global counter for this "class"
 local rowCount = 1
 
---this UI also sets up a shortcut to warp to this, if set.
-local lastWarpTarget = nil
-
---global which remembers the last run you completed, and lets you jump back to it with "1"
-local lastWarperWrapper = nil
 local module = {}
 
 local heightsPixel = { race = 40, text = 25, row = 32, warp = 43 }
@@ -173,10 +172,7 @@ end
 
 --sgui for the results of running a race OR a marathon!.
 
-module.createNewRunResultSgui = function(
-	options: tt.pyUserFinishedRunResponse,
-	warperWrapper: tt.warperWrapper
-): ScreenGui
+module.createNewRunResultSgui = function(options: tt.pyUserFinishedRunResponse): ScreenGui
 	rowCount = 0
 	options.userId = tonumber(options.userId) :: number
 	local raceResultSgui = Instance.new("ScreenGui")
@@ -323,6 +319,10 @@ module.createNewRunResultSgui = function(
 				"warpRow",
 				colors.lightBlue
 			)
+			local useLastRunEnd = nil
+			if userWantsHighlightingWhenWarpingFromRunResults then
+				useLastRunEnd = options.endSignId
+			end
 			local invisibleTextButton = Instance.new("TextButton")
 			invisibleTextButton.Position = warpRow.Position
 			invisibleTextButton.Size = UDim2.new(1, 0, 1, 0)
@@ -331,16 +331,14 @@ module.createNewRunResultSgui = function(
 			invisibleTextButton.TextScaled = true
 			invisibleTextButton.ZIndex = 20
 			invisibleTextButton.Parent = warpRow
-			lastWarpTarget = options.startSignId
-			lastWarperWrapper = warperWrapper
 			invisibleTextButton.Activated:Connect(function()
-				warperWrapper.WarpToSign(options.startSignId, options.endSignId)
+				warper.WarpToSign(options.startSignId, useLastRunEnd)
 			end)
 		end
 	end
 
 	local ypix = 0
-	for ii, el: Frame in ipairs(frame:GetChildren()) do
+	for _, el: Frame in ipairs(frame:GetChildren()) do
 		if el:IsA("Frame") then
 			ypix += el.Size.Y.Offset
 		end
@@ -365,21 +363,17 @@ module.createNewRunResultSgui = function(
 	return raceResultSgui
 end
 
-local function onInputBegin(inputObject, gameProcessedEvent)
-	if gameProcessedEvent then
-		return
-	end
-
-	if inputObject.UserInputType == Enum.UserInputType.Keyboard then
-		if inputObject.KeyCode == Enum.KeyCode.One then
-			if lastWarpTarget ~= nil then
-				lastWarperWrapper.WarpToSign(lastWarpTarget)
-			end
-		end
-	end
+local function handleUserSettingChanged(item: tt.userSettingValue): any
+	userWantsHighlightingWhenWarpingFromRunResults = item.value
 end
 
-UserInputService.InputBegan:Connect(onInputBegin)
+localFunctions.registerLocalSettingChangeReceiver(
+	handleUserSettingChanged,
+	settingEnums.settingNames.HIGHLIGHT_ON_RUN_COMPLETE_WARP
+)
+
+local userSettingValue = localFunctions.getSettingByName(settingEnums.settingNames.HIGHLIGHT_ON_RUN_COMPLETE_WARP)
+handleUserSettingChanged(userSettingValue)
 
 _annotate("end")
 return module
