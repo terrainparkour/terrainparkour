@@ -36,7 +36,7 @@ local function applyPlayerRemovingFuncs(player: Player)
 	end
 end
 
-module.init = function()
+module.Init = function()
 	table.insert(playerAddFuncs, { func = playerMonitoring.PreloadFinds, name = "preloadFinds" })
 	table.insert(playerAddFuncs, { func = playerMonitoring.LogJoin, name = "logJoin" })
 	table.insert(playerAddFuncs, { func = playerMonitoring.BackfillBadges, name = "BackfillBadges" })

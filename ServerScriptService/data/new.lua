@@ -43,7 +43,7 @@ module.GetNew = function(player: Player, userIds: { number }): { PopularResponse
 	return pops
 end
 
-module.init = function()
+module.Init = function()
 	local getNewRunsFunction = remotes.getRemoteFunction("GetNewRunsFunction") :: RemoteFunction
 	getNewRunsFunction.OnServerInvoke = function(player: Player, userIds: { number }): any
 		return module.GetNew(player, userIds)

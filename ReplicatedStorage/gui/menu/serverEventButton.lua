@@ -1,19 +1,17 @@
 --!strict
 
+-- GUI on client for server event.
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local vscdebug = require(game.ReplicatedStorage.vscdebug)
-
 local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
-local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
-local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 
-local PlayersService = game:GetService("Players")
+local ServerEventRemoteFunction = remotes.getRemoteFunction("ServerEventRemoteFunction")
 
 local module = {}
 
@@ -33,9 +31,7 @@ local CreateServerEventButtonClicked = function(localPlayer: Player): ScreenGui
 	vv2.FillDirection = Enum.FillDirection.Vertical
 	vv2.Parent = outerFrame
 
-	local serverEventRemoteFunction = remotes.getRemoteFunction("ServerEventRemoteFunction")
-
-	local res = serverEventRemoteFunction:InvokeServer(serverEventEnums.messageTypes.CREATE, { userId = userId })
+	local res = ServerEventRemoteFunction:InvokeServer(serverEventEnums.messageTypes.CREATE, { userId = userId })
 
 	local tl = guiUtil.getTl("XXXResults", UDim2.new(1, 0, 1, 0), 0, outerFrame, colors.defaultGrey, 2)
 	local par = tl.Parent :: TextLabel

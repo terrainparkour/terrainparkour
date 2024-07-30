@@ -106,7 +106,7 @@ end
 
 TellServerRunEndedRemoteEvent.OnServerEvent:Connect(receiveClientMessageAboutRunEnding)
 
-module.init = function() end
+module.Init = function() end
 
 _annotate("end")
 return module

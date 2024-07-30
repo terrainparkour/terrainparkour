@@ -47,6 +47,74 @@ local oldMoveDirection = Vector3.new(0, 0, 0)
 ------------------- EVENTS --------------------------
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
 
+----------------- FUNCTIONS --------------------------------
+
+-- also raycast for water. this has never been tested very thoroughly
+-- but towards the end of 2022 this improved water detection quite
+-- a bit by forcing the player ot swimming state more when on thin water, for example.
+-- overall: the actual SWIM_ACTIVE is
+local artificiallyCheckForSwimming = function(character)
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+	raycastParams.FilterDescendantsInstances = { character }
+	local rootPart = character:FindFirstChild("HumanoidRootPart") :: Part
+	if not rootPart or not rootPart:IsA("BasePart") then
+		_annotate("no rootpart.")
+		return
+	end
+	task.spawn(function()
+		local ii = 3.2
+		local result: RaycastResult = nil
+		local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
+
+		while ii < 4.8 do
+			local oldState = humanoid:GetState()
+			if oldState == Enum.HumanoidStateType.Swimming then
+				break
+			end
+			if not rootPart then
+				break
+			end
+			if not rootPart.Position then
+				break
+			end
+			result = workspace:Raycast(rootPart.Position, Vector3.new(0, -1 * ii, 0), raycastParams)
+
+			--despite the warning, nil raycast happens all the time.  Doh.
+			--and raycasting appears not to work at all anyway.
+
+			if result and result.Material == Enum.Material.Water then
+				_annotate("faking swimming changestate.")
+
+				local det = {
+					oldState = oldState,
+					newState = Enum.HumanoidStateType.Swimming,
+				}
+				fireEvent(mt.avatarEventTypes.STATE_CHANGED, det)
+				break
+			end
+			ii += 0.1
+		end
+	end)
+end
+
+--wow this even detects mouseovers anywhere in the visible screen!
+local InputChanged = function(input: InputObject, gameProcessedEvent: boolean, kind: string)
+	if gameProcessedEvent then
+		return
+	end
+	if input.UserInputType ~= Enum.UserInputType.Keyboard then
+		return
+	end
+
+	if input.KeyCode == Enum.KeyCode.LeftShift then
+		local theType = input.UserInputState == Enum.UserInputState.Begin and mt.avatarEventTypes.KEYBOARD_WALK
+			or mt.avatarEventTypes.KEYBOARD_RUN
+		_annotate("typed, kind: " .. tostring(mt.avatarEventTypesReverse[theType]))
+		fireEvent(theType, {})
+	end
+end
+
 ------------------ FIRE INITIAL CHAR ADDED EVENT ------------------
 
 module.Init = function()
@@ -135,55 +203,6 @@ module.Init = function()
 		fireEvent(mt.avatarEventTypes.CHARACTER_REMOVING, {})
 	end)
 
-	-- also raycast for water. this has never been tested very thoroughly
-	-- but towards the end of 2022 this improved water detection quite
-	-- a bit by forcing the player ot swimming state more when on thin water, for example.
-	-- overall: the actual SWIM_ACTIVE is
-	local artificiallyCheckForSwimming = function(character)
-		local raycastParams = RaycastParams.new()
-		raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-		raycastParams.FilterDescendantsInstances = { character }
-		local rootPart = character:FindFirstChild("HumanoidRootPart") :: Part
-		if not rootPart or not rootPart:IsA("BasePart") then
-			_annotate("no rootpart.")
-			return
-		end
-		task.spawn(function()
-			local ii = 3.2
-			local result: RaycastResult = nil
-			local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
-
-			while ii < 4.8 do
-				local oldState = humanoid:GetState()
-				if oldState == Enum.HumanoidStateType.Swimming then
-					break
-				end
-				if not rootPart then
-					break
-				end
-				if not rootPart.Position then
-					break
-				end
-				result = workspace:Raycast(rootPart.Position, Vector3.new(0, -1 * ii, 0), raycastParams)
-
-				--despite the warning, nil raycast happens all the time.  Doh.
-				--and raycasting appears not to work at all anyway.
-
-				if result and result.Material == Enum.Material.Water then
-					_annotate("faking swimming changestate.")
-
-					local det = {
-						oldState = oldState,
-						newState = Enum.HumanoidStateType.Swimming,
-					}
-					fireEvent(mt.avatarEventTypes.STATE_CHANGED, det)
-					break
-				end
-				ii += 0.1
-			end
-		end)
-	end
-
 	-- this has a different sensitivity than the general changestate.
 	-- so we coerce this up to just another state changed thingie, and don't store it directly.
 	humanoid.Swimming:Connect(function(active)
@@ -260,23 +279,6 @@ module.Init = function()
 	end)
 
 	----------------------- USER INPUT ----------------------
-
-	--wow this even detects mouseovers anywhere in the visible screen!
-	local InputChanged = function(input: InputObject, gameProcessedEvent: boolean, kind: string)
-		if gameProcessedEvent then
-			return
-		end
-		if input.UserInputType ~= Enum.UserInputType.Keyboard then
-			return
-		end
-
-		if input.KeyCode == Enum.KeyCode.LeftShift then
-			local theType = input.UserInputState == Enum.UserInputState.Begin and mt.avatarEventTypes.KEYBOARD_WALK
-				or mt.avatarEventTypes.KEYBOARD_RUN
-			_annotate("typed, kind: " .. tostring(mt.avatarEventTypesReverse[theType]))
-			fireEvent(theType, {})
-		end
-	end
 
 	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessedEvent: boolean)
 		InputChanged(input, gameProcessedEvent, "began input")

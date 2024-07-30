@@ -86,7 +86,7 @@ end
 
 local remotes = require(game.ReplicatedStorage.util.remotes)
 
-module.init = function()
+module.Init = function()
 	local ephemeralMarathonCompleteEvent = remotes.getRemoteEvent("EphemeralMarathonCompleteEvent")
 	ephemeralMarathonCompleteEvent.OnServerEvent:Connect(serverInvokeEphemeralMarathonComplete)
 

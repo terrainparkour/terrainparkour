@@ -2,10 +2,10 @@
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
-annotater.init()
+annotater.Init()
 
 local nocol = require(game.ServerScriptService.nocollide)
-nocol.init()
+nocol.Init()
 
 --IMPORTANT  this go first because it's where signs and everything are set up
 local workspaceSetup = require(game.ServerScriptService.workspaceSetup)
@@ -14,58 +14,58 @@ workspaceSetup.createEvents()
 local locationMonitor = require(game.ReplicatedStorage.locationMonitor)
 
 local setupSigns = require(game.ServerScriptService.setupSigns)
-setupSigns.init()
+setupSigns.Init()
 
 local setupFindTouchMonitoring = require(game.ServerScriptService.setupFindTouchMonitoring)
-setupFindTouchMonitoring.init()
+setupFindTouchMonitoring.Init()
 
 local sounds = require(game.ServerScriptService.sounds)
-sounds.init()
+sounds.Init()
 
 local pushSigns = require(game.ServerScriptService.pushSigns)
 pushSigns.checkSignsNeedingPushing()
 
 local presence = require(game.ServerScriptService.presence)
-presence.init()
+presence.Init()
 
 local banning = require(game.ServerScriptService.banning)
-banning.init()
+banning.Init()
 
 local marathon = require(game.ServerScriptService.marathon)
-marathon.init()
+marathon.Init()
 
 local ephemeralMarathon = require(game.ServerScriptService.EphemeralMarathons.ephemeralMarathon)
-ephemeralMarathon.init()
+ephemeralMarathon.Init()
 
-locationMonitor.init()
+locationMonitor.Init()
 
 --include these to initialize listeners despite not being "used".
 local userSettings = require(game.ServerScriptService.userSettings)
-userSettings.init()
+userSettings.Init()
 
 local popularListener = require(game.ServerScriptService.data.popular)
-popularListener.init()
+popularListener.Init()
 
 local newListener = require(game.ServerScriptService.data.new)
-newListener.init()
+newListener.Init()
 
 local contests = require(game.ServerScriptService.data.contests)
-contests.init()
+contests.Init()
 
 local dynamic = require(game.ServerScriptService.dynamicServer)
-dynamic.init()
+dynamic.Init()
 
 local serverEvents = require(game.ServerScriptService.serverEvents)
-serverEvents.init()
+serverEvents.Init()
 
 local serverWarping = require(game.ServerScriptService.serverWarping)
-serverWarping.init()
+serverWarping.Init()
 
 local raceEnding = require(game.ServerScriptService.raceEnding)
-raceEnding.init()
+raceEnding.Init()
 
 local setupSpecialSigns = require(game.ServerScriptService.setupSpecialSigns)
-setupSpecialSigns.init()
+setupSpecialSigns.Init()
 
 --how  does the game work?
 --good question.  mainly it's in lua client/server scripts, but via certain calls made from BE, you hit a python mysql db server you also have to have set up.  this is where all your real records and data are stored.

@@ -13,7 +13,7 @@ local serverwarping = require(game.ServerScriptService.serverWarping)
 
 local playerLocations: { Vector3 } = {}
 
-module.init = function()
+module.Init = function()
 	--this is disabled now.
 	task.spawn(function()
 		_annotate("starting player location monitor.")

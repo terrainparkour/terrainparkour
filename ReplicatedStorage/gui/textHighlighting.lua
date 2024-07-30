@@ -1,5 +1,6 @@
 local module = {}
 
+-- highlight signs or other text.
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
@@ -8,21 +9,31 @@ local enums = require(game.ReplicatedStorage.util.enums)
 local mt = require(game.ReplicatedStorage.avatarEventTypes)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
-local Players = game:GetService("Players")
-local localPlayer = Players.LocalPlayer
-local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
-
 local localFunctions = require(game.ReplicatedStorage.localFunctions)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+
+local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+local humanoid: Humanoid = character:WaitForChild("Humanoid")
+
+local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
+
+--------- CONSTANTS ----------------
+local COLOR_CYCLE_TIME = 6
+local TOTAL_LIFETIME = 40
+local FADE_OUT_TIME = 6
+local BILLBOARD_WIDTH_PER_LETTER = 15
+local BILLBOARD_HEIGHT = 45
+local BILLBOARD_OFFSET = Vector3.new(0, 2, 0)
 
 ---------GLOBALS ---------------
 local currentHighlights = {}
-local doHighlightAtAll = false
+local doHighlightAtAll = true
+local rotatePlayerOnWarpWhenDestination = true
 
 local function lerpColor(c1, c2, alpha)
 	return Color3.new(c1.R + (c2.R - c1.R) * alpha, c1.G + (c2.G - c1.G) * alpha, c1.B + (c2.B - c1.B) * alpha)
@@ -44,33 +55,29 @@ module.KillAllExistingHighlights = function()
 			el:Destroy()
 		end
 	end
+	currentHighlights = {}
 end
 
 local function innerDoHighlight(sign: Part)
 	if not sign then
-		if not config.isTestGame() then
+		if config.isTestGame() then
+			_annotate("trying to highlight a nil sign?")
+		else
 			warn("trying to highlight a nil sign?")
 		end
 		return
 	end
-	if not tpUtil.isSignPartValidRightNow(sign) then
-		_annotate("cannot highlight invalid sign." .. sign.Name)
-		return
-	end
-	if enums.ExcludeSignNamesFromStartingAt[sign.Name] then
-		_annotate("cannot highlight sign is ExcludeSignNamesFromStartingAt" .. sign.Name)
-		return
-	end
-	if enums.ExcludeSignNamesFromEndingAt[sign.Name] then
-		_annotate("cannot highlight sign is ExcludeSignNamesFromEndingAt" .. sign.Name)
+	if not tpUtil.SignCanBeHighlighted(sign) then
+		_annotate("cannot highlight sign from tputil." .. sign.Name)
 		return
 	end
 	_annotate(string.format("highlighting: %s", sign.Name))
 	local billboardGui = Instance.new("BillboardGui")
 	billboardGui.Name = "FloatingText"
 	billboardGui.AlwaysOnTop = true
-	billboardGui.Size = UDim2.new(0, 100, 0, 40)
-	billboardGui.StudsOffset = Vector3.new(0, 2, 0) -- Adjust this to change height above the part
+	local useSize = #sign.Name * BILLBOARD_WIDTH_PER_LETTER
+	billboardGui.Size = UDim2.new(0, useSize, 0, BILLBOARD_HEIGHT)
+	billboardGui.StudsOffset = BILLBOARD_OFFSET
 
 	local textLabel = Instance.new("TextLabel")
 	textLabel.BackgroundTransparency = 1
@@ -91,16 +98,15 @@ local function innerDoHighlight(sign: Part)
 	uiStroke.Parent = textLabel
 
 	local startTime = tick()
-	local colorCycleTime = 6 -- Time to cycle through all colors
+	local colorCycleTime = COLOR_CYCLE_TIME -- Time to cycle through all colors
 	-- local pulseTime = 1 -- Time for one pulse cycle
-	local totalLifetime = 30 -- Total lifetime of the effect in seconds
-	local fadeOutTime = 10 -- Time it takes to fade out at the end
+	local totalLifetime = TOTAL_LIFETIME -- Total lifetime of the effect in seconds
+	local fadeOutTime = FADE_OUT_TIME -- Time it takes to fade out at the end
 
 	local connection
 	connection = RunService.RenderStepped:Connect(function()
 		local elapsedTime = tick() - startTime
-		local player = Players.LocalPlayer
-		if player and player.Character and player.Character:FindFirstChild("Head") then
+		if localPlayer and character then
 			-- Color cycling
 			local colorAlpha = (elapsedTime % colorCycleTime) / colorCycleTime
 			local colorIndex = math.floor(colorAlpha * (#colorPattern - 1)) + 1
@@ -134,27 +140,32 @@ local function pointPlayerAtSign(sign: Part)
 		return
 	end
 	_annotate("pointing player at sign" .. sign.Name)
-	local humanoidRootPart: Part? = nil
-	if localPlayer and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
-		local character = localPlayer.Character
-		humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-		if humanoidRootPart then
-			local direction = (sign.Position - humanoidRootPart.Position).Unit
-			humanoidRootPart.CFrame = CFrame.new(humanoidRootPart.Position, humanoidRootPart.Position + direction)
-		end
-	end
 
-	------ point the camera at the location. ------------
-	local camera = workspace.CurrentCamera
-	if camera then
-		-- camera.CFrame = CFrame.new(camera.CFrame.Position, sign.Position)
-		if humanoidRootPart then
-			camera.CFrame = humanoidRootPart.CFrame
+	if rotatePlayerOnWarpWhenDestination then
+		------------ point the player at the target -------------------
+		local humanoidRootPart: Part? = nil
+		if localPlayer and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+			local character = localPlayer.Character
+			humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+			if humanoidRootPart then
+				local direction = (sign.Position - humanoidRootPart.Position).Unit
+				humanoidRootPart.CFrame = CFrame.new(humanoidRootPart.Position, humanoidRootPart.Position + direction)
+			end
+		end
+
+		------ point the camera at the location. ------------
+
+		local camera = workspace.CurrentCamera
+		if camera then
+			-- camera.CFrame = CFrame.new(camera.CFrame.Position, sign.Position)
+			if humanoidRootPart then
+				camera.CFrame = humanoidRootPart.CFrame
+			end
 		end
 	end
 end
 
-module.doHighlightSingle = function(signId: number)
+module.DoHighlightSingle = function(signId: number)
 	module.KillAllExistingHighlights()
 	if not doHighlightAtAll then
 		return
@@ -166,11 +177,14 @@ module.doHighlightSingle = function(signId: number)
 		end
 		return
 	end
-	pointPlayerAtSign(sign)
+	if not tpUtil.SignCanBeHighlighted(sign) then
+		return
+	end
 	innerDoHighlight(sign)
+	pointPlayerAtSign(sign)
 end
 
-module.doHighlightMultiple = function(signIds: { number })
+module.DoHighlightMultiple = function(signIds: { number })
 	module.KillAllExistingHighlights()
 	for _, signId in pairs(signIds) do
 		local sign: Part? = tpUtil.signId2Sign(signId)
@@ -196,16 +210,32 @@ local function receiveAvatarEvent(event: mt.avatarEvent)
 end
 
 local function handleUserSettingChanged(userSetting: tt.userSettingValue)
-	doHighlightAtAll = userSetting.value
+	if userSetting.name == settingEnums.settingNames.HIGHLIGHT_AT_ALL then
+		doHighlightAtAll = userSetting.value
+	end
+	if userSetting.name == settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION then
+		rotatePlayerOnWarpWhenDestination = userSetting.value
+	end
 end
 
 module.Init = function()
+	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	humanoid = character:WaitForChild("Humanoid")
+
 	AvatarEventBindableEvent.Event:Connect(receiveAvatarEvent)
-	local userSettingValue = localFunctions.getSettingByName(settingEnums.settingNames.HIGHLIGHT_AT_ALL)
-	handleUserSettingChanged(userSettingValue)
+
+	handleUserSettingChanged(localFunctions.getSettingByName(settingEnums.settingNames.HIGHLIGHT_AT_ALL))
+	handleUserSettingChanged(
+		localFunctions.getSettingByName(settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION)
+	)
+
 	localFunctions.registerLocalSettingChangeReceiver(
 		handleUserSettingChanged,
 		settingEnums.settingNames.HIGHLIGHT_AT_ALL
+	)
+	localFunctions.registerLocalSettingChangeReceiver(
+		handleUserSettingChanged,
+		settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION
 	)
 end
 

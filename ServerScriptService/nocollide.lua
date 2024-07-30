@@ -43,7 +43,7 @@ for _, player in ipairs(Players:GetPlayers()) do
 	end
 end
 
-module.init = function() end
+module.Init = function() end
 
 _annotate("end")
 return module

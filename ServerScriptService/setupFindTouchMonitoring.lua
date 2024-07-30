@@ -102,7 +102,7 @@ local function touchedSignServer(hit: BasePart, sign: Part)
 	end
 end
 
-module.init = function()
+module.Init = function()
 	for _, sign: Part in ipairs(game.Workspace:WaitForChild("Signs"):GetChildren()) do
 		local signId = enums.name2signId[sign.Name]
 		if signId == nil then
@@ -110,6 +110,7 @@ module.init = function()
 			continue
 		end
 		--this is necessary for tracking finds.
+		print(sign.Name)
 		sign.Touched:Connect(function(hit)
 			touchedSignServer(hit, sign)
 		end)

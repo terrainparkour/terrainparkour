@@ -36,7 +36,7 @@ module.registerLocalSettingChangeReceiver = function(func: (tt.userSettingValue)
 	end
 
 	if not exi then
-		warn("trying to register a setting change receiver with a name that doesn't exist: " .. name)
+		_annotate("trying to register a setting change receiver with a name that doesn't exist: " .. name)
 		return
 	end
 	settingChangeFunctions[name] = func

@@ -49,18 +49,14 @@ local localPlayer = Players.LocalPlayer
 
 ---------------------- TYPES -----------------------
 
--- this covers all the different types of lbupdates that can be sent. for example, one is tt_afterrundata, another is tt_inital join data + username,
-type genericLbUpdateDataType = { [string]: number | string }
-
 --returns changed keys and oldvalue
-type userDataChange = { key: string, oldValue: number, newValue: number }
 
 --map of { userId to {keyname:number}}
 --note this is stored over time and serves as an in-user-memory re-usable cache.
-local lbUserData: { [number]: genericLbUpdateDataType } = {}
+local lbUserData: { [number]: tt.genericLeaderboardUpdateDataType } = {}
 
 --test wrapping this here to force stronger typing
-type rowFrameType = { frame: Frame }
+
 --descriptors used for user-LB rows for which the later ones, updates come up from server.
 type lbUserCellDescriptorType = {
 	name: string,
@@ -86,7 +82,7 @@ local lbtrans: number = 0.55
 --active tracking
 local lbRowCount: number = 0
 --the user-focused rowFrames go here.
-local userId2rowframe: { [number]: rowFrameType } = {}
+local userId2rowframe: { [number]: tt.leaderboardRowFrameType } = {}
 --the outer, created on time lbframe.
 local lbframe: Frame? = nil
 local lbIsEnabled: boolean = true
@@ -265,9 +261,10 @@ end
 --important to use all lbUserCellParams here to make the row complete
 --even if an update comes before the loading of full stats.
 
-local function createLbRowframeAboutUser(userId: number, username: string): rowFrameType?
+
+local function createLbRowframeAboutUser(userId: number, username: string): tt.leaderboardRowFrameType?
 	--remember, this user may not actually be present in the server!
-	local rowFrame: rowFrameType = { frame = Instance.new("Frame") }
+	local rowFrame: tt.leaderboardRowFrameType = { frame = Instance.new("Frame") }
 	local userDataFromCache = lbUserData[userId]
 	if not username then
 		--just look
@@ -358,8 +355,11 @@ end
 
 --after receiving an lb update, figure out what changed relative to known data
 --store it and return a userDataChange for rendering into the LB
-local function StoreUserData(userId: number, data: genericLbUpdateDataType): { userDataChange }
-	local res: { userDataChange } = {}
+local function StoreUserData(
+	userId: number,
+	data: tt.genericLeaderboardUpdateDataType
+): { tt.leaderboardUserDataChange }
+	local res: { tt.leaderboardUserDataChange } = {}
 	if lbUserData[userId] == nil then --received new data.
 		lbUserData[userId] = {}
 	end
@@ -375,7 +375,7 @@ local function StoreUserData(userId: number, data: genericLbUpdateDataType): { u
 		local oldValue = lbUserData[userId][key]
 		if newValue ~= oldValue then
 			--reset source of truth to the new data that came in.
-			local change: userDataChange = { key = key, oldValue = oldValue, newValue = newValue }
+			local change: tt.leaderboardUserDataChange = { key = key, oldValue = oldValue, newValue = newValue }
 			lbUserData[userId][key] = newValue
 			table.insert(res, change)
 		end
@@ -392,8 +392,15 @@ end
 -- naming: the FOR user is obviously the one whose local script this is.
 -- but the object of the row, i.e. the person whose data we are showing, is another user potentiall, the one this
 -- is all ABOUT.
-local function receivedLBUpdateAboutUser(userData: genericLbUpdateDataType, initial: boolean): nil
+
+local debounceReceivedLBUpdateAboutUser = {}
+local function receivedLBUpdateAboutUser(userData: tt.genericLeaderboardUpdateDataType, initial: boolean): nil
+	if debounceReceivedLBUpdateAboutUser[userData.userId] then
+		wait(0.1)
+	end
+	debounceReceivedLBUpdateAboutUser[userData.userId] = true
 	if not lbIsEnabled then
+		debounceReceivedLBUpdateAboutUser[userData.userId] = nil
 		return
 	end
 	local subjectUserId = userData.userId
@@ -407,6 +414,7 @@ local function receivedLBUpdateAboutUser(userData: genericLbUpdateDataType, init
 	if subjectUserId == nil then
 		warn("nil userid for update.: " .. tostring(initial))
 		warn(userData)
+		debounceReceivedLBUpdateAboutUser[userData.userId] = nil
 		return
 	end
 
@@ -418,7 +426,7 @@ local function receivedLBUpdateAboutUser(userData: genericLbUpdateDataType, init
 
 	--first check if there is anything worthwhile to draw - anything changed.
 
-	local userDataChanges: { userDataChange } = StoreUserData(subjectUserId, userData)
+	local userDataChanges: { tt.leaderboardUserDataChange } = StoreUserData(subjectUserId, userData)
 	if userDataChanges == nil or #userDataChanges == 0 then
 		_annotate(
 			string.format(
@@ -426,19 +434,21 @@ local function receivedLBUpdateAboutUser(userData: genericLbUpdateDataType, init
 				receivedUserData
 			)
 		)
+		debounceReceivedLBUpdateAboutUser[userData.userId] = nil
 		return
 	end
 
 	--patch things up if needed.
-	local userRowFrame: rowFrameType = userId2rowframe[subjectUserId]
+	local userRowFrame: tt.leaderboardRowFrameType = userId2rowframe[subjectUserId]
 	if userRowFrame == nil or userRowFrame.frame.Parent == nil then
 		if userRowFrame == nil then
 		else
 			userRowFrame.frame:Destroy()
 		end
 		userId2rowframe[subjectUserId] = nil
-		local candidateRowFrame: rowFrameType = createLbRowframeAboutUser(subjectUserId, userData.name)
+		local candidateRowFrame: tt.leaderboardRowFrameType = createLbRowframeAboutUser(subjectUserId, userData.name)
 		if candidateRowFrame == nil then --case when the user is gone already.
+			debounceReceivedLBUpdateAboutUser[userData.userId] = nil
 			return
 		end
 		lbRowCount = lbRowCount + 1
@@ -453,7 +463,7 @@ local function receivedLBUpdateAboutUser(userData: genericLbUpdateDataType, init
 		bgcolor = colors.meColor
 	end
 
-	for _, change: userDataChange in pairs(userDataChanges) do
+	for _, change: tt.leaderboardUserDataChange in pairs(userDataChanges) do
 		-- find the userCellDescriptor corresponding to it.
 
 		local descriptor = nil
@@ -566,13 +576,20 @@ local function receivedLBUpdateAboutUser(userData: genericLbUpdateDataType, init
 			tween2:Play()
 		end
 	end
+	debounceReceivedLBUpdateAboutUser[userData.userId] = nil
 end
 
+local removeDebouncers = {}
 local function removeUserLBRow(userId: number)
-	if not lbIsEnabled then
+	if removeDebouncers[userId] then
 		return
 	end
-	local row: rowFrameType = userId2rowframe[userId]
+	removeDebouncers[userId] = true
+	if not lbIsEnabled then
+		removeDebouncers[userId] = nil
+		return
+	end
+	local row: tt.leaderboardRowFrameType = userId2rowframe[userId]
 	userId2rowframe[userId] = nil
 	lbUserData[userId] = nil
 	if row ~= nil then
@@ -584,20 +601,27 @@ local function removeUserLBRow(userId: number)
 		if lbRowCount > 0 then
 			lbRowCount = math.min(0, lbRowCount - 1)
 		else
-			warn("okay, clear error here. lbRowcount too low")
+			warn("okay, clear error here. lbRowcount too low" .. tostring(lbRowCount))
 		end
 	end
 	resetLbHeight()
+	removeDebouncers[userId] = nil
 end
 
 --data is a list of kvs for update data. if any change, redraw the row (and highlight that cell.)
 --First keyed to receive data about a userId. But later overloading data to just be blobs  of things of specific types to display in leaderboard.
-local function clientReceiveNewLeaderboardData(lbUpdateData: genericLbUpdateDataType)
+local receiveDataDebouncer = false
+local function clientReceiveNewLeaderboardData(lbUpdateData: tt.genericLeaderboardUpdateDataType)
+	if receiveDataDebouncer then
+		wait(0.1)
+	end
+	receiveDataDebouncer = true
 	lbUpdateData.userId = tonumber(lbUpdateData.userId)
 
 	if lbUpdateData.kind == "leave" then
 		lbUserData[lbUpdateData.userId] = nil
 		removeUserLBRow(lbUpdateData.userId)
+		receiveDataDebouncer = false
 		return
 	end
 
@@ -621,6 +645,7 @@ local function clientReceiveNewLeaderboardData(lbUpdateData: genericLbUpdateData
 	-- print(lbUpdateData)
 
 	receivedLBUpdateAboutUser(lbUpdateData, initial)
+	receiveDataDebouncer = false
 end
 
 local function testJoinRejoinBugs()

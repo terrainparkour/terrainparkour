@@ -270,9 +270,38 @@ module.getPlaceText = function(place: number): string
 end
 
 --ie is the sign disabled somehow?
-module.isSignPartValidRightNow = function(sign: Part): boolean
+local isSignPartValidRightNow = function(sign: Part): boolean
 	local res = sign.CanCollide and sign.CanTouch and sign.CanQuery
 	return res
+end
+
+module.SignNameCanBeHighlighted = function(signName: string): boolean
+	if not signName or signName == "" then
+		return false
+	end
+	local sign = module.signName2Sign(signName)
+	if not sign then
+		return false
+	end
+	if not isSignPartValidRightNow(sign) then
+		return false
+	end
+	local signName = sign.Name
+	for _, name in pairs(enums.ExcludeSignNamesFromStartingAt) do
+		if signName == name then
+			return false
+		end
+	end
+	for _, name in pairs(enums.ExcludeSignNamesFromEndingAt) do
+		if signName == name then
+			return false
+		end
+	end
+	return true
+end
+
+module.SignCanBeHighlighted = function(sign: Part?): boolean
+	return module.SignNameCanBeHighlighted(sign.Name)
 end
 
 _annotate("end")

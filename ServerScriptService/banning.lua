@@ -47,7 +47,7 @@ module.hardBanUser = function(userId: number)
 	saveBan(userId, HARDBAN)
 end
 
-module.init = function()
+module.Init = function()
 	local getBanStatusRemoteFunction = remotes.getRemoteFunction("GetBanStatusRemoteFunction")
 
 	getBanStatusRemoteFunction.OnServerInvoke = function(player: Player): any

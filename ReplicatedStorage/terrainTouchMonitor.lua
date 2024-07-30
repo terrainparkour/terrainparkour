@@ -1,13 +1,17 @@
 --!strict
 
 --------------- RACING MODULE calls this, it's a singleton per user which is fed all floor changes.
+-- thinking about it, it's still weird that this is not really closer to morphs, or really even another client modulescript
+-- called specialSigns which just monitors the active sign, and then periodically updates that sign's text.
+-- or even a folder of signs such that eahc one could be fed with info on terrain changes, location, etc and then would od things
+-- hooking into the general movement.
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
 local runProgressSgui = require(game.ReplicatedStorage.gui.runProgressSgui)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
-local enums = require(game.ReplicatedStorage.util.enums)
 
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
@@ -43,9 +47,6 @@ local ResetFloorCounts = function()
 	currentRunSignName = ""
 	allOrderedSeenFloorTypeSet = {}
 	lastSeenTerrain = nil
-	runProgressSgui.UpdateOverallDescription("")
-	runProgressSgui.UpdateMovementDetails("")
-	runProgressSgui.UpdateStartTime(0)
 end
 
 module.initTracking = function(signName: string)
@@ -67,8 +68,7 @@ module.CountNewFloorMaterial = function(fm: Enum.Material?)
 	if currentRunSignName == "" or not currentRunSignName then
 		return
 	end
-	local signOverallTextDescription = enums.SpecialSignDescriptions[currentRunSignName]
-	runProgressSgui.UpdateOverallDescription(signOverallTextDescription)
+
 	if fm == nil then
 		error("nil touch.")
 	end
@@ -108,9 +108,9 @@ module.CountNewFloorMaterial = function(fm: Enum.Material?)
 			end
 		end
 
-		local details = textUtil.stringJoin(", ", t)
+		local listOfSeenTerrains = textUtil.stringJoin(", ", t)
 
-		runProgressSgui.UpdateMovementDetails(details)
+		runProgressSgui.UpdateMovementDetails(listOfSeenTerrains)
 	elseif currentRunSignName == "cOld mOld on a sLate pLate" then
 		local t: { string } = {}
 		for a, b in pairs(movementEnums.AllTerrainNames) do
@@ -119,9 +119,10 @@ module.CountNewFloorMaterial = function(fm: Enum.Material?)
 			end
 			table.insert(t, b)
 		end
+		table.sort(t)
 		local remainingTouchables = textUtil.stringJoin(", ", t)
-		local details = string.format("You can still touch: %s", remainingTouchables)
-		runProgressSgui.UpdateMovementDetails(details)
+		local remainingTouchableTerrains = string.format("Remaining: %s", remainingTouchables)
+		runProgressSgui.UpdateMovementDetails(remainingTouchableTerrains)
 	end
 
 	-------- KILLING RUN IF NECESSARY--------------

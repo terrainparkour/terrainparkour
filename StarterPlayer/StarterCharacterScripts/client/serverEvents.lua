@@ -14,26 +14,30 @@ local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
 
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
-local serverEventRemoteEvent = remotes.getRemoteEvent("ServerEventRemoteEvent")
+local ServerEventRemoteEvent = remotes.getRemoteEvent("ServerEventRemoteEvent")
+local ServerEventRemoteFunction = remotes.getRemoteFunction("ServerEventRemoteFunction")
 
-local function clientReceiveMessage(message: string, data: any)
+local function serverEventClientReceiveMessage(message: string, data: any)
 	_annotate("client received: " .. message)
 	_annotate(data)
 
 	if message == serverEventEnums.messageTypes.UPDATE then
-		data = data :: tt.runningServerEvent
-		serverEventGuis.updateEventVisually(data, localPlayer.UserId)
-	end
-
-	if message == serverEventEnums.messageTypes.END then
+		data = data :: { tt.runningServerEvent }
+		for _, event in data do
+			serverEventGuis.updateEventVisually(event, localPlayer.UserId)
+		end
+	elseif message == serverEventEnums.messageTypes.END then
 		data = data :: tt.runningServerEvent
 		serverEventGuis.endEventVisually(data)
+	else
+		warn("bad ServerEvent message type: " .. message)
 	end
 end
 
 module.Init = function()
 	_annotate("serverEvents init start")
-	serverEventRemoteEvent.OnClientEvent:Connect(clientReceiveMessage)
+	ServerEventRemoteEvent.OnClientEvent:Connect(serverEventClientReceiveMessage)
+	ServerEventRemoteFunction:InvokeServer(serverEventEnums.messageTypes.CONNECT, {})
 end
 
 _annotate("end")

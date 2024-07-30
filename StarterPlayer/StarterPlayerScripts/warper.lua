@@ -10,7 +10,7 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local remotes = require(game.ReplicatedStorage.util.remotes)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
 local textHighlighting = require(game.ReplicatedStorage.gui.textHighlighting)
@@ -71,7 +71,7 @@ local function HaveServerDoWarp()
 	_annotate("warp request done")
 	if highlightTargetSignId and highlightTargetSignId ~= 0 then
 		_annotate("highlighting " .. tostring(highlightTargetSignId))
-		textHighlighting.doHighlightSingle(highlightTargetSignId)
+		textHighlighting.DoHighlightSingle(highlightTargetSignId)
 	else
 		_annotate("not highlighting")
 	end

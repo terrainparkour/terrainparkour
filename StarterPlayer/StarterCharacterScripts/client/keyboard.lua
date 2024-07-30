@@ -13,9 +13,14 @@ local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 local mt = require(game.ReplicatedStorage.avatarEventTypes)
+
+local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
+local fireEvent = avatarEventFiring.FireEvent
+
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
+
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local UserInputService = game:GetService("UserInputService")
 
@@ -79,6 +84,10 @@ end
 
 -------------- all the shortctus are here. ----------------
 local function onInputBegin(inputObject, gameProcessedEvent)
+	if not inputObject.KeyCode then
+		return
+	end
+
 	if gameProcessedEvent then
 		return
 	end
@@ -100,6 +109,8 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 			ToggleLB(showLB)
 		elseif inputObject.KeyCode == Enum.KeyCode.X then
 			KillPopups()
+		elseif inputObject.KeyCode == Enum.KeyCode.Z then
+			fireEvent(mt.avatarEventTypes.RUN_KILL, { reason = "hit c on keyboard" })
 		elseif inputObject.KeyCode == Enum.KeyCode.Slash then
 			--
 		end

@@ -23,18 +23,21 @@ local marathonClient = require(game.StarterPlayer.StarterCharacterScripts.marath
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local dynamicRunning = require(game.StarterPlayer.StarterPlayerScripts.dynamicRunning)
 local mt = require(game.ReplicatedStorage.avatarEventTypes)
+local enums = require(game.ReplicatedStorage.util.enums)
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
 local runProgressSgui = require(game.ReplicatedStorage.gui.runProgressSgui)
 local terrainTouchMonitor = require(game.ReplicatedStorage.terrainTouchMonitor)
-
-local TellServerRunEndedRemoteEvent = remotes.getRemoteEvent("TellServerRunEndedRemoteEvent")
 
 ---------- CHARACTER -------------
 local localPlayer: Player = game.Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
 local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
+
+----------- EVENTS -------------------
+local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
+local TellServerRunEndedRemoteEvent = remotes.getRemoteEvent("TellServerRunEndedRemoteEvent")
 
 -------------------------------------- GLOBALS --------------------------------------
 local isRacingBlockedByWarp = false
@@ -62,16 +65,18 @@ local function killClientRun(context: string)
 	currentRunSignName = ""
 	dynamicRunning.endDynamic()
 	runProgressSgui.Kill()
+	clientTouchDebounce[localPlayer.Name] = false
 end
 
 --- no interpretation yet - just that they touched.
 local function TouchedSign(signId: number, touchTimeTick: number)
 	if clientTouchDebounce[localPlayer.Name] then
-		_annotate("debouncing multiple invocations of touchSign.")
+		_annotate("blocked by sign touch debouner.")
 		return
 	end
 	if isRacingBlockedByWarp then
 		_annotate("isRacingBlockedByWarp inside touchsign.")
+		clientTouchDebounce[localPlayer.Name] = false
 		return
 	end
 	clientTouchDebounce[localPlayer.Name] = true
@@ -106,13 +111,20 @@ local function TouchedSign(signId: number, touchTimeTick: number)
 	--NOTE we do not FIND signs from the client.-------
 	if isRacingBlockedByWarp then
 		_annotate("isRacingBlockedByWarp")
+		clientTouchDebounce[localPlayer.Name] = false
 		return
 	end
 
 	if currentRunSignName == "" then
 		------- START RUN ------------
+		_annotate(string.format("started run START" .. signName))
 		currentRunSignName = signName
 		runProgressSgui.CreateRunProgressSgui(playerGui, touchTimeTick, signName, sign.Position)
+		local signOverallTextDescription = enums.SpecialSignDescriptions[currentRunSignName]
+		if signOverallTextDescription then
+			runProgressSgui.UpdateExtraRaceDescription(signOverallTextDescription)
+		end
+
 		dynamicRunning.startDynamic(localPlayer, signName, touchTimeTick)
 		fireEvent(mt.avatarEventTypes.RUN_START, { relatedSignId = signId, relatedSignName = signName })
 		currentRunStartTick = touchTimeTick
@@ -120,6 +132,7 @@ local function TouchedSign(signId: number, touchTimeTick: number)
 		_annotate(string.format("started run from" .. currentRunSignName))
 	elseif currentRunSignName == signName then
 		--------- RETOUCH----------------------------
+		_annotate(string.format("retouch start." .. signName))
 		local gap = touchTimeTick - currentRunStartTick
 		if gap > 0.0 then
 			currentRunStartTick = touchTimeTick
@@ -129,8 +142,9 @@ local function TouchedSign(signId: number, touchTimeTick: number)
 			runProgressSgui.UpdateStartTime(currentRunStartTick)
 		end
 		_annotate(string.format("touched sign again: %s", signName))
-		--------END RACE-------------
 	else
+		--------END RACE-------------
+		_annotate(string.format("run END init.." .. signName))
 		--locally calculated actual racing time.
 		local runMilliseconds: number = math.floor(1000 * (touchTimeTick - currentRunStartTick))
 		local details: mt.avatarEventDetails = {
@@ -256,7 +270,6 @@ module.Init = function()
 end
 
 -------------LISTEN TO EVENTS-------------
-local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
 AvatarEventBindableEvent.Event:Connect(receiveAvatarEvent)
 
 _annotate("end")

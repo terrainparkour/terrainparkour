@@ -32,7 +32,7 @@ local function getSound(soundAssetId: number): Sound
 	return sound
 end
 
-local function init()
+module.Init = function()
 	for soundName, soundAssetId in pairs(sounds) do
 		local sound: Sound = getSound(soundAssetId)
 		sound.Name = soundName
@@ -41,8 +41,6 @@ local function init()
 		sound:Stop() -- Immediately stop the sound to prevent it from being heard
 	end
 end
-
-module.init = init
 
 local function playSoundFromSign(sign: Part, soundName: string)
 	local sound = getSound(sounds[soundName])

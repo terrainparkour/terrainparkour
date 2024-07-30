@@ -281,9 +281,7 @@ export type runningServerEvent = {
 	distance: number,
 }
 
-export type serverEventUpdateType = string
-
-export type serverEventUpdates = { { serverEvent: runningServerEvent, updateType: serverEventUpdateType } }
+export type ServerEventCreateType = { userId: number }
 
 --used from raceRunner => server consumers who want to know when runs complete.
 export type serverFinishRunNotifierType = {
@@ -302,7 +300,7 @@ export type userSignSignRelationship = {
 	startSignId: number,
 	endSignId: number,
 	endSignName: string,
-	runCount: number,
+	runCount: number, --user+sig?
 	bestPlace: number?,
 	bestTimeMs: number,
 	dist: number,
@@ -313,8 +311,8 @@ export type playerSignProfileData = {
 	signName: string,
 	signId: number,
 	relationships: { userSignSignRelationship },
-	unrunCwrs: { string }, --limited selection
-	unrunSigns: { string },
+	unrunCwrs: { string }, --limited selection. This is the signNames
+	unrunSigns: { string }, --EXCLUDES unrunCwrs
 	username: string,
 	userId: number, --the SUBJECT userid.
 }
@@ -329,6 +327,14 @@ export type chipType = { text: string, widthWeight: number?, bgcolor: Color3?, t
 export type rowDescriptor = (playerSignProfileData) -> { chipType }
 
 export type movementHistoryQueueItem = { action: number, time: number }
+
+------------------------ LEADERBOARD ------------------------
+export type leaderboardUserDataChange = { key: string, oldValue: number, newValue: number }
+
+-- this covers all the different types of lbupdates that can be sent. for example, one is tt_afterrundata, another is tt_inital join data + username,
+export type genericLeaderboardUpdateDataType = { [string]: number | string }
+
+export type leaderboardRowFrameType = { frame: Frame }
 
 _annotate("end")
 return {}

@@ -4,6 +4,8 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
+local module = {}
+
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local enums = require(game.ReplicatedStorage.util.enums)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
@@ -15,13 +17,20 @@ local PlayersService = game:GetService("Players")
 local lbupdater = require(game.ServerScriptService.lbupdater)
 local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
 
-local serverEventRemoteEvent = remotes.getRemoteEvent("ServerEventRemoteEvent")
-local serverEventRemoteFunction = remotes.getRemoteFunction("ServerEventRemoteFunction")
+local ServerEventRemoteEvent = remotes.getRemoteEvent("ServerEventRemoteEvent")
+local ServerEventRemoteFunction = remotes.getRemoteFunction("ServerEventRemoteFunction")
+
+--------------------- STATICS -------------------
 local serverEventLimitCount = 3
 
-local module = {}
-
-type ServerEventCreateType = { userId: number }
+--------------- GLOBALS ----------------------
+local debounceEventUpdater = false
+local serverEventMaxLength = 750
+if config.isInStudio() then
+	serverEventMaxLength = 645
+end
+local serverEventNumberCounter = 1
+local activeRunningServerEvents: { tt.runningServerEvent } = {}
 
 local _desc = [[
   serverEvents are:
@@ -47,17 +56,7 @@ local _desc = [[
 	there can be an optional highlight target signId.
 ]]
 
---PARAMETERS
-local serverEventMaxLength = 750
-if config.isInStudio() then
-	serverEventMaxLength = 645
-end
-
---STATE TRACKING GLOBALS
-local serverEventNumberCounter = 1
-local activeRunningServerEvents: { tt.runningServerEvent } = {}
-
---called every 5 seconds, polling on server.
+-- called every 5 seconds, polling on server.
 local function shouldEndServerEvent(event: tt.runningServerEvent): boolean
 	-- _annotate("should end event?: " .. serverEventGuis.replServerEvent(event))
 	event.remainingTick = event.startedTick + serverEventMaxLength - tick()
@@ -70,7 +69,7 @@ local function shouldEndServerEvent(event: tt.runningServerEvent): boolean
 end
 
 --used for removing and reating events
-local debounceEventUpdater = false
+
 local function endServerEvent(serverEvent: tt.runningServerEvent): boolean
 	while debounceEventUpdater do
 		wait(1)
@@ -89,7 +88,7 @@ local function endServerEvent(serverEvent: tt.runningServerEvent): boolean
 	table.remove(activeRunningServerEvents, pos)
 	debounceEventUpdater = false
 	_annotate("senidng end from server for: " .. serverEvent.name)
-	serverEventRemoteEvent:FireAllClients(serverEventEnums.messageTypes.END, serverEvent)
+	ServerEventRemoteEvent:FireAllClients(serverEventEnums.messageTypes.END, serverEvent)
 	local allocations = serverEventEnums.getTixAllocation(serverEvent)
 
 	badgeCheckers.CheckServerEventAllocations(allocations, serverEvent.distance)
@@ -149,7 +148,7 @@ local function getTixValueOfServerEvent(ev: tt.runningServerEvent): number
 	return res
 end
 
-local function startServerEvent(data: ServerEventCreateType): tt.runningServerEvent | nil
+local function startServerEvent(data: tt.ServerEventCreateType): tt.runningServerEvent | nil
 	--pick a random start and randome end, set it up dumbly as possible.
 	_annotate("startevent " .. tostring(data.userId))
 	if #activeRunningServerEvents >= serverEventLimitCount then
@@ -179,11 +178,10 @@ local function startServerEvent(data: ServerEventCreateType): tt.runningServerEv
 	local signsFolder: Folder = game.Workspace:FindFirstChild("Signs") :: Folder
 	local allSigns: { Part } = {}
 	for _, sign: Instance in ipairs(signsFolder:GetChildren()) do
-		local signPart = sign :: Part
-		if not tpUtil.isSignPartValidRightNow(signPart) then
+		if not tpUtil.SignCanBeHighlighted(sign) then
 			continue
 		end
-		table.insert(allSigns, signPart)
+		table.insert(allSigns, sign)
 	end
 
 	local existingAllFoundSignIds: { number } = {}
@@ -196,7 +194,7 @@ local function startServerEvent(data: ServerEventCreateType): tt.runningServerEv
 		if exi == nil then
 			continue
 		end
-		if not tpUtil.isSignPartValidRightNow(exi) then
+		if not tpUtil.SignCanBeHighlighted(exi) then
 			continue
 		end
 		table.insert(existingAllFoundSignIds, signId)
@@ -311,21 +309,21 @@ local function startServerEvent(data: ServerEventCreateType): tt.runningServerEv
 end
 
 --version which returns.
-local function serverReceiveFunction(player: Player, message: string, data: any)
+local function serverReceiveFunction(player: Player, message: string, data: tt.ServerEventCreateType)
 	_annotate("receive event " .. message)
 	_annotate(data)
 	--hhmm maybe overkill here, but why not just periodally
 
 	if message == serverEventEnums.messageTypes.CREATE then
-		data = data :: ServerEventCreateType
 		local serverEvent = startServerEvent(data)
-
 		if serverEvent == nil then
 			return { message = "Didn't Start Server Event, probably 3 is the max." }
 		else
-			serverEventRemoteEvent:FireAllClients(serverEventEnums.messageTypes.UPDATE, serverEvent)
+			ServerEventRemoteEvent:FireAllClients(serverEventEnums.messageTypes.UPDATE, { serverEvent })
 			return { message = "Started Server Event" }
 		end
+	elseif message == serverEventEnums.messageTypes.CONNECT then
+		ServerEventRemoteEvent:FireClient(player, serverEventEnums.messageTypes.UPDATE, activeRunningServerEvents)
 	end
 end
 
@@ -362,28 +360,27 @@ local function receiveRunFinishFromServer(data: tt.serverFinishRunNotifierType)
 		print("waint for debouncEventUpdater")
 	end
 	debounceEventUpdater = true
-	for _, ev in ipairs(activeRunningServerEvents) do
-		if ev.startSignId == data.startSignId and ev.endSignId == data.endSignId then
-			local anythingChanged = integrateRun(ev, data)
+	for _, serverEvent in ipairs(activeRunningServerEvents) do
+		if serverEvent.startSignId == data.startSignId and serverEvent.endSignId == data.endSignId then
+			local anythingChanged = integrateRun(serverEvent, data)
 			if anythingChanged then
 				--just send out full ev again.
 				--TODO this is highly non-optimized.
 				--not only do we send full serverEvent info again, we send it even when top8 or whatever doesn't change.
 				--but, given tix updating maybe that's okay.
-				serverEventRemoteEvent:FireAllClients(serverEventEnums.messageTypes.UPDATE, ev)
+				ServerEventRemoteEvent:FireAllClients(serverEventEnums.messageTypes.UPDATE, { serverEvent })
 			end
 			--splice it in.
 			--if anything changed,
 		end
 	end
-	-- print(data)
 	debounceEventUpdater = false
 end
 
-module.init = function()
+module.Init = function()
 	_annotate("setup serverEvents")
 	setupRunningServerEventKiller()
-	serverEventRemoteFunction.OnServerInvoke = function(player: Player, message: string, data: any): any
+	ServerEventRemoteFunction.OnServerInvoke = function(player: Player, message: string, data: any): any
 		return serverReceiveFunction(player, message, data)
 	end
 	local ServerEventBindableEvent = remotes.getBindableEvent("ServerEventBindableEvent")

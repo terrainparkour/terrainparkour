@@ -55,7 +55,7 @@ local function setupDayOfWeekSigns()
 	end)
 end
 
-module.init = function()
+module.Init = function()
 	task.spawn(function()
 		local signFolder = game.Workspace:WaitForChild("Signs")
 		local cold_mold: Part = signFolder:WaitForChild("cOld mOld on a sLate pLate", 2)

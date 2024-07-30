@@ -24,7 +24,7 @@ module.isInStudio = function()
 end
 
 module.isTestGame = function()
-	if string.gmatch(game.Name, "Terrain Parkour Dev Place") then
+	if string.match(game.Name, "Dev Place") then
 		return true
 	end
 	return false

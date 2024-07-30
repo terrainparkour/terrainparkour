@@ -18,19 +18,36 @@ module.enum.toolTipSize.BigPane = UDim2.new(0, 450, 0, 320)
 
 local ephemeralToolTipFrameName = "EphemeralTooltip"
 
-local function destroyToolTips(localPlayer: Player)
-	local theGuy = localPlayer.PlayerGui:FindFirstChild("ToolTipGui")
-	if theGuy then
-		for _, el in ipairs(theGuy:GetChildren()) do
-			if el.Name == ephemeralToolTipFrameName then
-				for _, el2 in ipairs(el:GetChildren()) do
-					el2:Destroy()
+local function DestroyToolTips(localPlayer: Player, killYoungerThan: number?)
+	local ttgui = localPlayer.PlayerGui:FindFirstChild("ToolTipGui")
+	if not ttgui then
+		return
+	end
+	for _, el in ipairs(ttgui:GetChildren()) do
+		if not el.Name == ephemeralToolTipFrameName then
+			continue
+		end
+
+		if killYoungerThan ~= nil then
+			local ageValue: NumberValue = el:FindFirstChild("AgeValue")
+			if ageValue and ageValue:IsA("NumberValue") then
+				if ageValue.Value < killYoungerThan then
+					for _, el2 in ipairs(el:GetChildren()) do
+						el2:Destroy()
+					end
+					el:Destroy()
 				end
-				el:Destroy()
 			end
+		else
+			for _, el2 in ipairs(el:GetChildren()) do
+				el2:Destroy()
+			end
+			el:Destroy()
 		end
 	end
 end
+
+local tooltipAge = 0
 
 --right=they float right+down rather than left+down from cursor. default is right.
 module.setupToolTip = function(
@@ -38,12 +55,15 @@ module.setupToolTip = function(
 	target: TextLabel | TextButton | ImageLabel | Frame,
 	tooltipContents: string | ImageLabel,
 	size: UDim2,
-	right: boolean?,
-	xalignment: any?
+	right: boolean?, --this refers to where the draws itself related to the mouse (i.e. default is the tooltip falls down to the lower right from the mouse, but if this is false, its to the lower left. )
+	xalignment: any?, --this refers to the text
+	alongBottom: boolean?,
+	frame: Frame?
 )
 	if tooltipContents == nil or tooltipContents == "" then
 		return
 	end
+
 	if xalignment == nil then
 		xalignment = Enum.TextXAlignment.Center
 	end
@@ -56,9 +76,12 @@ module.setupToolTip = function(
 	assert(tooltipContents)
 	local mouse: Mouse = localPlayer:GetMouse()
 
-	target.MouseEnter:Connect(function()
-		destroyToolTips(localPlayer)
+	local myAge = 0
 
+	target.MouseEnter:Connect(function()
+		tooltipAge += 1
+		myAge = tooltipAge
+		-- reuse the ttgui
 		local ttgui = localPlayer.PlayerGui:FindFirstChild("ToolTipGui")
 		if ttgui == nil then
 			ttgui = Instance.new("ScreenGui")
@@ -71,6 +94,11 @@ module.setupToolTip = function(
 		tooltipFrame.Name = ephemeralToolTipFrameName
 		tooltipFrame.Parent = ttgui
 
+		local numberValue = Instance.new("NumberValue")
+		numberValue.Name = "AgeValue"
+		numberValue.Value = myAge
+		numberValue.Parent = tooltipFrame
+
 		if typeof(tooltipContents) == "string" then
 			local tl = guiUtil.getTl("theTl", UDim2.new(1, 0, 1, 0), 2, tooltipFrame, colors.defaultGrey, 1)
 			tl.Text = tooltipContents
@@ -78,9 +106,6 @@ module.setupToolTip = function(
 			tl.Font = Enum.Font.Gotham
 			tl.TextXAlignment = xalignment
 			tl.TextYAlignment = Enum.TextYAlignment.Top
-			local par: TextLabel = tl.Parent
-			par.ZIndex = 400
-			tl.ZIndex = 500
 		else --image tooltips not working so well.
 			local s, e = pcall(function()
 				tooltipContents.Parent = tooltipFrame
@@ -95,11 +120,20 @@ module.setupToolTip = function(
 		else
 			tooltipFrame.Position = UDim2.fromOffset(mouse.X + 10 - size.X.Offset, mouse.Y + 10)
 		end
-	end)
-	target.MouseLeave:Connect(function()
-		-- if true then return end
 
-		destroyToolTips(localPlayer)
+		if alongBottom then
+			-- we hang down below hangOffTheBottomOfThis which is a screengui
+			-- we want to hang down below the center of that screengui
+
+			local pos =
+				UDim2.fromOffset(frame.AbsolutePosition.X - 240, frame.AbsolutePosition.Y + frame.AbsoluteSize.Y + 90)
+			tooltipFrame.Position = pos
+		end
+	end)
+
+	target.MouseLeave:Connect(function()
+		-- if true then return en1d
+		DestroyToolTips(localPlayer, myAge + 1)
 	end)
 end
 

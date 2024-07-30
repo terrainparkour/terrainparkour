@@ -1,15 +1,13 @@
 --!strict
 
--- stuff where client listens to things from server and replies to commands.
+-- pulseSign
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
-local remotes = require(game.ReplicatedStorage.util.remotes)
-local ShowSignsEvent = remotes.getRemoteEvent("ShowSignsEvent")
-local textHighlighting = require(game.ReplicatedStorage.gui.textHighlighting)
+local avatarManipulation = require(game.StarterPlayer.StarterPlayerScripts.avatarManipulation)
 
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
@@ -18,14 +16,18 @@ local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 ----------- GLOBALS -----------
 
-local function showSigns(signIds: { number })
-	_annotate("Client commands received: ShowSigns.")
-	textHighlighting.DoHighlightMultiple(signIds)
+-------------- MAIN --------------
+module.Kill = function()
+	avatarManipulation.SetCharacterTransparency(localPlayer, 0)
 end
 
 module.Init = function()
-	ShowSignsEvent.OnClientEvent:Connect(showSigns)
+	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
+	humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	avatarManipulation.SetCharacterTransparency(localPlayer, 0.9)
 end
+
+module.SawFloor = function(floorMaterial: Enum.Material?) end
 
 _annotate("end")
 return module

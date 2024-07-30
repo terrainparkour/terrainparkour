@@ -149,7 +149,7 @@ local function dynamicControlServer(player: Player, input: tt.dynamicRunningCont
 	end
 end
 
-module.init = function()
+module.Init = function()
 	dynamicRunningEvent.OnServerEvent:Connect(dynamicControlServer)
 end
 

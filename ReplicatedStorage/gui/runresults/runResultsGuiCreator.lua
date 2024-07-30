@@ -297,44 +297,39 @@ module.createNewRunResultSgui = function(options: tt.pyUserFinishedRunResponse):
 	local signName = enums.signId2name[options.startSignId]
 	local warpRow: Frame = nil
 	--we will display a button to warp back to startId
-	if signName ~= nil then
-		local bad = false
-		for _, badname in ipairs(enums.ExcludeSignNamesFromStartingAt) do
-			if badname == signName then
-				bad = true
-				break
-			end
+	local startSign = tpUtil.signId2Sign(options.startSignId)
+	if tpUtil.SignCanBeHighlighted(startSign) then
+		local uis = game:GetService("UserInputService")
+		local mobileText = ""
+		if uis.KeyboardEnabled then
+			mobileText = " [1]"
 		end
-		if not bad then
-			local uis = game:GetService("UserInputService")
-			local mobileText = ""
-			if uis.KeyboardEnabled then
-				mobileText = " [1]"
-			end
 
-			warpRow = addRow(
-				string.format("Warp back to %s%s", signName, mobileText),
-				frame,
-				heightsPixel.warp,
-				"warpRow",
-				colors.lightBlue
-			)
-			local useLastRunEnd = nil
-			if userWantsHighlightingWhenWarpingFromRunResults then
+		warpRow = addRow(
+			string.format("Warp back to %s%s", signName, mobileText),
+			frame,
+			heightsPixel.warp,
+			"warpRow",
+			colors.lightBlue
+		)
+		local useLastRunEnd = nil
+		if userWantsHighlightingWhenWarpingFromRunResults then
+			local endSign = tpUtil.signId2Sign(options.endSignId)
+			if tpUtil.SignCanBeHighlighted(endSign) then
 				useLastRunEnd = options.endSignId
 			end
-			local invisibleTextButton = Instance.new("TextButton")
-			invisibleTextButton.Position = warpRow.Position
-			invisibleTextButton.Size = UDim2.new(1, 0, 1, 0)
-			invisibleTextButton.Transparency = 1.0
-			invisibleTextButton.Text = "warp"
-			invisibleTextButton.TextScaled = true
-			invisibleTextButton.ZIndex = 20
-			invisibleTextButton.Parent = warpRow
-			invisibleTextButton.Activated:Connect(function()
-				warper.WarpToSign(options.startSignId, useLastRunEnd)
-			end)
 		end
+		local invisibleTextButton = Instance.new("TextButton")
+		invisibleTextButton.Position = warpRow.Position
+		invisibleTextButton.Size = UDim2.new(1, 0, 1, 0)
+		invisibleTextButton.Transparency = 1.0
+		invisibleTextButton.Text = "warp"
+		invisibleTextButton.TextScaled = true
+		invisibleTextButton.ZIndex = 20
+		invisibleTextButton.Parent = warpRow
+		invisibleTextButton.Activated:Connect(function()
+			warper.WarpToSign(options.startSignId, useLastRunEnd)
+		end)
 	end
 
 	local ypix = 0

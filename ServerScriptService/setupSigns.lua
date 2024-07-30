@@ -121,7 +121,7 @@ local function checkMissingSigns()
 	end
 end
 
-module.init = function()
+module.Init = function()
 	signMovement.setupGrowingDistantPinnacle()
 
 	for _, sign: Part in ipairs(game.Workspace:WaitForChild("Signs"):GetChildren()) do

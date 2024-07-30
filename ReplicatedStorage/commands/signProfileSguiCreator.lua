@@ -4,25 +4,20 @@
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
+local module = {}
 
-local textUtil = require(game.ReplicatedStorage.util.textUtil)
-local enums = require(game.ReplicatedStorage.util.enums)
-
-local config = require(game.ReplicatedStorage.config)
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
 local signProfileComponents = require(game.ReplicatedStorage.commands.signProfileComponents)
 
-local module = {}
+----------------- GLOBALS -------------------------
+--just leave this here so that tooltips can hang off the bottom FFS
+local globalFrame: Frame? = nil
 
 local function makeChip(ii: number, chipspec: tt.chipType, parent: Frame, width: number)
-	-- if not chipspec.color then
-	-- 	chipspec.color = colors.defaultGrey
-	-- end
 	local useWidth = width
 	if chipspec.widthWeight then
 		useWidth = width * chipspec.widthWeight
@@ -37,9 +32,11 @@ local function makeChip(ii: number, chipspec: tt.chipType, parent: Frame, width:
 			game.Players.LocalPlayer,
 			chip,
 			chipspec.toolTip,
-			UDim2.new(0, 250, 0, len),
+			UDim2.new(0.75, 0, 0.155, 0),
 			true,
-			Enum.TextXAlignment.Left
+			Enum.TextXAlignment.Left,
+			true,
+			globalFrame
 		)
 	end
 
@@ -76,6 +73,7 @@ type rowDescriptor = (tt.playerSignProfileData) -> { tt.chipType }
 
 module.createSgui = function(localPlayer: Player, data: tt.playerSignProfileData)
 	local sg = Instance.new("ScreenGui")
+
 	sg.Name = "SignStatusSgui"
 	sg.Parent = localPlayer.PlayerGui
 
@@ -85,6 +83,7 @@ module.createSgui = function(localPlayer: Player, data: tt.playerSignProfileData
 	fr.Size = UDim2.new(w, 0, h, 0)
 	fr.Position = UDim2.new(w / 2, 0, h / 2, 0)
 	fr.Name = "SignStatusUIFrame"
+	globalFrame = fr
 	local vv = Instance.new("UIListLayout")
 	vv.Parent = fr
 	vv.FillDirection = Enum.FillDirection.Vertical

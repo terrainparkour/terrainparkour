@@ -23,7 +23,12 @@ local dynamicRunningEvent = remotes.getRemoteEvent("DynamicRunningEvent") :: Rem
 
 ---------------- CONSTANTS--------------
 --max visualization (CAMERA, not PLAYER) range.
-local bbguiMaxDist = 250
+local bbguiMaxDist = 150
+
+-- for chunking size jumps within the dynamic runnig popup
+local divver = 120
+-- number of pixels per letter.
+local perWidth = 9
 
 -------------- GLOBALS ----------------------
 
@@ -35,8 +40,9 @@ local dynamicStartTick: number = 0
 
 local debounce = false
 local dynamicRunFrames: { tt.DynamicRunFrame } = {}
+
 --target sign name => TL;
-local tls: { [string]: TextLabel } = {}
+local textLabelStore: { [string]: TextLabel } = {}
 
 --signName => ui outer frame
 local targetSignUis: { [string]: TextLabel } = {}
@@ -45,6 +51,7 @@ local startDynamicDebounce = false
 local renderStepped: RBXScriptConnection? = nil
 local lastupdates = {}
 local hasReset = false
+
 -------------------- FUNCTIONS ----------------------
 
 --destroy all UIs and nuke the pointer dict to them
@@ -59,10 +66,12 @@ module.endDynamic = function(force: boolean?)
 
 	for k, v in pairs(targetSignUis) do
 		local par = v.Parent
-		assert(par)
-		par = par.Parent
-		assert(par)
-		par:Destroy()
+		if par then
+			par = par.Parent
+			if par then
+				par:Destroy()
+			end
+		end
 	end
 	targetSignUis = {}
 	dynamicStartTick = 0
@@ -108,16 +117,13 @@ module.startDynamic = function(player: Player, signName: string, startTick: numb
 end
 
 local function makeDynamicSignMouseoverUI(from: string, to: string): TextLabel?
-	local signs = game.Workspace:FindFirstChild("Signs")
-	local sign = signs:FindFirstChild(to) :: Part
-	if sign == nil or not sign.CanTouch then
+	if not tpUtil.SignNameCanBeHighlighted(to) then
 		--if a sign isn't touchable we don't route. This conveniently also hides hidden time-based signs.
-		--probably because the sign hasn't loaded yet? WTF.
-		-- warn("bad lookup of sign in dynamic:" .. to)
 		return
 	end
 	local bbgui = Instance.new("BillboardGui")
-	bbgui.Size = UDim2.new(0, 200, 0, 100)
+	local width = 15 * #from + 30
+	bbgui.Size = UDim2.new(0, width, 0, 80)
 	bbgui.StudsOffset = Vector3.new(0, 5, 0)
 	bbgui.MaxDistance = bbguiMaxDist
 	bbgui.AlwaysOnTop = false
@@ -126,21 +132,34 @@ local function makeDynamicSignMouseoverUI(from: string, to: string): TextLabel?
 	frame.Parent = bbgui
 	frame.Size = UDim2.new(1, 0, 1, 0)
 	frame.BackgroundTransparency = 1
-	local tl: TextLabel = Instance.new("TextLabel")
-	tl.Parent = frame
-	tl.Font = Enum.Font.GothamBold
-	tl.TextXAlignment = Enum.TextXAlignment.Center
-	tl.Size = UDim2.new(1, 0, 1, 0)
-	tl.Text = ""
-	tl.TextTransparency = 0.1
-	tl.BackgroundTransparency = 1
-	tl.TextColor3 = Color3.new(155, 100, 120)
-	tl.Size = UDim2.new(1, 0, 1, 0)
-	tl.FontSize = Enum.FontSize.Size24
-	tl.TextScaled = false
 
+	local textLabel: TextLabel = Instance.new("TextLabel")
+	textLabel.Parent = frame
+	textLabel.Font = Enum.Font.GothamBold
+	textLabel.TextXAlignment = Enum.TextXAlignment.Left
+	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.Text = ""
+	textLabel.TextTransparency = 0.0
+	textLabel.BackgroundTransparency = 1
+	textLabel.BackgroundColor3 = colors.white
+	textLabel.TextColor3 = colors.white
+	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.FontSize = Enum.FontSize.Size24
+	textLabel.TextScaled = false
+	local sign = tpUtil.signName2Sign(to)
 	bbgui.Parent = sign
-	return tl
+
+	-- local uiStroke2 = Instance.new("UIStroke")
+	-- uiStroke2.Color = colors.white
+	-- uiStroke2.Thickness = 2
+	-- uiStroke2.Parent = textLabel
+
+	local uiStroke = Instance.new("UIStroke")
+	uiStroke.Color = colors.black
+	uiStroke.Thickness = 6
+	uiStroke.Parent = textLabel
+
+	return textLabel
 end
 
 --get or create bbgui above sign
@@ -155,7 +174,7 @@ local function getOrCreateUI(from: string, to: string): TextLabel?
 	return targetSignUis[to]
 end
 
-local function calculateText(frame: tt.DynamicRunFrame): (string, Color3)
+local function calculateTextForDynamic(frame: tt.DynamicRunFrame): (string, Color3)
 	local currentRunElapsedMs = (tick() - dynamicStartTick) * 1000
 
 	--cutout early if its a new run entirely or you haven't found it.
@@ -275,52 +294,52 @@ end
 local function add(dynamicRunFrame: tt.DynamicRunFrame, from)
 	table.insert(dynamicRunFrames, dynamicRunFrame)
 	local tl = getOrCreateUI(from, dynamicRunFrame.targetSignName)
+
 	--this can happen sometimes - the client doesn't have the full DM yet somehow
 	if not tl then
-		--skip this UI.
-		-- warn("no")
 		return
 	end
-	tls[dynamicRunFrame.targetSignName] = tl
-	-- _annotate("added " .. dynamicRunFrame.targetSignName)
+	textLabelStore[dynamicRunFrame.targetSignName] = tl
 end
 
 local function handleOne(dynamicRunFrame: tt.DynamicRunFrame)
+	local textLabel: TextLabel = textLabelStore[dynamicRunFrame.targetSignName]
+
 	local s, e = pcall(function()
 		if dynamicStartTick == 0 then
 			return
 		end
-		-- local st = tick()
-		local tl: TextLabel = tls[dynamicRunFrame.targetSignName]
-		local bbgui: BillboardGui = tl.Parent.Parent
+
+		local bbgui: BillboardGui = textLabel.Parent.Parent
 		if not bbgui then
 			return
 		end
-		local sign = bbgui.Parent :: Part
+
 		local pos = localPlayer.Character.HumanoidRootPart.Position
 		local par = bbgui.Parent :: Part
 		local dist = tpUtil.getDist(par.Position, pos)
 
-		if dist > bbguiMaxDist then --far away
+		if dist > bbguiMaxDist then
+			--far away
 			if bbgui.Enabled then
 				bbgui.Enabled = false
-				-- _annotate("\tturned off: too far:" .. dynamicRunFrame.targetSignName)
 				return
 			end
-			-- _annotate("\tstayed off: too far:" .. dynamicRunFrame.targetSignName)
 			return
-		else --within region
+		else
+			--within region
 			if not bbgui.Enabled then
 				bbgui.Enabled = true
 			end
 		end
 
-		local text, color = calculateText(dynamicRunFrame)
-		local changed = false
-		if tl.Text ~= text then
-			tl.Text = text
-			changed = true
-			tl.TextColor3 = color
+		local text, color = calculateTextForDynamic(dynamicRunFrame)
+		if textLabel.Text ~= text then
+			textLabel.Text = text
+			textLabel.TextColor3 = color
+
+			local width = math.floor(math.floor(#text * perWidth / divver) * divver)
+			textLabel.Size = UDim2.new(0, width, 0, 80)
 		end
 	end)
 end
@@ -328,10 +347,10 @@ end
 local function fullReset()
 	_annotate("full dynamic running reset")
 	lock()
-	for _, item in ipairs(tls) do
+	for _, item in ipairs(textLabelStore) do
 		item.Parent.Parent:Destroy()
 	end
-	tls = {}
+	textLabelStore = {}
 	dynamicRunFrames = {}
 	unlock()
 end
@@ -411,7 +430,7 @@ module.Init = function()
 	dynamicStartTick = 0
 	debounce = false
 	dynamicRunFrames = {}
-	tls = {}
+	textLabelStore = {}
 	targetSignUis = {}
 	renderStepped = nil
 	lastupdates = {}

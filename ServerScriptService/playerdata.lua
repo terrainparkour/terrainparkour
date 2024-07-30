@@ -193,11 +193,9 @@ module.getCommonFoundSignIdsExcludingNoobs = function(requiredFinderUserId)
 	for signId: number, _ in pairs(userFinds) do
 		local name = tpUtil.signId2signName(signId)
 		local bad = false
-		for ii, badname in ipairs(enums.ExcludeSignNamesFromStartingAt) do
-			if badname == name then
-				bad = true
-				break
-			end
+		local sign = tpUtil.signId2Sign(signId)
+		if not tpUtil.SignCanBeHighlighted(sign) then
+			bad = true
 		end
 		if bad then
 			continue

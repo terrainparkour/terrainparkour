@@ -1,6 +1,7 @@
 local colors = require(game.ReplicatedStorage.util.colors)
 
---the one in the lower left, where you can cancel out of a race.
+-- runProgressSgui
+-- the one in the lower left, where you can cancel out of a race.
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
@@ -18,22 +19,24 @@ local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 local module = {}
 
-local runShouldEndSemaphore: boolean = false
 local currentRunStartTick: number = 0
 local currentRunSignName: string = ""
 local currentRunStartPosition: Vector3 = Vector3.zero
 local theSgui: ScreenGui = nil
 local theTextButton: TextButton = nil
-local specialMovementTypeTextForPlayer = ""
-local specialMovementDetails = ""
+local optionalRaceDescription = ""
+local movementDetails = ""
+local lastRuntimeUpdate = ""
 
 --receive updates to these items. otherwise I am independent
-module.UpdateMovementDetails = function(outerMovementDetails: string)
-	specialMovementDetails = outerMovementDetails
+module.UpdateExtraRaceDescription = function(outerRaceDescription: string): boolean
+	optionalRaceDescription = outerRaceDescription
+	return theSgui ~= nil
 end
 
-module.UpdateOverallDescription = function(outerOverallDescription: string)
-	specialMovementTypeTextForPlayer = outerOverallDescription
+module.UpdateMovementDetails = function(outerMovementDetails: string): boolean
+	movementDetails = outerMovementDetails
+	return theSgui ~= nil
 end
 
 module.UpdateStartTime = function(n: number)
@@ -41,47 +44,61 @@ module.UpdateStartTime = function(n: number)
 end
 
 module.Kill = function()
-	runShouldEndSemaphore = true
-	-- hard to communicate to the inside of the thing.
-	-- again, bindingEvents are the solution.
-	task.wait()
+	if theSgui then
+		theSgui:Destroy()
+	end
+	if theTextButton then
+		theTextButton:Destroy()
+	end
+	currentRunStartTick = 0
+	currentRunSignName = ""
+	currentRunStartPosition = Vector3.zero
+	optionalRaceDescription = ""
+	movementDetails = ""
+	lastRuntimeUpdate = ""
 end
 
-local lastUpdate = ""
-local function Update()
+local Update = nil
+
+local function startLoop()
+	spawn(function()
+		while true do
+			Update()
+			if theSgui == nil then
+				break
+			end
+			wait(0.01)
+		end
+	end)
+end
+
+Update = function()
 	local formattedRuntime = string.format("%.1fs", tick() - currentRunStartTick)
-	if lastUpdate == formattedRuntime then
-		-- _annotate("skipping early update.")
+	if lastRuntimeUpdate == formattedRuntime then
 		return true
 	end
-	lastUpdate = formattedRuntime
 	if localPlayer.Character == nil or localPlayer.Character.PrimaryPart == nil then
 		_annotate("well this happened.")
 		module.Kill()
 		return false
 	end
+	lastRuntimeUpdate = formattedRuntime
+
 	local pos = localPlayer.Character.PrimaryPart.Position
 	local distance = tpUtil.getDist(pos, currentRunStartPosition)
 
 	-- special race descriptors for weird limit runs. ----
-	local specialRaceDescriptor = ""
-	if specialMovementTypeTextForPlayer and specialMovementTypeTextForPlayer ~= "" then
-		specialRaceDescriptor = "\n" .. specialMovementTypeTextForPlayer
-	end
-	if specialMovementDetails and specialMovementDetails ~= "" then
-		specialRaceDescriptor = specialRaceDescriptor .. " " .. specialMovementDetails
-	end
-
+	local raceDescriptionText = optionalRaceDescription .. " " .. movementDetails
 	--- bit weird to calculate this here but whatever. --
 	local mult = humanoid.WalkSpeed / movementEnums.constants.globalDefaultRunSpeed
-	local speedupDescriptor = ""
+	local speedupDescription = ""
 
 	if mult ~= 1 then
 		local multDescriptor = "+"
 		if mult < 1 then
 			multDescriptor = ""
 		end
-		speedupDescriptor = string.format("%s%0.1f%%", multDescriptor, (mult - 1) * 100)
+		speedupDescription = string.format("%s%0.1f%%", multDescriptor, (mult - 1) * 100)
 	end
 
 	local optionalSignAliasText = ""
@@ -95,8 +112,8 @@ local function Update()
 	local text = string.format(
 		"%s %s%s\nFrom: %s%s (%.1fd)",
 		formattedRuntime,
-		speedupDescriptor,
-		specialRaceDescriptor,
+		speedupDescription,
+		raceDescriptionText,
 		currentRunSignName,
 		optionalSignAliasText,
 		distance
@@ -116,10 +133,10 @@ module.CreateRunProgressSgui = function(playerGui, startTimeTick, signName, pos)
 		return
 	end
 	debounceCreateRunProgressSgui = true
+	module.Kill()
 	currentRunSignName = signName
 	currentRunStartPosition = pos
-	module.Kill()
-	runShouldEndSemaphore = false
+
 	currentRunStartTick = startTimeTick
 
 	local sgui: ScreenGui = playerGui:FindFirstChild("ActiveRunSGui") :: ScreenGui
@@ -155,22 +172,9 @@ module.CreateRunProgressSgui = function(playerGui, startTimeTick, signName, pos)
 
 	-- no create an updater which continuously runs.
 	-- it partially bases its functions on the global variables received from outer.
-	task.spawn(function()
-		while true do
-			if runShouldEndSemaphore then
-				break
-			end
-			local res = Update()
-			if not res then
-				warn("broke cause fail to update sgui text.")
-				break
-			end
-			wait(0.001)
-		end
-		runShouldEndSemaphore = false
-		debounceCreateRunProgressSgui = false
-		theSgui:Destroy()
-	end)
+
+	debounceCreateRunProgressSgui = false
+	startLoop()
 end
 
 _annotate("end")

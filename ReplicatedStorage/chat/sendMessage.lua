@@ -53,6 +53,7 @@ module.usageCommandDesc = [[Admin Command examples:
 /chomik - find the Chomik!
 h to remove sign highlights
 1 to warp to the last completed run
+z to cancel the current race
 x to remove popped up UIs and notifications
 <tab> to toggle leaderboard off and on
 (click S in lower right for more options, including your settings.)

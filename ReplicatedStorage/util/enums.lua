@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.240 July 28 2024"
+module.gameVersion = "1.241 July 29 2024"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -559,6 +559,10 @@ local name2signId: { [string]: number } = {
 	["Thứ Bảy"] = 547,
 	["일요일"] = 548,
 	["Jökulhlaup"] = 549,
+	["►"] = 550,
+	["◄"] = 551,
+	["🗯"] = 552,
+	["Gemelo"] = 553,
 }
 
 --aliases of symbolic signs to their english alias.
@@ -587,6 +591,9 @@ module.signName2Alias["Thứ Bảy"] = "Saturday - Vietnamese"
 module.signName2Alias["일요일"] = "Sunday - Korean"
 --probably put this in a bucket saying to NOT repeat its alias.
 module.signName2Alias["Jökulhlaup"] = "Jokulhlaup"
+module.signName2Alias["►"] = "right"
+module.signName2Alias["◄"] = "left"
+module.signName2Alias["🗯"] = "anger"
 
 -- exclusion list.
 module.aliasesWhichAreVeryCloseSoDontNeedToBeShown = {}
@@ -627,6 +634,7 @@ module.ExcludeSignNamesFromEndingAt = {
 --random race cannot start from these for preservation of sanctity reasons.
 module.ExcludeSignNamesFromStartingAt = {
 	"👻",
+	"Gemelo",
 	"💀",
 	"👍",
 	"🔥",
@@ -657,7 +665,6 @@ module.ExcludeSignNamesFromStartingAt = {
 	"Lignin",
 	"Mencius",
 	"Ooloi",
-	"Spiral Jump",
 	"Rapunzel",
 	"Rubble",
 	"Olympus",

@@ -8,9 +8,10 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local module = {}
 
 local messageTypes = {}
-messageTypes.CREATE = "create"
-messageTypes.UPDATE = "update"
+messageTypes.CREATE = "create" --to the server
+messageTypes.UPDATE = "update" -- something happened?
 messageTypes.END = "end"
+messageTypes.CONNECT = "connect" -- I'm connecting, draw all these.
 module.messageTypes = messageTypes
 
 --width of SE row

@@ -30,6 +30,48 @@ local userSettingsCache: { [number]: { [string]: tt.userSettingValue } } = {}
 --note these are filled in and returned to users when the user has no stored value.
 --note "value" means default here.
 local defaultSettingsValues: { tt.userSettingValue } = {
+	--a real impactful user setting
+	{
+		name = settingEnums.settingNames.HIDE_LEADERBOARD,
+		domain = settingEnums.settingDomains.USERSETTINGS,
+		value = false,
+	},
+	{
+		name = settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION,
+		domain = settingEnums.settingDomains.USERSETTINGS,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY,
+		domain = settingEnums.settingDomains.USERSETTINGS,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.ENABLE_DYNAMIC_RUNNING,
+		domain = settingEnums.settingDomains.USERSETTINGS,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.X_BUTTON_IGNORES_CHAT,
+		domain = settingEnums.settingDomains.USERSETTINGS,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.HIGHLIGHT_ON_RUN_COMPLETE_WARP,
+		domain = settingEnums.settingDomains.USERSETTINGS,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP,
+		domain = settingEnums.settingDomains.USERSETTINGS,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.HIGHLIGHT_AT_ALL,
+		domain = settingEnums.settingDomains.USERSETTINGS,
+		value = true,
+	},
+
 	{ name = "enable alphafree", domain = settingEnums.settingDomains.MARATHONS },
 	{ name = "enable alphaordered", domain = settingEnums.settingDomains.MARATHONS },
 	{ name = "enable alphareverse", domain = settingEnums.settingDomains.MARATHONS },
@@ -108,43 +150,6 @@ local defaultSettingsValues: { tt.userSettingValue } = {
 	{ name = "you like ai", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "you have tried midjourney", domain = settingEnums.settingDomains.SURVEYS },
 	{ name = "you have used chatGPT", domain = settingEnums.settingDomains.SURVEYS },
-
-	--a real impactful user setting
-	{
-		name = settingEnums.settingNames.HIDE_LEADERBOARD,
-		domain = settingEnums.settingDomains.USERSETTINGS,
-		value = false,
-	},
-	{
-		name = settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY,
-		domain = settingEnums.settingDomains.USERSETTINGS,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.ENABLE_DYNAMIC_RUNNING,
-		domain = settingEnums.settingDomains.USERSETTINGS,
-		value = false,
-	},
-	{
-		name = settingEnums.settingNames.X_BUTTON_IGNORES_CHAT,
-		domain = settingEnums.settingDomains.USERSETTINGS,
-		value = false,
-	},
-	{
-		name = settingEnums.settingNames.HIGHLIGHT_ON_RUN_COMPLETE_WARP,
-		domain = settingEnums.settingDomains.USERSETTINGS,
-		value = false,
-	},
-	{
-		name = settingEnums.settingNames.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP,
-		domain = settingEnums.settingDomains.USERSETTINGS,
-		value = false,
-	},
-	{
-		name = settingEnums.settingNames.HIGHLIGHT_AT_ALL,
-		domain = settingEnums.settingDomains.USERSETTINGS,
-		value = true,
-	},
 }
 
 --copy a setting based on template default.
@@ -253,7 +258,7 @@ local function userChangedSettingFromUI(userId: number, setting: tt.userSettingV
 	end
 end
 
-module.init = function()
+module.Init = function()
 	local remotes = require(game.ReplicatedStorage.util.remotes)
 	local getUserSettingsFunction = remotes.getRemoteFunction("GetUserSettingsFunction") :: RemoteFunction
 	getUserSettingsFunction.OnServerInvoke = module.getUserSettingsRouter

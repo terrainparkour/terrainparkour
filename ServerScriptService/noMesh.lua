@@ -10,17 +10,16 @@ local module = {}
 
 local function handle(character)
 	task.spawn(function()
-		local hum: Humanoid
+		local humanoid: Humanoid
 		while true do
-			hum = character:WaitForChild("Humanoid")
-			if hum ~= nil then
+			humanoid = character:WaitForChild("Humanoid")
+			if humanoid ~= nil then
 				break
 			end
-			print("W")
 			wait(0.1)
 		end
 
-		local desc = hum:GetAppliedDescription()
+		local desc = humanoid:GetAppliedDescription()
 		desc.Head = 0
 		desc.Torso = 0
 		desc.LeftArm = 0
@@ -29,7 +28,7 @@ local function handle(character)
 		desc.RightLeg = 0
 		desc.BodyTypeScale = 1.0
 		wait(0.6)
-		hum:ApplyDescription(desc)
+		humanoid:ApplyDescription(desc)
 		for _, el in ipairs(character:GetChildren()) do
 			if el.Name == "CharacterMesh" then
 				print("destroy: " .. el.Name)

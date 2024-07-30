@@ -68,14 +68,14 @@ local function InnerWarp(player: Player, pos: Vector3, randomize: boolean): bool
 	local rootPart = character.HumanoidRootPart
 
 	CreateTemporaryLightPillar(rootPart.Position, "source")
-	local hum = character:WaitForChild("Humanoid") :: Humanoid
-	hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 
 	--2024: is this effectively just the server version of resetting movement states?
 	rootPart.Velocity = Vector3.new(0, 0, 0)
 	rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 	while true do
-		local state = hum:GetState()
+		local state = humanoid:GetState()
 		if
 			state == Enum.HumanoidStateType.GettingUp
 			or state == Enum.HumanoidStateType.Running
@@ -169,7 +169,7 @@ module.WarpToSignId = function(player: Player, signId: number, hypotheticalTarge
 	return innerWarpRes
 end
 
-module.init = function()
+module.Init = function()
 	local WarpRequestFunction = remotes.getRemoteFunction("WarpRequestFunction")
 	--when player clicks warp to <sign> they fire this event and go.
 	WarpRequestFunction.OnServerInvoke = function(player: Player, signId: number): any

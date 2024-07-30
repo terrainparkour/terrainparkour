@@ -83,7 +83,7 @@ local function GetContests(player: Player, userIds: { number }): { ContestRespon
 	return contests
 end
 
-module.init = function()
+module.Init = function()
 	local func = remotes.getRemoteFunction("GetContestsFunction") :: RemoteFunction
 	func.OnServerInvoke = function(player: Player, userIds: { number }): any
 		return GetContests(player, userIds)

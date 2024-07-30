@@ -20,10 +20,13 @@ local module = {}
 
 local placementProfiler = function(data: tt.playerSignProfileData): { tt.chipType }
 	local res: { tt.chipType } = {}
-	table.insert(res, { text = "Results from " .. data.signName, widthWeight = 4 })
+	table.insert(res, { text = "Your non-CWR results", widthWeight = 4 })
 	local counts = {}
 	local names = {}
 	for _, rel in ipairs(data.relationships) do
+		if rel.isCwr then
+			continue
+		end
 		if rel.bestPlace == nil or rel.bestPlace > 11 then
 			rel.bestPlace = 11
 		end
@@ -62,7 +65,7 @@ end
 
 local cwrProfiler = function(data: tt.playerSignProfileData): { tt.chipType }
 	local res: { tt.chipType } = {}
-	table.insert(res, { text = "CWR results from " .. data.signName, widthWeight = 4 })
+	table.insert(res, { text = "Your CWR Results", widthWeight = 4 })
 	local counts = {}
 	local names = {}
 	for _, rel in ipairs(data.relationships) do
@@ -119,14 +122,19 @@ end
 
 local generalInfoCounter = function(data: tt.playerSignProfileData)
 	local totalRuns = 0
-	local totalCwrs = 0
+
+	-- this is important since iterating over the *relationships* will exclude ones where there
+	-- is no relationship. Therefore we have to adjust this.
+	local totalCwrs = #data.unrunCwrs
 	local totalCwrLed = 0
 	local longestRelationship: tt.userSignSignRelationship
 	local mostRun: tt.userSignSignRelationship
 	local res: { tt.chipType } = {}
 	for _, rel in ipairs(data.relationships) do
 		totalRuns += rel.runCount
-		totalCwrs += rel.isCwr and 1 or 0
+		if rel.isCwr then
+			totalCwrs += 1
+		end
 		if rel.isCwr and rel.bestPlace == 1 then
 			totalCwrLed += 1
 		end
@@ -161,6 +169,7 @@ local generalInfoCounter = function(data: tt.playerSignProfileData)
 	end
 	return res
 end
+
 local timeCounter = function(data: tt.playerSignProfileData)
 	local timeMs = 0
 	local res: { tt.chipType } = {}
@@ -176,8 +185,8 @@ local rowGenerators: { tt.rowDescriptor } = {}
 table.insert(rowGenerators, generalInfoCounter)
 table.insert(rowGenerators, distanceCounter)
 table.insert(rowGenerators, timeCounter)
-table.insert(rowGenerators, placementProfiler)
 table.insert(rowGenerators, cwrProfiler)
+table.insert(rowGenerators, placementProfiler)
 
 module.rowGenerators = rowGenerators
 

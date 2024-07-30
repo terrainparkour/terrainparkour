@@ -9,7 +9,7 @@ local aliases = { LocalScript = "local", Script = "script", ModuleScript = "modu
 -- this controls which annotate calls are actually shown. Enter the minimal script name here regardless of client/module/script etc.
 local goodScripts = { "movement", "avatarEventMonitor", "avatarEventFiring", "serverWarping" }
 goodScripts = { "warper", "dynamicRunning", "main", "movement" }
-goodScripts = { "keyboard" }
+goodScripts = { "morphs", "runProgressSgui", "angerSign" }
 goodScripts = {}
 
 local showAllRegardless = false
@@ -29,7 +29,6 @@ local register = function(s: Script | ModuleScript | LocalScript): string
 	local inheritanceTree = ""
 	local parent = s.Parent
 	while parent do
-		-- print(parent.ClassName)
 		if parent.ClassName == "DataModel" then
 			break
 		end
@@ -112,7 +111,7 @@ module.getAnnotater = function(s: Script | ModuleScript | LocalScript)
 	return annotate
 end
 
-module.init = function()
+module.Init = function()
 	task.spawn(function()
 		while true do
 			wait(5)

@@ -9,6 +9,7 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local settingNames: { [string]: string } = {
+	ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION = "when you're warping with an implied destination, rotate your avatar and camera to face the direction",
 	ENABLE_DYNAMIC_RUNNING = "enable dynamic running",
 	HIDE_LEADERBOARD = "hide leaderboard",
 	SHORTEN_CONTEST_DIGIT_DISPLAY = "shorten contest digit display",

@@ -781,22 +781,15 @@ local alphabeticalAllLetters: mt.marathonDescriptor = {
 local function getSignsWithTrait(trait): { string }
 	local res = {}
 	local enums = require(game.ReplicatedStorage.util.enums)
-	local signFolder = game.Workspace:FindFirstChild("Signs")
 	for signName, signId in pairs(enums.name2signId) do
 		if not trait(signName) then
 			continue
 		end
-		local candidateSign = tpUtil.looseSignName2Sign(signName)
-		if candidateSign == nil then
-			continue
-		end
-		if not tpUtil.isSignPartValidRightNow(candidateSign) then
+		if not tpUtil.SignNameCanBeHighlighted(signName) then
 			continue
 		end
 
-		if candidateSign ~= nil then
-			table.insert(res, signName)
-		end
+		table.insert(res, signName)
 	end
 	return res
 end

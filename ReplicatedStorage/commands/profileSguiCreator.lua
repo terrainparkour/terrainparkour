@@ -1,6 +1,6 @@
 --!strict
 
---2022.03 pulled out commands from channel definitions
+--NOT working/finished - player profile creator.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
