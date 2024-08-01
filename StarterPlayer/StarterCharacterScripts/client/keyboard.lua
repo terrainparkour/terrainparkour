@@ -82,7 +82,18 @@ local function KillPopups()
 	end
 end
 
--------------- all the shortctus are here. ----------------
+local keyboardShortcutButton = require(game.StarterPlayer.StarterPlayerScripts.buttons.keyboardShortcutGui)
+
+local function showKeyboardShortcuts()
+	local shortcutGui = keyboardShortcutButton.CreateShortcutGui()
+	shortcutGui.Enabled = true
+
+	-- task.delay(9, function()
+	-- 	shortcutGui:Destroy()
+	-- end)
+end
+
+-------------- all the shortcuts are here. ----------------
 local function onInputBegin(inputObject, gameProcessedEvent)
 	if not inputObject.KeyCode then
 		return
@@ -111,8 +122,8 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 			KillPopups()
 		elseif inputObject.KeyCode == Enum.KeyCode.Z then
 			fireEvent(mt.avatarEventTypes.RUN_KILL, { reason = "hit c on keyboard" })
-		elseif inputObject.KeyCode == Enum.KeyCode.Slash then
-			--
+		elseif inputObject.KeyCode == Enum.KeyCode.K then
+			showKeyboardShortcuts()
 		end
 	end
 end
@@ -147,12 +158,12 @@ module.Init = function()
 	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 	UserInputService.InputBegan:Connect(onInputBegin)
 
-	localFunctions.registerLocalSettingChangeReceiver(
+	localFunctions.RegisterLocalSettingChangeReceiver(
 		handleUserSettingChanged,
 		settingEnums.settingNames.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP
 	)
 
-	localFunctions.registerLocalSettingChangeReceiver(
+	localFunctions.RegisterLocalSettingChangeReceiver(
 		handleUserSettingChanged,
 		settingEnums.settingNames.X_BUTTON_IGNORES_CHAT
 	)

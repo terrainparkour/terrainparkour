@@ -11,17 +11,17 @@ local module = {}
 
 local TweenService = game:GetService("TweenService")
 local PlayersService = game:GetService("Players")
-local localPlayer = PlayersService.LocalPlayer
+
 local enums = require(game.ReplicatedStorage.util.enums)
 local colors = require(game.ReplicatedStorage.util.colors)
-local marathonstatic = require(game.StarterPlayer.StarterCharacterScripts.marathon["marathon.static"])
+local marathonStatic = require(game.ReplicatedStorage.marathonStatic)
 local marathonDescriptors = require(game.ReplicatedStorage.marathonDescriptors)
 --global storage for user's lbframe
 
-local mt = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonTypes)
+local mt = require(game.StarterPlayer.StarterPlayerScripts.marathonTypes)
 
 local RRUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string): nil
-	local targetName = marathonstatic.getMarathonComponentName(desc, foundSignName)
+	local targetName = marathonStatic.getMarathonComponentName(desc, foundSignName)
 	local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
 	if exiTile == nil then
 		warn("bad.")

@@ -3,11 +3,19 @@
 --warning: 2022.10 sometimes needs to be loaded late for some reason.
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
-
+local textHighlighting = require(game.ReplicatedStorage.gui.textHighlighting)
+local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
 
 local vscdebug = require(game.ReplicatedStorage.vscdebug)
+local textUtil = require(game.ReplicatedStorage.util.textUtil)
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local localPlayer: Player = Players.LocalPlayer
+------------------ SETUP ------------------
+local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 local module = {}
 
@@ -18,7 +26,9 @@ module.enum.toolTipSize.BigPane = UDim2.new(0, 450, 0, 320)
 
 local ephemeralToolTipFrameName = "EphemeralTooltip"
 
-local function DestroyToolTips(localPlayer: Player, killYoungerThan: number?)
+local tooltipAge = 0
+
+local function DestroyToolTips(killYoungerThan: number?)
 	local ttgui = localPlayer.PlayerGui:FindFirstChild("ToolTipGui")
 	if not ttgui then
 		return
@@ -47,13 +57,53 @@ local function DestroyToolTips(localPlayer: Player, killYoungerThan: number?)
 	end
 end
 
-local tooltipAge = 0
+module.KillFinalTooltip = function()
+	DestroyToolTips(1000000)
+end
+
+local function getMouseoverableButton(signName: string)
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(0, 100, 0, 30)
+	button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+	button.BorderSizePixel = 2
+	button.BorderColor3 = Color3.fromRGB(100, 100, 100)
+	button.Text = ""
+
+	local textLabel = Instance.new("TextLabel")
+	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.BackgroundTransparency = 1
+	textLabel.Text = signName
+	textLabel.TextScaled = true
+	textLabel.Parent = button
+	local t = signName
+	button.MouseEnter:Connect(function()
+		if string.find(t, " %(") then
+			t = textUtil.stringSplit(t, " (")[1]
+		end
+		t = t:match("^%s*(.-)%s*$")
+
+		local signStatusSgui: ScreenGui = localPlayer.PlayerGui:FindFirstChild("SignStatusSgui")
+		if signStatusSgui then
+			local theBadFrame: Frame = signStatusSgui:FindFirstChild("SignStatusUIFrame")
+			if theBadFrame then
+				theBadFrame.Visible = false
+			end
+		end
+		local signId: number = tpUtil.signName2SignId(t)
+		textHighlighting.KillAllExistingHighlights()
+		textHighlighting.DoHighlightSingleSignId(signId)
+		textHighlighting.RotateCameraToFaceSignId(signId)
+		textHighlighting.PointPlayerAtSignId(signId)
+	end)
+
+	return button
+end
 
 --right=they float right+down rather than left+down from cursor. default is right.
 module.setupToolTip = function(
 	localPlayer: Player,
 	target: TextLabel | TextButton | ImageLabel | Frame,
-	tooltipContents: string | ImageLabel,
+	tooltipContents: string | ImageLabel | { string }, --when its a {string} we make a grid of insane mouseover sign names which highlight.
 	size: UDim2,
 	right: boolean?, --this refers to where the draws itself related to the mouse (i.e. default is the tooltip falls down to the lower right from the mouse, but if this is false, its to the lower left. )
 	xalignment: any?, --this refers to the text
@@ -69,9 +119,6 @@ module.setupToolTip = function(
 	end
 	if right == nil then
 		right = true
-	end
-	if tooltipContents == nil then
-		return
 	end
 	assert(tooltipContents)
 	local mouse: Mouse = localPlayer:GetMouse()
@@ -106,6 +153,22 @@ module.setupToolTip = function(
 			tl.Font = Enum.Font.Gotham
 			tl.TextXAlignment = xalignment
 			tl.TextYAlignment = Enum.TextYAlignment.Top
+		elseif typeof(tooltipContents) == "table" then
+			local listLayout = Instance.new("UIListLayout")
+			listLayout.Wraps = true
+			listLayout.Parent = tooltipFrame
+			listLayout.FillDirection = Enum.FillDirection.Horizontal
+			listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+			listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+			listLayout.Parent = tooltipFrame
+			listLayout.FillDirection = Enum.FillDirection.Vertical
+			listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+			listLayout.Padding = UDim.new(0, 5)
+
+			for _, signName in ipairs(tooltipContents) do
+				local button = getMouseoverableButton(signName)
+				button.Parent = tooltipFrame
+			end
 		else --image tooltips not working so well.
 			local s, e = pcall(function()
 				tooltipContents.Parent = tooltipFrame
@@ -133,7 +196,15 @@ module.setupToolTip = function(
 
 	target.MouseLeave:Connect(function()
 		-- if true then return en1d
-		DestroyToolTips(localPlayer, myAge + 1)
+		-- TRULY a hack
+		-- leave the last tooltip open when you mouseoff from signProfilegui (so it becomes more like a button...)
+		local adder = 0
+		if frame then
+			adder = 0
+		else
+			adder = 1
+		end
+		DestroyToolTips(myAge + adder)
 	end)
 end
 

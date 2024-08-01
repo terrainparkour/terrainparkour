@@ -6,12 +6,8 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local colors = require(game.ReplicatedStorage.util.colors)
-local mt = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonTypes)
+local mt = require(game.StarterPlayer.StarterPlayerScripts.marathonTypes)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
-
-local PlayersService = game:GetService("Players")
-local localPlayer = PlayersService.LocalPlayer
-local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 
 ---------STATIC--------------
 -------NAMES----------
@@ -158,7 +154,7 @@ local marathonSizesByHighlevelType: { [string]: marathonTileSize } = {
 
 module.marathonSizesByType = marathonSizesByHighlevelType
 --get the toggleable marathon tiles
-local function getComponentTilesForKind(desc: mt.marathonDescriptor, tiles: { TextLabel }, lbFrameSize: Vector2)
+module.getComponentTilesForKind = function(desc: mt.marathonDescriptor, tiles: { TextLabel }, lbFrameSize: Vector2)
 	local sz = module.marathonSizesByType[desc.highLevelType]
 	local rnd = math.random(1, 10)
 	local areaForChips = (lbFrameSize.X - sz.nameRes - sz.timeRes - sz.resetRes)
@@ -211,31 +207,6 @@ local function getComponentTilesForKind(desc: mt.marathonDescriptor, tiles: { Te
 	desc.timeTile = timeTile
 
 	table.insert(tiles, timeTile)
-end
-
---get name, chips (for sub-achievements), timetile, canceltile.
-module.getMarathonInnerTiles = function(desc: mt.marathonDescriptor, lbFrameSize: Vector2)
-	local res = {}
-	local sz = module.marathonSizesByType[desc.highLevelType]
-
-	local yy = Instance.new("UIListLayout")
-	yy.FillDirection = Enum.FillDirection.Horizontal
-	table.insert(res, yy)
-	local fakeParent = Instance.new("Frame")
-	local nameTile: TextLabel =
-		guiUtil.getTl("00-alphabetName", UDim2.new(0, sz.nameRes, 1, 0), 1, fakeParent, colors.defaultGrey, 1)
-	nameTile.Text = desc.humanName
-	local par = nameTile.Parent :: TextLabel
-	local fake: TextLabel = nil
-	par.Parent = fake
-	--what is this? why can't i set parent to nil
-	table.insert(res, nameTile.Parent)
-
-	toolTip.setupToolTip(localPlayer, nameTile, desc.hint, toolTip.enum.toolTipSize.NormalText)
-
-	getComponentTilesForKind(desc, res, lbFrameSize)
-
-	return res
 end
 
 ------------END STATIC

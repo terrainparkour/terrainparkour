@@ -24,9 +24,9 @@ local module = {}
 
 -- this NAME is just a placeholder for managing the settings handlers? rather than being the actual in-db name.
 local settingChangeFunctions: { [string]: (tt.userSettingValue) -> nil } = {}
-module.registerLocalSettingChangeReceiver = function(func: (tt.userSettingValue) -> nil, name: string)
+module.RegisterLocalSettingChangeReceiver = function(func: (tt.userSettingValue) -> nil, name: string)
 	-- let's make sure we're registering a setting which exists in the enums and things.
-
+	_annotate(string.format("handle local setting cahgne receivere: %s %s", name, tostring(func)))
 	local exi = false
 	for settingCodeName, textName in pairs(settingEnums.settingNames) do
 		if textName == name then
@@ -39,6 +39,7 @@ module.registerLocalSettingChangeReceiver = function(func: (tt.userSettingValue)
 		_annotate("trying to register a setting change receiver with a name that doesn't exist: " .. name)
 		return
 	end
+	_annotate(string.format("successfully registered: %s %s", name, tostring(func)))
 	settingChangeFunctions[name] = func
 end
 

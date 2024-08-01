@@ -362,7 +362,7 @@ local function handleUserSettingChanged(item: tt.userSettingValue): any
 	userWantsHighlightingWhenWarpingFromRunResults = item.value
 end
 
-localFunctions.registerLocalSettingChangeReceiver(
+localFunctions.RegisterLocalSettingChangeReceiver(
 	handleUserSettingChanged,
 	settingEnums.settingNames.HIGHLIGHT_ON_RUN_COMPLETE_WARP
 )

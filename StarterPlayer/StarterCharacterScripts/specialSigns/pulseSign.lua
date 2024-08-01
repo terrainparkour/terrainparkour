@@ -1,5 +1,7 @@
 --!strict
 
+
+
 -- pulseSign
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
@@ -16,7 +18,9 @@ local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 local pulseLaunchDebounce = false
 
 -------------- MAIN --------------
-module.Kill = function() end
+module.Kill = function()
+	pulseLaunchDebounce = false
+end
 
 local DoLaunchForPulse = function()
 	if pulseLaunchDebounce then
@@ -47,6 +51,7 @@ local DoLaunchForPulse = function()
 end
 
 module.Init = function()
+	pulseLaunchDebounce = false
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	DoLaunchForPulse()

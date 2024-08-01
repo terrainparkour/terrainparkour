@@ -12,6 +12,7 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
 local signProfileComponents = require(game.ReplicatedStorage.commands.signProfileComponents)
+local textUtil = require(game.ReplicatedStorage.util.textUtil)
 
 ----------------- GLOBALS -------------------------
 --just leave this here so that tooltips can hang off the bottom FFS
@@ -27,11 +28,15 @@ local function makeChip(ii: number, chipspec: tt.chipType, parent: Frame, width:
 
 	local chip = guiUtil.getTl(string.format("%02d-chip.", ii), UDim2.new(useWidth, 0, 1, 0), 2, parent, useColor, 1, 0)
 	if chipspec.toolTip and chipspec.toolTip ~= "" then
-		local len = math.max(#chipspec.toolTip * 2, 30)
+		local dividedTooltip = {}
+		for _, line in ipairs(textUtil.stringSplit(chipspec.toolTip, ",")) do
+			table.insert(dividedTooltip, line)
+		end
+		-- local len = math.max(#chipspec.toolTip * 2, 30)
 		toolTip.setupToolTip(
 			game.Players.LocalPlayer,
 			chip,
-			chipspec.toolTip,
+			dividedTooltip,
 			UDim2.new(0.75, 0, 0.155, 0),
 			true,
 			Enum.TextXAlignment.Left,
@@ -141,6 +146,7 @@ module.createSgui = function(localPlayer: Player, data: tt.playerSignProfileData
 	local tb = guiUtil.getTb("ZZZCloseButton", UDim2.new(1, 0, 0, 40), 2, fr, colors.redStop, 1, 0)
 	tb.Text = "Close"
 	tb.Activated:Connect(function()
+		toolTip.KillFinalTooltip()
 		sg:Destroy()
 	end)
 end

@@ -1,23 +1,12 @@
 --!strict
---2021 reviewed mostly
+
+-- channeldefinitions
+-- we enabled some old multitabbing code.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
-local text = require(game.ReplicatedStorage.util.text)
-local grantBadge = require(game.ServerScriptService.grantBadge)
-local config = require(game.ReplicatedStorage.config)
-
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
-local playerdata = require(game.ServerScriptService.playerdata)
-local rdb = require(game.ServerScriptService.rdb)
-
-local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
-local serverwarping = require(game.ServerScriptService.serverWarping)
-local channelCommands = require(game.ReplicatedStorage.chat.channelCommands)
-
 local sendMessageModule = require(game.ReplicatedStorage.chat.sendMessage)
 local commandParsing = require(game.ReplicatedStorage.chat.commandParsing)
 
@@ -26,6 +15,7 @@ local module = {}
 --looks like this is a way to shuffle around pointers to actual channel objects.
 local channelsFromExternal = nil
 module.sendChannels = function(channels)
+	_annotate(string.format("received #channels", #channels))
 	channelsFromExternal = channels
 end
 
@@ -47,6 +37,38 @@ local joinMessages = {
 	"Emergent speedrunning",
 	"Racing off the rails",
 	"Going farther than others would",
+	"Endless terrain, endless adventure",
+	"Every second counts, every path matters",
+	"Natural selection of strategies: Only the fittest runs survive",
+	-- now some totally new, really wild and crazy slogans:
+	"The only way to win is to run faster",
+	"The only way to lose is to run slower",
+	"Where every jump is a new discovery",
+	"Racing through the randomness",
+	"Mastering the unpredictable",
+	"Where no two runs are ever the same",
+	"Speedrunning in a world without end",
+	"Conquering chaos, one jump at a time",
+	"跑得快，跑得远",
+	"征服地形，超越极限",
+	"每一步都是新纪录",
+	"无尽地形，无限可能",
+	"速度与激情的完美结合",
+	"挑战自我，超越巅峰",
+	"用速度书写传奇",
+	"在随机中寻找最佳路线",
+	"跑酷大师的终极挑战",
+	"突破界限，创造奇迹",
+	"Swift as wind, footsteps like verse",
+	"Mountains as paths, clouds as bounds",
+	"Each step anew, each leap unique",
+	"Endless terrain, boundless chance",
+	"Speed and passion, perfect blend",
+	"Challenge self, surpass the peak",
+	"Write with speed, compose with leaps",
+	"In chaos seek, the finest route",
+	"Parkour's way, supreme and high",
+	"Break limits, transcend mortal realm",
 }
 local joinMessage = joinMessages[math.random(#joinMessages)]
 

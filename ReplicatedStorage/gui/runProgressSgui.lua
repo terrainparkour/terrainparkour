@@ -88,7 +88,10 @@ Update = function()
 	local distance = tpUtil.getDist(pos, currentRunStartPosition)
 
 	-- special race descriptors for weird limit runs. ----
-	local raceDescriptionText = optionalRaceDescription .. " " .. movementDetails
+	local raceDescriptionText = ""
+	if optionalRaceDescription or movementDetails ~= "" then
+		raceDescriptionText = " " .. optionalRaceDescription .. " " .. movementDetails
+	end
 	--- bit weird to calculate this here but whatever. --
 	local mult = humanoid.WalkSpeed / movementEnums.constants.globalDefaultRunSpeed
 	local speedupDescription = ""

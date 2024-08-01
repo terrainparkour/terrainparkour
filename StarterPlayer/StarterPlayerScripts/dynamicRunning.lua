@@ -440,7 +440,7 @@ module.Init = function()
 	local localFunctions = require(game.ReplicatedStorage.localFunctions)
 
 	--in addition to this, needs to get the original setting to set it locally too.
-	localFunctions.registerLocalSettingChangeReceiver(function(item)
+	localFunctions.RegisterLocalSettingChangeReceiver(function(item)
 		return handleUserSettingChanged(item)
 	end, settingEnums.settingNames.ENABLE_DYNAMIC_RUNNING)
 

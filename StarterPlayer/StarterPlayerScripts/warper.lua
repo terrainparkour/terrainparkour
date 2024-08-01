@@ -71,7 +71,8 @@ local function HaveServerDoWarp()
 	_annotate("warp request done")
 	if highlightTargetSignId and highlightTargetSignId ~= 0 then
 		_annotate("highlighting " .. tostring(highlightTargetSignId))
-		textHighlighting.DoHighlightSingle(highlightTargetSignId)
+		textHighlighting.KillAllExistingHighlights()
+		textHighlighting.DoHighlightSingleSignId(highlightTargetSignId)
 	else
 		_annotate("not highlighting")
 	end

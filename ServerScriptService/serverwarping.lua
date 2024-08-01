@@ -163,6 +163,9 @@ module.WarpToSignId = function(player: Player, signId: number, hypotheticalTarge
 	local innerWarpRes = InnerWarp(player, pos, true)
 	if innerWarpRes and hypotheticalTargetSignId then
 		_annotate("because we had innerWarpRes and hypothetical, we are: " .. tostring(hypotheticalTargetSignId))
+
+		-- TODO interesting, we could send along this player and everyone's top ten list for this sign target too. But they kind of have that already
+		-- after they finish the run.
 		ShowSignsEvent:FireClient(player, { hypotheticalTargetSignId })
 	end
 	_annotate("end WarpToSignId with res: " .. tostring(innerWarpRes))

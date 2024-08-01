@@ -47,6 +47,7 @@ module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor): boole
 		end
 		_annotate("waiting on lookup.\t" .. badge.name)
 		wait(1)
+		--TODO very suspicious. what is this?
 	end
 	if grantedBadges[userId][badge.assetId] == nil then
 		badgeLookupLocks[userId][badge.assetId] = true

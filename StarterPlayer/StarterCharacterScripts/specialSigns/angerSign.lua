@@ -2,6 +2,19 @@
 
 -- angerSign
 
+--[[
+about signs in general:
+https://github.com/terrainparkour/terrainparkour/blob/master/StarterPlayer/StarterCharacterScripts/specialSigns/pulseSign.lua this is fairly simple.
+
+When the player touches the sign for the first time, .Init() is called. In this case it does nothing.
+
+If the player steps on a new floor, SawFloor is called. And then when the run ends (either player dies, cancels, completes it, quits etc) then .Kill() will be called to clean up. The next time they start a run from this sign, the same process will occur, so the methods have to clean up after themselves.
+
+This sign uses more things. runProgressSgui is a singleton which controls the active running sign gui (in the lower left)
+You can send extra strings to it to display more information.
+Obviously I want to be able to do more there, not just text but full UIs etc.
+]]
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 

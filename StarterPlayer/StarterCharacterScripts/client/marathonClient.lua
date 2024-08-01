@@ -10,12 +10,12 @@ local module = {}
 local colors = require(game.ReplicatedStorage.util.colors)
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
-local marathonstatic = require(game.StarterPlayer.StarterCharacterScripts.marathon["marathon.static"])
-
+local marathonStatic = require(game.ReplicatedStorage.marathonStatic)
+local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local lbMarathonRowY = 18
 local remotes = require(game.ReplicatedStorage.util.remotes)
-
-local marathonTypes = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonTypes)
+local toolTip = require(game.ReplicatedStorage.gui.toolTip)
+local marathonTypes = require(game.StarterPlayer.StarterPlayerScripts.marathonTypes)
 local mt = require(game.ReplicatedStorage.avatarEventTypes)
 
 local joinableMarathonKinds: { marathonTypes.marathonDescriptor } = {}
@@ -23,7 +23,10 @@ local joinableMarathonKinds: { marathonTypes.marathonDescriptor } = {}
 local marathonCompleteEvent = remotes.getRemoteEvent("MarathonCompleteEvent")
 local ephemeralMarathonCompleteEvent = remotes.getRemoteEvent("EphemeralMarathonCompleteEvent")
 local PlayersService = game:GetService("Players")
-
+local Players = game:GetService("Players")
+local localPlayer: Player = Players.LocalPlayer
+local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
+local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 ------------------------ GLOBALS ------------------------
 
 local disabledMarathons = {}
@@ -71,12 +74,12 @@ local function startMarathonRunTimer(desc: marathonTypes.marathonDescriptor, bas
 end
 
 local function stopTimerForKind(desc: marathonTypes.marathonDescriptor): boolean
-	-- _annotate("stopTimerForKind.start." .. desc.kind)
+	---_annotate("stopTimerForKind.start." .. desc.kind)
 	if not desc.runningTimeTileUpdater then
-		-- _annotate("stopTimerForKind.was not running." .. desc.kind)
+		---_annotate("stopTimerForKind.was not running." .. desc.kind)
 		return true
 	end
-	-- _annotate("stopTimerForKind.set semaphore." .. desc.kind)
+	---_annotate("stopTimerForKind.set semaphore." .. desc.kind)
 	desc.killTimerSemaphore = true --wait til the timer catches this and dies.
 	local ii = 0
 	while true do
@@ -104,12 +107,37 @@ local function resetMarathonProgress(desc: marathonTypes.marathonDescriptor)
 	-- _annotate("resetMarathon.end." .. desc.kind)
 end
 
+--get name, chips (for sub-achievements), timetile, canceltile.
+module.getMarathonInnerTiles = function(desc: marathonTypes.marathonDescriptor, lbFrameSize: Vector2)
+	local res = {}
+	local sz = marathonStatic.marathonSizesByType[desc.highLevelType]
+
+	local yy = Instance.new("UIListLayout")
+	yy.FillDirection = Enum.FillDirection.Horizontal
+	table.insert(res, yy)
+	local fakeParent = Instance.new("Frame")
+	local nameTile: TextLabel =
+		guiUtil.getTl("00-alphabetName", UDim2.new(0, sz.nameRes, 1, 0), 1, fakeParent, colors.defaultGrey, 1)
+	nameTile.Text = desc.humanName
+	local par = nameTile.Parent :: TextLabel
+	local fake: TextLabel = nil
+	par.Parent = fake
+	--what is this? why can't i set parent to nil
+	table.insert(res, nameTile.Parent)
+
+	toolTip.setupToolTip(localPlayer, nameTile, desc.hint, toolTip.enum.toolTipSize.NormalText)
+
+	marathonStatic.getComponentTilesForKind(desc, res, lbFrameSize)
+
+	return res
+end
+
 --get or create frame; swap out the tiles with new ones.
 --does it do deduplication?
 module.InitMarathonVisually = function(desc: marathonTypes.marathonDescriptor)
 	_annotate("initMarathonVisually.start." .. desc.highLevelType .. "_" .. desc.sequenceNumber)
 
-	local frameName = marathonstatic.getMarathonKindFrameName(desc)
+	local frameName = marathonStatic.getMarathonKindFrameName(desc)
 	_annotate("init visual marathon: " .. frameName)
 	local exi: Frame = getLbFrame():FindFirstChild(frameName)
 	if exi == nil then
@@ -122,7 +150,7 @@ module.InitMarathonVisually = function(desc: marathonTypes.marathonDescriptor)
 		exi.Parent = getLbFrame()
 	end
 	--swap out tiles
-	local tiles = marathonstatic.getMarathonInnerTiles(desc, getLbFrame().AbsoluteSize)
+	local tiles = module.getMarathonInnerTiles(desc, getLbFrame().AbsoluteSize)
 	for _, tile in ipairs(tiles) do
 		local exiTile = exi:FindFirstChild(tile.Name)
 		if exiTile ~= nil then
@@ -130,7 +158,7 @@ module.InitMarathonVisually = function(desc: marathonTypes.marathonDescriptor)
 		end
 		tile.Parent = exi
 	end
-	local resetTile = marathonstatic.getMarathonResetTile(desc)
+	local resetTile = marathonStatic.getMarathonResetTile(desc)
 	local exiTile = exi:FindFirstChild(resetTile.Name)
 	if exiTile ~= nil then
 		exiTile:Destroy()
@@ -230,7 +258,7 @@ local function innerReceiveHit(desc: marathonTypes.marathonDescriptor, signName:
 	-- _annotate("innerReceiveHit.marathonDone?" .. tostring(res.marathonDone))
 	-- _annotate("innerReceiveHit.started?" .. tostring(res.started))
 
-	local frameName = marathonstatic.getMarathonKindFrameName(desc)
+	local frameName = marathonStatic.getMarathonKindFrameName(desc)
 	local marathonRow: Frame = getLbFrame():FindFirstChild(frameName)
 
 	--marathon has been killed in UI.
@@ -306,7 +334,7 @@ module.DisableMarathon = function(desc: marathonTypes.marathonDescriptor)
 		return
 	end
 	resetMarathonProgress(desc)
-	local frameName = marathonstatic.getMarathonKindFrameName(desc)
+	local frameName = marathonStatic.getMarathonKindFrameName(desc)
 	local exi: Frame = getLbFrame():FindFirstChild(frameName)
 	if exi ~= nil then
 		exi:Destroy()

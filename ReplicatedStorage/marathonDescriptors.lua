@@ -4,9 +4,9 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local mt = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonTypes)
+local mt = require(game.StarterPlayer.StarterPlayerScripts.marathonTypes)
 local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
-local marathonstatic = require(game.StarterPlayer.StarterCharacterScripts.marathon["marathon.static"])
+local marathonStatic = require(game.ReplicatedStorage.marathonStatic)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
 local config = require(game.ReplicatedStorage.config)
@@ -169,7 +169,7 @@ end
 
 local FindNUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string): nil
 	--get the tl
-	local targetName = marathonstatic.getMarathonComponentName(desc, desc.humanName)
+	local targetName = marathonStatic.getMarathonComponentName(desc, desc.humanName)
 	local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
 	if exiTile == nil then
 		warn("bad.FindNUpdateRow" .. " could not find: " .. targetName)
@@ -186,7 +186,7 @@ end
 
 local SignsOfEveryLengthUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string): nil
 	local ll = utf8.len(foundSignName)
-	local targetName = marathonstatic.getMarathonComponentName(desc, string.format("%02d", ll))
+	local targetName = marathonStatic.getMarathonComponentName(desc, string.format("%02d", ll))
 	local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
 	if exiTile == nil then
 		warn("bad.AlphaUpdateRow" .. foundSignName)
@@ -206,7 +206,7 @@ end
 local AlphaUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string): nil
 	-- local firstLetterOfSign = string.lower(string.sub(foundSignName, 1, 1))
 	local firstLetterOfSign = textUtil.getFirstCodepointAsString(foundSignName):lower()
-	local targetName = marathonstatic.getMarathonComponentName(desc, firstLetterOfSign)
+	local targetName = marathonStatic.getMarathonComponentName(desc, firstLetterOfSign)
 	local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
 	if exiTile == nil then
 		--this is okay since non-alphanumeric chars won't count.
@@ -223,7 +223,7 @@ local AlphaUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, found
 end
 
 local FindSetUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string): nil
-	local targetName = marathonstatic.getMarathonComponentName(desc, foundSignName)
+	local targetName = marathonStatic.getMarathonComponentName(desc, foundSignName)
 	local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
 	if exiTile == nil then
 		warn("bad.FindSetUpdateRow")
@@ -366,7 +366,7 @@ local alphaFree: mt.marathonDescriptor = {
 	addDebounce = {},
 	reportAsMarathon = true,
 	finds = {},
-	targets = marathonstatic.alphaKeys,
+	targets = marathonStatic.alphaKeys,
 	orderedTargets = nil,
 	count = 0,
 	requiredCount = 26,
@@ -395,7 +395,7 @@ local alphaOrdered: mt.marathonDescriptor = {
 	reportAsMarathon = true,
 	finds = {},
 	targets = {},
-	orderedTargets = marathonstatic.alphaKeys,
+	orderedTargets = marathonStatic.alphaKeys,
 	count = 0,
 	requiredCount = 26,
 	startTime = 0,
@@ -429,7 +429,7 @@ local alphaReverse: mt.marathonDescriptor = {
 	reportAsMarathon = true,
 	finds = {},
 	targets = {},
-	orderedTargets = marathonstatic.alphaKeysReverse,
+	orderedTargets = marathonStatic.alphaKeysReverse,
 	count = 0,
 	requiredCount = 26,
 	startTime = 0,
@@ -577,7 +577,7 @@ local FindLetterCountUpdateRow = function(
 	limit: number
 ): nil
 	--get the tl
-	local targetName = marathonstatic.getMarathonComponentName(desc, desc.humanName)
+	local targetName = marathonStatic.getMarathonComponentName(desc, desc.humanName)
 	local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
 	if exiTile == nil then
 		warn("bad.FindNUpdateRow")
@@ -733,7 +733,7 @@ local FindAlphabeticalAndAddAllChipsRow = function(
 		if coverage[c] ~= nil then
 			continue
 		end
-		local targetName = marathonstatic.getMarathonComponentName(desc, c)
+		local targetName = marathonStatic.getMarathonComponentName(desc, c)
 		local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
 		if exiTile == nil then
 			warn("bad.foundSignName")
@@ -757,7 +757,7 @@ local alphabeticalAllLetters: mt.marathonDescriptor = {
 	hint = "Touch signs containing all letters of the alphabet, in any order.",
 	addDebounce = {},
 	finds = {},
-	targets = marathonstatic.alphaKeys,
+	targets = marathonStatic.alphaKeys,
 	orderedTargets = {},
 	reportAsMarathon = true,
 	count = 0,

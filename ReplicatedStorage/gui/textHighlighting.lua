@@ -33,7 +33,6 @@ local BILLBOARD_OFFSET = Vector3.new(0, 2, 0)
 ---------GLOBALS ---------------
 local currentHighlights = {}
 local doHighlightAtAll = true
-local rotatePlayerOnWarpWhenDestination = true
 
 local function lerpColor(c1, c2, alpha)
 	return Color3.new(c1.R + (c2.R - c1.R) * alpha, c1.G + (c2.G - c1.G) * alpha, c1.B + (c2.B - c1.B) * alpha)
@@ -135,45 +134,49 @@ local function innerDoHighlight(sign: Part)
 	table.insert(currentHighlights, billboardGui)
 end
 
-local function pointPlayerAtSign(sign: Part)
+module.PointPlayerAtSignId = function(signId: number)
+	local sign: Part? = tpUtil.signId2Sign(signId)
 	if not sign then
 		return
 	end
 	_annotate("pointing player at sign" .. sign.Name)
-
-	if rotatePlayerOnWarpWhenDestination then
-		------------ point the player at the target -------------------
-		local humanoidRootPart: Part? = nil
-		if localPlayer and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
-			local character = localPlayer.Character
-			humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-			if humanoidRootPart then
-				local direction = (sign.Position - humanoidRootPart.Position).Unit
-				humanoidRootPart.CFrame = CFrame.new(humanoidRootPart.Position, humanoidRootPart.Position + direction)
-			end
-		end
-
-		------ point the camera at the location. ------------
-
-		local camera = workspace.CurrentCamera
-		if camera then
-			-- camera.CFrame = CFrame.new(camera.CFrame.Position, sign.Position)
-			if humanoidRootPart then
-				camera.CFrame = humanoidRootPart.CFrame
-			end
+	------------ point the player at the target -------------------
+	local humanoidRootPart: Part? = nil
+	if localPlayer and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+		local character = localPlayer.Character
+		humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+		if humanoidRootPart then
+			local direction = (sign.Position - humanoidRootPart.Position).Unit
+			humanoidRootPart.CFrame = CFrame.new(humanoidRootPart.Position, humanoidRootPart.Position + direction)
 		end
 	end
 end
 
-module.DoHighlightSingle = function(signId: number)
-	module.KillAllExistingHighlights()
+module.RotateCameraToFaceSignId = function(signId: number?)
+	if not signId then
+		return
+	end
+	------ point the camera at the location. ------------
+	character = localPlayer.Character
+	local humanoidRootPart: Part? = nil
+	humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	local camera = workspace.CurrentCamera
+	if camera then
+		-- camera.CFrame = CFrame.new(camera.CFrame.Position, sign.Position)
+		if humanoidRootPart then
+			camera.CFrame = humanoidRootPart.CFrame
+		end
+	end
+end
+
+module.DoHighlightSingleSignId = function(signId: number)
 	if not doHighlightAtAll then
 		return
 	end
 	local sign: Part? = tpUtil.signId2Sign(signId)
 	if not sign then
 		if not config.isTestGame() then
-			warn("trying to highlight an unseen sign?")
+			warn("trying to highlight an unseen sign? id=" .. tostring(signId))
 		end
 		return
 	end
@@ -181,20 +184,12 @@ module.DoHighlightSingle = function(signId: number)
 		return
 	end
 	innerDoHighlight(sign)
-	pointPlayerAtSign(sign)
 end
 
 module.DoHighlightMultiple = function(signIds: { number })
-	module.KillAllExistingHighlights()
 	for _, signId in pairs(signIds) do
 		local sign: Part? = tpUtil.signId2Sign(signId)
 		innerDoHighlight(sign)
-	end
-
-	-- when a player does /rr we reuse the multi-highlight showSignCommand.
-	if signIds and #signIds == 1 then
-		local sign: Part? = tpUtil.signId2Sign(signIds[1])
-		pointPlayerAtSign(sign)
 	end
 end
 
@@ -213,9 +208,9 @@ local function handleUserSettingChanged(userSetting: tt.userSettingValue)
 	if userSetting.name == settingEnums.settingNames.HIGHLIGHT_AT_ALL then
 		doHighlightAtAll = userSetting.value
 	end
-	if userSetting.name == settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION then
-		rotatePlayerOnWarpWhenDestination = userSetting.value
-	end
+	-- if userSetting.name == settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION then
+	-- 	rotatePlayerOnWarpWhenDestination = userSetting.value
+	-- end
 end
 
 module.Init = function()
@@ -225,18 +220,18 @@ module.Init = function()
 	AvatarEventBindableEvent.Event:Connect(receiveAvatarEvent)
 
 	handleUserSettingChanged(localFunctions.getSettingByName(settingEnums.settingNames.HIGHLIGHT_AT_ALL))
-	handleUserSettingChanged(
-		localFunctions.getSettingByName(settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION)
-	)
+	-- handleUserSettingChanged(
+	-- 	localFunctions.getSettingByName(settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION)
+	-- )
 
-	localFunctions.registerLocalSettingChangeReceiver(
+	localFunctions.RegisterLocalSettingChangeReceiver(
 		handleUserSettingChanged,
 		settingEnums.settingNames.HIGHLIGHT_AT_ALL
 	)
-	localFunctions.registerLocalSettingChangeReceiver(
-		handleUserSettingChanged,
-		settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION
-	)
+	-- localFunctions.RegisterLocalSettingChangeReceiver(
+	-- 	handleUserSettingChanged,
+	-- 	settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION
+	-- )
 end
 
 _annotate("end")

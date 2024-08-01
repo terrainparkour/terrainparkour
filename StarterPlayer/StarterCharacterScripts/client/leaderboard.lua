@@ -1,7 +1,7 @@
 --!strict
 
 --2022 remaining bug: sometimes you get fail.04 or fail.05 and permanent  shifting.
---2022.02.12 why is this so hard to get right? or rather why doesn't it just work out of the box?
+--2022.02.12 why is this so hard? or rather why doesn't it just work out of the box?
 --2022.02.24 revisiting to finally fix LB bugs.
 
 --2024 I'm struck by how when i left the game, this felt extremely complicated
@@ -19,28 +19,33 @@
 -- okay so overall the fix i'm trying is: remove the wrong? broken? partial blocker.
 -- and genericize joins here.
 
+-- OVERALL GOALS: make the entire leaderboard draggable smoothly and naturally.
+-- And everything within it should lay itself out wonderfully.
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
-local config = require(game.ReplicatedStorage.config)
+-- Add these to your existing imports
+local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
+local TextService = game:GetService("TextService")
 
-local leaderboardButtons = require(game.StarterPlayer.StarterCharacterScripts.buttons.leaderboardButtons)
+local leaderboardButtons = require(game.StarterPlayer.StarterPlayerScripts.buttons.leaderboardButtons)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
 local colors = require(game.ReplicatedStorage.util.colors)
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
-local mt = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonTypes)
+local mt = require(game.StarterPlayer.StarterPlayerScripts.marathonTypes)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
-local marathonClient = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonClient)
+local marathonClient = require(game.StarterPlayer.StarterCharacterScripts.client.marathonClient)
 local mds = require(game.ReplicatedStorage.marathonDescriptors)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local lbEnums = require(game.ReplicatedStorage.enums.lbEnums)
@@ -53,12 +58,13 @@ local localPlayer = Players.LocalPlayer
 
 --map of { userId to {keyname:number}}
 --note this is stored over time and serves as an in-user-memory re-usable cache.
-local lbUserData: { [number]: tt.genericLeaderboardUpdateDataType } = {}
+type LeaderboardUserData = { [number]: tt.genericLeaderboardUpdateDataType }
+local lbUserData: LeaderboardUserData = {}
 
 --test wrapping this here to force stronger typing
 
 --descriptors used for user-LB rows for which the later ones, updates come up from server.
-type lbUserCellDescriptorType = {
+type LeaderboardUserCellDescriptor = {
 	name: string,
 	num: number,
 	width: number,
@@ -82,14 +88,20 @@ local lbtrans: number = 0.55
 --active tracking
 local lbRowCount: number = 0
 --the user-focused rowFrames go here.
-local userId2rowframe: { [number]: tt.leaderboardRowFrameType } = {}
+type LeaderboardRowFrame = tt.leaderboardRowFrameType
+local userId2rowframe: { [number]: LeaderboardRowFrame } = {}
 --the outer, created on time lbframe.
 local lbframe: Frame? = nil
 local lbIsEnabled: boolean = true
 
+-- Add these near the top of the file, after other local variable declarations
+local isMinimized: boolean = false
+local minimizeButton: TextButton
+local containerFrame: Frame
+
 --use num to artificially keep them separated
 --these are the horizontal sections of each row.
-local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
+local lbUserCellDescriptors: { LeaderboardUserCellDescriptor } = {
 	{ name = "portrait", num = 1, width = lbPlayerRowY, userFacingName = "", tooltip = "", transparency = 1 },
 	{ name = "username", num = 3, width = 80, userFacingName = "", tooltip = "", transparency = 1 },
 	{
@@ -175,8 +187,20 @@ local lbUserCellDescriptors: { lbUserCellDescriptorType } = {
 }
 
 --why do I call this a lot? curious. Also, should I call it before or after adding the new RowFrame?
-local function resetLbHeight(): nil
-	lbframe.Size = UDim2.new(0, lbwidth, 0, lbHeaderY + lbPlayerRowY * lbRowCount)
+local function resetLbHeight(): ()
+	if isMinimized then
+		containerFrame.Size = UDim2.new(0, 30, 0, 30)
+	else
+		lbframe.Size = UDim2.new(1, 0, 0, lbHeaderY + lbPlayerRowY * lbRowCount)
+		local parent: Frame = lbframe.Parent
+		parent.Size = UDim2.new(0, lbwidth, 0, lbHeaderY + lbPlayerRowY * lbRowCount + 20) -- +20 for the drag handle
+	end
+
+	-- Update the position of the leaderboard buttons
+	local buttonsFrame: Frame? = lbframe:FindFirstChild("LeaderboardButtonsFrame")
+	if buttonsFrame ~= nil then
+		buttonsFrame.Position = UDim2.new(0, 0, 1, 0)
+	end
 end
 
 --setup header row as first row in lbframe
@@ -194,7 +218,7 @@ local function makeLBHeaderRowFrame(): Frame
 	uu.Parent = headerFrame
 
 	--create initial tiles for top of LB
-	for _, lbUserCellDescriptor: lbUserCellDescriptorType in pairs(lbUserCellDescriptors) do
+	for _, lbUserCellDescriptor: LeaderboardUserCellDescriptor in pairs(lbUserCellDescriptors) do
 		local el = guiUtil.getTl(
 			string.format("%02d.header.%s", lbUserCellDescriptor.num, lbUserCellDescriptor.userFacingName),
 			UDim2.new(0, lbUserCellDescriptor.width, 1, 0),
@@ -204,9 +228,9 @@ local function makeLBHeaderRowFrame(): Frame
 			0,
 			lbUserCellDescriptor.transparency
 		)
-		if lbUserCellDescriptor.tooltip ~= "" then
-			toolTip.setupToolTip(localPlayer, el, lbUserCellDescriptor.tooltip, UDim2.fromOffset(300, 40), false)
-		end
+		-- if lbUserCellDescriptor.tooltip ~= "" then
+		-- 	toolTip.setupToolTip(localPlayer, el, lbUserCellDescriptor.tooltip, UDim2.fromOffset(300, 40), false)
+		-- end
 		el.Text = lbUserCellDescriptor.userFacingName
 		el.ZIndex = lbUserCellDescriptor.num
 		el.TextXAlignment = Enum.TextXAlignment.Center
@@ -214,6 +238,19 @@ local function makeLBHeaderRowFrame(): Frame
 		-- end
 	end
 	return headerFrame
+end
+
+-- Add this new function
+local function updateLeaderboardVisibility()
+	if isMinimized then
+		lbframe.Visible = false
+		containerFrame.Size = UDim2.new(0, 30, 0, 30)
+		minimizeButton.Text = "+"
+	else
+		lbframe.Visible = true
+		resetLbHeight()
+		minimizeButton.Text = "-"
+	end
 end
 
 --problem: we also need to artificially trigger a user 'rejoin' to do this right.
@@ -233,19 +270,73 @@ local function completelyResetUserLB()
 	local lbSgui: ScreenGui = Instance.new("ScreenGui")
 	lbSgui.Name = "LeaderboardScreenGui"
 	lbSgui.Parent = pgui
+
+	-- Create a container frame that will be draggable
+	containerFrame = Instance.new("Frame")
+	containerFrame.Size = UDim2.new(0, lbwidth, 0, 0)
+	containerFrame.Position = UDim2.new(1, -lbwidth - 3, 0, -36)
+	containerFrame.BackgroundTransparency = 1
+	containerFrame.Name = "LeaderboardContainer"
+	containerFrame.Parent = lbSgui
+
 	lbframe = Instance.new("Frame")
 	lbframe.BorderMode = Enum.BorderMode.Inset
 	lbframe.BorderSizePixel = 0
-	lbframe.Parent = lbSgui
-	lbframe.Size = UDim2.new(0, 0.2, 0, 0)
-	lbframe.Position = UDim2.new(1, -1 * lbwidth - 3, 0, -36)
+	lbframe.Size = UDim2.new(1, 0, 1, 0)
+	lbframe.Position = UDim2.new(0, 0, 0, 0)
 	lbframe.Name = "LeaderboardFrame"
 	lbframe.BackgroundTransparency = 1
-	local uu = Instance.new("UIListLayout")
-	uu.FillDirection = Enum.FillDirection.Vertical
-	uu.Name = "lbUIListLayout"
-	uu.Parent = lbframe
-	uu.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	lbframe.Parent = containerFrame
+
+	-- Create a new UIListLayout
+	local listLayout: UIListLayout = Instance.new("UIListLayout")
+	listLayout.SortOrder = Enum.SortOrder.Name
+	listLayout.Parent = lbframe
+
+	local dragging: boolean = false
+	local dragStartVector2: Vector2
+	local startPos: UDim2
+
+	local function updateDrag(input: InputObject): ()
+		local inputPositionVector3: Vector3 = input.Position
+		local delta: Vector2 =
+			Vector2.new(inputPositionVector3.X - dragStartVector2.X, inputPositionVector3.Y - dragStartVector2.Y)
+		containerFrame.Position =
+			UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+
+	containerFrame.InputBegan:Connect(function(input: InputObject)
+		local inputPositionVector3: Vector3 = input.Position
+		if
+			input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch
+		then
+			dragging = true
+			dragStartVector2 = Vector2.new(inputPositionVector3.X, inputPositionVector3.Y)
+			startPos = containerFrame.Position
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input: InputObject)
+		if
+			input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch
+		then
+			dragging = false
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input: InputObject)
+		if
+			dragging
+			and (
+				input.UserInputType == Enum.UserInputType.MouseMovement
+				or input.UserInputType == Enum.UserInputType.Touch
+			)
+		then
+			updateDrag(input)
+		end
+	end)
 
 	lbRowCount = 0
 	resetLbHeight()
@@ -256,15 +347,31 @@ local function completelyResetUserLB()
 	leaderboardButtons.initActionButtons(lbframe, localPlayer)
 
 	marathonClient.ReInitActiveMarathons()
+
+	-- Create minimize button
+	minimizeButton = Instance.new("TextButton")
+	minimizeButton.Size = UDim2.new(0, 20, 0, 20)
+	minimizeButton.Position = UDim2.new(0, 0, 0, 0)
+	minimizeButton.Text = "-"
+	minimizeButton.TextSize = 18
+	minimizeButton.Font = Enum.Font.SourceSansBold
+	minimizeButton.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+	minimizeButton.TextColor3 = Color3.fromRGB(50, 50, 50)
+	minimizeButton.Parent = containerFrame
+
+	-- Add minimize/maximize functionality
+	minimizeButton.MouseButton1Click:Connect(function()
+		isMinimized = not isMinimized
+		updateLeaderboardVisibility()
+	end)
 end
 
 --important to use all lbUserCellParams here to make the row complete
 --even if an update comes before the loading of full stats.
 
-
-local function createLbRowframeAboutUser(userId: number, username: string): tt.leaderboardRowFrameType?
+local function createLbRowframeAboutUser(userId: number, username: string): LeaderboardRowFrame?
 	--remember, this user may not actually be present in the server!
-	local rowFrame: tt.leaderboardRowFrameType = { frame = Instance.new("Frame") }
+	local rowFrame: LeaderboardRowFrame = { frame = Instance.new("Frame") }
 	local userDataFromCache = lbUserData[userId]
 	if not username then
 		--just look
@@ -283,16 +390,16 @@ local function createLbRowframeAboutUser(userId: number, username: string): tt.l
 	rowFrame.frame.BorderMode = Enum.BorderMode.Inset
 	rowFrame.frame.BorderSizePixel = 0
 	rowFrame.frame.BackgroundTransparency = 1
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.Parent = rowFrame.frame
+	local horizontalLayout = Instance.new("UIListLayout")
+	horizontalLayout.FillDirection = Enum.FillDirection.Horizontal
+	horizontalLayout.Parent = rowFrame.frame
 	rowFrame.frame.Parent = lbframe
 	local bgcolor = colors.grey
 	if userId == localPlayer.UserId then
 		bgcolor = colors.meColor
 	end
 
-	for _, lbUserCellDescriptor: lbUserCellDescriptorType in pairs(lbUserCellDescriptors) do
+	for _, lbUserCellDescriptor: LeaderboardUserCellDescriptor in pairs(lbUserCellDescriptors) do
 		if lbUserCellDescriptor.name == "portrait" then
 			local img = Instance.new("ImageLabel")
 			img.Size = UDim2.new(0, lbUserCellDescriptor.width, 1, 0)
@@ -311,7 +418,9 @@ local function createLbRowframeAboutUser(userId: number, username: string): tt.l
 				innerImg.Image = content2
 				innerImg.BackgroundColor3 = bgcolor
 				innerImg.Name = string.format("%02d.inner.bigImg", lbUserCellDescriptor.num)
+				--a
 				toolTip.setupToolTip(localPlayer, img, innerImg, UDim2.fromOffset(200, 200), true)
+				--b
 			end
 			img.BackgroundTransparency = lbEnums.lbTransparency
 			img.BorderSizePixel = 1
@@ -394,7 +503,7 @@ end
 -- is all ABOUT.
 
 local debounceReceivedLBUpdateAboutUser = {}
-local function receivedLBUpdateAboutUser(userData: tt.genericLeaderboardUpdateDataType, initial: boolean): nil
+local function receivedLBUpdateAboutUser(userData: tt.genericLeaderboardUpdateDataType, initial: boolean): ()
 	if debounceReceivedLBUpdateAboutUser[userData.userId] then
 		wait(0.1)
 	end
@@ -439,14 +548,14 @@ local function receivedLBUpdateAboutUser(userData: tt.genericLeaderboardUpdateDa
 	end
 
 	--patch things up if needed.
-	local userRowFrame: tt.leaderboardRowFrameType = userId2rowframe[subjectUserId]
+	local userRowFrame: LeaderboardRowFrame = userId2rowframe[subjectUserId]
 	if userRowFrame == nil or userRowFrame.frame.Parent == nil then
 		if userRowFrame == nil then
 		else
 			userRowFrame.frame:Destroy()
 		end
 		userId2rowframe[subjectUserId] = nil
-		local candidateRowFrame: tt.leaderboardRowFrameType = createLbRowframeAboutUser(subjectUserId, userData.name)
+		local candidateRowFrame: LeaderboardRowFrame = createLbRowframeAboutUser(subjectUserId, userData.name)
 		if candidateRowFrame == nil then --case when the user is gone already.
 			debounceReceivedLBUpdateAboutUser[userData.userId] = nil
 			return
@@ -580,7 +689,7 @@ local function receivedLBUpdateAboutUser(userData: tt.genericLeaderboardUpdateDa
 end
 
 local removeDebouncers = {}
-local function removeUserLBRow(userId: number)
+local function removeUserLBRow(userId: number): ()
 	if removeDebouncers[userId] then
 		return
 	end
@@ -589,7 +698,7 @@ local function removeUserLBRow(userId: number)
 		removeDebouncers[userId] = nil
 		return
 	end
-	local row: tt.leaderboardRowFrameType = userId2rowframe[userId]
+	local row: LeaderboardRowFrame = userId2rowframe[userId]
 	userId2rowframe[userId] = nil
 	lbUserData[userId] = nil
 	if row ~= nil then
@@ -611,7 +720,7 @@ end
 --data is a list of kvs for update data. if any change, redraw the row (and highlight that cell.)
 --First keyed to receive data about a userId. But later overloading data to just be blobs  of things of specific types to display in leaderboard.
 local receiveDataDebouncer = false
-local function clientReceiveNewLeaderboardData(lbUpdateData: tt.genericLeaderboardUpdateDataType)
+module.ClientReceiveNewLeaderboardData = function(lbUpdateData: tt.genericLeaderboardUpdateDataType)
 	if receiveDataDebouncer then
 		wait(0.1)
 	end
@@ -648,49 +757,6 @@ local function clientReceiveNewLeaderboardData(lbUpdateData: tt.genericLeaderboa
 	receiveDataDebouncer = false
 end
 
-local function testJoinRejoinBugs()
-	task.spawn(function()
-		wait(4)
-		--[[ this is the datatype: 
-		{
-		kind: string,
-		userId: number,
-		runs: number,
-		userTotalFindCount: number,
-		findRank: number,
-		top10s: number,
-		races: number,
-		userTix: number,
-		userCompetitiveWRCount: number,
-		userTotalWRCount: number,
-		wrRank: number,
-		totalSignCount: number,
-		awardCount: number
-		]]
-		local fakeDataUpdateData: tt.afterData_getStatsByUser = {
-			kind = "joiner update other lb",
-			userId = 90115385,
-			runs = 123,
-			userTotalFindCount = 123,
-			findRank = 123,
-			top10s = 123,
-			races = 123,
-			userTix = 123,
-			userCompetitiveWRCount = 123,
-			userTotalWRCount = 123,
-			wrRank = 123,
-			totalSignCount = 123,
-			awardCount = 123,
-		}
-		clientReceiveNewLeaderboardData(fakeDataUpdateData)
-
-		wait(2)
-		clientReceiveNewLeaderboardData({ userId = 90115385, kind = "leave" })
-		wait(2)
-		clientReceiveNewLeaderboardData(fakeDataUpdateData)
-	end)
-end
-
 --user changed marathon settings in UI - uses registration to monitor it.
 --note there is an init call here so user settings _will_ show up here and we should
 --be careful not to mistakenly reinit LB needlessly.
@@ -711,7 +777,8 @@ end
 
 --ideally filter at the registration layer but whatever.
 --also why is this being done here rather than in marathon client?
-local function handleMarathonSettingsChanged(setting: tt.userSettingValue)
+local function HandleMarathonSettingsChanged(setting: tt.userSettingValue)
+	_annotate("Handle marathon settings changed")
 	if setting.domain ~= settingEnums.settingDomains.MARATHONS then
 		return
 	end
@@ -739,7 +806,7 @@ else
 	lbIsEnabled = true
 end
 
-module.Init = function()
+function module.Init(): ()
 	localPlayer = Players.LocalPlayer
 
 	lbRowCount = 0
@@ -748,19 +815,20 @@ module.Init = function()
 	--the outer, created on time lbframe.
 	lbframe = nil
 	lbIsEnabled = true
-	localFunctions.registerLocalSettingChangeReceiver(function(item: tt.userSettingValue): any
+	localFunctions.RegisterLocalSettingChangeReceiver(function(item: tt.userSettingValue): any
 		return handleUserSettingChanged(item)
 	end, settingEnums.settingNames.HIDE_LEADERBOARD)
 
-	localFunctions.registerLocalSettingChangeReceiver(function(item: tt.userSettingValue): any
-		return handleMarathonSettingsChanged(item)
-	end, "handleMarathonSettingsChanged")
+	localFunctions.RegisterLocalSettingChangeReceiver(function(item: tt.userSettingValue): any
+		_annotate("inner registerHandleMarathon settings changed")
+		return HandleMarathonSettingsChanged(item)
+	end, "HandleMarathonSettingsChanged")
 
 	completelyResetUserLB()
 
 	-- we setup the event, but what if upstream playerjoinfunc is called first?
 	local leaderboardUpdateEvent = remotes.getRemoteEvent("LeaderboardUpdateEvent")
-	leaderboardUpdateEvent.OnClientEvent:Connect(clientReceiveNewLeaderboardData)
+	leaderboardUpdateEvent.OnClientEvent:Connect(module.ClientReceiveNewLeaderboardData)
 
 	-- listen to racestart, raceendevent
 	marathonClient.Init()
@@ -768,7 +836,7 @@ module.Init = function()
 
 	-- load marathons according to the users settings
 	for _, userSetting in pairs(initialMarathonSettings) do
-		handleMarathonSettingsChanged(userSetting)
+		HandleMarathonSettingsChanged(userSetting)
 	end
 
 	local userSettings = localFunctions.getSettingByDomain(settingEnums.settingDomains.USERSETTINGS)
@@ -776,10 +844,6 @@ module.Init = function()
 	for _, userSetting in pairs(userSettings) do
 		handleUserSettingChanged(userSetting)
 	end
-end
-
-if config.isTestGame() then
-	testJoinRejoinBugs()
 end
 
 _annotate("end")

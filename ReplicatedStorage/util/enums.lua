@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.241 July 29 2024"
+module.gameVersion = "1.247 August 1 2024"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -843,6 +843,10 @@ Internals
 * Global 'show' command
 * Keyboard command to kill highlight 'h'
  ]],
+	[237] = [[* draggable leaderboard (!) claude+1 hour
+	* keyboard shortcuts.
+	* new server slogans
+]],
 }
 
 local SpecialSignDescriptions = {

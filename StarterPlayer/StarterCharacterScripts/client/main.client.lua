@@ -19,6 +19,7 @@ local particles = require(game.StarterPlayer.StarterCharacterScripts.client.part
 local banMonitor = require(game.StarterPlayer.StarterCharacterScripts.client.banMonitor)
 local notifier = require(game.StarterPlayer.StarterCharacterScripts.client.notifier)
 local serverEvents = require(game.StarterPlayer.StarterCharacterScripts.client.serverEvents)
+-- local t = require(game.StarterPlayer.StarterCharacterScripts.client.joinTesting)
 local leaderboard = require(game.StarterPlayer.StarterCharacterScripts.client.leaderboard)
 local avatarEventMonitor = require(game.StarterPlayer.StarterCharacterScripts.client.avatarEventMonitor)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)

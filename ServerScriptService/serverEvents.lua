@@ -73,7 +73,7 @@ end
 local function endServerEvent(serverEvent: tt.runningServerEvent): boolean
 	while debounceEventUpdater do
 		wait(1)
-		print("waitng to end event.")
+		_annotate("waitng to end event.")
 	end
 	debounceEventUpdater = true
 	local pos = nil
@@ -120,7 +120,7 @@ local function setupRunningServerEventKiller()
 						end
 					end)
 					if not s then
-						print("failure to end even.t")
+						_annotate("failure to end even.t")
 						warn(e)
 					end
 				end
@@ -152,7 +152,6 @@ local function startServerEvent(data: tt.ServerEventCreateType): tt.runningServe
 	--pick a random start and randome end, set it up dumbly as possible.
 	_annotate("startevent " .. tostring(data.userId))
 	if #activeRunningServerEvents >= serverEventLimitCount then
-		print("startevent.over the limit")
 		_annotate("startevent.over the limit")
 		return
 	end
@@ -357,7 +356,7 @@ end
 local function receiveRunFinishFromServer(data: tt.serverFinishRunNotifierType)
 	while debounceEventUpdater do
 		wait(1)
-		print("waint for debouncEventUpdater")
+		_annotate("waint for debouncEventUpdater")
 	end
 	debounceEventUpdater = true
 	for _, serverEvent in ipairs(activeRunningServerEvents) do

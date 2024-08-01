@@ -110,7 +110,6 @@ module.Init = function()
 			continue
 		end
 		--this is necessary for tracking finds.
-		print(sign.Name)
 		sign.Touched:Connect(function(hit)
 			touchedSignServer(hit, sign)
 		end)

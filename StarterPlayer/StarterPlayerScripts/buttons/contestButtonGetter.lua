@@ -491,7 +491,7 @@ local function init()
 	-- second, get the initial value.
 	-- TODO obviously this still duplicates a lot of logic.
 	local localFunctions = require(game.ReplicatedStorage.localFunctions)
-	localFunctions.registerLocalSettingChangeReceiver(
+	localFunctions.RegisterLocalSettingChangeReceiver(
 		handleUserSettingChanged,
 		settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY
 	)

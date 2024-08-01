@@ -19,7 +19,7 @@ local module = {}
 
 local remotes = require(game.ReplicatedStorage.util.remotes)
 
-local marathonClient = require(game.StarterPlayer.StarterCharacterScripts.marathon.marathonClient)
+local marathonClient = require(game.StarterPlayer.StarterCharacterScripts.client.marathonClient)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local dynamicRunning = require(game.StarterPlayer.StarterPlayerScripts.dynamicRunning)
 local mt = require(game.ReplicatedStorage.avatarEventTypes)

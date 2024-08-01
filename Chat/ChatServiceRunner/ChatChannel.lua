@@ -1,4 +1,4 @@
--- NOTE: this file IS copied into projects by ROJO but does NOT have visibility in vscode!
+--!strict
 
 --	// FileName: ChatChannel.lua
 --	// Written by: Xsitsu
@@ -10,7 +10,6 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local modulesFolder = script.Parent
-local HttpService = game:GetService("HttpService")
 local Chat = game:GetService("Chat")
 local RunService = game:GetService("RunService")
 local replicatedModules = Chat:WaitForChild("ClientChatModules")

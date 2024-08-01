@@ -51,11 +51,7 @@ module.usageCommandDesc = [[Admin Command examples:
 /version - show server version
 /wrs - List top world record holders.
 /chomik - find the Chomik!
-h to remove sign highlights
-1 to warp to the last completed run
-z to cancel the current race
-x to remove popped up UIs and notifications
-<tab> to toggle leaderboard off and on
+k to show keyboard shortcuts
 (click S in lower right for more options, including your settings.)
 
 /? - list all commands again.

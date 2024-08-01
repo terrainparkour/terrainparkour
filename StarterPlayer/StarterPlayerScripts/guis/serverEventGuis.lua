@@ -30,7 +30,8 @@ end
 
 --just re-get the outer lbframe by name.
 local function getLbFrame(): Frame
-	wait(1) --TODO remove and fix.
+	-- wait(1) --TODO remove and fix.
+	--TODO 2024 commented out the wait.
 	local pl = localPlayer:WaitForChild("PlayerGui")
 	local ret = pl:FindFirstChild("LeaderboardFrame", true)
 	if ret == nil then

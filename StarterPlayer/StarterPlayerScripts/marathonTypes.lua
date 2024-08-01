@@ -1,5 +1,7 @@
 --!strict
 
+-- marathonTypes
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
