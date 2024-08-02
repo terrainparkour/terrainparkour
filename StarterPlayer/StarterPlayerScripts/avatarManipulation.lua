@@ -22,7 +22,7 @@ module.ResetMomentum = function(humanoid: Humanoid, character: Model)
 	rootPart.Anchored = false
 
 	-- 2024 still unclear what this does, too.
-	humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+	humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
 
 	-- 2024: is this effectively just the server version of resetting movement states?
 	rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
