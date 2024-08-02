@@ -331,10 +331,8 @@ export type movementHistoryQueueItem = { action: number, time: number }
 ------------------------ LEADERBOARD ------------------------
 export type leaderboardUserDataChange = { key: string, oldValue: number, newValue: number }
 
--- this covers all the different types of lbupdates that can be sent. for example, one is tt_afterrundata, another is tt_inital join data + username,
-export type genericLeaderboardUpdateDataType = { [string]: number | string }
 
-export type leaderboardRowFrameType = { frame: Frame }
+
 
 _annotate("end")
 return {}

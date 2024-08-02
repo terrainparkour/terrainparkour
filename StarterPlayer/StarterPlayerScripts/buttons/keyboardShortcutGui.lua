@@ -12,8 +12,8 @@ local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
 
 module.CreateShortcutGui = function()
-	local playerGui = localPlayer:WaitForChild("PlayerGui")
-	local existingGui = playerGui:FindFirstChild("KeyboardShortcutsGui")
+	local playerGui: PlayerGui = localPlayer:WaitForChild("PlayerGui")
+	local existingGui: ScreenGui = playerGui:FindFirstChild("KeyboardShortcutsGui")
 
 	if existingGui then
 		existingGui.Enabled = true
@@ -83,7 +83,7 @@ module.CreateShortcutGui = function()
 	title.Size = UDim2.new(1, 0, 0.15, 0)
 	title.Position = UDim2.new(0, 0, 0, 0)
 	title.BackgroundColor3 = Color3.fromRGB(168, 208, 230) -- Pale blue
-	title.Font = Enum.Font.GothamSemibold
+	title.Font = Enum.Font.GothamBold
 	title.TextColor3 = Color3.fromRGB(70, 70, 70) -- Dark gray text
 	title.TextScaled = true
 	title.Text = "Keyboard Shortcuts"
@@ -178,7 +178,7 @@ module.CreateShortcutGui = function()
 	closeButton.BackgroundColor3 = Color3.fromRGB(241, 167, 167) -- Soft red
 	closeButton.Text = "Close"
 	closeButton.TextColor3 = Color3.fromRGB(70, 70, 70)
-	closeButton.Font = Enum.Font.GothamSemibold
+	closeButton.Font = Enum.Font.Gotham
 	closeButton.TextSize = 14
 	closeButton.Parent = mainFrame
 

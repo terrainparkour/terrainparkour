@@ -11,27 +11,16 @@
 --really, why did I do this at all?
 --it seems there also was an unused layer of deboucing for repeated quick joins, which was why there would occasionally be bugs?
 
--- 2024: the whole way this is done seems maybe backwards now?
--- like, why don't i have each client request the data they need?
--- i supposed because regardless, I still need a big push system from server to client so everybody can receive updates.
--- so i probably figured, why not just reuse that for the first data?
--- the problem is apparently something about leaving and rejoining, where in cases like that the 2nd join doesn't ever get data in it?
--- okay so overall the fix i'm trying is: remove the wrong? broken? partial blocker.
--- and genericize joins here.
-
 -- OVERALL GOALS: make the entire leaderboard draggable smoothly and naturally.
 -- And everything within it should lay itself out wonderfully.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
-
+local localFunctions = require(game.ReplicatedStorage.localFunctions)
 local module = {}
 
--- Add these to your existing imports
-local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
-local TextService = game:GetService("TextService")
 
 local leaderboardButtons = require(game.StarterPlayer.StarterPlayerScripts.buttons.leaderboardButtons)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
@@ -44,337 +33,191 @@ local mt = require(game.StarterPlayer.StarterPlayerScripts.marathonTypes)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 
-local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 local marathonClient = require(game.StarterPlayer.StarterCharacterScripts.client.marathonClient)
 local mds = require(game.ReplicatedStorage.marathonDescriptors)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
-local lbEnums = require(game.ReplicatedStorage.enums.lbEnums)
+
 local localRdb = require(game.ReplicatedStorage.localRdb)
 local localPlayer = Players.LocalPlayer
+local leaderboardUtil = require(game.StarterPlayer.StarterCharacterScripts.client.leaderboardUtil)
+local draggability = require(game.StarterPlayer.StarterCharacterScripts.client.draggability)
+local resizeability = require(game.StarterPlayer.StarterCharacterScripts.client.resizeability)
+local minimizeability = require(game.StarterPlayer.StarterCharacterScripts.client.minimizeability)
 
----------------------- TYPES -----------------------
+-- this covers all the different types of lbupdates that can be sent. for example, one is tt_afterrundata, another is tt_inital join data + username,
+export type genericLeaderboardUpdateDataType = { [string]: number | string }
 
---returns changed keys and oldvalue
+type LeaderboardUserData = { [number]: genericLeaderboardUpdateDataType }
 
---map of { userId to {keyname:number}}
---note this is stored over time and serves as an in-user-memory re-usable cache.
-type LeaderboardUserData = { [number]: tt.genericLeaderboardUpdateDataType }
 local lbUserData: LeaderboardUserData = {}
 
---test wrapping this here to force stronger typing
-
---descriptors used for user-LB rows for which the later ones, updates come up from server.
-type LeaderboardUserCellDescriptor = {
+--[[
+export type lbUserCell = {
 	name: string,
 	num: number,
-	width: number,
+	widthScaleImportance: number, -- this represents the proportion of the total scaleImportance to take up. For example if the total is 20 and this takes 1, it means this item should have its scale x set to 0.05,
 	userFacingName: string,
 	tooltip: string,
-	transparency: number,
-}
+}]]
+
 ------------- GLOBAL STASTIC OBJECTS ----------------
 
 --used to do reverse ordering items in lb
 local bignum: number = 10000000
---pixel heights.
-local lbHeaderY: number = 19
-local lbPlayerRowY: number = 24
-local userLbRowCellWidth: number = 43
-local lbwidth: number = -6
-local lbtrans: number = 0.55
 
-----------------------DYNAMIC---------------------
+-- GLOBAL DYNAMIC STATE VARS. EACH USER HAS JUST ONE LEADERBOARD. ----------------
 
---active tracking
 local lbRowCount: number = 0
---the user-focused rowFrames go here.
-type LeaderboardRowFrame = tt.leaderboardRowFrameType
-local userId2rowframe: { [number]: LeaderboardRowFrame } = {}
+
+--one rowFrame for each user is stored in here.
+local userId2rowframe: { [number]: Frame } = {}
+
 --the outer, created on time lbframe.
 local lbframe: Frame? = nil
 local lbIsEnabled: boolean = true
 
--- Add these near the top of the file, after other local variable declarations
-local isMinimized: boolean = false
-local minimizeButton: TextButton
-local containerFrame: Frame
+-- the initial width and height scales.
+local initialWidthScale = 0.3
+local initialHeightScale = 0.1
+local headerRowShrinkFactor = 0.6
 
---use num to artificially keep them separated
---these are the horizontal sections of each row.
-local lbUserCellDescriptors: { LeaderboardUserCellDescriptor } = {
-	{ name = "portrait", num = 1, width = lbPlayerRowY, userFacingName = "", tooltip = "", transparency = 1 },
-	{ name = "username", num = 3, width = 80, userFacingName = "", tooltip = "", transparency = 1 },
-	{
-		name = "awardCount",
-		num = 5,
-		width = userLbRowCellWidth - 10,
-		userFacingName = "awards",
-		tooltip = "How many special awards you've earned from contests or other achievements.",
-		transparency = lbtrans,
-	},
-	{
-		name = "userTix",
-		num = 7,
-		width = userLbRowCellWidth,
-		userFacingName = "tix",
-		tooltip = "How many tix you've earned from your runs and finds and records.",
-		transparency = lbtrans,
-	},
-	{
-		name = "userTotalFindCount",
-		num = 9,
-		width = userLbRowCellWidth,
-		userFacingName = "finds",
-		tooltip = "How many signs you've found!",
-		transparency = lbtrans,
-	},
-	{
-		name = "findRank",
-		num = 11,
-		width = userLbRowCellWidth,
-		userFacingName = "rank",
-		tooltip = "Your rank of how many signs you've found.",
-		transparency = lbtrans,
-	},
-	{
-		name = "userCompetitiveWRCount",
-		num = 13,
-		width = userLbRowCellWidth - 8,
-		userFacingName = "cwrs",
-		tooltip = "How many World Records you hold in competitive races!",
-		transparency = lbtrans,
-	},
-	{
-		name = "userTotalWRCount",
-		num = 15,
-		width = userLbRowCellWidth,
-		userFacingName = "wrs",
-		tooltip = "How many World Records you hold right now.",
-		transparency = lbtrans,
-	},
-	{
-		name = "top10s",
-		num = 18,
-		width = userLbRowCellWidth,
-		userFacingName = "top10s",
-		tooltip = "How many of your runs are still in the top10.",
-		transparency = lbtrans,
-	},
-	{
-		name = "races",
-		num = 23,
-		width = userLbRowCellWidth,
-		userFacingName = "races",
-		tooltip = "How many distinct runs you've done.",
-		transparency = lbtrans,
-	},
-	{
-		name = "runs",
-		num = 26,
-		width = userLbRowCellWidth,
-		userFacingName = "runs",
-		tooltip = "How many runs you've done in total.",
-		transparency = lbtrans,
-	},
-	{
-		name = "badgeCount",
-		num = 31,
-		width = userLbRowCellWidth,
-		userFacingName = "badges",
-		tooltip = "Total game badges you have won.",
-		transparency = lbtrans,
-	},
-}
+-- in general the text "lb" refers to leaderboard here.
 
---why do I call this a lot? curious. Also, should I call it before or after adding the new RowFrame?
-local function resetLbHeight(): ()
-	if isMinimized then
-		containerFrame.Size = UDim2.new(0, 30, 0, 30)
-	else
-		lbframe.Size = UDim2.new(1, 0, 0, lbHeaderY + lbPlayerRowY * lbRowCount)
-		local parent: Frame = lbframe.Parent
-		parent.Size = UDim2.new(0, lbwidth, 0, lbHeaderY + lbPlayerRowY * lbRowCount + 20) -- +20 for the drag handle
+local function calculateCellWidths(): { [string]: number }
+	local totalWidthWeightScale = 0
+	for _, lbUserCellDescriptor in pairs(leaderboardUtil.LbUserCellDescriptors) do
+		totalWidthWeightScale += lbUserCellDescriptor.widthScaleImportance
 	end
 
-	-- Update the position of the leaderboard buttons
-	local buttonsFrame: Frame? = lbframe:FindFirstChild("LeaderboardButtonsFrame")
-	if buttonsFrame ~= nil then
-		buttonsFrame.Position = UDim2.new(0, 0, 1, 0)
+	local cellWidths: { [string]: number } = {}
+	for _, lbUserCellDescriptor in pairs(leaderboardUtil.LbUserCellDescriptors) do
+		local widthYScale = lbUserCellDescriptor.widthScaleImportance / totalWidthWeightScale
+		cellWidths[lbUserCellDescriptor.name] = widthYScale
 	end
+
+	return cellWidths
 end
 
 --setup header row as first row in lbframe
---call once per character creation - the outer frame which has rows added/removed from it.
-local function makeLBHeaderRowFrame(): Frame
-	local headerFrame = Instance.new("Frame")
-	headerFrame.Parent = lbframe
-	headerFrame.BorderMode = Enum.BorderMode.Inset
-	headerFrame.BorderSizePixel = 0
-	headerFrame.Name = "00000000-lb-headerframe"
-	headerFrame.Size = UDim2.new(1, 0, 0, lbHeaderY)
-	headerFrame.BackgroundTransparency = 1
+local function makeTitleRow(): Frame
+	local userRowFrame = Instance.new("Frame")
+	userRowFrame.Parent = lbframe
+	userRowFrame.BorderMode = Enum.BorderMode.Inset
+	userRowFrame.BorderSizePixel = 0
+	userRowFrame.Name = "00000000-title-row"
+	local yScaleProportion = 1 / (lbRowCount + headerRowShrinkFactor)
+	userRowFrame.Size = UDim2.fromScale(1, yScaleProportion)
+	userRowFrame.BackgroundColor3 = colors.leafGreen
+	userRowFrame.BackgroundTransparency = 0.2
 	local uu = Instance.new("UIListLayout")
 	uu.FillDirection = Enum.FillDirection.Horizontal
-	uu.Parent = headerFrame
+	uu.Parent = userRowFrame
 
-	--create initial tiles for top of LB
-	for _, lbUserCellDescriptor: LeaderboardUserCellDescriptor in pairs(lbUserCellDescriptors) do
+	local cellWidths = calculateCellWidths()
+
+	for _, lbUserCellDescriptor: leaderboardUtil.lbUserCell in pairs(leaderboardUtil.LbUserCellDescriptors) do
+		local myWidthScale = cellWidths[lbUserCellDescriptor.name]
+
 		local el = guiUtil.getTl(
 			string.format("%02d.header.%s", lbUserCellDescriptor.num, lbUserCellDescriptor.userFacingName),
-			UDim2.new(0, lbUserCellDescriptor.width, 1, 0),
+			UDim2.fromScale(myWidthScale, 1),
 			2,
-			headerFrame,
+			userRowFrame,
 			colors.defaultGrey,
-			0,
-			lbUserCellDescriptor.transparency
+			0
 		)
-		-- if lbUserCellDescriptor.tooltip ~= "" then
-		-- 	toolTip.setupToolTip(localPlayer, el, lbUserCellDescriptor.tooltip, UDim2.fromOffset(300, 40), false)
-		-- end
 		el.Text = lbUserCellDescriptor.userFacingName
 		el.ZIndex = lbUserCellDescriptor.num
 		el.TextXAlignment = Enum.TextXAlignment.Center
 		el.TextYAlignment = Enum.TextYAlignment.Center
-		-- end
+		el.TextScaled = true
 	end
-	return headerFrame
+	return userRowFrame
 end
 
--- Add this new function
-local function updateLeaderboardVisibility()
-	if isMinimized then
-		lbframe.Visible = false
-		containerFrame.Size = UDim2.new(0, 30, 0, 30)
-		minimizeButton.Text = "+"
-	else
-		lbframe.Visible = true
-		resetLbHeight()
-		minimizeButton.Text = "-"
+local function adjustRowScales()
+	if not lbframe then
+		return
+	end
+	_annotate("adjusting row scales.")
+	local totalPlayerRows = lbRowCount
+	local headerRowHeight = headerRowShrinkFactor / (totalPlayerRows + headerRowShrinkFactor)
+	local normalRowHeight = 1 / (totalPlayerRows + headerRowShrinkFactor)
+
+	-- Adjust header row
+	local headerRow: Frame = lbframe:FindFirstChild("00000000-title-row")
+	if headerRow then
+		headerRow.Size = UDim2.fromScale(1, headerRowHeight)
+	end
+
+	-- Adjust all other rows
+	for _, child: Frame in ipairs(lbframe:GetChildren()) do
+		if child:IsA("Frame") and child.Name ~= "00000000-title-row" then
+			child.Size = UDim2.fromScale(1, normalRowHeight)
+		end
 	end
 end
 
---problem: we also need to artificially trigger a user 'rejoin' to do this right.
---this basically works, except if you toggle the setting we do not know to re-send/reload in-server players.
 local function completelyResetUserLB()
+	_annotate("copmletely reset? lb")
 	--make initial row only. then as things happen (people join, or updates come in, apply them in-place)
-
 	local pgui: PlayerGui = localPlayer:WaitForChild("PlayerGui")
+
 	local oldLbSgui: ScreenGui? = pgui:FindFirstChild("LeaderboardScreenGui") :: ScreenGui?
 	if oldLbSgui ~= nil then
 		oldLbSgui:Destroy()
 	end
+
 	if not lbIsEnabled then
 		_annotate("reset lb and it's disabled now so just end.")
 		return
 	end
+
 	local lbSgui: ScreenGui = Instance.new("ScreenGui")
 	lbSgui.Name = "LeaderboardScreenGui"
 	lbSgui.Parent = pgui
 
-	-- Create a container frame that will be draggable
-	containerFrame = Instance.new("Frame")
-	containerFrame.Size = UDim2.new(0, lbwidth, 0, 0)
-	containerFrame.Position = UDim2.new(1, -lbwidth - 3, 0, -36)
-	containerFrame.BackgroundTransparency = 1
-	containerFrame.Name = "LeaderboardContainer"
-	containerFrame.Parent = lbSgui
-
 	lbframe = Instance.new("Frame")
 	lbframe.BorderMode = Enum.BorderMode.Inset
 	lbframe.BorderSizePixel = 0
-	lbframe.Size = UDim2.new(1, 0, 1, 0)
-	lbframe.Position = UDim2.new(0, 0, 0, 0)
+	lbframe.Size = UDim2.new(initialWidthScale, 0, initialHeightScale, 0)
+	-- Change the position to upper right
+	lbframe.Position = UDim2.fromScale(1, 0)
+	_annotate("in setup, position is: " .. tostring(lbframe.Position.Y.Scale))
+	lbframe.AnchorPoint = Vector2.new(1, 0)
 	lbframe.Name = "LeaderboardFrame"
-	lbframe.BackgroundTransparency = 1
-	lbframe.Parent = containerFrame
+	lbframe.BackgroundTransparency = 0.1
+	lbframe.BackgroundColor3 = colors.sandBeige
+	lbframe.Parent = lbSgui
 
-	-- Create a new UIListLayout
+	-- for sorting the leaderboard rows.
 	local listLayout: UIListLayout = Instance.new("UIListLayout")
 	listLayout.SortOrder = Enum.SortOrder.Name
 	listLayout.Parent = lbframe
 
-	local dragging: boolean = false
-	local dragStartVector2: Vector2
-	local startPos: UDim2
+	local titleRow = makeTitleRow()
+	titleRow.Parent = lbframe
 
-	local function updateDrag(input: InputObject): ()
-		local inputPositionVector3: Vector3 = input.Position
-		local delta: Vector2 =
-			Vector2.new(inputPositionVector3.X - dragStartVector2.X, inputPositionVector3.Y - dragStartVector2.Y)
-		containerFrame.Position =
-			UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-	end
-
-	containerFrame.InputBegan:Connect(function(input: InputObject)
-		local inputPositionVector3: Vector3 = input.Position
-		if
-			input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch
-		then
-			dragging = true
-			dragStartVector2 = Vector2.new(inputPositionVector3.X, inputPositionVector3.Y)
-			startPos = containerFrame.Position
-		end
-	end)
-
-	UserInputService.InputEnded:Connect(function(input: InputObject)
-		if
-			input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch
-		then
-			dragging = false
-		end
-	end)
-
-	UserInputService.InputChanged:Connect(function(input: InputObject)
-		if
-			dragging
-			and (
-				input.UserInputType == Enum.UserInputType.MouseMovement
-				or input.UserInputType == Enum.UserInputType.Touch
-			)
-		then
-			updateDrag(input)
-		end
-	end)
-
+	draggability.SetupDraggability(lbframe)
+	resizeability.SetupResizeability(lbframe)
+	minimizeability.SetupMinimizeability(lbframe)
 	lbRowCount = 0
-	resetLbHeight()
-
-	local headerFrame = makeLBHeaderRowFrame()
-	headerFrame.Parent = lbframe
 
 	leaderboardButtons.initActionButtons(lbframe, localPlayer)
 
 	marathonClient.ReInitActiveMarathons()
-
-	-- Create minimize button
-	minimizeButton = Instance.new("TextButton")
-	minimizeButton.Size = UDim2.new(0, 20, 0, 20)
-	minimizeButton.Position = UDim2.new(0, 0, 0, 0)
-	minimizeButton.Text = "-"
-	minimizeButton.TextSize = 18
-	minimizeButton.Font = Enum.Font.SourceSansBold
-	minimizeButton.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-	minimizeButton.TextColor3 = Color3.fromRGB(50, 50, 50)
-	minimizeButton.Parent = containerFrame
-
-	-- Add minimize/maximize functionality
-	minimizeButton.MouseButton1Click:Connect(function()
-		isMinimized = not isMinimized
-		updateLeaderboardVisibility()
-	end)
+	adjustRowScales()
+	_annotate("end setup, position is: " .. tostring(lbframe.Position.X.Scale))
 end
 
 --important to use all lbUserCellParams here to make the row complete
 --even if an update comes before the loading of full stats.
 
-local function createLbRowframeAboutUser(userId: number, username: string): LeaderboardRowFrame?
+local function createRowForUser(userId: number, username: string): Frame?
 	--remember, this user may not actually be present in the server!
-	local rowFrame: LeaderboardRowFrame = { frame = Instance.new("Frame") }
+	local rowFrame: Frame = Instance.new("Frame")
 	local userDataFromCache = lbUserData[userId]
 	if not username then
-		--just look
 		username = localRdb.getUsernameByUserId(userId)
 	end
 	--we need this to get ordering before tix are known.
@@ -383,60 +226,98 @@ local function createLbRowframeAboutUser(userId: number, username: string): Lead
 	end
 
 	local userTixCount: number = userDataFromCache.userTix :: number
-	--we order by usertix. Surely this isn't the right way to do this. Plus it'd be SO nice to have alternative sorting orders or filtering/etc! TODO 2024
-	local rowName = tostring((bignum - userTixCount) .. username)
-	rowFrame.frame.Name = rowName
-	rowFrame.frame.Size = UDim2.new(1, 0, 0, lbPlayerRowY)
-	rowFrame.frame.BorderMode = Enum.BorderMode.Inset
-	rowFrame.frame.BorderSizePixel = 0
-	rowFrame.frame.BackgroundTransparency = 1
+	local rowName = string.format("%s_PlayerRow_%s", tostring(bignum - userTixCount), username)
+	rowFrame.Name = rowName
+	local rowYScale = 1 / (lbRowCount + 2) -- +1 for header, +1 for new row
+	rowFrame.Size = UDim2.fromScale(1, rowYScale)
+	rowFrame.BorderMode = Enum.BorderMode.Inset
+	rowFrame.BorderSizePixel = 0
+	rowFrame.BackgroundTransparency = 0.1
 	local horizontalLayout = Instance.new("UIListLayout")
 	horizontalLayout.FillDirection = Enum.FillDirection.Horizontal
-	horizontalLayout.Parent = rowFrame.frame
-	rowFrame.frame.Parent = lbframe
-	local bgcolor = colors.grey
+	horizontalLayout.Parent = rowFrame
+	rowFrame.Parent = lbframe
+
+	local bgcolor = colors.stoneGray
 	if userId == localPlayer.UserId then
-		bgcolor = colors.meColor
+		bgcolor = colors.waterBlue
 	end
 
-	for _, lbUserCellDescriptor: LeaderboardUserCellDescriptor in pairs(lbUserCellDescriptors) do
+	local cellWidths = calculateCellWidths()
+
+	for _, lbUserCellDescriptor: leaderboardUtil.lbUserCell in pairs(leaderboardUtil.LbUserCellDescriptors) do
+		local widthYScale = cellWidths[lbUserCellDescriptor.name]
+
 		if lbUserCellDescriptor.name == "portrait" then
+			local portraitContainer = Instance.new("Frame")
+			portraitContainer.Size = UDim2.fromScale(widthYScale, 1)
+			portraitContainer.BackgroundTransparency = 1
+			portraitContainer.Name = string.format("%02d.value", lbUserCellDescriptor.num)
+			portraitContainer.Parent = rowFrame
+
 			local img = Instance.new("ImageLabel")
-			img.Size = UDim2.new(0, lbUserCellDescriptor.width, 1, 0)
+			img.Size = UDim2.new(1, 0, 1, 0)
 			local content = thumbnails.getThumbnailContent(userId, Enum.ThumbnailType.HeadShot)
 			img.Image = content
 			img.BackgroundColor3 = bgcolor
-			img.Name = string.format("%02d.value", lbUserCellDescriptor.num)
-			img.Parent = rowFrame.frame
+			img.Name = "PortraitImage"
+			img.Parent = portraitContainer
 			img.BorderMode = Enum.BorderMode.Outline
-			-- img.BorderSizePixel=1
+			img.ScaleType = Enum.ScaleType.Stretch
 
-			if false then --disabled user thumbnail mouseover TODO
-				local content2 = thumbnails.getThumbnailContent(userId, Enum.ThumbnailType.HeadShot, 256, 256)
-				local innerImg = Instance.new("ImageLabel")
-				innerImg.Size = UDim2.new(1, 0, 1, 0)
-				innerImg.Image = content2
-				innerImg.BackgroundColor3 = bgcolor
-				innerImg.Name = string.format("%02d.inner.bigImg", lbUserCellDescriptor.num)
-				--a
-				toolTip.setupToolTip(localPlayer, img, innerImg, UDim2.fromOffset(200, 200), true)
-				--b
+			-- Add mouseover functionality so that when you mouseover the portrait cell (the 1st one) to the left of it,
+			-- a larger portrait appears.  It has no effectonthe row.
+			local largeAvatarImage = Instance.new("ImageLabel")
+			largeAvatarImage.Size = UDim2.new(0, 200, 0, 200)
+			largeAvatarImage.Position = UDim2.new(0, -220, 0, 0)
+			largeAvatarImage.AnchorPoint = Vector2.new(1, 0)
+			largeAvatarImage.Visible = false
+			largeAvatarImage.ZIndex = 10
+			largeAvatarImage.Parent = portraitContainer
+
+			local largeContent = thumbnails.getThumbnailContent(userId, Enum.ThumbnailType.HeadShot, 420)
+			largeAvatarImage.Image = largeContent
+
+			local showAvatarDebounce = false
+			local function showLargeAvatar()
+				if not showAvatarDebounce then
+					showAvatarDebounce = true
+					task.delay(0.1, function()
+						-- Check if the large avatar would go off the bottom of the screen
+						local viewportSize = workspace.CurrentCamera.ViewportSize
+						local absolutePosition = portraitContainer.AbsolutePosition
+						local yPosition = math.min(absolutePosition.Y, viewportSize.Y - 220)
+
+						largeAvatarImage.Position = UDim2.new(0, -20, 0, yPosition - absolutePosition.Y)
+						largeAvatarImage.Visible = true
+						largeAvatarImage.ImageTransparency = 1
+						local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+						local tween = TweenService:Create(largeAvatarImage, tweenInfo, { ImageTransparency = 0 })
+						tween:Play()
+						showAvatarDebounce = false
+					end)
+				end
 			end
-			img.BackgroundTransparency = lbEnums.lbTransparency
+
+			local function hideLargeAvatar()
+				largeAvatarImage.Visible = false
+			end
+
+			portraitContainer.MouseEnter:Connect(showLargeAvatar)
+			portraitContainer.MouseLeave:Connect(hideLargeAvatar)
 			img.BorderSizePixel = 1
 		else --it's a textlabel whatever we're generating anyway.
 			local tl = guiUtil.getTl(
 				string.format("%02d.value", lbUserCellDescriptor.num),
-				UDim2.new(0, lbUserCellDescriptor.width - 3, 1, 0),
+				UDim2.fromScale(widthYScale, 1),
 				2,
-				rowFrame.frame,
+				rowFrame,
 				bgcolor,
 				1,
-				lbEnums.lbTransparency
+				0
 			)
 
 			--find text for value.
-			--note that depending on what the user does first, userDataFromCache may have missing values.
 			if lbUserCellDescriptor.name == "findRank" then
 				local foundRank = userDataFromCache.findRank
 				if foundRank ~= nil then
@@ -448,26 +329,20 @@ local function createLbRowframeAboutUser(userId: number, username: string): Lead
 				tl.Text = "..."
 			else
 				local candidateTextValue = userDataFromCache[lbUserCellDescriptor.name]
-
-				local textValue: string
-				if candidateTextValue == nil then
-					textValue = ""
-				else
-					textValue = tostring(candidateTextValue)
-				end
+				local textValue: string = if candidateTextValue ~= nil then tostring(candidateTextValue) else ""
 				tl.Text = textValue
 			end
+
+			tl.TextScaled = true
 		end
 	end
+	adjustRowScales()
 	return rowFrame
 end
 
 --after receiving an lb update, figure out what changed relative to known data
 --store it and return a userDataChange for rendering into the LB
-local function StoreUserData(
-	userId: number,
-	data: tt.genericLeaderboardUpdateDataType
-): { tt.leaderboardUserDataChange }
+local function StoreUserData(userId: number, data: genericLeaderboardUpdateDataType): { tt.leaderboardUserDataChange }
 	local res: { tt.leaderboardUserDataChange } = {}
 	if lbUserData[userId] == nil then --received new data.
 		lbUserData[userId] = {}
@@ -492,24 +367,16 @@ local function StoreUserData(
 	return res
 end
 
--- ctrl+M,0 to fold, ctrl+m,j to open.
-
---1.
---q: what happens if you receive multiple of these at the same time? how to debounce this?
---a: just let it happen. most significant ones won't collide.
-
--- naming: the FOR user is obviously the one whose local script this is.
--- but the object of the row, i.e. the person whose data we are showing, is another user potentiall, the one this
--- is all ABOUT.
-
-local debounceReceivedLBUpdateAboutUser = {}
-local function receivedLBUpdateAboutUser(userData: tt.genericLeaderboardUpdateDataType, initial: boolean): ()
-	if debounceReceivedLBUpdateAboutUser[userData.userId] then
+-- store the data in-memory.
+local debounceUpdateUserLeaderboardRow = {}
+local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataType): ()
+	if debounceUpdateUserLeaderboardRow[userData.userId] then
+		_annotate(string.format("waiting for user %s to finish receiving their lb update", userData.userId))
 		wait(0.1)
 	end
-	debounceReceivedLBUpdateAboutUser[userData.userId] = true
+	debounceUpdateUserLeaderboardRow[userData.userId] = true
 	if not lbIsEnabled then
-		debounceReceivedLBUpdateAboutUser[userData.userId] = nil
+		debounceUpdateUserLeaderboardRow[userData.userId] = nil
 		return
 	end
 	local subjectUserId = userData.userId
@@ -518,18 +385,19 @@ local function receivedLBUpdateAboutUser(userData: tt.genericLeaderboardUpdateDa
 		receivedUserData = receivedUserData .. string.format("\t%s=%s ", a, b)
 	end
 	_annotate(string.format("got info about: %s: %s", subjectUserId, receivedUserData))
-	-- print(userData)
+
 	--check if this client's user has any lbframe.
 	if subjectUserId == nil then
-		warn("nil userid for update.: " .. tostring(initial))
-		warn(userData)
-		debounceReceivedLBUpdateAboutUser[userData.userId] = nil
+		warn("nil userid for update.")
+		debounceUpdateUserLeaderboardRow[userData.userId] = nil
 		return
 	end
 
 	if lbframe == nil then
+		_annotate("compoletely reset them cause no lbframe.")
 		completelyResetUserLB()
 	elseif lbframe.Parent == nil then
+		_annotate("compoletely reset them cause lbframe parent is nil.")
 		completelyResetUserLB()
 	end
 
@@ -543,40 +411,42 @@ local function receivedLBUpdateAboutUser(userData: tt.genericLeaderboardUpdateDa
 				receivedUserData
 			)
 		)
-		debounceReceivedLBUpdateAboutUser[userData.userId] = nil
+		debounceUpdateUserLeaderboardRow[userData.userId] = nil
 		return
 	end
 
 	--patch things up if needed.
-	local userRowFrame: LeaderboardRowFrame = userId2rowframe[subjectUserId]
-	if userRowFrame == nil or userRowFrame.frame.Parent == nil then
+	_annotate("patching up existing rowframe with new data.")
+	local userRowFrame: Frame = userId2rowframe[subjectUserId]
+	if userRowFrame == nil or userRowFrame.Parent == nil then
 		if userRowFrame == nil then
+			_annotate("remaking userRowFrame cause it was nil")
 		else
-			userRowFrame.frame:Destroy()
+			_annotate("destroyed userRowFrame cause its parent is nil")
+			userRowFrame:Destroy()
 		end
 		userId2rowframe[subjectUserId] = nil
-		local candidateRowFrame: LeaderboardRowFrame = createLbRowframeAboutUser(subjectUserId, userData.name)
+		local candidateRowFrame: Frame = createRowForUser(subjectUserId, userData.name)
 		if candidateRowFrame == nil then --case when the user is gone already.
-			debounceReceivedLBUpdateAboutUser[userData.userId] = nil
+			debounceUpdateUserLeaderboardRow[userData.userId] = nil
 			return
 		end
 		lbRowCount = lbRowCount + 1
-		resetLbHeight()
-		userId2rowframe[subjectUserId] = candidateRowFrame
 		userRowFrame = candidateRowFrame
-		userRowFrame.frame.Parent = lbframe
+		userId2rowframe[subjectUserId] = userRowFrame
+		userRowFrame.Parent = lbframe
 	end
 
-	local bgcolor = colors.grey
+	local bgcolor = colors.stoneGray
 	if subjectUserId == localPlayer.UserId then
-		bgcolor = colors.meColor
+		bgcolor = colors.waterBlue
 	end
 
 	for _, change: tt.leaderboardUserDataChange in pairs(userDataChanges) do
 		-- find the userCellDescriptor corresponding to it.
 
 		local descriptor = nil
-		for _, lbUserCellDescriptor in ipairs(lbUserCellDescriptors) do
+		for _, lbUserCellDescriptor in pairs(leaderboardUtil.LbUserCellDescriptors) do
 			if lbUserCellDescriptor.name == change.key then
 				descriptor = lbUserCellDescriptor
 				break
@@ -587,25 +457,25 @@ local function receivedLBUpdateAboutUser(userData: tt.genericLeaderboardUpdateDa
 		if change.key == "userTix" then
 			local username = localRdb.getUsernameByUserId(subjectUserId)
 			local newName = tostring(bignum - change.newValue) .. username
-			userRowFrame.frame.Name = newName
-			userRowFrame.frame.Name = newName
+			userRowFrame.Name = newName
+			userRowFrame.Name = newName
 		end
 
 		--if no descriptor, quit. effectively the same as name doesn't appear in: updateUserLbRowKeys
 		--note: this can happen because lbupdates have full BE stats in them, not all of which we render into LB
 		if descriptor == nil then
+			_annotate("we don't have a descriptor for: " .. change.key)
 			continue
 		end
-
+		_annotate("applying data about: " .. change.key)
 		local targetName = string.format("%02d.value", descriptor.num)
 		--it's important this targetname matches via interpolatino
-		local oldTextLabel: TextLabel = userRowFrame.frame:FindFirstChild(targetName) :: TextLabel
+		local oldTextLabelParent: TextLabel = userRowFrame:FindFirstChild(targetName) :: TextLabel
+		local oldTextLabel = oldTextLabelParent:FindFirstChild("Inner")
+
 		if oldTextLabel == nil then
 			warn("Missing old label to put in - this should not happen " .. descriptor.num)
-			warn(descriptor)
-		end
-		if oldTextLabel ~= nil then
-			oldTextLabel:Destroy()
+			error(descriptor)
 		end
 
 		--if this exists, do green fade
@@ -623,7 +493,7 @@ local function receivedLBUpdateAboutUser(userData: tt.genericLeaderboardUpdateDa
 		local improvement = false
 
 		--oldValue may be nil indicating nothing known.
-		if change.oldValue and not initial then
+		if change.oldValue then
 			local gap = change.newValue - change.oldValue
 			local sign = ""
 			if gap > 0 then
@@ -645,47 +515,69 @@ local function receivedLBUpdateAboutUser(userData: tt.genericLeaderboardUpdateDa
 		-- i'm not sure how this is supposed to work - probably legacy from when I didn't have tix
 		-- separated out. what's actually happening is that tix is showing up as loaded already
 		-- probably because the main user data stuff is slower than the tix load stuff.
-		if change.oldValue and initial then
-			_annotate("weird initial.")
-		end
-
-		local newTL = guiUtil.getTl(
-			string.format("%02d.value", descriptor.num),
-			UDim2.new(0, descriptor.width, 1, 0),
-			2,
-			userRowFrame.frame,
-			bgcolor,
-			1,
-			lbEnums.lbTransparency
-		)
-		local par = newTL.Parent :: TextLabel
 
 		--phase to new color if needed
 		if newIntermediateText == nil then
-			newTL.Text = newFinalText
-			newTL.BackgroundColor3 = bgcolor
-			par.BackgroundColor3 = bgcolor
+			oldTextLabel.Text = newFinalText
+			oldTextLabel.BackgroundColor3 = bgcolor
+			oldTextLabel.Parent.BackgroundColor3 = bgcolor
 		else
 			if improvement then
-				newTL.BackgroundColor3 = colors.greenGo
-				par.BackgroundColor3 = colors.greenGo
+				oldTextLabel.BackgroundColor3 = colors.leafGreen
+				oldTextLabel.Parent.BackgroundColor3 = colors.leafGreen
 			else
-				newTL.BackgroundColor3 = colors.lightRed
-				par.BackgroundColor3 = colors.lightRed
+				oldTextLabel.BackgroundColor3 = colors.waterBlue
+				oldTextLabel.Parent.BackgroundColor3 = colors.waterBlue
 			end
-			newTL.Text = newIntermediateText
+			oldTextLabel.Text = newIntermediateText
 			task.spawn(function()
 				wait(enums.greenTime)
-				newTL.Text = newFinalText
+				oldTextLabel.Text = newFinalText
 			end)
-			local tween = TweenService:Create(newTL, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+			local tween = TweenService:Create(
+				oldTextLabel,
+				TweenInfo.new(enums.greenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+				{ BackgroundColor3 = bgcolor }
+			)
 			tween:Play()
-			local tween2 =
-				TweenService:Create(newTL.Parent, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+			local tween2 = TweenService:Create(
+				oldTextLabel.Parent,
+				TweenInfo.new(enums.greenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+				{ BackgroundColor3 = bgcolor }
+			)
 			tween2:Play()
+
+			-- Add a subtle scale animation by expanding the green then shrinking it.
+			-- also have to hit the inner box too not just the outer. hmm wonder why this is messed up?
+
+			-- Add a subtle wiggle animation
+			local originalPosition = oldTextLabel.Position
+			local wiggleTween = TweenService:Create(
+				oldTextLabel,
+				TweenInfo.new(enums.greenTime / 2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 2, true),
+				{ Position = originalPosition + UDim2.new(0, 5, 0, 0) }
+			)
+			wiggleTween:Play()
+
+			-- Apply the same wiggle to the parent frame
+			local parentOriginalPosition = oldTextLabel.Parent.Position
+			local parentWiggleTween = TweenService:Create(
+				oldTextLabel.Parent,
+				TweenInfo.new(enums.greenTime / 2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 2, true),
+				{ Position = parentOriginalPosition + UDim2.new(0, 50, 0, 50) }
+			)
+			parentWiggleTween:Play()
+
+			local scaleTween = TweenService:Create(
+				oldTextLabel,
+				TweenInfo.new(enums.greenTime, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out),
+				{ Size = oldTextLabel.Size }
+			)
+			oldTextLabel.Size = UDim2.fromScale(oldTextLabel.Size.X.Scale * 1.1, 1)
+			scaleTween:Play()
 		end
 	end
-	debounceReceivedLBUpdateAboutUser[userData.userId] = nil
+	debounceUpdateUserLeaderboardRow[userData.userId] = nil
 end
 
 local removeDebouncers = {}
@@ -698,13 +590,13 @@ local function removeUserLBRow(userId: number): ()
 		removeDebouncers[userId] = nil
 		return
 	end
-	local row: LeaderboardRowFrame = userId2rowframe[userId]
+	local row: Frame = userId2rowframe[userId]
 	userId2rowframe[userId] = nil
 	lbUserData[userId] = nil
 	if row ~= nil then
 		pcall(function()
-			if row.frame ~= nil then
-				row.frame:Destroy()
+			if row ~= nil then
+				row:Destroy()
 			end
 		end)
 		if lbRowCount > 0 then
@@ -713,14 +605,14 @@ local function removeUserLBRow(userId: number): ()
 			warn("okay, clear error here. lbRowcount too low" .. tostring(lbRowCount))
 		end
 	end
-	resetLbHeight()
+	adjustRowScales()
 	removeDebouncers[userId] = nil
 end
 
 --data is a list of kvs for update data. if any change, redraw the row (and highlight that cell.)
 --First keyed to receive data about a userId. But later overloading data to just be blobs  of things of specific types to display in leaderboard.
 local receiveDataDebouncer = false
-module.ClientReceiveNewLeaderboardData = function(lbUpdateData: tt.genericLeaderboardUpdateDataType)
+module.ClientReceiveNewLeaderboardData = function(lbUpdateData: genericLeaderboardUpdateDataType)
 	if receiveDataDebouncer then
 		wait(0.1)
 	end
@@ -734,26 +626,19 @@ module.ClientReceiveNewLeaderboardData = function(lbUpdateData: tt.genericLeader
 		return
 	end
 
-	local initial = false
 	if
 		lbUpdateData.kind == "update other about joiner"
 		or lbUpdateData.kind == "update joiner lb"
 		or lbUpdateData.kind == "joiner update other lb"
+		or lbUpdateData.kind == "badge update"
+		or lbUpdateData.kind == "Update from run"
 	then
-		initial = true
-	elseif lbUpdateData.kind == "badge update" then
-		initial = false
-	elseif lbUpdateData.kind == "Update from run" then
-		initial = false --not sure about this, just protecting.
+		_annotate("got lbupdate of known good kind: " .. lbUpdateData.kind)
 	else
-		_annotate("unknown incoming data KIND. is this even needed (setup)?:: - " .. lbUpdateData.kind)
-		initial = false
+		_annotate("got lbupdate of unknown kind: " .. lbUpdateData.kind)
 	end
-
-	-- print(string.format("LBUpdate: %s for %s about %s", lbUpdateData.kind, LocalPlayer.Name, lbUpdateData.userId))
-	-- print(lbUpdateData)
-
-	receivedLBUpdateAboutUser(lbUpdateData, initial)
+	updateUserLeaderboardRow(lbUpdateData)
+	adjustRowScales()
 	receiveDataDebouncer = false
 end
 
@@ -795,10 +680,6 @@ local function HandleMarathonSettingsChanged(setting: tt.userSettingValue)
 	end
 end
 
-for _, lbUserCellDescriptor in pairs(lbUserCellDescriptors) do
-	lbwidth = lbwidth + lbUserCellDescriptor.width
-end
-local localFunctions = require(game.ReplicatedStorage.localFunctions)
 local hideLb = localFunctions.getSettingByName(settingEnums.settingNames.HIDE_LEADERBOARD)
 if hideLb.value then
 	lbIsEnabled = false
@@ -824,8 +705,6 @@ function module.Init(): ()
 		return HandleMarathonSettingsChanged(item)
 	end, "HandleMarathonSettingsChanged")
 
-	completelyResetUserLB()
-
 	-- we setup the event, but what if upstream playerjoinfunc is called first?
 	local leaderboardUpdateEvent = remotes.getRemoteEvent("LeaderboardUpdateEvent")
 	leaderboardUpdateEvent.OnClientEvent:Connect(module.ClientReceiveNewLeaderboardData)
@@ -839,6 +718,7 @@ function module.Init(): ()
 		HandleMarathonSettingsChanged(userSetting)
 	end
 
+	-- this seems overkill? we already have marathon setup above right
 	local userSettings = localFunctions.getSettingByDomain(settingEnums.settingDomains.USERSETTINGS)
 
 	for _, userSetting in pairs(userSettings) do

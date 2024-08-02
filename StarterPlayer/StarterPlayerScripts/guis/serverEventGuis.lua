@@ -13,7 +13,7 @@ local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
-local lbEnums = require(game.ReplicatedStorage.enums.lbEnums)
+
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 
 local module = {}
@@ -62,7 +62,7 @@ local function makeTile(el: tt.runningServerEventUserBest, ii: number, isMe: boo
 
 	im.Image = content2
 	im.BackgroundColor3 = useColor
-	im.BackgroundTransparency = lbEnums.lbTransparency
+	im.BackgroundTransparency = 0
 
 	local tl = guiUtil.getTl(
 		"01-serverEvent-result-tile" .. tostring(ii),
@@ -71,7 +71,7 @@ local function makeTile(el: tt.runningServerEventUserBest, ii: number, isMe: boo
 		frame,
 		useColor,
 		1,
-		lbEnums.lbTransparency
+		0
 	)
 	local extra = ""
 	if el.runCount > 1 then
@@ -128,29 +128,15 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 
 	local combined = string.format("%s", cleanName)
 	local raceToolTip = string.format("(%0.0fd)", serverEvent.distance)
-	local nameTl = guiUtil.getTl(
-		"01-serverEvent-name",
-		UDim2.fromScale(nameWidth, 1),
-		3,
-		row1frame,
-		colors.defaultGrey,
-		1,
-		lbEnums.lbTransparency
-	)
+	local nameTl =
+		guiUtil.getTl("01-serverEvent-name", UDim2.fromScale(nameWidth, 1), 3, row1frame, colors.defaultGrey, 1, 0)
 
 	nameTl.Text = combined
 	toolTip.setupToolTip(localPlayer, nameTl, raceToolTip, UDim2.new(0, 70, 0, 30), false)
 
 	--prize tile
-	local prizeTl = guiUtil.getTl(
-		"02-serverEvent-prize",
-		UDim2.fromScale(prizeWidth, 1),
-		3,
-		row1frame,
-		colors.defaultGrey,
-		1,
-		lbEnums.lbTransparency
-	)
+	local prizeTl =
+		guiUtil.getTl("02-serverEvent-prize", UDim2.fromScale(prizeWidth, 1), 3, row1frame, colors.defaultGrey, 1, 0)
 	prizeTl.Text = string.format("%d tix", serverEvent.tixValue)
 
 	-- prizeTl.Text = "-"
@@ -180,7 +166,7 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 		row1frame,
 		colors.defaultGrey,
 		1,
-		lbEnums.lbTransparency
+		0
 	)
 	remainingTl.Text = ""
 
@@ -198,15 +184,8 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 
 	--warp tile
 
-	local warpTile = guiUtil.getTb(
-		"04-serverEvent-warptile",
-		UDim2.fromScale(warpWidth, 1),
-		1,
-		row1frame,
-		colors.lightBlue,
-		1,
-		lbEnums.lbTransparency
-	)
+	local warpTile =
+		guiUtil.getTb("04-serverEvent-warptile", UDim2.fromScale(warpWidth, 1), 1, row1frame, colors.lightBlue, 1, 0)
 	warpTile.Text = "Warp"
 
 	warpTile.Activated:Connect(function()

@@ -22,7 +22,6 @@ local contestButtonGetter = require(game.StarterPlayer.StarterPlayerScripts.butt
 local contestButtons = contestButtonGetter.getContestButtons({ localPlayer.UserId })
 local marathonSettingsButton = require(game.ReplicatedStorage.gui.menu.marathonSettingsButton)
 local serverEventButton = require(game.ReplicatedStorage.gui.menu.serverEventButton)
-local lbEnums = require(game.ReplicatedStorage.enums.lbEnums)
 
 local actionButtons: { gt.actionButton } = {
 	marathonSettingsButton.marathonSettingsButton,
@@ -32,21 +31,21 @@ local actionButtons: { gt.actionButton } = {
 }
 
 for _, contestButton in ipairs(contestButtons) do
-    table.insert(actionButtons, contestButton)
+	table.insert(actionButtons, contestButton)
 end
 
 module.initActionButtons = function(lbframe: Frame, player: Player)
-    local fr = Instance.new("Frame")
-    fr.BorderMode = Enum.BorderMode.Inset
-    fr.BorderSizePixel = 0
-    fr.Size = UDim2.new(1, -3, 0, lbEnums.actionButtonHeightPixels)
-    
-    local h = Instance.new("UIListLayout")
-    h.HorizontalAlignment = Enum.HorizontalAlignment.Right
-    h.FillDirection = Enum.FillDirection.Horizontal
-    h.Parent = fr
-    
-    local pgui = player.PlayerGui
+	local fr = Instance.new("Frame")
+	fr.BorderMode = Enum.BorderMode.Inset
+	fr.BorderSizePixel = 0
+	fr.Size = UDim2.new(1, -3, 0, 26)
+
+	local h = Instance.new("UIListLayout")
+	h.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	h.FillDirection = Enum.FillDirection.Horizontal
+	h.Parent = fr
+
+	local pgui = player.PlayerGui
 
 	local bignum = 10000
 	for ii, but in ipairs(actionButtons) do
@@ -64,23 +63,23 @@ module.initActionButtons = function(lbframe: Frame, player: Player)
 		buttonTb.Name = tostring(bignum - ii)
 		buttonTb.BackgroundTransparency = 1
 		local par: TextLabel = buttonTb.Parent
-		par.BackgroundTransparency = lbEnums.lbTransparency
+		par.BackgroundTransparency = 0
 
-        buttonTb.Activated:Connect(function()
-            task.spawn(function()
-                local userIds = {}
-                for _, pl in ipairs(PlayersService:GetPlayers()) do
-                    table.insert(userIds, pl.UserId)
-                end
-                local content = but.contentsGetter(localPlayer, userIds)
-                content.Parent = pgui
-            end)
-        end)
-        toolTip.setupToolTip(localPlayer, buttonTb, but.hoverHint, UDim2.new(0, 200, 0, 40), false)
-    end
-    fr.Name = "LeaderboardButtonsFrame"
-    fr.BackgroundTransparency = 1
-    fr.Parent = lbframe
+		buttonTb.Activated:Connect(function()
+			task.spawn(function()
+				local userIds = {}
+				for _, pl in ipairs(PlayersService:GetPlayers()) do
+					table.insert(userIds, pl.UserId)
+				end
+				local content = but.contentsGetter(localPlayer, userIds)
+				content.Parent = pgui
+			end)
+		end)
+		toolTip.setupToolTip(localPlayer, buttonTb, but.hoverHint, UDim2.new(0, 200, 0, 40), false)
+	end
+	fr.Name = "LeaderboardButtonsFrame"
+	fr.BackgroundTransparency = 1
+	fr.Parent = lbframe
 end
 
 _annotate("end")

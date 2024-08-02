@@ -9,14 +9,14 @@ local ChatConstants = require(clientChatModules:WaitForChild("ChatConstants"))
 
 local module = {}
 
-module.CopyToGeneralChat=false
+module.CopyToGeneralChat = false
 
 ---[[ Chat Behaviour Settings ]]
 module.WindowDraggable = false
 module.WindowResizable = true
 module.ShowChannelsBar = true
 module.GamepadNavigationEnabled = false
-module.ShowUserOwnFilteredMessage = true	--Show a user the filtered version of their message rather than the original.
+module.ShowUserOwnFilteredMessage = true --Show a user the filtered version of their message rather than the original.
 -- Make the chat work when the top bar is off
 module.ChatOnWithTopBarOff = false
 module.ScreenGuiDisplayOrder = 6 -- The DisplayOrder value for the ScreenGui containing the chat.
@@ -34,8 +34,8 @@ module.ChatChannelsTabTextSizePhone = 18
 module.ChatBarTextSizePhone = 14
 
 ---[[ Font Settings ]]
-module.DefaultFont = Enum.Font.SourceSansBold
-module.ChatBarFont = Enum.Font.SourceSansBold
+module.DefaultFont = Enum.Font.Gotham
+module.ChatBarFont = Enum.Font.Gotham
 
 ----[[ Color Settings ]]
 module.BackGroundColor = Color3.new(0, 0, 0)
@@ -45,7 +45,7 @@ module.ChatBarBackGroundColor = Color3.new(0, 0, 0)
 module.ChatBarBoxColor = Color3.new(1, 1, 1)
 module.ChatBarTextColor = Color3.new(0, 0, 0)
 module.ChannelsTabUnselectedColor = Color3.new(0, 0, 0)
-module.ChannelsTabSelectedColor = Color3.new(30/255, 30/255, 30/255)
+module.ChannelsTabSelectedColor = Color3.new(30 / 255, 30 / 255, 30 / 255)
 module.DefaultChannelNameColor = Color3.fromRGB(35, 76, 142)
 module.WhisperChannelNameColor = Color3.fromRGB(102, 14, 102)
 module.ErrorMessageTextColor = Color3.fromRGB(245, 50, 50)
@@ -61,7 +61,7 @@ module.DefaultWindowSizeDesktop = UDim2.new(0.3, 0, 0.25, extraOffset)
 
 ---[[ Fade Out and In Settings ]]
 module.ChatWindowBackgroundFadeOutTime = 0.5 --Chat background will fade out after this many seconds.
-module.ChatWindowTextFadeOutTime = 30				--Chat text will fade out after this many seconds.
+module.ChatWindowTextFadeOutTime = 30 --Chat text will fade out after this many seconds.
 module.ChatDefaultFadeDuration = 0.8
 module.ChatShouldFadeInFromNewInformation = false
 module.ChatAnimationFPS = 20.0
@@ -79,18 +79,17 @@ module.ShowJoinAndLeaveHelpText = false
 
 ---[[ Message Settings ]]
 module.MaximumMessageLength = 200
-module.DisallowedWhiteSpace = {"\n", "\r", "\t", "\v", "\f"}
+module.DisallowedWhiteSpace = { "\n", "\r", "\t", "\v", "\f" }
 module.ClickOnPlayerNameToWhisper = true
 module.ClickOnChannelNameToSetMainChannel = true
-module.BubbleChatMessageTypes = {ChatConstants.MessageTypeDefault, ChatConstants.MessageTypeWhisper}
+module.BubbleChatMessageTypes = { ChatConstants.MessageTypeDefault, ChatConstants.MessageTypeWhisper }
 
 ---[[ Misc Settings ]]
 module.WhisperCommandAutoCompletePlayerNames = true
 
 local ChangedEvent = Instance.new("BindableEvent")
 
-local proxyTable = setmetatable({},
-{
+local proxyTable = setmetatable({}, {
 	__index = function(tbl, index)
 		return module[index]
 	end,

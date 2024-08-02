@@ -10,7 +10,7 @@ local aliases = { LocalScript = "local", Script = "script", ModuleScript = "modu
 local goodScripts = { "movement", "avatarEventMonitor", "avatarEventFiring", "serverWarping" }
 goodScripts = { "warper", "dynamicRunning", "main", "movement" }
 goodScripts = { "morphs", "runProgressSgui", "angerSign" }
-goodScripts = { "" }
+goodScripts = { "leaderboard", "minimizeability", "draggability", "resizeability" }
 
 local showAllRegardless = false
 -- showAllRegardless = true

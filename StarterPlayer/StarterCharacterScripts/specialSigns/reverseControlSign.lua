@@ -47,7 +47,7 @@ local function reverseControls()
 	else
 		return
 	end
-contextactionservice 
+ 
 	if input.UserInputState == Enum.UserInputState.Begin then
 		UserInputService. : SimulateKeyPress(oppositeKey)
 	elseif input.UserInputState == Enum.UserInputState.End then

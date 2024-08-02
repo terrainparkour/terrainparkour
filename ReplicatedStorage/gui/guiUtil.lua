@@ -11,7 +11,7 @@ module.getTl = function(
 	name: string,
 	size: UDim2,
 	padding: number,
-	parent: Frame | ScrollingFrame,
+	parent: Frame | ScrollingFrame | nil,
 	bgcolor: Color3,
 	borderSizePixel: number?,
 	transparency: number?

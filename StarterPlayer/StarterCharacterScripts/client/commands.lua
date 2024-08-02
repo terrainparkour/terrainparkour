@@ -25,7 +25,7 @@ local function showSigns(signIds: { number }, extraText: string?)
 	if extraText then
 		--we want to chat it to the player:
 		local chatText = "You have " .. #signIds .. " signs that " .. extraText
-		localPlayer:Chat(chatText)
+		-- localPlayer:Chat(chatText)
 	end
 end
 

@@ -44,6 +44,7 @@ module.lightYellow = Color3.fromRGB(255, 255, 10)
 module.signTextColor = Color3.fromRGB(255, 240, 241)
 module.signColor = Color3.fromRGB(255, 89, 89)
 
+------- added later, kind of suck.
 module.brown = Color3.fromRGB(139, 69, 19)
 module.turquoise = Color3.fromRGB(0, 255, 255)
 module.magenta = Color3.fromRGB(255, 0, 255)
@@ -52,6 +53,13 @@ module.pastel = Color3.fromRGB(255, 200, 150)
 module.navyGreen = Color3.fromRGB(0, 100, 100)
 module.lightGreenPlush = Color3.fromRGB(100, 255, 100)
 module.lightBlueGreen = Color3.fromRGB(100, 255, 255)
+
+--- added by claude+cursor
+module.leafGreen = Color3.new(0.4, 0.7, 0.3)
+module.skyBlue = Color3.new(0.6, 0.8, 0.9)
+module.stoneGray = Color3.new(0.7, 0.7, 0.7)
+module.sandBeige = Color3.new(0.9, 0.85, 0.7)
+module.waterBlue = Color3.new(0.3, 0.7, 0.9)
 
 _annotate("end")
 return module
