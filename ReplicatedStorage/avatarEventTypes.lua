@@ -39,11 +39,13 @@ local avatarEventTypes: { [string]: number } = {
 	RETOUCH_SIGN = 4,
 	TOUCH_SIGN = 5, --distinct from retouch, end, run_start.
 
-	CHANGE_DIRECTION = 6, --this is the roblox property, which contains both the movement vector3 (direction), which also will turn to 0,0,0 if the player totally stops.
+	-- CHANGE_DIRECTION = 6, --this is the roblox property, which contains both the movement vector3 (direction), which also will turn to 0,0,0 if the player totally stops.
 	FLOOR_CHANGED = 7,
 	STATE_CHANGED = 8, --this is where we load all swimming, jumping
+	AVATAR_STOPPED = 108, --since change direction is sent way too often when currently all we actually care about is if they have stopped
+	AVATAR_STARTED_MOVING = 109,
 
-	RESET_CHARACTER = 9, -- resetting avatar.
+	AVATAR_RESET = 9, -- resetting avatar.
 
 	KEYBOARD_WALK = 10, --inputs from keyboard.
 	KEYBOARD_RUN = 11,
@@ -61,7 +63,15 @@ local avatarEventTypes: { [string]: number } = {
 	RACING_WARPER_READY = 37,
 	MARATHON_WARPER_READY = 38,
 
-	WARP_DONE = 45, --------tell everybody they can go back to normal
+	WARP_DONE_RESTART_MORPHS = 46,
+	WARP_DONE_RESTART_MOVEMENT = 47,
+	WARP_DONE_RESTART_RACING = 48,
+	WARP_DONE_RESTART_MARATHONS = 49,
+
+	MORPHING_RESTARTED = 50,
+	MOVEMENT_RESTARTED = 51,
+	RACING_RESTARTED = 52,
+	MARATHON_RESTARTED = 53,
 }
 
 local avatarEventTypesReverse = {}

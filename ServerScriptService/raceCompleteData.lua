@@ -319,7 +319,6 @@ module.showBestTimes = function(
 	-- print(options)
 	-- print(userFinishedRunResponse)
 
-	-- _annotate("Notifying " .. tostring(racerUserId) .. "," .. racerUsername)
 	notify.notifyPlayerOfRunResults(player, pyUserFinishedRunResponse)
 end
 

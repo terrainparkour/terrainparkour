@@ -22,8 +22,8 @@ module.notifyPlayerAboutMarathonResults = function(player: Player, options: tt.p
 end
 
 module.notifyPlayerAboutBadge = function(player: Player, options: tt.badgeOptions)
-	_annotate("badge notif")
-	_annotate(options)
+	--_annotate("badge notif")
+	--_annotate(options)
 	messageReceivedEvent:FireClient(player, options)
 end
 
@@ -59,7 +59,7 @@ module.handleActionResults = function(actionResults: { tt.actionResult })
 		end
 		local arSubjectPlayer = tpUtil.getPlayerByUserId(arSubjectUserId)
 		if arSubjectPlayer == nil then
-			-- _annotate("player was not in server, this is okay.")
+			--_annotate("player was not in server, this is okay.")
 			continue
 		end
 		if actionResult.notifyAllExcept then

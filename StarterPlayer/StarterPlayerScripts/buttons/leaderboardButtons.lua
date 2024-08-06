@@ -5,6 +5,8 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
+local module = {}
+
 local PlayersService = game:GetService("Players")
 
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
@@ -12,7 +14,7 @@ local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local localPlayer = PlayersService.LocalPlayer
 local colors = require(game.ReplicatedStorage.util.colors)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
-local module = {}
+
 local vscdebug = require(game.ReplicatedStorage.vscdebug)
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 
@@ -34,18 +36,23 @@ for _, contestButton in ipairs(contestButtons) do
 	table.insert(actionButtons, contestButton)
 end
 
-module.initActionButtons = function(lbframe: Frame, player: Player)
-	local fr = Instance.new("Frame")
-	fr.BorderMode = Enum.BorderMode.Inset
-	fr.BorderSizePixel = 0
-	fr.Size = UDim2.new(1, -3, 0, 26)
+module.initActionButtons = function(lbOuterFrame: Frame)
+	local actionButtonFrame = Instance.new("Frame")
+	actionButtonFrame.BorderMode = Enum.BorderMode.Inset
+	actionButtonFrame.BorderSizePixel = 0
+	actionButtonFrame.Position = UDim2.new(0.7, 0, 1, 0)
+	actionButtonFrame.Name = "4LeaderboardActionButtonFrame"
+	actionButtonFrame.BackgroundTransparency = 1
+	actionButtonFrame.Parent = lbOuterFrame
+
+	actionButtonFrame.Size = UDim2.new(0.3, 0, 0, 40)
 
 	local h = Instance.new("UIListLayout")
 	h.HorizontalAlignment = Enum.HorizontalAlignment.Right
 	h.FillDirection = Enum.FillDirection.Horizontal
-	h.Parent = fr
+	h.Parent = actionButtonFrame
 
-	local pgui = player.PlayerGui
+	local pgui = localPlayer:FindFirstChildOfClass("PlayerGui")
 
 	local bignum = 10000
 	for ii, but in ipairs(actionButtons) do
@@ -57,10 +64,11 @@ module.initActionButtons = function(lbframe: Frame, player: Player)
 		end
 
 		local buttonName = tostring(bignum - ii) .. "." .. but.name
-		local buttonTb = guiUtil.getTb(buttonName, UDim2.new(0, but.widthPixels, 1, 0), 2, fr, color, 1)
+		local buttonTb = guiUtil.getTb(buttonName, UDim2.new(but.widthXScale, 0, 1, 0), 2, actionButtonFrame, color, 1)
 		buttonTb.Text = but.shortName
+
 		--reverse order they're listed in actionButtons above
-		buttonTb.Name = tostring(bignum - ii)
+		buttonTb.Name = tostring(bignum - ii) .. "." .. but.name .. "_inner."
 		buttonTb.BackgroundTransparency = 1
 		local par: TextLabel = buttonTb.Parent
 		par.BackgroundTransparency = 0
@@ -72,14 +80,14 @@ module.initActionButtons = function(lbframe: Frame, player: Player)
 					table.insert(userIds, pl.UserId)
 				end
 				local content = but.contentsGetter(localPlayer, userIds)
+				if not content then
+					return
+				end
 				content.Parent = pgui
 			end)
 		end)
-		toolTip.setupToolTip(localPlayer, buttonTb, but.hoverHint, UDim2.new(0, 200, 0, 40), false)
+		toolTip.setupToolTip(buttonTb, but.hoverHint, UDim2.new(0, 200, 0, 40), false)
 	end
-	fr.Name = "LeaderboardButtonsFrame"
-	fr.BackgroundTransparency = 1
-	fr.Parent = lbframe
 end
 
 _annotate("end")

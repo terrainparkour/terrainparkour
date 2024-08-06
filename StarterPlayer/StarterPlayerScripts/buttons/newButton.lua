@@ -197,7 +197,7 @@ local function makePopRowFrame(
 	return fr
 end
 
-local function getPopularContents(player: Player, userIds: { number }): ScreenGui
+local function getNewContents(player: Player, userIds: { number }): ScreenGui
 	local popResults: { PopularResponseTypes.popularRaceResult } = getNewRunsFunction:InvokeServer(userIds)
 
 	local sg = Instance.new("ScreenGui")
@@ -290,13 +290,13 @@ end
 
 local newButton: gt.actionButton = {
 	name = "New Button",
-	contentsGetter = getPopularContents,
+	contentsGetter = getNewContents,
 	hoverHint = "Show new first place runs",
 	shortName = "New",
 	getActive = function()
 		return true
 	end,
-	widthPixels = 40,
+	widthXScale = 0.2,
 }
 
 module.newButton = newButton

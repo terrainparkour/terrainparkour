@@ -10,7 +10,7 @@ local ShowSignsEvent = remotes.getRemoteEvent("ShowSignsEvent")
 local module = {}
 
 module.ShowSignCommand = function(player: Player, targetUserId: number?): boolean
-	_annotate(string.format("SeenSignCommand for player %s, targetUserId: %s", player.Name, tostring(targetUserId)))
+	--_annotate(string.format("SeenSignCommand for player %s, targetUserId: %s", player.Name, tostring(targetUserId)))
 	local usingTarget = targetUserId
 	local actualSignIds = {}
 	local extraText = ""

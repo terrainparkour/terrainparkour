@@ -36,7 +36,7 @@ module.Init = function()
 	for soundName, soundAssetId in pairs(sounds) do
 		local sound: Sound = getSound(soundAssetId)
 		sound.Name = soundName
-		_annotate("preloading: " .. soundName)
+		--_annotate("preloading: " .. soundName)
 		sound:Play() -- Preload the sound by playing it once
 		sound:Stop() -- Immediately stop the sound to prevent it from being heard
 	end
@@ -47,10 +47,10 @@ local function playSoundFromSign(sign: Part, soundName: string)
 	sound.Name = soundName
 	local exi = sign:FindFirstChild(soundName) :: Sound
 	if exi then
-		_annotate(string.format("replaying old one. %s", sign.Name))
+		--_annotate(string.format("replaying old one. %s", sign.Name))
 		exi:Play()
 	else
-		_annotate(string.format("adding and play.. %s", sign.Name))
+		--_annotate(string.format("adding and play.. %s", sign.Name))
 		sound.Parent = sign
 		sound:Play()
 	end

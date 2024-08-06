@@ -6,26 +6,51 @@ local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
+module.AnchorCharacter = function(humanoid: Humanoid, character: Model)
+	--_annotate("anchor")
+	local rootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
+	if rootPart then
+		rootPart.Anchored = true
+		--_annotate(string.format("Character root part anchored for %s", character.Name))
+	else
+		--_annotate(
+		-- string.format("Failed to anchor character root part for %s: HumanoidRootPart not found", character.Name)
+		-- )
+	end
+end
+
+module.UnAnchorCharacter = function(humanoid: Humanoid, character: Model)
+	--_annotate("unanchor")
+	local rootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
+	if rootPart then
+		rootPart.Anchored = false
+	end
+end
+
 local resetMomentumDebounce = false
 module.ResetMomentum = function(humanoid: Humanoid, character: Model)
 	if resetMomentumDebounce then
 		return
 	end
 	resetMomentumDebounce = true
-	_annotate("\t\tresetMomentum")
+	--_annotate("\t\tresetMomentum")
 	local rootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
 	if rootPart == nil then
 		error("fail")
 	end
 	-- well, this will certainly remove momentum from the user. But it doesn't feel pleasant.
-	rootPart.Anchored = true
-	rootPart.Anchored = false
+	-- 2024.1.249 changed this from GettingUp to Freefall on players suggestion to prevent early jumping after warp.
 
-	-- 2024 still unclear what this does, too.
-	humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+	humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
 
 	-- 2024: is this effectively just the server version of resetting movement states?
+	local rootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
+	if rootPart == nil then
+		error("fail")
+	end
+
 	rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+
 	while true do
 		local state = humanoid:GetState()
 		if
@@ -35,19 +60,20 @@ module.ResetMomentum = function(humanoid: Humanoid, character: Model)
 			or state == Enum.HumanoidStateType.Dead
 			or state == Enum.HumanoidStateType.Swimming
 		then
-			_annotate("state passed")
+			--_annotate("state passed")
 			break
 		end
 
-		wait()
-		_annotate("waited.in resetMomentum")
+		wait(0.1)
+		warn("hmm")
+		--_annotate("waited.in resetMomentum")
 	end
-	_annotate("movement:\tmomentum has been reset.")
+	--_annotate("movement:\tmomentum has been reset.")
 	resetMomentumDebounce = false
 end
 
 module.SetCharacterTransparency = function(player: Player, target: number)
-	_annotate("Player made transparent: " .. tostring(target))
+	--_annotate("Player made transparent: " .. tostring(target))
 	local targetCharacter = player.Character
 	local any = false
 	for i, v: Decal | MeshPart in pairs(targetCharacter:GetDescendants()) do
@@ -66,7 +92,7 @@ module.ResetPhysicalAvatarMorphs = function(humanoid: Humanoid, character: Model
 	character:ScaleTo(1)
 	local state = humanoid:GetState()
 	if state == Enum.HumanoidStateType.Ragdoll or state == Enum.HumanoidStateType.FallingDown then
-		_annotate("reset state yet char is in ragdoll.")
+		--_annotate("reset state yet char is in ragdoll.")
 		--this happens because there is some lag in setting state
 		--this can happen after warping
 		--we should ban runs from this point, but don't currently.

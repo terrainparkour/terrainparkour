@@ -7,6 +7,7 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 --get a tl, put it into parent with padding, return inner thing for further work
+
 module.getTl = function(
 	name: string,
 	size: UDim2,
@@ -14,7 +15,8 @@ module.getTl = function(
 	parent: Frame | ScrollingFrame | nil,
 	bgcolor: Color3,
 	borderSizePixel: number?,
-	transparency: number?
+	transparency: number?,
+	automaticSize: Enum.AutomaticSize?
 ): TextLabel
 	if transparency == nil then
 		transparency = 0
@@ -30,6 +32,9 @@ module.getTl = function(
 	tl.BorderMode = Enum.BorderMode.Inset
 	tl.BorderSizePixel = 1
 	tl.BackgroundTransparency = transparency
+	if automaticSize ~= nil then
+		tl.AutomaticSize = automaticSize
+	end
 
 	if borderSizePixel ~= nil then
 		tl.BorderSizePixel = borderSizePixel

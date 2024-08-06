@@ -32,7 +32,7 @@ module.fmtShort = function(float: number): string
 end
 
 --this should use global since signs are actually streamed in and most won't be visible.
-module.signId2Position = function(signId: number): Vector3?
+module.signId2Position = function(signId: number): Vector3 | nil
 	local name = enums.signId2name[signId]
 	if name == nil then
 		name = enums.signId2name[signId]
@@ -47,7 +47,7 @@ module.signId2Position = function(signId: number): Vector3?
 	return sign.Position
 end
 
-module.signName2SignId = function(signName: string)
+module.signName2SignId = function(signName: string): number
 	return enums.namelower2signId[signName:lower()]
 end
 
@@ -301,6 +301,9 @@ module.SignNameCanBeHighlighted = function(signName: string): boolean
 end
 
 module.SignCanBeHighlighted = function(sign: Part?): boolean
+	if not sign then
+		return false
+	end
 	return module.SignNameCanBeHighlighted(sign.Name)
 end
 

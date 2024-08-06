@@ -11,23 +11,6 @@ local leaderboard = require(game.StarterPlayer.StarterCharacterScripts.client.le
 
 test = function()
 	task.spawn(function()
-		wait(4)
-		--[[ this is the datatype: 
-		{
-		kind: string,
-		userId: number,
-		runs: number,
-		userTotalFindCount: number,
-		findRank: number,
-		top10s: number,
-		races: number,
-		userTix: number,
-		userCompetitiveWRCount: number,
-		userTotalWRCount: number,
-		wrRank: number,
-		totalSignCount: number,
-		awardCount: number
-		]]
 		local fakeDataUpdateData: tt.afterData_getStatsByUser = {
 			kind = "joiner update other lb",
 			userId = 90115385,
@@ -44,16 +27,18 @@ test = function()
 			awardCount = 123,
 		}
 		leaderboard.ClientReceiveNewLeaderboardData(fakeDataUpdateData)
-
+		print("did join.")
 		wait(2)
 		leaderboard.ClientReceiveNewLeaderboardData({ userId = 90115385, kind = "leave" })
+		print("did leave.")
 		wait(2)
 		leaderboard.ClientReceiveNewLeaderboardData(fakeDataUpdateData)
+		print("did join again.")
 	end)
 end
 
 if config.isTestGame() then
-	test()
+	--test()
 end
 
 _annotate("end")

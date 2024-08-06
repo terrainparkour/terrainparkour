@@ -12,6 +12,7 @@ local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
+local settings = require(game.ReplicatedStorage.settings)
 
 local ContestResponseTypes = require(game.ReplicatedStorage.types.ContestResponseTypes)
 local enums = require(game.ReplicatedStorage.util.enums)
@@ -473,7 +474,7 @@ module.getContestButtons = function(userIds: { number }): { gt.actionButton }
 			getActive = function()
 				return contest.contestremaining > 0
 			end,
-			widthPixels = 90,
+			widthXScale = 0.20,
 		}
 		table.insert(res, contestButton)
 	end
@@ -490,13 +491,13 @@ local function init()
 	-- first, set up listening so if another ui changes a setting value, we notice.
 	-- second, get the initial value.
 	-- TODO obviously this still duplicates a lot of logic.
-	local localFunctions = require(game.ReplicatedStorage.localFunctions)
-	localFunctions.RegisterLocalSettingChangeReceiver(
+
+	settings.RegisterFunctionToListenForSettingName(
 		handleUserSettingChanged,
 		settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY
 	)
 
-	handleUserSettingChanged(localFunctions.getSettingByName(settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY))
+	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY))
 end
 
 init()

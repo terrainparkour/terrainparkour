@@ -11,8 +11,6 @@ nocol.Init()
 local workspaceSetup = require(game.ServerScriptService.workspaceSetup)
 workspaceSetup.createEvents()
 
-local locationMonitor = require(game.ReplicatedStorage.locationMonitor)
-
 local setupSigns = require(game.ServerScriptService.setupSigns)
 setupSigns.Init()
 
@@ -21,64 +19,49 @@ setupFindTouchMonitoring.Init()
 
 local sounds = require(game.ServerScriptService.sounds)
 sounds.Init()
-_annotate("done with sounds")
 
 local pushSigns = require(game.ServerScriptService.pushSigns)
 pushSigns.checkSignsNeedingPushing()
-_annotate("done with pushSigns")
 
 local presence = require(game.ServerScriptService.presence)
 presence.Init()
-_annotate("done with presence")
 
 local banning = require(game.ServerScriptService.banning)
 banning.Init()
 
 local marathon = require(game.ServerScriptService.marathon)
 marathon.Init()
-_annotate("done with marathon")
 
 local ephemeralMarathon = require(game.ServerScriptService.EphemeralMarathons.ephemeralMarathon)
 ephemeralMarathon.Init()
 
 local locationMonitor = require(game.ReplicatedStorage.locationMonitor)
 locationMonitor.Init()
-_annotate("done with locationMonitor")
 
 --include these to initialize listeners despite not being "used".
 local userSettings = require(game.ServerScriptService.userSettings)
 userSettings.Init()
-_annotate("done with userSettings")
 
 local popularListener = require(game.ServerScriptService.data.popular)
 popularListener.Init()
-_annotate("done with popularListener")
 
 local newListener = require(game.ServerScriptService.data.new)
 newListener.Init()
-_annotate("done with newListener")
 
 local contests = require(game.ServerScriptService.data.contests)
 contests.Init()
-_annotate("done with contests")
 
 local dynamic = require(game.ServerScriptService.dynamicServer)
 dynamic.Init()
-_annotate("done with dynamic")
 
 local serverEvents = require(game.ServerScriptService.serverEvents)
 serverEvents.Init()
-_annotate("done with serverEvents")
 
 local serverWarping = require(game.ServerScriptService.serverWarping)
 serverWarping.Init()
 
-_annotate("done with serverWarping")
-
 local raceEnding = require(game.ServerScriptService.raceEnding)
 raceEnding.Init()
-
-_annotate("done with raceEnding")
 
 local setupSpecialSigns = require(game.ServerScriptService.setupSpecialSigns)
 setupSpecialSigns.Init()

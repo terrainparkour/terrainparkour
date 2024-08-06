@@ -9,17 +9,12 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+local settingSort = require(game.ReplicatedStorage.settingSort)
+local settings = require(game.ReplicatedStorage.settings)
 
 local PlayersService = game:GetService("Players")
 
 local module = {}
-
-local function settingSort(a: tt.userSettingValue, b: tt.userSettingValue): boolean
-	if a.domain ~= b.domain then
-		return a.domain < b.domain
-	end
-	return a.name < b.name
-end
 
 local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, n: number): Frame
 	local fr = Instance.new("Frame")
@@ -58,7 +53,7 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 		nowValue = nil
 	end
 
-	local localFunctions = require(game.ReplicatedStorage.localFunctions)
+	local settings = require(game.ReplicatedStorage.settings)
 	noButton.Activated:Connect(function()
 		if nowValue == false then
 			nowValue = nil
@@ -69,7 +64,7 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 			yesButton.BackgroundColor3 = colors.defaultGrey
 		end
 		setting.value = nowValue
-		localFunctions.setSetting(setting)
+		settings.setSetting(setting)
 	end)
 
 	unsetButton.Activated:Connect(function()
@@ -78,7 +73,7 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 			noButton.BackgroundColor3 = colors.defaultGrey
 			yesButton.BackgroundColor3 = colors.defaultGrey
 			setting.value = nowValue
-			localFunctions.setSetting(setting)
+			settings.setSetting(setting)
 		end
 	end)
 
@@ -93,7 +88,7 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 			yesButton.BackgroundColor3 = colors.defaultGrey
 		end
 		setting.value = nowValue
-		localFunctions.setSetting(setting)
+		settings.setSetting(setting)
 	end)
 
 	return fr
@@ -105,9 +100,8 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 	local sg = Instance.new("ScreenGui")
 	sg.Name = "SettingsSgui"
 
-	local localFunctions = require(game.ReplicatedStorage.localFunctions)
 	--just get marathon settings.
-	local surveyData = localFunctions.getSettingByDomain(settingEnums.settingDomains.SURVEYS)
+	local surveyData = settings.getSettingByDomain(settingEnums.settingDomains.SURVEYS)
 
 	local outerFrame = Instance.new("Frame")
 	outerFrame.Parent = sg
@@ -159,7 +153,7 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 	for _, setting in pairs(surveyData) do
 		table.insert(settings, setting)
 	end
-	table.sort(settings, settingSort)
+	table.sort(settings, settingSort.SettingSort)
 
 	for _, setting in pairs(settings) do
 		ii += 1

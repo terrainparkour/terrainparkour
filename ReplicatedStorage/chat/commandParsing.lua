@@ -40,7 +40,7 @@ end
 
 --if hardcoded admin user, allow the command.
 local function CheckInternalAdminCmd(speaker, message)
-	if speaker.UserId == enums.objects.TerrainParkour or speaker.UserId == -1 then
+	if speaker.UserId == enums.objects.TerrainParkour or speaker.UserId == -1 or speaker.UserId == -2 then
 		local parts = textUtil.stringSplit(message, " ")
 
 		local cmd: string = parts[1]
@@ -51,12 +51,6 @@ local function CheckInternalAdminCmd(speaker, message)
 
 		object = textUtil.coalesceFrom(parts, 2)
 
-		if cmd == "rw" then
-			local rndSign: string = rdb.getRandomSignName()
-			serverwarping.WarpToSignName(speaker, rndSign)
-			return true
-		end
-
 		--commands targeting a player
 		if cmd == "ban" or cmd == "unban" or cmd == "softban" or cmd == "hardban" then
 			return channelCommands.anyBan(cmd, object)
@@ -64,7 +58,7 @@ local function CheckInternalAdminCmd(speaker, message)
 
 		--commands targeting a sign
 		if cmd == "warp" then
-			return channelCommands.warp(cmd, object, speaker)
+			return channelCommands.AdminOnlyWarp(cmd, object, speaker)
 		end
 
 		return false
@@ -140,11 +134,10 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 		--the new version which scopes race start to those signs found by most people in server.
 		--this method is not guaranteed to work if there are people hanging around with no found signs at all.
 		elseif verb == "randomrace" or verb == "rr" then
-			return true
-			-- local ret = channelCommands.randomRace(speaker, channel)
-			-- if ret ~= nil then
-			-- 	return ret
-			-- end
+			local ret = channelCommands.randomRace(speaker, channel)
+			if ret ~= nil then
+				return ret
+			end
 		elseif verb == "show" then
 			return showSignsCommand.ShowSignCommand(speaker)
 		elseif verb == "common" then

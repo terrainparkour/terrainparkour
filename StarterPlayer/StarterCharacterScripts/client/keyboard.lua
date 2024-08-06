@@ -8,7 +8,7 @@ local module = {}
 local textHighlighting = require(game.ReplicatedStorage.gui.textHighlighting)
 
 local remotes = require(game.ReplicatedStorage.util.remotes)
-local localFunctions = require(game.ReplicatedStorage.localFunctions)
+local settings = require(game.ReplicatedStorage.settings)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
@@ -43,12 +43,12 @@ end
 local function ToggleLB(intendedState: boolean)
 	local items = { localPlayer:WaitForChild("PlayerGui"):FindFirstChild("LeaderboardScreenGui") }
 	if not items then
-		_annotate("no leaderboard screen gui found.")
+		--_annotate("no leaderboard screen gui found.")
 		return
 	end
 	for _, el in ipairs(items) do
 		if el == nil then
-			_annotate("bad item.")
+			--_annotate("bad item.")
 			continue
 		end
 		el.Enabled = intendedState
@@ -84,15 +84,6 @@ end
 
 local keyboardShortcutButton = require(game.StarterPlayer.StarterPlayerScripts.buttons.keyboardShortcutGui)
 
-local function showKeyboardShortcuts()
-	local shortcutGui = keyboardShortcutButton.CreateShortcutGui()
-	shortcutGui.Enabled = true
-
-	-- task.delay(9, function()
-	-- 	shortcutGui:Destroy()
-	-- end)
-end
-
 -------------- all the shortcuts are here. ----------------
 local function onInputBegin(inputObject, gameProcessedEvent)
 	if not inputObject.KeyCode then
@@ -123,7 +114,7 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 		elseif inputObject.KeyCode == Enum.KeyCode.Z then
 			fireEvent(mt.avatarEventTypes.RUN_KILL, { reason = "hit c on keyboard" })
 		elseif inputObject.KeyCode == Enum.KeyCode.K then
-			showKeyboardShortcuts()
+			keyboardShortcutButton.CreateShortcutGui()
 		end
 	end
 end
@@ -139,15 +130,15 @@ end
 local deb = false
 local function handleAvatarEvent(ev: mt.avatarEvent)
 	if deb then
-		_annotate("deb, waiting in handleAvatarEvent")
+		--_annotate("deb, waiting in handleAvatarEvent")
 		task.wait()
 	end
 	deb = true
 	if ev.eventType == mt.avatarEventTypes.RUN_START then
-		_annotate(string.format("run start, setting lastRunStart to %d", ev.details.relatedSignId))
+		--_annotate(string.format("run start, setting lastRunStart to %d", ev.details.relatedSignId))
 		lastRunStart = ev.details.relatedSignId
 	elseif ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
-		_annotate(string.format("run complete, setting lastRunEnd to %d", ev.details.relatedSignId))
+		--_annotate(string.format("run complete, setting lastRunEnd to %d", ev.details.relatedSignId))
 		lastRunEnd = ev.details.relatedSignId
 	end
 	deb = false
@@ -158,18 +149,18 @@ module.Init = function()
 	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 	UserInputService.InputBegan:Connect(onInputBegin)
 
-	localFunctions.RegisterLocalSettingChangeReceiver(
+	settings.RegisterFunctionToListenForSettingName(
 		handleUserSettingChanged,
 		settingEnums.settingNames.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP
 	)
 
-	localFunctions.RegisterLocalSettingChangeReceiver(
+	settings.RegisterFunctionToListenForSettingName(
 		handleUserSettingChanged,
 		settingEnums.settingNames.X_BUTTON_IGNORES_CHAT
 	)
 
-	handleUserSettingChanged(localFunctions.getSettingByName(settingEnums.settingNames.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP))
-	handleUserSettingChanged(localFunctions.getSettingByName(settingEnums.settingNames.X_BUTTON_IGNORES_CHAT))
+	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingNames.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP))
+	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingNames.X_BUTTON_IGNORES_CHAT))
 end
 
 _annotate("end")

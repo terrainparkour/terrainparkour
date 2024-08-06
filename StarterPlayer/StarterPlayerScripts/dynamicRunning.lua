@@ -12,6 +12,7 @@ local module = {}
 local colors = require(game.ReplicatedStorage.util.colors)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+local settings = require(game.ReplicatedStorage.settings)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local dynamicRunningEnums = require(game.ReplicatedStorage.dynamicRunningEnums)
 
@@ -56,12 +57,12 @@ local hasReset = false
 
 --destroy all UIs and nuke the pointer dict to them
 module.endDynamic = function(force: boolean?)
-	_annotate("endDynamic, force:" .. tostring(force))
+	--_annotate("endDynamic, force:" .. tostring(force))
 	if not (force or dynamicRunningEnabled) then
 		return
 	end
 
-	_annotate("endDynamic, real")
+	--_annotate("endDynamic, real")
 	startDynamicDebounce = true
 
 	for k, v in pairs(targetSignUis) do
@@ -101,7 +102,7 @@ module.startDynamic = function(player: Player, signName: string, startTick: numb
 	task.spawn(function()
 		while startDynamicDebounce do
 			wait(0.1)
-			_annotate("waited for dynamic start debounce")
+			--_annotate("waited for dynamic start debounce")
 		end
 		startDynamicDebounce = true
 		dynamicStartTick = startTick
@@ -281,7 +282,7 @@ local function lock(src: string?)
 		src = ""
 	end
 	while debounce do
-		_annotate("debounce lock. " .. src)
+		--_annotate("debounce lock. " .. src)
 		wait(0.05)
 	end
 	debounce = true
@@ -345,7 +346,7 @@ local function handleOne(dynamicRunFrame: tt.DynamicRunFrame)
 end
 
 local function fullReset()
-	_annotate("full dynamic running reset")
+	--_annotate("full dynamic running reset")
 	lock()
 	for _, item in ipairs(textLabelStore) do
 		item.Parent.Parent:Destroy()
@@ -357,10 +358,10 @@ end
 
 local function receiveDynamicRunData(updates: tt.dynamicRunFromData)
 	if not dynamicRunningEnabled then
-		_annotate("received but dynamic running disabled")
+		--_annotate("received but dynamic running disabled")
 		return
 	end
-	_annotate(string.format("Apply dynamicRunning %d %s", #updates.frames, updates.fromSignName))
+	--_annotate(string.format("Apply dynamicRunning %d %s", #updates.frames, updates.fromSignName))
 	lock()
 	for _, dynamicRunFrame: tt.DynamicRunFrame in ipairs(updates.frames) do
 		if dynamicRunFrame.targetSignName == "👻" then
@@ -373,7 +374,7 @@ local function receiveDynamicRunData(updates: tt.dynamicRunFromData)
 end
 
 local function setupRenderStepped()
-	_annotate("starting render stepped")
+	--_annotate("starting render stepped")
 
 	renderStepped = RunService.RenderStepped:Connect(function()
 		local st = tick()
@@ -400,7 +401,6 @@ local function setupRenderStepped()
 					break
 				end
 			else
-				-- _annotate(string.format("\t %d skipping %s", ii, item.targetSignName))
 			end
 		end
 	end)
@@ -418,7 +418,7 @@ local function handleUserSettingChanged(setting: tt.userSettingValue)
 				--also destroy them all.
 				dynamicRunningEnabled = false
 				renderStepped:Disconnect()
-				_annotate("kill renderstepped")
+				--_annotate("kill renderstepped")
 				module.endDynamic(true)
 			end
 		end
@@ -437,14 +437,13 @@ module.Init = function()
 	hasReset = false
 	startDynamicDebounce = false
 	dynamicRunningEvent.OnClientEvent:Connect(receiveDynamicRunData)
-	local localFunctions = require(game.ReplicatedStorage.localFunctions)
 
 	--in addition to this, needs to get the original setting to set it locally too.
-	localFunctions.RegisterLocalSettingChangeReceiver(function(item)
+	settings.RegisterFunctionToListenForSettingName(function(item)
 		return handleUserSettingChanged(item)
 	end, settingEnums.settingNames.ENABLE_DYNAMIC_RUNNING)
 
-	local dynset = localFunctions.getSettingByName(settingEnums.settingNames.ENABLE_DYNAMIC_RUNNING)
+	local dynset = settings.getSettingByName(settingEnums.settingNames.ENABLE_DYNAMIC_RUNNING)
 	handleUserSettingChanged(dynset)
 end
 

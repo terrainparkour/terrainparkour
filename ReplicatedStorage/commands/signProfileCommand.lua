@@ -14,7 +14,7 @@ local ShowClientSignProfileEvent = remotes.getRemoteEvent("ShowClientSignProfile
 local module = {}
 
 local function prepareSignProfileData(username: string, signId: number): tt.playerSignProfileData
-	_annotate(string.format("prepareSignProfileData username: %s, signId: %d", username, signId))
+	--_annotate(string.format("prepareSignProfileData username: %s, signId: %d", username, signId))
 	local res: tt.playerSignProfileData = rdb.getSignProfileForUser(username, signId)["res"]
 	return res
 end

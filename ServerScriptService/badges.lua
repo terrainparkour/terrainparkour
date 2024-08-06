@@ -30,12 +30,11 @@ local positiveBadgeAttainments: { [number]: { [number]: boolean } } = {}
 module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor): boolean?
 	if positiveBadgeAttainments[userId] ~= nil then
 		if positiveBadgeAttainments[userId][badge.assetId] then
-			-- _annotate("served from positive server cache.yes." .. badge.name)
 			return true
 		end
 	end
 	if not grantedBadges[userId] then
-		_annotate("\treset grantedBadges cache." .. userId)
+		--_annotate("\treset grantedBadges cache." .. userId)
 		grantedBadges[userId] = {}
 	end
 	if badgeLookupLocks[userId] == nil then
@@ -45,7 +44,7 @@ module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor): boole
 		if not badgeLookupLocks[userId][badge.assetId] then
 			break
 		end
-		_annotate("waiting on lookup.\t" .. badge.name)
+		--_annotate("waiting on lookup.\t" .. badge.name)
 		wait(1)
 		--TODO very suspicious. what is this?
 	end
@@ -55,25 +54,22 @@ module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor): boole
 			local res = BadgeService:UserHasBadgeAsync(userId, badge.assetId)
 			if res then --these will fill it in, and later it'll be re-fed upstream.
 				task.spawn(function()
-					_annotate("saving to remote " .. badge.name)
+					--_annotate("saving to remote " .. badge.name)
 					rdb.saveUserBadgeGrant(userId, badge.assetId, badge.name)
 				end)
 			end
 			grantedBadges[userId][badge.assetId] = res
-			-- _annotate("\tDone with expensive lookup: " .. badge.name)
 			badgeLookupLocks[userId][badge.assetId] = false
 		end)
 		if e then
 			badgeLookupLocks[userId][badge.assetId] = nil
-			_annotate("Nil out." .. badge.name)
+			--_annotate("Nil out." .. badge.name)
 			return nil
 		end
 	end
 	if grantedBadges[userId][badge.assetId] == nil then
 		error("nil still.")
 	end
-	-- print(tostring(userId) .. " " .. badge.name .. "--" .. tostring(grantedBadges[userId][badge.assetId]))
-	-- _annotate("\tfallthrough to use stored data.\t" .. badge.name)
 	return grantedBadges[userId][badge.assetId]
 end
 
@@ -123,7 +119,6 @@ end
 --relies on badges being sorted such that attainment is sequential for cases where badgeClass and baseNumber is defined
 --uses this fact to skip out of calculating level N+1 if level N of sequential class badges fails
 module.getBadgeAttainmentForUserId = function(userId: number, rationale: string): { tt.badgeAttainment }
-	-- _annotate("get badge statuses." .. rationale .. " for " .. userId)
 	--if type is identical to last, and last was a no, just return false.
 
 	--list of "attainments"
@@ -152,7 +147,6 @@ module.getBadgeAttainmentForUserId = function(userId: number, rationale: string)
 		ii += 1
 		if completeClasses[badge.badgeClass] then
 			--artificially set them having it false.
-			-- _annotate(" artifically complete class due to order." .. badge.badgeClass)
 			grantedBadges[userId][badge.assetId] = false
 		end
 		local userHasBadge: boolean? = module.UserHasBadge(userId, badge)
@@ -164,7 +158,6 @@ module.getBadgeAttainmentForUserId = function(userId: number, rationale: string)
 		local progress = -1 --guard value
 		if badge.baseNumber ~= nil then
 			progress = getProgressForStatsKindAndNumber(badge, stats)
-			-- _annotate(badge.name .. " progress " .. tostring(progress) .. " out of " .. tostring(badge.baseNumber))
 		end
 		local attainment: tt.badgeAttainment = {
 			badge = badge,
@@ -175,7 +168,6 @@ module.getBadgeAttainmentForUserId = function(userId: number, rationale: string)
 		table.insert(attainments, attainment)
 		if not userHasBadge then
 			if badge.baseNumber ~= nil then
-				-- _annotate(" set artificially complete class due to baseNumber." .. badge.badgeClass)
 				completeClasses[badge.badgeClass] = true
 			end
 		end

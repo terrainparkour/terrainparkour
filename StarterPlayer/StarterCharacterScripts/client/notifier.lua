@@ -25,8 +25,8 @@ type legacyOptions = {}
 --notify player of something.
 local function clientReceiveNotification(options: any)
 	if config.isInStudio() then
-		_annotate("client receive notifications:" .. options.kind)
-		_annotate(options)
+		--_annotate("client receive notifications:" .. options.kind)
+		--_annotate(options)
 	end
 	if options.kind == "race results" then
 		options = options :: tt.pyUserFinishedRunResponse

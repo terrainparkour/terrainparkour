@@ -1,5 +1,7 @@
 --!strict
 
+-- marathonDescriptors. general descriptions of the types of marathons we have and the different functions they need
+-- to have defined to work.
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
@@ -80,17 +82,14 @@ end
 
 --just adds sign if not a duplicate.
 local function DefaultAddSignToFinds(desc: mt.marathonDescriptor, signName: string): boolean
-	-- _annotate("DefaultAddSignToFinds.start. " .. desc.kind .. signName)
 	local key = desc.kind .. "__" .. signName
 	if desc.addDebounce[key] then
-		-- _annotate("DefaultAddSignToFinds.debounce. " .. desc.kind .. signName)
 		return false
 	end
 	desc.addDebounce[key] = true
 
 	for _, el in ipairs(desc.finds) do
 		if el.signName == signName then
-			-- _annotate("DefaultAddSignToFinds.doible try. " .. desc.kind .. signName)
 			return false
 		end
 	end
@@ -101,7 +100,6 @@ local function DefaultAddSignToFinds(desc: mt.marathonDescriptor, signName: stri
 		findOrder = desc.count,
 	}
 	table.insert(desc.finds, targetFind)
-	-- _annotate("DefaultAddSignToFinds.added-. " .. desc.kind .. signName .. " NOw have; " .. #desc.finds)
 	desc.addDebounce[key] = false
 	return true
 end
@@ -778,6 +776,8 @@ local alphabeticalAllLetters: mt.marathonDescriptor = {
 	sequenceNumber = "Find all letters",
 }
 
+-- because we are always adding signs, marathons whose definition is like "all signs of 1 letter" can't be predefined.
+-- we have to look at what's available.
 local function getSignsWithTrait(trait): { string }
 	local res = {}
 	local enums = require(game.ReplicatedStorage.util.enums)

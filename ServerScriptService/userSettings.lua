@@ -1,14 +1,6 @@
 --!strict
 
---settings lookup on server
-local annotater = require(game.ReplicatedStorage.util.annotater)
-local _annotate = annotater.getAnnotater(script)
-
-local rdb = require(game.ServerScriptService.rdb)
-local tt = require(game.ReplicatedStorage.types.gametypes)
-local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
-
-local module = {}
+-- userSettings settings lookup on server
 
 -- TODO product goals 2022.10
 -- get all settings for user
@@ -19,11 +11,27 @@ local module = {}
 
 -- 2022.10 summary of settings control flows
 -- initial load: callers ask for things. comes here, overlay defaults on values stored in server
--- user changes setting - shows up here for saving, AND UI in localscript changing it directly notifies other localscripts what's going on via localFunctions
+-- user changes setting - shows up here for saving, AND UI in localscript changing it directly notifies other localscripts what's going on via settings
 
 --centralized, in-memory user-settings cache
 -- product of: 1) get all from server 2) combine with default 3) return.
 -- note: CAN be incomplete for a user if the request were only for one domain or setting value.
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
+local rdb = require(game.ServerScriptService.rdb)
+local tt = require(game.ReplicatedStorage.types.gametypes)
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+local grantBadge = require(game.ServerScriptService.grantBadge)
+local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
+
+local remotes = require(game.ReplicatedStorage.util.remotes)
+
+local getUserSettingsFunction: RemoteFunction = remotes.getRemoteFunction("GetUserSettingsFunction")
+local userSettingsChangedFunction: RemoteFunction = remotes.getRemoteFunction("UserSettingsChangedFunction")
+
+local module = {}
+
 local userSettingsCache: { [number]: { [string]: tt.userSettingValue } } = {}
 
 --2022.10
@@ -164,7 +172,7 @@ local debounceInnerSetup = false
 --src is just for debugging.
 local function innerSetupSettings(player: Player, src: string): { [string]: tt.userSettingValue }
 	while debounceInnerSetup do
-		_annotate("settings.innersetup.wait " .. src)
+		--_annotate("settings.innersetup.wait " .. src)
 		wait(0.05)
 	end
 	debounceInnerSetup = true
@@ -234,14 +242,14 @@ module.getUserSettingsRouter = function(player: Player, data: settingEnums.setti
 	return userSettings
 end
 
-local function userChangedSettingFromUI(userId: number, setting: tt.userSettingValue)
+local function userChangedSettingFromUI(userId: number, setting: tt.userSettingValue): any
 	if userSettingsCache[userId] == nil then
 		error("empty should not happen")
 	end
-	rdb.updateSettingForUser(userId, setting.value, setting.name, setting.domain)
+
+	local res = rdb.updateSettingForUser(userId, setting.value, setting.name, setting.domain)
 	userSettingsCache[userId][setting.name] = setting
-	local grantBadge = require(game.ServerScriptService.grantBadge)
-	local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
+
 	grantBadge.GrantBadge(userId, badgeEnums.badges.TakeSurvey)
 	local ct = 0
 	for _, item: tt.userSettingValue in userSettingsCache[userId] do
@@ -251,19 +259,17 @@ local function userChangedSettingFromUI(userId: number, setting: tt.userSettingV
 		if item.value ~= nil then
 			ct += 1
 		end
-		if ct + 20 then
+		if ct > 20 then
 			grantBadge.GrantBadge(userId, badgeEnums.badges.SurveyKing)
 			break
 		end
 	end
+	return res
 end
 
 module.Init = function()
-	local remotes = require(game.ReplicatedStorage.util.remotes)
-	local getUserSettingsFunction = remotes.getRemoteFunction("GetUserSettingsFunction") :: RemoteFunction
 	getUserSettingsFunction.OnServerInvoke = module.getUserSettingsRouter
 
-	local userSettingsChangedFunction = remotes.getRemoteFunction("UserSettingsChangedFunction")
 	userSettingsChangedFunction.OnServerInvoke = function(player: Player, setting: tt.userSettingValue)
 		return userChangedSettingFromUI(player.UserId, setting)
 	end

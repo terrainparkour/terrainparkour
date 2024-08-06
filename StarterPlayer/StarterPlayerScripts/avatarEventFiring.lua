@@ -22,50 +22,79 @@ local mt = require(game.ReplicatedStorage.avatarEventTypes)
 
 local module = {}
 
+module.DescribeEvent = function(avatarEventType: number, details: mt.avatarEventDetails?): string
+	local usingText = ""
+	if details.relatedSignId then
+		usingText = usingText .. " relatedSignId=" .. tostring(details.relatedSignId) .. " "
+	end
+	if details.floorMaterial then
+		usingText = usingText .. " floorMaterial=" .. tostring(details.floorMaterial) .. " "
+	end
+	if details.newMoveDirection then
+		usingText = usingText .. " newMoveDirection=" .. tostring(details.newMoveDirection) .. " "
+	end
+	if details.oldMoveDirection then
+		usingText = usingText .. " oldMoveDirection=" .. tostring(details.oldMoveDirection) .. " "
+	end
+	if details.newState then
+		usingText = usingText .. " newState=" .. tostring(details.newState) .. " "
+	end
+	if details.oldState then
+		usingText = usingText .. " oldState=" .. tostring(details.oldState) .. " "
+	end
+	if details.warpSourceSignName then
+		usingText = usingText .. " warpSourceSignName=" .. tostring(details.warpSourceSignName) .. " "
+	end
+	if details.warpDestinationSignName then
+		usingText = usingText .. " warpDestinationSignName=" .. tostring(details.warpDestinationSignName) .. " "
+	end
+	if details.oldSpeed then
+		usingText = usingText .. " oldSpeed=" .. tostring(details.oldSpeed) .. " "
+	end
+	if details.newSpeed then
+		usingText = usingText .. " newSpeed=" .. tostring(details.newSpeed) .. " "
+	end
+	if details.oldJumpPower then
+		usingText = usingText .. " oldJumpPower=" .. tostring(details.oldJumpPower) .. " "
+	end
+	if details.newJumpPower then
+		usingText = usingText .. " newJumpPower=" .. tostring(details.newJumpPower) .. " "
+	end
+	if details.reason then
+		usingText = usingText .. " reason=" .. tostring(details.reason) .. " "
+	end
+
+	local res = string.format("EventType = %s%s", mt.avatarEventTypesReverse[avatarEventType], usingText)
+	return res
+end
+
+local lastWarpStart = nil
+
 module.FireEvent = function(avatarEventType: number, details: mt.avatarEventDetails?)
+	if not details then
+		details = {}
+	end
+
 	if not avatarEventType then
 		warn("bad event.")
 		return
 	end
-	if not details then
-		details = {}
-	end
+
 	local actualEv: mt.avatarEvent = {
 		eventType = avatarEventType,
 		timestamp = tick(),
 		details = details,
 	}
 
-	local excludedDescriptionTypesFromDescriptions = {
-		-- mt.avatarEventTypes.CHANGE_DIRECTION,
-		-- mt.avatarEventTypes.STATE_CHANGED,
-		-- mt.avatarEventTypes.DO_SPEED_CHANGE,
-		-- mt.avatarEventTypes.DO_JUMPPOWER_CHANGE,
-		-- mt.avatarEventTypes.FLOOR_CHANGE,
-	}
-	local blocked = false
-	for _, type in ipairs(excludedDescriptionTypesFromDescriptions) do
-		if actualEv.eventType == type then
-			blocked = true
-			break
-		end
+	if actualEv.eventType == mt.avatarEventTypes.GET_READY_FOR_WARP then
+		lastWarpStart = actualEv.timestamp
+	elseif actualEv.eventType == mt.avatarEventTypes.MARATHON_RESTARTED then
+		local duration = actualEv.timestamp - lastWarpStart
+		lastWarpStart = nil
+		warn(string.format("warp delay duration in this situation: %0.5f", duration))
 	end
-	if not blocked then
-		local details = ""
-		if actualEv.details ~= {} then
-			if actualEv.details then
-				for a, b in pairs(actualEv.details) do
-					details = details .. string.format("%s: %s", a, tostring(b)) .. "\t"
-				end
-			end
-		end
-		if details then
-			details = " (" .. details .. ")"
-		end
-		_annotate(
-			string.format("AvatarEventFiring: %s%s", tostring(mt.avatarEventTypesReverse[actualEv.eventType]), details)
-		)
-	end
+
+	--_annotate(string.format("Firing: %s", module.DescribeEvent(avatarEventType, details)))
 	AvatarEventBindableEvent:Fire(actualEv)
 end
 

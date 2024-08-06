@@ -161,7 +161,7 @@ local function makePopRowFrame(
 		chip.AutomaticSize = Enum.AutomaticSize.Y
 		chip.Parent = leaderFrame
 	end
-	_annotate("Pop:" .. tostring(pop.startSignId) .. " " .. pop.startSignName)
+	--_annotate("Pop:" .. tostring(pop.startSignId) .. " " .. pop.startSignName)
 
 	local mode = "found"
 	if not pop.hasFoundStart then
@@ -282,11 +282,11 @@ local popularButton: gt.actionButton = {
 	name = "Popular Button",
 	contentsGetter = getPopularContents,
 	hoverHint = "Show top popular runs",
-	shortName = "Popular",
+	shortName = "Pop",
 	getActive = function()
 		return true
 	end,
-	widthPixels = 40,
+	widthXScale = 0.2,
 }
 
 module.popularButton = popularButton

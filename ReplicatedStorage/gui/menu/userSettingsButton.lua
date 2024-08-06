@@ -8,6 +8,9 @@ local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+local settings = require(game.ReplicatedStorage.settings)
+local settingSort = require(game.ReplicatedStorage.settingSort)
+
 local PlayersService = game:GetService("Players")
 
 local module = {}
@@ -44,7 +47,7 @@ local function makeRowFrame(setting: tt.userSettingValue, player: Player, n: num
 	end
 	--just get marathon settings.
 
-	local localFunctions = require(game.ReplicatedStorage.localFunctions)
+	local settings = require(game.ReplicatedStorage.settings)
 	toggleButton.Activated:Connect(function()
 		if toggleButton.Text == "No" then
 			toggleButton.Text = "Yes"
@@ -52,25 +55,18 @@ local function makeRowFrame(setting: tt.userSettingValue, player: Player, n: num
 			local par = toggleButton.Parent :: TextLabel
 			par.BackgroundColor3 = colors.greenGo
 			setting.value = true
-			localFunctions.setSetting(setting)
+			settings.setSetting(setting)
 		else
 			toggleButton.Text = "No"
 			toggleButton.BackgroundColor3 = colors.redStop
 			local par = toggleButton.Parent :: TextLabel
 			par.BackgroundColor3 = colors.redStop
 			setting.value = false
-			localFunctions.setSetting(setting)
+			settings.setSetting(setting)
 		end
 	end)
 
 	return fr
-end
-
-local function settingSort(a: tt.userSettingValue, b: tt.userSettingValue): boolean
-	if a.domain ~= b.domain then
-		return a.domain < b.domain
-	end
-	return a.name < b.name
 end
 
 --we already have clientside stuff whic hgets initial settings value.
@@ -79,26 +75,27 @@ local getUserSettingsModal = function(localPlayer: Player): ScreenGui
 	local sg = Instance.new("ScreenGui")
 	sg.Name = "SettingsSgui"
 
-	local localFunctions = require(game.ReplicatedStorage.localFunctions)
 	--just get marathon settings.
 	local userSettings: { [string]: tt.userSettingValue } =
-		localFunctions.getSettingByDomain(settingEnums.settingDomains.USERSETTINGS)
+		settings.getSettingByDomain(settingEnums.settingDomains.USERSETTINGS)
 
 	local outerFrame = Instance.new("Frame")
 	outerFrame.Parent = sg
 	outerFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
 	outerFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
-	local vv2 = Instance.new("UIListLayout")
-	vv2.FillDirection = Enum.FillDirection.Vertical
-	vv2.Parent = outerFrame
+	local vv = Instance.new("UIListLayout")
+	vv.FillDirection = Enum.FillDirection.Vertical
+	vv.Parent = outerFrame
+	vv.Name = "getrUserSettingsModal-vv"
 
 	local headerFrame = Instance.new("Frame")
 	headerFrame.Parent = outerFrame
 	headerFrame.Name = "01.Settings.Header"
 	headerFrame.Size = UDim2.new(1, 0, 0, 45)
-	local vv = Instance.new("UIListLayout")
-	vv.FillDirection = Enum.FillDirection.Horizontal
-	vv.Parent = headerFrame
+	local hh = Instance.new("UIListLayout")
+	hh.FillDirection = Enum.FillDirection.Horizontal
+	hh.Parent = headerFrame
+	hh.Name = "SettingsModalHeaderHH"
 	local typeTl = guiUtil.getTl("1", UDim2.new(0.22, 0, 1, 0), 4, headerFrame, colors.blueDone, 1)
 	typeTl.Text = "Domain"
 
@@ -129,7 +126,7 @@ local getUserSettingsModal = function(localPlayer: Player): ScreenGui
 	for _, setting in pairs(userSettings) do
 		table.insert(settings, setting)
 	end
-	table.sort(settings, settingSort)
+	table.sort(settings, settingSort.SettingSort)
 
 	for _, setting in pairs(settings) do
 		ii += 1

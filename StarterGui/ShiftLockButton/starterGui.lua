@@ -1,6 +1,6 @@
 --!strict
 
---  ShiftGUIf
+-- starterGui. Added fork of existing starterGui so users can modify it. Todo
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
@@ -15,11 +15,11 @@ end
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-local ScreenGui, ShiftLockIcon, InputCn
+local ScreenGui, InputCn
 local IsShiftLockMode = true
 local IsShiftLocked = true
 local IsActionBound = false
-local IsInFirstPerson = false
+
 ShiftLockController.OnShiftLockToggled = Instance.new("BindableEvent")
 local function isShiftLockMode()
 	return LocalPlayer.DevEnableMouseLock

@@ -15,7 +15,7 @@ local module = {}
 --looks like this is a way to shuffle around pointers to actual channel objects.
 local channelsFromExternal = nil
 module.sendChannels = function(channels)
-	_annotate(string.format("received #channels", #channels))
+	--_annotate(string.format("received #channels", #channels))
 	channelsFromExternal = channels
 end
 

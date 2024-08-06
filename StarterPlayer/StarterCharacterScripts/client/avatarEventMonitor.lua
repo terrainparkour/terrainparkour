@@ -59,7 +59,7 @@ local artificiallyCheckForSwimming = function(character)
 	raycastParams.FilterDescendantsInstances = { character }
 	local rootPart = character:FindFirstChild("HumanoidRootPart") :: Part
 	if not rootPart or not rootPart:IsA("BasePart") then
-		_annotate("no rootpart.")
+		--_annotate("no rootpart.")
 		return
 	end
 	task.spawn(function()
@@ -84,7 +84,7 @@ local artificiallyCheckForSwimming = function(character)
 			--and raycasting appears not to work at all anyway.
 
 			if result and result.Material == Enum.Material.Water then
-				_annotate("faking swimming changestate.")
+				--_annotate("faking swimming changestate.")
 
 				local det = {
 					oldState = oldState,
@@ -110,7 +110,7 @@ local InputChanged = function(input: InputObject, gameProcessedEvent: boolean, k
 	if input.KeyCode == Enum.KeyCode.LeftShift then
 		local theType = input.UserInputState == Enum.UserInputState.Begin and mt.avatarEventTypes.KEYBOARD_WALK
 			or mt.avatarEventTypes.KEYBOARD_RUN
-		_annotate("typed, kind: " .. tostring(mt.avatarEventTypesReverse[theType]))
+		--_annotate("typed, kind: " .. tostring(mt.avatarEventTypesReverse[theType]))
 		fireEvent(theType, {})
 	end
 end
@@ -118,7 +118,7 @@ end
 ------------------ FIRE INITIAL CHAR ADDED EVENT ------------------
 
 module.Init = function()
-	_annotate(string.format("Init of avatarEventMonitor for %s", localPlayer.Name))
+	--_annotate(string.format("Init of avatarEventMonitor for %s", localPlayer.Name))
 	localPlayer = Players.LocalPlayer
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
@@ -127,7 +127,6 @@ module.Init = function()
 	nextTouchLegalityMustBeGreaterThan = 0
 	bufferTimeAfterRunUntilYouCanTouchASignAgain = 0.8
 	lastMaterial = humanoid.FloorMaterial
-	fireEvent(mt.avatarEventTypes.CHARACTER_ADDED, {})
 
 	---------------------- FLOOR -------------------
 
@@ -138,7 +137,7 @@ module.Init = function()
 				floorMaterial = currentMaterial,
 			}
 
-			_annotate(string.format("Floor material changed from %s to %s", lastMaterial.Name, currentMaterial.Name))
+			--_annotate(string.format("Floor material changed from %s to %s", lastMaterial.Name, currentMaterial.Name))
 			fireEvent(mt.avatarEventTypes.FLOOR_CHANGED, details)
 			lastMaterial = currentMaterial
 		end
@@ -151,12 +150,12 @@ module.Init = function()
 	-- immediately end up starting a new run from it. It's more natural to touch and "end"
 	-- and then have the choice to do that yourself.
 	-- why handle it here rather than racing? unclear. The prior system was over there.
-	local receiveAvatarEvent = function(ev: mt.avatarEvent)
+	local handleAvatarEvent = function(ev: mt.avatarEvent)
 		if ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
 			nextTouchLegalityMustBeGreaterThan = tick() + bufferTimeAfterRunUntilYouCanTouchASignAgain
 		end
 	end
-	AvatarEventBindableEvent.Event:Connect(receiveAvatarEvent)
+	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 
 	------- FIRE TOUCH SIGN ------------------
 	humanoid.Touched:Connect(function(hit)
@@ -182,7 +181,6 @@ module.Init = function()
 			local signId = enums.name2signId[hit.Name]
 
 			if signId == nil then
-				-- _annotate("weird. missing sign thing? " .. hit.Name)
 				return
 			end
 			local details: mt.avatarEventDetails = {
@@ -196,11 +194,15 @@ module.Init = function()
 	------------------ AVATAR STATES ---------------
 
 	humanoid.Died:Connect(function()
-		fireEvent(mt.avatarEventTypes.DIED, {})
+		fireEvent(mt.avatarEventTypes.AVATAR_DIED, {})
 	end)
 
 	localPlayer.CharacterRemoving:Connect(function(a0: Model)
 		fireEvent(mt.avatarEventTypes.CHARACTER_REMOVING, {})
+	end)
+
+	localPlayer.CharacterAdded:Connect(function(a0: Model)
+		fireEvent(mt.avatarEventTypes.CHARACTER_ADDED, {})
 	end)
 
 	-- this has a different sensitivity than the general changestate.
@@ -216,17 +218,17 @@ module.Init = function()
 			end
 
 			-- humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
-			_annotate("force swimming.")
-		--this should fire one right so we are picked up elsewhere?
+			--_annotate("force swimming.")
+			--this should fire one right so we are picked up elsewhere?
 		else --swimming just turned off
 			if currentState ~= Enum.HumanoidStateType.Swimming then
-				_annotate("swimming inactive fired but we are already not swimming, bailing.")
+				--_annotate("swimming inactive fired but we are already not swimming, bailing.")
 				return
 			end
 
-			_annotate(
-				"swimming turned off and we awere already swimming; turn it off asap. problem is, what to turn it to?"
-			)
+			--_annotate(
+			-- 	"swimming turned off and we awere already swimming; turn it off asap. problem is, what to turn it to?"
+			-- )
 			return
 		end
 	end)
@@ -267,14 +269,15 @@ module.Init = function()
 	-- as well as changes in direction, which can be used to trigger events or animations in the game.
 
 	humanoid:GetPropertyChangedSignal("MoveDirection"):Connect(function()
-		--fire if they change DIRECTION
 		local currentMoveDirection = humanoid.MoveDirection
 		if currentMoveDirection ~= oldMoveDirection then
-			fireEvent(mt.avatarEventTypes.CHANGE_DIRECTION, {
-				newMoveDirection = currentMoveDirection,
-				oldMoveDirection = oldMoveDirection,
-			})
 			oldMoveDirection = currentMoveDirection
+
+			if currentMoveDirection == Vector3.new(0, 0, 0) then
+				fireEvent(mt.avatarEventTypes.AVATAR_STOPPED, {})
+			else
+				fireEvent(mt.avatarEventTypes.AVATAR_STARTED_MOVING, {})
+			end
 		end
 	end)
 
@@ -292,14 +295,14 @@ module.Init = function()
 
 	-------- start artificial swimming check. -----------------
 	task.spawn(function()
-		_annotate(string.format("avatarEventMonitor.Init: artificiallyCheckForSwimming for %s", localPlayer.Name))
+		--_annotate(string.format("avatarEventMonitor.Init: artificiallyCheckForSwimming for %s", localPlayer.Name))
 		while true do
 			wait(1 / 30)
 			artificiallyCheckForSwimming(character)
 		end
 	end)
 
-	_annotate(string.format("avatarEventMonitor.Init: done for %s", localPlayer.Name))
+	--_annotate(string.format("avatarEventMonitor.Init: done for %s", localPlayer.Name))
 end
 
 _annotate("end")

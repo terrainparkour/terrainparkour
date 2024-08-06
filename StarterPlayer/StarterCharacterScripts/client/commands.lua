@@ -19,13 +19,14 @@ local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 ----------- GLOBALS -----------
 
 local function showSigns(signIds: { number }, extraText: string?)
-	_annotate("Client commands received: ShowSigns.")
+	--_annotate("Client commands received: ShowSigns.")
 	textHighlighting.KillAllExistingHighlights()
 	textHighlighting.DoHighlightMultiple(signIds)
 	if extraText then
 		--we want to chat it to the player:
 		local chatText = "You have " .. #signIds .. " signs that " .. extraText
 		-- localPlayer:Chat(chatText)
+		--TODO
 	end
 end
 

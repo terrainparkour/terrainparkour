@@ -106,7 +106,7 @@ local function dynamicControlServer(player: Player, input: tt.dynamicRunningCont
 					break
 				end
 				if pos == nil then
-					_annotate("player left." .. tostring(userId))
+					--_annotate("player left." .. tostring(userId))
 					break
 				end
 				assert(pos)
@@ -131,7 +131,7 @@ local function dynamicControlServer(player: Player, input: tt.dynamicRunningCont
 					--send frames out.
 					local player = PlayersService:GetPlayerByUserId(userId)
 					local s, e = pcall(function()
-						_annotate("fire frames to client.")
+						--_annotate("fire frames to client.")
 						dynamicRunningEvent:FireClient(player, frames)
 					end)
 					if not s then

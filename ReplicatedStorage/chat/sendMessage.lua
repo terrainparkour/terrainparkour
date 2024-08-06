@@ -24,7 +24,7 @@ end
 module.sendMessage = innerSendMsg
 
 module.usageCommandDesc = [[Admin Command examples:
-/awards [username] - show awards for you or someoneW else.
+/awards [username] - show awards for you or someone else.
 /badges - details on your badges.
 /beckon - invite people to join you.
 /challenge [signName] - Show whether everybody in this server has found this sign or not!

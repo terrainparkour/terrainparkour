@@ -11,7 +11,7 @@ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 local enums = require(game.ReplicatedStorage.util.enums)
-local localFunctions = require(game.ReplicatedStorage.localFunctions)
+local settings = require(game.ReplicatedStorage.settings)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 
@@ -296,40 +296,42 @@ module.createNewRunResultSgui = function(options: tt.pyUserFinishedRunResponse):
 
 	local signName = enums.signId2name[options.startSignId]
 	local warpRow: Frame = nil
-	--we will display a button to warp back to startId
-	local startSign = tpUtil.signId2Sign(options.startSignId)
-	if tpUtil.SignCanBeHighlighted(startSign) then
-		local uis = game:GetService("UserInputService")
-		local mobileText = ""
-		if uis.KeyboardEnabled then
-			mobileText = " [1]"
-		end
-
-		warpRow = addRow(
-			string.format("Warp back to %s%s", signName, mobileText),
-			frame,
-			heightsPixel.warp,
-			"warpRow",
-			colors.lightBlue
-		)
-		local useLastRunEnd = nil
-		if userWantsHighlightingWhenWarpingFromRunResults then
-			local endSign = tpUtil.signId2Sign(options.endSignId)
-			if tpUtil.SignCanBeHighlighted(endSign) then
-				useLastRunEnd = options.endSignId
+	if options.startSignId or not options.kind == "marathon results" then -- not a marathon.
+		--we will display a button to warp back to startId
+		local startSign = tpUtil.signId2Sign(options.startSignId)
+		if tpUtil.SignCanBeHighlighted(startSign) then
+			local uis = game:GetService("UserInputService")
+			local mobileText = ""
+			if uis.KeyboardEnabled then
+				mobileText = " [1]"
 			end
+
+			warpRow = addRow(
+				string.format("Warp back to %s%s", signName, mobileText),
+				frame,
+				heightsPixel.warp,
+				"warpRow",
+				colors.lightBlue
+			)
+			local useLastRunEnd = nil
+			if userWantsHighlightingWhenWarpingFromRunResults then
+				local endSign = tpUtil.signId2Sign(options.endSignId)
+				if tpUtil.SignCanBeHighlighted(endSign) then
+					useLastRunEnd = options.endSignId
+				end
+			end
+			local invisibleTextButton = Instance.new("TextButton")
+			invisibleTextButton.Position = warpRow.Position
+			invisibleTextButton.Size = UDim2.new(1, 0, 1, 0)
+			invisibleTextButton.Transparency = 1.0
+			invisibleTextButton.Text = "warp"
+			invisibleTextButton.TextScaled = true
+			invisibleTextButton.ZIndex = 20
+			invisibleTextButton.Parent = warpRow
+			invisibleTextButton.Activated:Connect(function()
+				warper.WarpToSign(options.startSignId, useLastRunEnd)
+			end)
 		end
-		local invisibleTextButton = Instance.new("TextButton")
-		invisibleTextButton.Position = warpRow.Position
-		invisibleTextButton.Size = UDim2.new(1, 0, 1, 0)
-		invisibleTextButton.Transparency = 1.0
-		invisibleTextButton.Text = "warp"
-		invisibleTextButton.TextScaled = true
-		invisibleTextButton.ZIndex = 20
-		invisibleTextButton.Parent = warpRow
-		invisibleTextButton.Activated:Connect(function()
-			warper.WarpToSign(options.startSignId, useLastRunEnd)
-		end)
 	end
 
 	local ypix = 0
@@ -362,12 +364,12 @@ local function handleUserSettingChanged(item: tt.userSettingValue): any
 	userWantsHighlightingWhenWarpingFromRunResults = item.value
 end
 
-localFunctions.RegisterLocalSettingChangeReceiver(
+settings.RegisterFunctionToListenForSettingName(
 	handleUserSettingChanged,
 	settingEnums.settingNames.HIGHLIGHT_ON_RUN_COMPLETE_WARP
 )
 
-local userSettingValue = localFunctions.getSettingByName(settingEnums.settingNames.HIGHLIGHT_ON_RUN_COMPLETE_WARP)
+local userSettingValue = settings.getSettingByName(settingEnums.settingNames.HIGHLIGHT_ON_RUN_COMPLETE_WARP)
 handleUserSettingChanged(userSettingValue)
 
 _annotate("end")

@@ -78,7 +78,7 @@ Update = function()
 		return true
 	end
 	if localPlayer.Character == nil or localPlayer.Character.PrimaryPart == nil then
-		_annotate("well this happened.")
+		--_annotate("well this happened.")
 		module.Kill()
 		return false
 	end
@@ -132,7 +132,7 @@ module.CreateRunProgressSgui = function(playerGui, startTimeTick, signName, pos)
 	-- store run const variables
 	-- non-const variables (such as the dynamic race text, etc.) will be updated via above.
 	if debounceCreateRunProgressSgui then
-		_annotate("debounceCreateRunProgressSgui.")
+		--_annotate("debounceCreateRunProgressSgui.")
 		return
 	end
 	debounceCreateRunProgressSgui = true

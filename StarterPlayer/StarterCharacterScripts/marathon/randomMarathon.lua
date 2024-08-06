@@ -1,7 +1,7 @@
 --!strict
 
---2022.02.25 generic marathon descriptors
---TODO not working but would be nice if it were! it's close.
+-- 2022.02.25 generic marathon descriptors
+-- TODO not working but would be nice if it were! it's close.
 -- generate random user-side marathon descriptors for managing touch, etc.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)

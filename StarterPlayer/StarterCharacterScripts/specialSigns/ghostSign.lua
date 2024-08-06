@@ -18,16 +18,20 @@ local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 -------------- MAIN --------------
 module.Kill = function()
+	--_annotate("ghostSign.Kill")
 	avatarManipulation.SetCharacterTransparency(localPlayer, 0)
 end
 
 module.Init = function()
+	--_annotate("ghostSign.Init")
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	avatarManipulation.SetCharacterTransparency(localPlayer, 0.9)
 end
 
-module.SawFloor = function(floorMaterial: Enum.Material?) end
+module.SawFloor = function(floorMaterial: Enum.Material?)
+	avatarManipulation.SetCharacterTransparency(localPlayer, 0)
+end
 
 _annotate("end")
 return module

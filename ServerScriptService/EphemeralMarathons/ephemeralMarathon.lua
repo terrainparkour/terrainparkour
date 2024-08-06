@@ -64,7 +64,7 @@ end
 local serverInvokeEphemeralMarathonComplete = function(player: Player, marathonId: number, runMilliseconds: number)
 	local can = findEphemeralMarathon(marathonId)
 	if can == nil then
-		_annotate("no such")
+		--_annotate("no such")
 		return
 	end
 	local em: mt.ephemeralMarathon = can :: mt.ephemeralMarathon

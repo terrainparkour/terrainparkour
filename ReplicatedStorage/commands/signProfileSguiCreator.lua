@@ -34,7 +34,6 @@ local function makeChip(ii: number, chipspec: tt.chipType, parent: Frame, width:
 		end
 		-- local len = math.max(#chipspec.toolTip * 2, 30)
 		toolTip.setupToolTip(
-			game.Players.LocalPlayer,
 			chip,
 			dividedTooltip,
 			UDim2.new(0.75, 0, 0.155, 0),

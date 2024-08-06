@@ -9,7 +9,7 @@ local enums = require(game.ReplicatedStorage.util.enums)
 local mt = require(game.ReplicatedStorage.avatarEventTypes)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
-local localFunctions = require(game.ReplicatedStorage.localFunctions)
+local settings = require(game.ReplicatedStorage.settings)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 
@@ -48,7 +48,7 @@ local colorPattern = {
 }
 
 module.KillAllExistingHighlights = function()
-	_annotate("Killing all existing highlights")
+	--_annotate("Killing all existing highlights")
 	for _, el in pairs(currentHighlights) do
 		if el then
 			el:Destroy()
@@ -60,17 +60,17 @@ end
 local function innerDoHighlight(sign: Part)
 	if not sign then
 		if config.isTestGame() then
-			_annotate("trying to highlight a nil sign?")
+			--_annotate("trying to highlight a nil sign?")
 		else
 			warn("trying to highlight a nil sign?")
 		end
 		return
 	end
 	if not tpUtil.SignCanBeHighlighted(sign) then
-		_annotate("cannot highlight sign from tputil." .. sign.Name)
+		--_annotate("cannot highlight sign from tputil." .. sign.Name)
 		return
 	end
-	_annotate(string.format("highlighting: %s", sign.Name))
+	--_annotate(string.format("highlighting: %s", sign.Name))
 	local billboardGui = Instance.new("BillboardGui")
 	billboardGui.Name = "FloatingText"
 	billboardGui.AlwaysOnTop = true
@@ -126,7 +126,7 @@ local function innerDoHighlight(sign: Part)
 			-- Remove the effect after the total lifetime
 			if elapsedTime > totalLifetime then
 				billboardGui:Destroy()
-				_annotate(string.format("killing highlighting: %s", sign.Name))
+				--_annotate(string.format("killing highlighting: %s", sign.Name))
 				connection:Disconnect()
 			end
 		end
@@ -139,7 +139,7 @@ module.PointPlayerAtSignId = function(signId: number)
 	if not sign then
 		return
 	end
-	_annotate("pointing player at sign" .. sign.Name)
+	--_annotate("pointing player at sign" .. sign.Name)
 	------------ point the player at the target -------------------
 	local humanoidRootPart: Part? = nil
 	if localPlayer and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -193,9 +193,9 @@ module.DoHighlightMultiple = function(signIds: { number })
 	end
 end
 
-local function receiveAvatarEvent(event: mt.avatarEvent)
+local function handleAvatarEvent(event: mt.avatarEvent)
 	if
-		event.eventType == mt.avatarEventTypes.DIED
+		event.eventType == mt.avatarEventTypes.AVATAR_DIED
 		or event.eventType == mt.avatarEventTypes.GET_READY_FOR_WARP
 		or event.eventType == mt.avatarEventTypes.RUN_COMPLETE
 		or event.eventType == mt.avatarEventTypes.RUN_KILL
@@ -217,18 +217,18 @@ module.Init = function()
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 	humanoid = character:WaitForChild("Humanoid")
 
-	AvatarEventBindableEvent.Event:Connect(receiveAvatarEvent)
+	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 
-	handleUserSettingChanged(localFunctions.getSettingByName(settingEnums.settingNames.HIGHLIGHT_AT_ALL))
+	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingNames.HIGHLIGHT_AT_ALL))
 	-- handleUserSettingChanged(
-	-- 	localFunctions.getSettingByName(settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION)
+	-- 	settings.getSettingByName(settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION)
 	-- )
 
-	localFunctions.RegisterLocalSettingChangeReceiver(
+	settings.RegisterFunctionToListenForSettingName(
 		handleUserSettingChanged,
 		settingEnums.settingNames.HIGHLIGHT_AT_ALL
 	)
-	-- localFunctions.RegisterLocalSettingChangeReceiver(
+	-- settings.RegisterLocalSettingChangeReceiver(
 	-- 	handleUserSettingChanged,
 	-- 	settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION
 	-- )

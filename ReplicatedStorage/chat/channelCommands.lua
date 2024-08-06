@@ -17,7 +17,7 @@ local badges = require(game.ServerScriptService.badges)
 local leaderboardBadgeEvents = require(game.ServerScriptService.leaderboardBadgeEvents)
 local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
 local banning = require(game.ServerScriptService.banning)
-local serverwarping = require(game.ServerScriptService.serverWarping)
+local serverWarping = require(game.ServerScriptService.serverWarping)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local PopularResponseTypes = require(game.ReplicatedStorage.types.PopularResponseTypes)
 local popular = require(game.ServerScriptService.data.popular)
@@ -367,16 +367,37 @@ module.anyBan = function(cmd, object): boolean
 	return true
 end
 
-module.warp = function(cmd, object, speaker): boolean
-	local res = serverwarping.WarpToSignName(speaker, object)
-	if not res then
-		local num: number = tonumber(object) :: number
-		res = serverwarping.WarpToSignId(speaker, num)
-		if not res then
-			res = serverwarping.WarpToUsername(speaker, object)
+-- warp to either a sign or a player by username.
+module.AdminOnlyWarp = function(cmd, object, speaker): boolean
+	local signId = tpUtil.looseSignName2SignId(object)
+	if signId then
+		local request: tt.serverWarpRequest = {
+			kind = "sign",
+			signId = signId,
+		}
+
+		serverWarping.RequestClientToWarpToWarpRequest(speaker, request)
+	else
+		local targetPlayer = tpUtil.looseGetPlayerFromUsername(object)
+		if targetPlayer == nil or targetPlayer.Character == nil then
+			--_annotate(
+			-- 	string.format("server command %s tried to warp but couldn't find player based on data: %s", cmd, object)
+			-- )
+			return false
 		end
+		--_annotate(string.format("WarpToUsername username=%s", object))
+		local pos = targetPlayer.Character.PrimaryPart.Position + Vector3.new(10, 20, 10)
+		if not pos then
+			warn("player not found in workspace")
+			return false
+		end
+		local request: tt.serverWarpRequest = {
+			kind = "position",
+			position = pos,
+		}
+		serverWarping.RequestClientToWarpToWarpRequest(speaker, request)
 	end
-	return res
+	return true
 end
 
 module.secret = function(speaker: Player, channel: any): boolean
@@ -556,8 +577,11 @@ end
 local lastRandomSignId1: number
 local lastRandomSignId2: number
 local lastRandomTicks: number
+
+-------- CONSTANTS ---------------
+local runTimeInSecondsWithoutBump = 50 --todo lengthen  this
+
 module.randomRace = function(speaker: Player, channel): boolean
-	local runTimeInSecondsWithoutBump = 36.6666 --todo lengthen  this
 	if config.isInStudio() then
 		runTimeInSecondsWithoutBump = 5
 	end
@@ -606,16 +630,16 @@ module.randomRace = function(speaker: Player, channel): boolean
 			candidateSignId2 = signIdChoices[math.random(#signIdChoices)]
 
 			if candidateSignId1 == nil then
-				_annotate("bad sign 1")
+				--_annotate("bad sign 1")
 				continue
 			end
 			if candidateSignId2 == nil then
-				_annotate("bad sign can 2id.")
+				--_annotate("bad sign can 2id.")
 				continue
 			end
 
 			if candidateSignId2 ~= candidateSignId1 then
-				_annotate(string.format("diff, keeping serverRace.. %s %s", candidateSignId1, candidateSignId2))
+				--_annotate(string.format("diff, keeping serverRace.. %s %s", candidateSignId1, candidateSignId2))
 				break
 			end
 			tries = tries + 1
@@ -658,8 +682,13 @@ module.randomRace = function(speaker: Player, channel): boolean
 			.. '. Use "/rr" to join too!'
 		sendMessage(channel, userJoinMes)
 		GrandCmdlineBadge(speaker.UserId)
-		serverwarping.WarpToSignId(speaker, candidateSignId1, candidateSignId2)
 
+		local request: tt.serverWarpRequest = {
+			kind = "sign",
+			signId = candidateSignId1,
+			highlightSignId = candidateSignId2,
+		}
+		serverWarping.RequestClientToWarpToWarpRequest(speaker, request)
 		--this thing notifies the channel about 15 second countdown ending.
 		if not reusingRace then
 			task.spawn(function()

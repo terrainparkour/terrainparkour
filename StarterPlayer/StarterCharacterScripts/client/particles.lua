@@ -70,11 +70,9 @@ end
 
 -- 2024: we monitor all incoming events and store ones which are relevant to movement per se.
 local handleAvatarEvent = function(ev: mt.avatarEvent)
-	-- warn("particles received: " .. mt.avatarEventTypesReverse[ev.eventType])
 	if not eventIsOkay(ev) then
 		return
 	end
-	-- _annotate(string.format("\tAccepted event: %s", mt.avatarEventTypesReverse[ev.eventType]))
 
 	if ev.eventType == mt.avatarEventTypes.DO_SPEED_CHANGE then
 		if ev.details.newSpeed > ev.details.oldSpeed then
@@ -92,16 +90,13 @@ local handleAvatarEvent = function(ev: mt.avatarEvent)
 		emitParticle(colors.lightBlue)
 	elseif ev.eventType == mt.avatarEventTypes.RUN_KILL then
 		emitParticle(colors.lightGreenPlush)
-	elseif ev.eventType == mt.avatarEventTypes.RESET_CHARACTER then
+	elseif ev.eventType == mt.avatarEventTypes.AVATAR_RESET then
 		emitParticle(colors.lightOrange)
 	elseif ev.eventType == mt.avatarEventTypes.RUN_START then
 		emitParticle(colors.brouText)
 	elseif ev.eventType == mt.avatarEventTypes.FLOOR_CHANGED then
 		emitParticle(colors.white)
 	elseif ev.eventType == mt.avatarEventTypes.STATE_CHANGED then
-		if not ev.details then
-			error("no details.?")
-		end
 		if ev.details.newState == Enum.HumanoidStateType.FallingDown then
 			emitParticle(colors.magenta)
 		elseif ev.details.newState == Enum.HumanoidStateType.Ragdoll then

@@ -1,16 +1,17 @@
 --!strict
 
---  ShiftGUI
+-- ShiftGUI
+-- in-rojo copy of my production version of this so users can modify it.
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local MobileCameraFramework = {}
 local players = game:GetService("Players")
 local runservice = game:GetService("RunService")
-local CAS = game:GetService("ContextActionService")
+local ContextActionService = game:GetService("ContextActionService")
 local player = players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
-local root = character:WaitForChild("HumanoidRootPart")
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 local humanoid = character.Humanoid
 local camera = workspace.CurrentCamera
 local button = script.Parent
@@ -34,16 +35,20 @@ end
 local function UpdateAutoRotate(BOOL)
 	humanoid.AutoRotate = BOOL
 end
-local function GetUpdatedCameraCFrame(ROOT, CAMERA)
+local function GetUpdatedCameraCFrame(CAMERA)
 	return CFrame.new(
-		root.Position,
-		Vector3.new(CAMERA.CFrame.LookVector.X * MAX_LENGTH, root.Position.Y, CAMERA.CFrame.LookVector.Z * MAX_LENGTH)
+		humanoidRootPart.Position,
+		Vector3.new(
+			CAMERA.CFrame.LookVector.X * MAX_LENGTH,
+			humanoidRootPart.Position.Y,
+			CAMERA.CFrame.LookVector.Z * MAX_LENGTH
+		)
 	)
 end
 local function EnableShiftlock()
 	UpdateAutoRotate(false)
 	UpdateImage("ON")
-	root.CFrame = GetUpdatedCameraCFrame(root, camera)
+	humanoidRootPart.CFrame = GetUpdatedCameraCFrame(camera)
 	camera.CFrame = camera.CFrame * ENABLED_OFFSET
 end
 local function DisableShiftlock()
@@ -66,8 +71,8 @@ function ShiftLock()
 		DisableShiftlock()
 	end
 end
-local ShiftLockButton = CAS:BindAction("ShiftLOCK", ShiftLock, false, "On")
-CAS:SetPosition("ShiftLOCK", UDim2.new(0.8, 0, 0.8, 0))
+ContextActionService:BindAction("ShiftLOCK", ShiftLock, false, "On")
+ContextActionService:SetPosition("ShiftLOCK", UDim2.new(0.8, 0, 0.8, 0))
 button.MouseButton1Click:Connect(function()
 	if not active then
 		active = runservice.RenderStepped:Connect(function()

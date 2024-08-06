@@ -29,15 +29,15 @@ module.replServerEvent = function(serverEvent: tt.runningServerEvent): string
 end
 
 --just re-get the outer lbframe by name.
-local function getLbFrame(): Frame
+local function getLbServerEventFrame(): Frame
 	-- wait(1) --TODO remove and fix.
 	--TODO 2024 commented out the wait.
-	local pl = localPlayer:WaitForChild("PlayerGui")
-	local ret = pl:FindFirstChild("LeaderboardFrame", true)
-	if ret == nil then
+	local playerGui = localPlayer:WaitForChild("PlayerGui")
+	local serverEventFrame = playerGui:FindFirstChild("3LeaderboardServerEventFrame", true)
+	if serverEventFrame == nil then
 		warn("no lb")
 	end
-	return ret
+	return serverEventFrame
 end
 
 local function makeTile(el: tt.runningServerEventUserBest, ii: number, isMe: boolean, width: number): Frame
@@ -48,6 +48,7 @@ local function makeTile(el: tt.runningServerEventUserBest, ii: number, isMe: boo
 	frame.BackgroundTransparency = 1
 
 	local hh = Instance.new("UIListLayout")
+	hh.Name = "Tile-hh"
 	hh.Parent = frame
 	hh.FillDirection = Enum.FillDirection.Horizontal
 	local im = Instance.new("ImageLabel")
@@ -84,12 +85,12 @@ local function makeTile(el: tt.runningServerEventUserBest, ii: number, isMe: boo
 	end
 
 	local ttText = string.format("%s %0.3fs %s%s", el.username, el.timeMs / 1000, tpUtil.getCardinalEmoji(ii), extra)
-	toolTip.setupToolTip(localPlayer, frame, ttText, UDim2.new(0, #el.username * 13, 0, 30), false)
+	toolTip.setupToolTip(frame, ttText, UDim2.new(0, #el.username * 13, 0, 30), false)
 	return frame
 end
 
 local function determineServerEventRowName(serverEvent: tt.runningServerEvent): string
-	return string.format("b-%04d-%s-serverEvent", serverEvent.serverEventNumber, serverEvent.name)
+	return string.format("B-%04d-%s-serverEvent", serverEvent.serverEventNumber, serverEvent.name)
 end
 
 local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId: number): Frame
@@ -109,10 +110,14 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 	row2frame.Size = UDim2.new(1, 0, 0.5, 0)
 	row2frame.BackgroundTransparency = 1
 	local hh = Instance.new("UIListLayout")
+	hh.Name = "serverEvent-row1-hh"
 	hh.Parent = row1frame
+	hh.HorizontalFlex = Enum.UIFlexAlignment.Fill
 	hh.FillDirection = Enum.FillDirection.Horizontal
 	local hh2 = Instance.new("UIListLayout")
+	hh2.Name = "serverEvent-row2-hh"
 	hh2.Parent = row2frame
+	hh2.HorizontalFlex = Enum.UIFlexAlignment.Fill
 	hh2.FillDirection = Enum.FillDirection.Horizontal
 	row1frame.Parent = frame
 	row2frame.Parent = frame
@@ -132,7 +137,7 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 		guiUtil.getTl("01-serverEvent-name", UDim2.fromScale(nameWidth, 1), 3, row1frame, colors.defaultGrey, 1, 0)
 
 	nameTl.Text = combined
-	toolTip.setupToolTip(localPlayer, nameTl, raceToolTip, UDim2.new(0, 70, 0, 30), false)
+	toolTip.setupToolTip(nameTl, raceToolTip, UDim2.new(0, 70, 0, 30), false)
 
 	--prize tile
 	local prizeTl =
@@ -149,14 +154,7 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 	end
 
 	-- awardMouseoverText = "No prizes during testing"
-	toolTip.setupToolTip(
-		localPlayer,
-		prizeTl,
-		awardMouseoverText,
-		UDim2.new(0, 150, 0, lines * 24),
-		false,
-		Enum.TextXAlignment.Left
-	)
+	toolTip.setupToolTip(prizeTl, awardMouseoverText, UDim2.new(0, 150, 0, lines * 24), false, Enum.TextXAlignment.Left)
 
 	--remaining tile
 	local remainingTl = guiUtil.getTl(
@@ -242,22 +240,50 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 	return frame
 end
 
+local function setSize()
+	local lb = getLbServerEventFrame()
+	local runningEvents = lb:GetChildren()
+	local count = 0
+	for _, event in pairs(runningEvents) do
+		if event.ClassName == "Frame" then
+			count += 1
+		end
+	end
+	local height = serverEventEnums.serverEventRowHeight * count
+	lb.Size = UDim2.new(1, 0, 0, height)
+end
+
 module.updateEventVisually = function(serverEvent: tt.runningServerEvent, userId: number)
-	_annotate("update" .. module.replServerEvent(serverEvent))
-	local lb = getLbFrame()
+	--_annotate("update" .. module.replServerEvent(serverEvent))
+	local lbServerEventFrame = getLbServerEventFrame()
+	while true do
+		task.wait(0.1)
+		print("wait..")
+		lbServerEventFrame = getLbServerEventFrame()
+		if lbServerEventFrame ~= nil then
+			break
+		end
+	end
+	if lbServerEventFrame == nil then
+		error("zx")
+	end
 	local lbServerEventRowName = determineServerEventRowName(serverEvent)
-	local exi: Frame = lb:FindFirstChild(lbServerEventRowName, true)
+
+	local exi: Frame = lbServerEventFrame:FindFirstChild(lbServerEventRowName, true)
 	if exi then
 		exi:Destroy()
 	end
 
 	exi = makeNewServerEventRow(serverEvent, userId)
-	exi.Parent = lb
+	exi.Position = UDim2.new(0, 0, 0, 0)
+	exi.Size = UDim2.new(1, -4, 0, 40)
+	exi.Parent = lbServerEventFrame
+	setSize()
 end
 
 module.endEventVisually = function(serverEvent: tt.runningServerEvent)
-	_annotate("ending" .. module.replServerEvent(serverEvent))
-	local lb = getLbFrame()
+	--_annotate("ending" .. module.replServerEvent(serverEvent))
+	local lb = getLbServerEventFrame()
 	local lbServerEventRowName = determineServerEventRowName(serverEvent)
 	local exi = lb:FindFirstChild(lbServerEventRowName)
 	if exi then
@@ -265,6 +291,7 @@ module.endEventVisually = function(serverEvent: tt.runningServerEvent)
 	else
 		-- warn("no serverEvent to descroy. hmm.")
 	end
+	setSize()
 end
 
 -- remotes.getBindableEvent("ServerEventLocalClientWarpBindableEvent")

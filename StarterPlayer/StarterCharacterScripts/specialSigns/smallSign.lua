@@ -27,7 +27,7 @@ end
 module.Init = function()
 	-- originalScale = 1
 	-- activeScaleMultiplerAbsolute = originalScale
-	-- _annotate("Player shranken.")
+	--_annotate("Player shranken.")
 	-- local newMultipler = originalScale / activeScaleMultiplerAbsolute / 2
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid

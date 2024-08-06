@@ -44,37 +44,37 @@ task.spawn(function()
 	if not doHttpMonitoring then
 		return
 	end
-	_annotate("starting HTTP monitor loop: 5s")
+	--_annotate("starting HTTP monitor loop: 5s")
 	while true do
-		_annotate(string.format("\n\t%0.0f httpremaining=%d", tick(), httpremaining))
-		_annotate(
-			string.format(
-				"GET in last 5s: success=%d fail=%d wait=%d",
-				getRequestSuccessCounter,
-				getRequestFailCounter,
-				getWaitCounter
-			)
-		)
+		--_annotate(string.format("\n\t%0.0f httpremaining=%d", tick(), httpremaining))
+		--_annotate(
+		-- string.format(
+		-- 	"GET in last 5s: success=%d fail=%d wait=%d",
+		-- 	getRequestSuccessCounter,
+		-- 	getRequestFailCounter,
+		-- 	getWaitCounter
+		-- )
+		-- )
 		getRequestSuccessCounter = 0
 		getRequestFailCounter = 0
 		getWaitCounter = 0
 
-		_annotate(
-			string.format(
-				"POST in last 5s: success=%d fail=%d wait=%d retry=%d, retryS=%d retryF=%d, dcode=%d",
-				postSuccessCount,
-				postFailureCount,
-				postWaitCounter,
-				postRetryCount,
-				postRetrySuccessCount,
-				postRetryFailureCount,
-				postDecodeFailCount
-			)
-		)
+		--_annotate(
+		-- 	string.format(
+		-- 		"POST in last 5s: success=%d fail=%d wait=%d retry=%d, retryS=%d retryF=%d, dcode=%d",
+		-- 		postSuccessCount,
+		-- 		postFailureCount,
+		-- 		postWaitCounter,
+		-- 		postRetryCount,
+		-- 		postRetrySuccessCount,
+		-- 		postRetryFailureCount,
+		-- 		postDecodeFailCount
+		-- 	)
+		-- )
 
-		for u, c in pairs(urlCounts) do
-			_annotate(string.format("counts: %d - %s", c, u))
-		end
+		-- for u, c in pairs(urlCounts) do
+		--_annotate(string.format("counts: %d - %s", c, u))
+		-- end
 
 		postSuccessCount = 0
 		postFailureCount = 0
@@ -111,10 +111,10 @@ module.httpThrottledJsonGet = function(url: string): any
 				if config.isInStudio() then
 					--if you break here, it's likely that httpservice is off. enable in game settings.
 					local cleanUrl: string = string.split(url, "?")[1]
-					_annotate("Error doing httpGet. " .. err .. "clean url:\n" .. cleanUrl)
+					--_annotate("Error doing httpGet. " .. err .. "clean url:\n" .. cleanUrl)
 				else
 					local cleanUrl: string = string.split(url, "?")[1]
-					_annotate("Error doing httpGet. " .. err .. "clean url: " .. cleanUrl)
+					--_annotate("Error doing httpGet. " .. err .. "clean url: " .. cleanUrl)
 				end
 				wait(waitTime)
 				continue
@@ -124,7 +124,7 @@ module.httpThrottledJsonGet = function(url: string): any
 				ret = HttpService:JSONDecode(res)
 			end)
 			if not success2 then
-				_annotate("Error doing decode. " .. err2 .. res)
+				--_annotate("Error doing decode. " .. err2 .. res)
 				wait(waitTime)
 				continue
 			end
@@ -148,8 +148,8 @@ module.httpThrottledJsonPost = function(url: string, data: any): any
 		if httpremaining > 0 then
 			httpremaining -= 1
 			local loggingUrl = "POST:" .. string.split(url, "?")[1]
-			_annotate(loggingUrl)
-			_annotate(post)
+			--_annotate(loggingUrl)
+			--_annotate(post)
 			if not urlCounts[loggingUrl] then
 				urlCounts[loggingUrl] = 1
 			end
@@ -163,8 +163,8 @@ module.httpThrottledJsonPost = function(url: string, data: any): any
 				postSuccessCount += 1
 			else
 				postFailureCount += 1
-				_annotate(string.format("error getting url. retrying.	%s %s", url, error))
-				_annotate(error)
+				--_annotate(string.format("error getting url. retrying.	%s %s", url, error))
+				--_annotate(error)
 
 				--we have to pre-emptively steal an http request...
 				httpremaining -= 1
@@ -187,7 +187,7 @@ module.httpThrottledJsonPost = function(url: string, data: any): any
 			end)
 			if not success2 then
 				postDecodeFailCount += 1
-				_annotate("Error doing decode. " .. err2 .. res)
+				--_annotate("Error doing decode. " .. err2 .. res)
 				wait(waitTime)
 				continue
 			end

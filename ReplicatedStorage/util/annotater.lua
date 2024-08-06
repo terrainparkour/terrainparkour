@@ -4,18 +4,27 @@
 
 local module = {}
 
+--effectively the global erver start tick.
+local startTick = tick()
+
 local aliases = { LocalScript = "local", Script = "script", ModuleScript = "module" }
 
 -- this controls which annotate calls are actually shown. Enter the minimal script name here regardless of client/module/script etc.
 local goodScripts = { "movement", "avatarEventMonitor", "avatarEventFiring", "serverWarping" }
 goodScripts = { "warper", "dynamicRunning", "main", "movement" }
-goodScripts = { "morphs", "runProgressSgui", "angerSign" }
-goodScripts = { "leaderboard", "minimizeability", "draggability", "resizeability" }
+
+goodScripts = { "warper", "serverWarping", "ghostSign", "morphs", "avatarEventFiring", "avatarManipulation" }
+goodScripts = { "movement" }
+goodScripts = {}
 
 local showAllRegardless = false
 -- showAllRegardless = true
 
 local register = function(s: Script | ModuleScript | LocalScript): string
+	if startTick == nil then
+		startTick = tick()
+		print(string.format("%s setting startTick. %0.5f", s.Name, startTick))
+	end
 	local scriptType = ""
 	local sname = ""
 	if not s or s == nil then
@@ -86,13 +95,11 @@ module.getAnnotater = function(s: Script | ModuleScript | LocalScript)
 		doAnnotation = true
 	end
 
-	local startTick = tick()
 	local label = s.Name
 	local theLabel = label
-	local theStartTick = startTick
 	totalDone[myname] = false
 	local function annotate(input: string | any)
-		if input == "end" then
+		if input == "end" and false then
 			local gap = tick() - startTick
 			if gap > 0.1 then
 				print(string.format("%s (%s) done in %0.2fs", myname, s.ClassName, gap))
@@ -102,9 +109,9 @@ module.getAnnotater = function(s: Script | ModuleScript | LocalScript)
 		end
 		if doAnnotation then
 			if typeof(input) == "string" then
-				print(string.format("%s %0.3f %s", theLabel, tick() - theStartTick, input))
+				print(string.format("%0.3f %s --- %s", tick() - startTick, theLabel, input))
 			else
-				print(string.format("  %s %0.3f", theLabel, tick() - theStartTick))
+				print(string.format("  %0.3f %s   - ", tick() - startTick, theLabel))
 			end
 		end
 	end
@@ -112,23 +119,25 @@ module.getAnnotater = function(s: Script | ModuleScript | LocalScript)
 end
 
 module.Init = function()
-	task.spawn(function()
-		while true do
-			wait(5)
+	if false then
+		task.spawn(function()
+			while true do
+				wait(5)
 
-			local bad = false
-			for k, v in pairs(totalDone) do
-				if not v then
-					print(k, v)
-					bad = true
+				local bad = false
+				for k, v in pairs(totalDone) do
+					if not v then
+						print(k, v)
+						bad = true
+					end
 				end
+				if not bad then
+					break
+				end
+				warn("after:5s")
 			end
-			if not bad then
-				break
-			end
-			warn("after:5s")
-		end
-	end)
+		end)
+	end
 end
 
 return module

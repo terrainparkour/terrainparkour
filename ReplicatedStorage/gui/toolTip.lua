@@ -8,10 +8,8 @@ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
 
-local vscdebug = require(game.ReplicatedStorage.vscdebug)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local localPlayer: Player = Players.LocalPlayer
 ------------------ SETUP ------------------
 local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
@@ -29,7 +27,8 @@ local ephemeralToolTipFrameName = "EphemeralTooltip"
 local tooltipAge = 0
 
 local function DestroyToolTips(killYoungerThan: number?)
-	local ttgui = localPlayer.PlayerGui:FindFirstChild("ToolTipGui")
+	local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
+	local ttgui = playerGui:FindFirstChild("ToolTipGui")
 	if not ttgui then
 		return
 	end
@@ -101,7 +100,6 @@ end
 
 --right=they float right+down rather than left+down from cursor. default is right.
 module.setupToolTip = function(
-	localPlayer: Player,
 	target: TextLabel | TextButton | ImageLabel | Frame,
 	tooltipContents: string | ImageLabel | { string }, --when its a {string} we make a grid of insane mouseover sign names which highlight.
 	size: UDim2,
@@ -129,10 +127,11 @@ module.setupToolTip = function(
 		tooltipAge += 1
 		myAge = tooltipAge
 		-- reuse the ttgui
-		local ttgui = localPlayer.PlayerGui:FindFirstChild("ToolTipGui")
+		local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
+		local ttgui = playerGui:FindFirstChild("ToolTipGui")
 		if ttgui == nil then
 			ttgui = Instance.new("ScreenGui")
-			ttgui.Parent = localPlayer.PlayerGui
+			ttgui.Parent = playerGui
 			ttgui.Name = "ToolTipGui"
 			ttgui.Enabled = true
 		end

@@ -75,7 +75,7 @@ local function makeBadgeRowFrame(
 	)
 
 	badgeNameLabel.Text = badge.name
-	toolTip.setupToolTip(localPlayer, badgeNameLabel, badge.hint or "", toolTip.enum.toolTipSize.NormalText)
+	toolTip.setupToolTip( badgeNameLabel, badge.hint or "", toolTip.enum.toolTipSize.NormalText)
 
 	badgeNameLabel.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -216,7 +216,6 @@ getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	end
 
 	for ii, userId in ipairs(orderedUserIdsInServer) do
-		-- print(userId)
 		local username = "usernameFor:" .. tostring(userId)
 
 		local s, e = pcall(function()
@@ -266,7 +265,7 @@ getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 		img.Name = string.format("02.%s.badgePortrait", username)
 		img.Parent = thisUserFrame
 		img.BorderMode = Enum.BorderMode.Outline
-		toolTip.setupToolTip(localPlayer, img, localPlayer.Name, UDim2.new(0, 200, 0, 60))
+		toolTip.setupToolTip( img, localPlayer.Name, UDim2.new(0, 200, 0, 60))
 	end
 
 	--note the individual attainments ARE in teh right order here.

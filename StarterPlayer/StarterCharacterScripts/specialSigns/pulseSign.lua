@@ -26,7 +26,7 @@ local DoLaunchForPulse = function()
 	if pulseLaunchDebounce then
 		return
 	end
-	_annotate("DEB.DoLaunchForPulse")
+	--_annotate("DEB.DoLaunchForPulse")
 	pulseLaunchDebounce = true
 
 	local daysSince1970 = os.difftime(

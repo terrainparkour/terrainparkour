@@ -331,8 +331,13 @@ export type movementHistoryQueueItem = { action: number, time: number }
 ------------------------ LEADERBOARD ------------------------
 export type leaderboardUserDataChange = { key: string, oldValue: number, newValue: number }
 
-
-
+-- details on a server initiated server warp request
+export type serverWarpRequest = {
+	kind: string,
+	signId: number?,
+	highlightSignId: number?,
+	position: Vector3?,
+}
 
 _annotate("end")
 return {}

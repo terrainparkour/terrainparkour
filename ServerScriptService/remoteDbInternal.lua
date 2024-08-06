@@ -303,8 +303,8 @@ module.remoteGet = function(kind: string, data: any): any
 	local st = tick()
 	local res = httpservice.httpThrottledJsonGet(surl)
 	if config.isInStudio() or data.userId == enums.objects.TerrainParkour then
-		-- _annotate(string.format("DONE %0.3f %s", tick() - st, url))
-		_annotate(string.format("remoteDbInternal.remoteGet took: %0.3f %s", tick() - st, url))
+		--_annotate(string.format("DONE %0.3f %s", tick() - st, url))
+		--_annotate(string.format("remoteDbInternal.remoteGet took: %0.3f %s", tick() - st, url))
 	end
 	if not res.banned then
 		afterRemoteDbActions(kind, res)
@@ -327,10 +327,10 @@ module.remotePost = function(kind: string, data: any)
 	res.userId = tonumber(res.userId)
 	if config.isInStudio() or data.userId == enums.objects.TerrainParkour then
 		data.secret = nil
-		_annotate(string.format("%0.3f kind: " .. kind .. " url:" .. url, tick() - st))
-		_annotate(data)
-		_annotate(res)
-		_annotate(string.format("roundtrip endpoint time: %0.3f ", tick() - st))
+		--_annotate(string.format("%0.3f kind: " .. kind .. " url:" .. url, tick() - st))
+		--_annotate(data)
+		--_annotate(res)
+		--_annotate(string.format("roundtrip endpoint time: %0.3f ", tick() - st))
 	end
 
 	task.spawn(function()

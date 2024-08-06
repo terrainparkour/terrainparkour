@@ -16,19 +16,22 @@ localPlayer.CameraMaxZoomDistance = 8999
 local movement = require(game.StarterPlayer.StarterCharacterScripts.client.movement)
 local morphs = require(game.StarterPlayer.StarterCharacterScripts.client.morphs)
 local particles = require(game.StarterPlayer.StarterCharacterScripts.client.particles)
-local banMonitor = require(game.StarterPlayer.StarterCharacterScripts.client.banMonitor)
+
 local notifier = require(game.StarterPlayer.StarterCharacterScripts.client.notifier)
 local serverEvents = require(game.StarterPlayer.StarterCharacterScripts.client.serverEvents)
--- local t = require(game.StarterPlayer.StarterCharacterScripts.client.joinTesting)
+
 local leaderboard = require(game.StarterPlayer.StarterCharacterScripts.client.leaderboard)
 local avatarEventMonitor = require(game.StarterPlayer.StarterCharacterScripts.client.avatarEventMonitor)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 local commands = require(game.StarterPlayer.StarterCharacterScripts.client.commands)
 local textHighlighting = require(game.ReplicatedStorage.gui.textHighlighting)
+local settings = require(game.ReplicatedStorage.settings)
 local racing = require(game.StarterPlayer.StarterCharacterScripts.client.racing)
 local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
+
 local keyboard = require(game.StarterPlayer.StarterCharacterScripts.client.keyboard)
+local mt = require(game.ReplicatedStorage.avatarEventTypes)
 
 ---------- CALL INIT ON ALL THOSE THINGS SINCE THEY'RE STILL LOADED ONLY ONE TIME even if the user resets or dies etc. -----------
 local setup = function()
@@ -38,7 +41,7 @@ local setup = function()
 	morphs.Init()
 	particles.Init()
 	notifier.Init()
-
+	settings.Reset()
 	serverEvents.Init()
 	leaderboard.Init()
 	avatarEventMonitor.Init()
@@ -52,18 +55,21 @@ local setup = function()
 	print("client main setup done.")
 end
 
-_annotate("outer layer of main.client.")
+--_annotate("outer layer of main.client.")
 setup()
 
---- UGH handling resetting avatars is super nasty. why?----------------------
+--- if you reset we "kill" you (but not send .DIED??) --
 local resetBindable = Instance.new("BindableEvent")
 resetBindable.Event:Connect(function()
-	print("the player reset now.")
+	local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
+	local fireEvent = avatarEventFiring.FireEvent
+	fireEvent(mt.avatarEventTypes.AVATAR_RESET, {})
+	-- _annotate("the player reset now.")
 	if character and humanoid then
-		print("killin player")
+		-- print("killin player")
 		humanoid.Health = 0
 	else
-		print("failed killin player")
+		warn("failed killin player")
 	end
 	local didDie = false
 	while true do

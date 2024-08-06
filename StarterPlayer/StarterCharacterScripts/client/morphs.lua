@@ -36,25 +36,47 @@ local activeRunSignModule = nil
 
 ----------- FUNCTIONS -----------
 
+local debouncHandleAvatarEvent = false
 local function handleAvatarEvent(ev: mt.avatarEvent)
 	--- initial section just check for warps.
+	while debouncHandleAvatarEvent do
+		-- _annotate("waiting to handle avatar event.")
+		wait(0.1)
+	end
+	debouncHandleAvatarEvent = true
+
 	if ev.eventType == mt.avatarEventTypes.GET_READY_FOR_WARP then
 		isMorphBlockedByWarp = true
 		activeScaleMultiplerAbsolute = 1
 		avatarManipulation.ResetPhysicalAvatarMorphs(humanoid, character)
-		avatarManipulation.ResetMomentum(humanoid, character)
+		avatarManipulation.AnchorCharacter(humanoid, character)
+		if activeRunSignModule then
+			activeRunSignModule.Kill()
+		end
 		fireEvent(mt.avatarEventTypes.MORPHING_WARPER_READY, {})
+		debouncHandleAvatarEvent = false
 		return
-	elseif ev.eventType == mt.avatarEventTypes.WARP_DONE then
+	elseif ev.eventType == mt.avatarEventTypes.WARP_DONE_RESTART_MORPHS then
 		activeScaleMultiplerAbsolute = 1
 		avatarManipulation.ResetPhysicalAvatarMorphs(humanoid, character)
 		avatarManipulation.ResetMomentum(humanoid, character)
+		avatarManipulation.AnchorCharacter(humanoid, character)
+		if activeRunSignModule then
+			activeRunSignModule.Kill()
+		end
 		isMorphBlockedByWarp = false
+		fireEvent(mt.avatarEventTypes.MORPHING_RESTARTED, {})
+		avatarManipulation.UnAnchorCharacter(humanoid, character)
+		debouncHandleAvatarEvent = false
 		return
 	end
 
 	if isMorphBlockedByWarp then
-		_annotate("morphing warping ignored event:" .. mt.avatarEventTypesReverse[ev.eventType])
+		--_annotate(
+		-- 	"rejected utterly incorporating this because blocked by warp. "
+		-- 		.. avatarEventFiring.DescribeEvent(ev.eventType, ev.details)
+		-- )
+		debouncHandleAvatarEvent = false
 		return
 	end
 
@@ -69,6 +91,10 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 		avatarManipulation.ResetMomentum(humanoid, character)
 		activeRunSignModule = nil
 	elseif ev.eventType == mt.avatarEventTypes.RUN_START then
+		if activeRunSignModule then
+			warn("how can you start a run again with an existing run ongoing? %s" .. tostring(activeRunSignModule))
+			activeRunSignModule.Kill()
+		end
 		activeRunSignModule = nil
 		avatarManipulation.ResetMomentum(humanoid, character)
 		if ev.details.relatedSignName == "Pulse" then
@@ -85,13 +111,14 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 		if activeRunSignModule then
 			activeRunSignModule.Init()
 		end
+		debouncHandleAvatarEvent = false
 		return
 	elseif ev.eventType == mt.avatarEventTypes.FLOOR_CHANGED then
 		if activeRunSignModule then
 			activeRunSignModule.SawFloor(ev.details.floorMaterial)
 		end
-		return
 	end
+	debouncHandleAvatarEvent = false
 end
 
 ----- set player to fast update health. theoretically this survives everywhere?
@@ -104,7 +131,6 @@ local healthUpdaterSignal = hb:Connect(function()
 	if tick() - lastHealTick > 0.1 and humanoid.Health < humanoid.MaxHealth and humanoid.Health > 0 then
 		humanoid.Health = math.min(humanoid.Health + 1, humanoid.MaxHealth)
 		humanoid:SetAttribute("LastHeal", tick())
-		-- _annotate("healed one.")
 	end
 end)
 

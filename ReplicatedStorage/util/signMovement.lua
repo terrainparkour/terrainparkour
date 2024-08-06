@@ -19,7 +19,6 @@ local module = {}
 
 module.rotate = function(sign: Part)
 	if not sign and not config.isInStudio() then
-		warn("no sign2")
 		return
 	end
 	task.spawn(function()
@@ -37,7 +36,6 @@ end
 
 module.rotateMeshpart = function(sign: MeshPart)
 	if not sign and not config.isInStudio() then
-		warn("no sign3")
 		return
 	end
 	task.spawn(function()
@@ -55,7 +53,6 @@ end
 
 module.riseandspin = function(sign: Part)
 	if not sign and config.isInStudio() then
-		warn("no sign4")
 		return
 	end
 	task.spawn(function()
@@ -83,7 +80,6 @@ end
 module.fadeInSign = function(sign: Part)
 	if not sign then
 		if config.isInStudio() and not config.isTestGame() then
-			warn("no sign5")
 		end
 		return
 	end

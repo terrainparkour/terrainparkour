@@ -1,5 +1,6 @@
 --!strict
 
+-- marathonStatic. 2024 Not sure why this is organized this way.
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
@@ -9,9 +10,8 @@ local colors = require(game.ReplicatedStorage.util.colors)
 local mt = require(game.StarterPlayer.StarterPlayerScripts.marathonTypes)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 
----------STATIC--------------
 -------NAMES----------
-module.getMarathonKindFrameName = function(desc: mt.marathonDescriptor): string
+module.GetMarathonKindFrameName = function(desc: mt.marathonDescriptor): string
 	local targetName = "MarathonFrame_" .. desc.highLevelType .. "_" .. desc.sequenceNumber
 	return targetName
 end
@@ -102,7 +102,7 @@ module.makeTileForSubcomponent = function(
 	if usePadding == nil then
 		usePadding = 0
 	end
-	local tl = guiUtil.getTl(name, UDim2.new(0, xscale, 1, 0), usePadding, fakeParent, colors.defaultGrey, 1)
+	local tl = guiUtil.getTl(name, UDim2.new(0, xscale, 1, 0), usePadding, fakeParent, colors.defaultGrey, 1, 0)
 	-- tl.Parent.BorderMode = Enum.BorderMode.Outline
 
 	--TODO fix this - override hack because keys are 2digit numbers and for display in this case we want to fix.
@@ -115,7 +115,6 @@ module.makeTileForSubcomponent = function(
 	end
 	tl.Text = key
 	tl.ZIndex = zindex
-
 	return tl.Parent
 end
 
@@ -152,19 +151,40 @@ local marathonSizesByHighlevelType: { [string]: marathonTileSize } = {
 	findSet = findSetSizes,
 }
 
+-- in place, modify current offsetsX to reinterpret them as a proportion of the total width available.
+-- in the end, unecessary
+local function reconsiderOffsetXInTilesAsScale(tiles: table)
+	local totalXOffsetwidth = 0
+	for _, tl in ipairs(tiles) do
+		if tl.ClassName == "TextLabel" then
+			totalXOffsetwidth += tl.Size.X.Offset
+		end
+	end
+	for _, tl in ipairs(tiles) do
+		if tl.ClassName == "TextLabel" then
+			local scaleProportionXWidth = (tl.Size.X.Offset / totalXOffsetwidth)
+			--TODO very strange we need this 0.7 here.
+			tl.Size = UDim2.new(scaleProportionXWidth, 0, 1, 0)
+		end
+	end
+	return
+end
+
 module.marathonSizesByType = marathonSizesByHighlevelType
 --get the toggleable marathon tiles
 module.getComponentTilesForKind = function(desc: mt.marathonDescriptor, tiles: { TextLabel }, lbFrameSize: Vector2)
 	local sz = module.marathonSizesByType[desc.highLevelType]
-	local rnd = math.random(1, 10)
+
 	local areaForChips = (lbFrameSize.X - sz.nameRes - sz.timeRes - sz.resetRes)
 	if desc.highLevelType == "randomrace" then
-		local tls = module.makeTileForSubcomponent(desc, desc.orderedTargets[1], areaForChips / 2, 1 + rnd)
+		local tls = module.makeTileForSubcomponent(desc, desc.orderedTargets[1], areaForChips / 2, 3)
 		table.insert(tiles, tls)
-		local tle = module.makeTileForSubcomponent(desc, desc.orderedTargets[2], areaForChips / 2, 2 + rnd)
+
+		local tle = module.makeTileForSubcomponent(desc, desc.orderedTargets[2], areaForChips / 2, 4)
 		table.insert(tiles, tle)
-		return
+		error("this is disabled actoually.")
 	end
+
 	--types for which we should make a chip for every item in targets or orderedTargets
 	if
 		desc.highLevelType == "alphabetical"
@@ -184,11 +204,11 @@ module.getComponentTilesForKind = function(desc: mt.marathonDescriptor, tiles: {
 			--if effectiveTargets has nothing?
 			local thisWidth = math.ceil(remainingLetterWidth / (#effectiveTargets - ii + 1))
 			remainingLetterWidth -= thisWidth
-			local tl = module.makeTileForSubcomponent(desc, k, thisWidth, ii + rnd)
+			local tl = module.makeTileForSubcomponent(desc, k, thisWidth, ii + 5)
 			table.insert(tiles, tl)
 		end
 	elseif desc.highLevelType == "findn" or desc.highLevelType == "findnletters" then
-		local tl = module.makeTileForSubcomponent(desc, desc.humanName, areaForChips, 1 + rnd)
+		local tl = module.makeTileForSubcomponent(desc, desc.humanName, areaForChips, 6)
 		tl.Text = desc.humanName
 		tl.Size = UDim2.new(0, areaForChips, 1, 0)
 		table.insert(tiles, tl)
@@ -200,6 +220,7 @@ module.getComponentTilesForKind = function(desc: mt.marathonDescriptor, tiles: {
 	local timeTile = Instance.new("TextLabel")
 	timeTile.Name = module.getTimeTileName(desc)
 	timeTile.Text = ""
+	timeTile.AutomaticSize = Enum.AutomaticSize.X
 	timeTile.BackgroundColor3 = colors.meColor
 	timeTile.TextScaled = true
 	timeTile.Size = UDim2.new(0, sz.timeRes, 1, 0)
@@ -207,6 +228,7 @@ module.getComponentTilesForKind = function(desc: mt.marathonDescriptor, tiles: {
 	desc.timeTile = timeTile
 
 	table.insert(tiles, timeTile)
+	-- reconsiderOffsetXInTilesAsScale(tiles)
 end
 
 ------------END STATIC

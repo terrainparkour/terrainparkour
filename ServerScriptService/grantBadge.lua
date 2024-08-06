@@ -89,7 +89,7 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 	local player = PlayersService:GetPlayerByUserId(userId)
 	notify.notifyPlayerAboutBadge(player, badgeOptions)
 
-	local userBadgeCount = badges.getBadgeCountByUser(player.UserId)
+	local thisUserbadgeCount = badges.getBadgeCountByUser(player.UserId)
 	for _, otherPlayer in ipairs(PlayersService:GetPlayers()) do
 		--tell everyone about badge get
 		local relativeDescriptor = ""
@@ -118,12 +118,12 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 			relativeDescriptor,
 			fakeStudio
 		)
-		leaderboardBadgeEvents.updateBadgeLb(player, otherPlayer.UserId, userBadgeCount)
+		leaderboardBadgeEvents.updateBadgeLb(player, otherPlayer.UserId, thisUserbadgeCount)
 
 		notify.notifyPlayerAboutBadge(otherPlayer, { userId = userId, text = otherText, kind = "badge received" })
 	end
 
-	if userBadgeCount >= 100 then
+	if thisUserbadgeCount >= 100 then
 		module.GrantBadge(userId, badgeEnums.badges.BadgeFor100Badges)
 	end
 

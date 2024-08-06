@@ -17,11 +17,11 @@ module.kill = function()
 	if Stone then
 		Stone = false
 	end
-	_annotate("killed")
+	--_annotate("killed")
 end
 
 module.Init = function()
-	if humanoid.velocity > 0 and Stone then
+	if humanoid.Velocity > 0 and Stone then
 		Moved = true
 		humanoid.Velocity = Vector3.new(0, 0, 0)
 		humanoid.PlatformStand = true
@@ -30,7 +30,7 @@ module.Init = function()
 		task.wait(3)
 		--change back the avatar to be normal again here
 		humanoid.PlatformStand = false
-	elseif humanoid.velocity > 0 then
+	elseif humanoid.Velocity > 0 then
 		Moved = true
 	end
 

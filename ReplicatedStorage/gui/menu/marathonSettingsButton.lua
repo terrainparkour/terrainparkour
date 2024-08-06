@@ -1,13 +1,19 @@
 --!strict
 
+-- marathonSettingsButton
+-- the button that opens the marathon settings from the leaderboard.
+-- ideally it'd auto-redraw the marathons but 2024 this seems not to be working.
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
+local settings = require(game.ReplicatedStorage.settings)
 local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+local settingSort = require(game.ReplicatedStorage.settingSort)
 
 local PlayersService = game:GetService("Players")
 
@@ -17,10 +23,11 @@ local function makeSettingRowFrame(setting: tt.userSettingValue, player: Player,
 	local fr = Instance.new("Frame")
 	fr.Name = string.format("33-%04d", n) .. "setting." .. setting.name
 	fr.Size = UDim2.new(1, 0, 0, 30)
-	local vv = Instance.new("UIListLayout")
-	vv.FillDirection = Enum.FillDirection.Horizontal
-	vv.SortOrder = Enum.SortOrder.Name
-	vv.Parent = fr
+	local hh = Instance.new("UIListLayout")
+	hh.Name = "settingRowFrameHH"
+	hh.FillDirection = Enum.FillDirection.Horizontal
+	hh.SortOrder = Enum.SortOrder.Name
+	hh.Parent = fr
 	local label = guiUtil.getTl("0", UDim2.new(0.2, 0, 1, 0), 4, fr, colors.defaultGrey, 1)
 	label.TextScaled = false
 	label.Text = setting.domain
@@ -44,7 +51,6 @@ local function makeSettingRowFrame(setting: tt.userSettingValue, player: Player,
 		toggleButton.Text = "No"
 	end
 
-	local localFunctions = require(game.ReplicatedStorage.localFunctions)
 	toggleButton.Activated:Connect(function()
 		if toggleButton.Text == "No" then
 			toggleButton.Text = "Yes"
@@ -52,59 +58,53 @@ local function makeSettingRowFrame(setting: tt.userSettingValue, player: Player,
 			local par = toggleButton.Parent :: TextLabel
 			par.BackgroundColor3 = colors.greenGo
 			setting.value = true
-			localFunctions.setSetting(setting)
+			settings.setSetting(setting)
 		else
 			toggleButton.Text = "No"
 			toggleButton.BackgroundColor3 = colors.redStop
 			local par = toggleButton.Parent :: TextLabel
 			par.BackgroundColor3 = colors.redStop
 			setting.value = false
-			localFunctions.setSetting(setting)
+			settings.setSetting(setting)
 		end
 	end)
 
 	return fr
 end
 
-local function settingSort(a: tt.userSettingValue, b: tt.userSettingValue): boolean
-	if a.domain ~= b.domain then
-		return a.domain < b.domain
-	end
-	return a.name < b.name
-end
-
---we already have clientside stuff whic hgets initial settings value.
+--we already have clientside stuff which gets initial settings value.
 local getSettingsModal = function(localPlayer: Player): ScreenGui
 	local userId = localPlayer.UserId
 	local sg = Instance.new("ScreenGui")
 	sg.Name = "SettingsSgui"
 
-	local localFunctions = require(game.ReplicatedStorage.localFunctions)
 	--just get marathon settings.
 	local userSettings: { [string]: tt.userSettingValue } =
-		localFunctions.getSettingByDomain(settingEnums.settingDomains.MARATHONS)
+		settings.getSettingByDomain(settingEnums.settingDomains.MARATHONS)
 
 	local settings = {}
 	for _, setting in pairs(userSettings) do
 		table.insert(settings, setting)
 	end
-	table.sort(settings, settingSort)
+	table.sort(settings, settingSort.SettingSort)
 
 	local outerFrame = Instance.new("Frame")
 	outerFrame.Parent = sg
 	outerFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
 	outerFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
-	local vv2 = Instance.new("UIListLayout")
-	vv2.FillDirection = Enum.FillDirection.Vertical
-	vv2.Parent = outerFrame
+	local vv = Instance.new("UIListLayout")
+	vv.Name = "SettingsModalVV"
+	vv.FillDirection = Enum.FillDirection.Vertical
+	vv.Parent = outerFrame
 
 	local headerFrame = Instance.new("Frame")
 	headerFrame.Parent = outerFrame
 	headerFrame.Name = "1"
 	headerFrame.Size = UDim2.new(1, 0, 0, 20)
-	local vv = Instance.new("UIListLayout")
-	vv.FillDirection = Enum.FillDirection.Horizontal
-	vv.Parent = headerFrame
+	local hh = Instance.new("UIListLayout")
+	hh.FillDirection = Enum.FillDirection.Horizontal
+	hh.Parent = headerFrame
+	hh.Name = "SettingsModalHeaderHH"
 	local tl = guiUtil.getTl("1", UDim2.new(0.2, 0, 0, 20), 4, headerFrame, colors.blueDone, 1)
 	tl.Text = "Type"
 
@@ -126,6 +126,7 @@ local getSettingsModal = function(localPlayer: Player): ScreenGui
 	scrollingFrame.VerticalScrollBarInset = Enum.ScrollBarInset.Always
 	scrollingFrame.CanvasSize = UDim2.new(1, 0, 1, 0)
 	local vv = Instance.new("UIListLayout")
+	vv.Name = "SettingsModalVV2"
 	vv.FillDirection = Enum.FillDirection.Vertical
 	vv.Parent = scrollingFrame
 
@@ -153,11 +154,11 @@ local marathonSettingsButton: gt.actionButton = {
 	name = "Marathon Settings",
 	contentsGetter = getSettingsModal,
 	hoverHint = "Configure Marathons",
-	shortName = "Marathons",
+	shortName = "Mara-\nthons",
 	getActive = function()
 		return true
 	end,
-	widthPixels = 50,
+	widthXScale = 0.2,
 }
 
 module.marathonSettingsButton = marathonSettingsButton
