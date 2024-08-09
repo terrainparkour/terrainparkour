@@ -307,14 +307,17 @@ export type userSignSignRelationship = {
 	isCwr: boolean,
 }
 
+export type relatedRace = { totalRunnerCount: number, signId: number, signName: string }
+
 export type playerSignProfileData = {
 	signName: string,
 	signId: number,
 	relationships: { userSignSignRelationship },
-	unrunCwrs: { string }, --limited selection. This is the signNames
-	unrunSigns: { string }, --EXCLUDES unrunCwrs
+	unrunCwrs: { relatedRace }, --limited selection. This is the signNames followed by parentheticals with the number of times they've been run total
+	unrunRaces: { relatedRace }, --EXCLUDES unrunCwrs. like, 'Wilson (10)'
 	username: string,
 	userId: number, --the SUBJECT userid.
+	neverRunSignIds: { number },
 }
 
 --local sign clickability - left and right clicks do diff things.
@@ -323,8 +326,16 @@ export type signClickMessage = {
 	signId: number,
 	userId: number,
 }
-export type chipType = { text: string, widthWeight: number?, bgcolor: Color3?, toolTip: string? }
-export type rowDescriptor = (playerSignProfileData) -> { chipType }
+
+--a chip that appears in a row for a placement level, DNP or unrun, for cwr races/noncwr races on sign profiles.
+export type signProfileChipType = {
+	text: string,
+	clicker: TextButton?,
+	widthWeight: number?,
+	bgcolor: Color3?,
+}
+
+export type rowDescriptor = (playerSignProfileData) -> { signProfileChipType }
 
 export type movementHistoryQueueItem = { action: number, time: number }
 

@@ -380,12 +380,12 @@ module.AdminOnlyWarp = function(cmd, object, speaker): boolean
 	else
 		local targetPlayer = tpUtil.looseGetPlayerFromUsername(object)
 		if targetPlayer == nil or targetPlayer.Character == nil then
-			--_annotate(
-			-- 	string.format("server command %s tried to warp but couldn't find player based on data: %s", cmd, object)
-			-- )
+			_annotate(
+				string.format("server command %s tried to warp but couldn't find player based on data: %s", cmd, object)
+			)
 			return false
 		end
-		--_annotate(string.format("WarpToUsername username=%s", object))
+		_annotate(string.format("WarpToUsername username=%s", object))
 		local pos = targetPlayer.Character.PrimaryPart.Position + Vector3.new(10, 20, 10)
 		if not pos then
 			warn("player not found in workspace")
@@ -630,16 +630,16 @@ module.randomRace = function(speaker: Player, channel): boolean
 			candidateSignId2 = signIdChoices[math.random(#signIdChoices)]
 
 			if candidateSignId1 == nil then
-				--_annotate("bad sign 1")
+				_annotate("bad sign 1")
 				continue
 			end
 			if candidateSignId2 == nil then
-				--_annotate("bad sign can 2id.")
+				_annotate("bad sign can 2id.")
 				continue
 			end
 
 			if candidateSignId2 ~= candidateSignId1 then
-				--_annotate(string.format("diff, keeping serverRace.. %s %s", candidateSignId1, candidateSignId2))
+				_annotate(string.format("diff, keeping serverRace.. %s %s", candidateSignId1, candidateSignId2))
 				break
 			end
 			tries = tries + 1
@@ -647,6 +647,7 @@ module.randomRace = function(speaker: Player, channel): boolean
 				warn("failure to gen rr race sign.")
 				break
 			end
+			_annotate("stuck in starting server event")
 		end
 		lastRandomTicks = myTick
 	end

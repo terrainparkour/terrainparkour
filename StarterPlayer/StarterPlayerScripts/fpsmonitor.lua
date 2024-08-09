@@ -36,11 +36,10 @@ local function HeartbeatUpdate()
 
 	local fps = ct()
 	if fps > 99 and not config.isInStudio() then
-		print("fps " .. tostring(fps))
+		_annotate("fps " .. tostring(fps))
 	end
 
 	st = st2
-	-- print(lastFrames)
 end
 task.spawn(function()
 	wait(15)
@@ -50,7 +49,7 @@ end)
 task.spawn(function()
 	while true do
 		wait(10) --
-		print("physics FPS" .. tostring(game.Workspace:GetRealPhysicsFPS()))
+		_annotate("physics FPS" .. tostring(game.Workspace:GetRealPhysicsFPS()))
 		break
 	end
 end)

@@ -1,9 +1,8 @@
 --!strict
 
+-- dynamicRunning
 -- draw a ui which appends uis on nearby found sign statuses
 
---used on client to kick off sending loops
---10.09 bugfixing why this breaks servers
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
@@ -15,6 +14,7 @@ local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local settings = require(game.ReplicatedStorage.settings)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local dynamicRunningEnums = require(game.ReplicatedStorage.dynamicRunningEnums)
+local textHighlighting = require(game.ReplicatedStorage.gui.textHighlighting)
 
 local PlayersService = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -57,12 +57,12 @@ local hasReset = false
 
 --destroy all UIs and nuke the pointer dict to them
 module.endDynamic = function(force: boolean?)
-	--_annotate("endDynamic, force:" .. tostring(force))
+	_annotate("endDynamic, force:" .. tostring(force))
 	if not (force or dynamicRunningEnabled) then
 		return
 	end
 
-	--_annotate("endDynamic, real")
+	_annotate("endDynamic, real")
 	startDynamicDebounce = true
 
 	for k, v in pairs(targetSignUis) do
@@ -90,6 +90,7 @@ module.resetDynamicTiming = function(startTick: number)
 	if not dynamicRunningEnabled then
 		return
 	end
+	_annotate("resetDynamicTiming")
 	dynamicStartTick = startTick
 end
 
@@ -102,7 +103,7 @@ module.startDynamic = function(player: Player, signName: string, startTick: numb
 	task.spawn(function()
 		while startDynamicDebounce do
 			wait(0.1)
-			--_annotate("waited for dynamic start debounce")
+			_annotate("waited for dynamic start debounce")
 		end
 		startDynamicDebounce = true
 		dynamicStartTick = startTick
@@ -149,11 +150,6 @@ local function makeDynamicSignMouseoverUI(from: string, to: string): TextLabel?
 	textLabel.TextScaled = false
 	local sign = tpUtil.signName2Sign(to)
 	bbgui.Parent = sign
-
-	-- local uiStroke2 = Instance.new("UIStroke")
-	-- uiStroke2.Color = colors.white
-	-- uiStroke2.Thickness = 2
-	-- uiStroke2.Parent = textLabel
 
 	local uiStroke = Instance.new("UIStroke")
 	uiStroke.Color = colors.black
@@ -282,7 +278,7 @@ local function lock(src: string?)
 		src = ""
 	end
 	while debounce do
-		--_annotate("debounce lock. " .. src)
+		_annotate("debounce lock. " .. src)
 		wait(0.05)
 	end
 	debounce = true
@@ -292,7 +288,7 @@ local function unlock()
 	debounce = false
 end
 
-local function add(dynamicRunFrame: tt.DynamicRunFrame, from)
+local function addSignToDynamicLabelStore(dynamicRunFrame: tt.DynamicRunFrame, from)
 	table.insert(dynamicRunFrames, dynamicRunFrame)
 	local tl = getOrCreateUI(from, dynamicRunFrame.targetSignName)
 
@@ -346,7 +342,7 @@ local function handleOne(dynamicRunFrame: tt.DynamicRunFrame)
 end
 
 local function fullReset()
-	--_annotate("full dynamic running reset")
+	_annotate("full dynamic running reset")
 	lock()
 	for _, item in ipairs(textLabelStore) do
 		item.Parent.Parent:Destroy()
@@ -358,23 +354,23 @@ end
 
 local function receiveDynamicRunData(updates: tt.dynamicRunFromData)
 	if not dynamicRunningEnabled then
-		--_annotate("received but dynamic running disabled")
+		_annotate("received but dynamic running disabled")
 		return
 	end
-	--_annotate(string.format("Apply dynamicRunning %d %s", #updates.frames, updates.fromSignName))
+	_annotate(string.format("Apply dynamicRunning %d %s", #updates.frames, updates.fromSignName))
 	lock()
 	for _, dynamicRunFrame: tt.DynamicRunFrame in ipairs(updates.frames) do
 		if dynamicRunFrame.targetSignName == "👻" then
 			--we just magically don't do dynamic running at all TO ghost.
 			continue
 		end
-		add(dynamicRunFrame, updates.fromSignName)
+		addSignToDynamicLabelStore(dynamicRunFrame, updates.fromSignName)
 	end
 	unlock()
 end
 
 local function setupRenderStepped()
-	--_annotate("starting render stepped")
+	_annotate("starting render stepped")
 
 	renderStepped = RunService.RenderStepped:Connect(function()
 		local st = tick()
@@ -418,7 +414,7 @@ local function handleUserSettingChanged(setting: tt.userSettingValue)
 				--also destroy them all.
 				dynamicRunningEnabled = false
 				renderStepped:Disconnect()
-				--_annotate("kill renderstepped")
+				_annotate("kill renderstepped")
 				module.endDynamic(true)
 			end
 		end

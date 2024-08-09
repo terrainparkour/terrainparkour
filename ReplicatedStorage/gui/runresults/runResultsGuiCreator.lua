@@ -14,7 +14,6 @@ local enums = require(game.ReplicatedStorage.util.enums)
 local settings = require(game.ReplicatedStorage.settings)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
-
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local TweenService = game:GetService("TweenService")
 
@@ -96,7 +95,6 @@ local function addRow(
 	if bgcolor == nil then
 		bgcolor = colors.defaultGrey
 	end
-	assert(bgcolor)
 
 	local frame = Instance.new("Frame")
 	frame.Parent = parent
@@ -151,7 +149,8 @@ local function addPlayerPastResultRow(parent: Frame, runEntry: tt.runEntry, useC
 	img.BorderMode = Enum.BorderMode.Inset
 	img.Name = "2.runresult.Image"
 	img.Size = UDim2.new(0, heightsPixel.row, 1, 0)
-	local content = thumbnails.getThumbnailContent(runEntry.userId, Enum.ThumbnailType.HeadShot)
+	local content =
+		thumbnails.getThumbnailContent(runEntry.userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 	img.Image = content
 	img.BackgroundColor3 = useColor
 	img.BorderSizePixel = 0
@@ -177,7 +176,7 @@ module.createNewRunResultSgui = function(options: tt.pyUserFinishedRunResponse):
 	options.userId = tonumber(options.userId) :: number
 	local raceResultSgui = Instance.new("ScreenGui")
 	raceResultSgui.Name = string.format("RaceResultSgui-%s", options.raceName)
-
+	raceResultSgui.IgnoreGuiInset = true
 	local raceResultFrameName = string.format("raceResultFrame%s", options.raceName)
 	local frame: Frame = Instance.new("Frame")
 	frame.Name = raceResultFrameName
@@ -329,7 +328,7 @@ module.createNewRunResultSgui = function(options: tt.pyUserFinishedRunResponse):
 			invisibleTextButton.ZIndex = 20
 			invisibleTextButton.Parent = warpRow
 			invisibleTextButton.Activated:Connect(function()
-				warper.WarpToSign(options.startSignId, useLastRunEnd)
+				warper.WarpToSignId(options.startSignId, useLastRunEnd)
 			end)
 		end
 	end

@@ -72,7 +72,7 @@ end
 local function endServerEvent(serverEvent: tt.runningServerEvent): boolean
 	while debounceEventUpdater do
 		wait(1)
-		--_annotate("waitng to end event.")
+		_annotate("waitng to end event.")
 	end
 	debounceEventUpdater = true
 	local pos = nil
@@ -86,7 +86,7 @@ local function endServerEvent(serverEvent: tt.runningServerEvent): boolean
 	end
 	table.remove(activeRunningServerEvents, pos)
 	debounceEventUpdater = false
-	--_annotate("senidng end from server for: " .. serverEvent.name)
+	_annotate("senidng end from server for: " .. serverEvent.name)
 	ServerEventRemoteEvent:FireAllClients(serverEventEnums.messageTypes.END, serverEvent)
 	local allocations = serverEventEnums.getTixAllocation(serverEvent)
 
@@ -119,7 +119,7 @@ local function setupRunningServerEventKiller()
 						end
 					end)
 					if not s then
-						--_annotate("failure to end even.t")
+						_annotate("failure to end even.t")
 						warn(e)
 					end
 				end
@@ -142,16 +142,16 @@ local function getTixValueOfServerEvent(ev: tt.runningServerEvent): number
 		distmultipler = math.sqrt(ev.distance / 1000)
 	end
 	local res = math.floor(w1 * math.sqrt(seenUsers) * distmultipler)
-	--_annotate("new tix value of event. " .. tostring(res))
-	--_annotate(ev)
+	_annotate("new tix value of event. " .. tostring(res))
+	_annotate(ev)
 	return res
 end
 
 local function startServerEvent(data: tt.ServerEventCreateType): tt.runningServerEvent | nil
 	--pick a random start and randome end, set it up dumbly as possible.
-	--_annotate("startevent " .. tostring(data.userId))
+	_annotate("startevent " .. tostring(data.userId))
 	if #activeRunningServerEvents >= serverEventLimitCount then
-		--_annotate("startevent.over the limit")
+		_annotate("startevent.over the limit")
 		return
 	end
 
@@ -308,8 +308,8 @@ end
 
 --version which returns.
 local function serverReceiveFunction(player: Player, message: string, data: tt.ServerEventCreateType)
-	--_annotate("receive event " .. message)
-	--_annotate(data)
+	_annotate("receive event " .. message)
+	_annotate(data)
 	--hhmm maybe overkill here, but why not just periodally
 
 	if message == serverEventEnums.messageTypes.CREATE then
@@ -355,7 +355,7 @@ end
 local function receiveRunFinishFromServer(data: tt.serverFinishRunNotifierType)
 	while debounceEventUpdater do
 		wait(1)
-		--_annotate("waint for debouncEventUpdater")
+		_annotate("waint for debouncEventUpdater")
 	end
 	debounceEventUpdater = true
 	for _, serverEvent in ipairs(activeRunningServerEvents) do
@@ -376,14 +376,14 @@ local function receiveRunFinishFromServer(data: tt.serverFinishRunNotifierType)
 end
 
 module.Init = function()
-	--_annotate("setup serverEvents")
+	_annotate("setup serverEvents")
 	setupRunningServerEventKiller()
 	ServerEventRemoteFunction.OnServerInvoke = function(player: Player, message: string, data: any): any
 		return serverReceiveFunction(player, message, data)
 	end
 	local ServerEventBindableEvent = remotes.getBindableEvent("ServerEventBindableEvent")
 	ServerEventBindableEvent.Event:Connect(receiveRunFinishFromServer)
-	--_annotate("setup serverEvents.done")
+	_annotate("setup serverEvents.done")
 end
 
 _annotate("end")

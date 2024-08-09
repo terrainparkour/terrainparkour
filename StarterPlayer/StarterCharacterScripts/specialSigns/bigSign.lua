@@ -15,17 +15,17 @@ local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 ----------- GLOBALS -----------
 
 -------------- MAIN --------------
-module.Kill = function()
+module.InformRunEnded = function()
 	character:ScaleTo(1)
 end
 
-module.Init = function()
+module.InformRunStarting = function()
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	character:ScaleTo(2)
 end
 
-module.SawFloor = function(floorMaterial: Enum.Material?) end
+module.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?) end
 
 _annotate("end")
 return module

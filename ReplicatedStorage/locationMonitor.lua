@@ -13,7 +13,7 @@ local playerLocations: { Vector3 } = {}
 module.Init = function()
 	--this is disabled now.
 	task.spawn(function()
-		--_annotate("starting player location monitor.")
+		_annotate("starting player location monitor.")
 		while true do
 			wait(1)
 			for _, player in ipairs(game.Players:GetPlayers()) do

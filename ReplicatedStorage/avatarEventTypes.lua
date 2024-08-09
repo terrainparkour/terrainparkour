@@ -35,43 +35,44 @@ local avatarEventTypes: { [string]: number } = {
 	CHARACTER_ADDED = 1, --when the character is added.
 	RUN_START = 2,
 	RUN_COMPLETE = 3,
-	RUN_KILL = 31,
-	RETOUCH_SIGN = 4,
-	TOUCH_SIGN = 5, --distinct from retouch, end, run_start.
+	RUN_KILL = 4,
+	RETOUCH_SIGN = 5,
+	TOUCH_SIGN = 6, --distinct from retouch, end, run_start.
 
 	-- CHANGE_DIRECTION = 6, --this is the roblox property, which contains both the movement vector3 (direction), which also will turn to 0,0,0 if the player totally stops.
 	FLOOR_CHANGED = 7,
 	STATE_CHANGED = 8, --this is where we load all swimming, jumping
-	AVATAR_STOPPED = 108, --since change direction is sent way too often when currently all we actually care about is if they have stopped
-	AVATAR_STARTED_MOVING = 109,
+	AVATAR_STOPPED_MOVING = 9, --since change direction is sent way too often when currently all we actually care about is if they have stopped
+	AVATAR_STARTED_MOVING = 10,
+	AVATAR_CHANGED_DIRECTION = 101,
 
-	AVATAR_RESET = 9, -- resetting avatar.
+	AVATAR_RESET = 11, -- resetting avatar.
 
-	KEYBOARD_WALK = 10, --inputs from keyboard.
-	KEYBOARD_RUN = 11,
+	KEYBOARD_WALK = 12, --inputs from keyboard.
+	KEYBOARD_RUN = 13,
 
-	RESET_MORPHS = 12,
+	RESET_MORPHS = 14,
 
-	DO_SPEED_CHANGE = 13, --when I do my own, movementV2 related speedups.
-	DO_JUMPPOWER_CHANGE = 14,
+	DO_SPEED_CHANGE = 15, --when I do my own, movementV2 related speedups.
+	DO_JUMPPOWER_CHANGE = 16,
 
-	DIED = 28,
-	CHARACTER_REMOVING = 30,
-	GET_READY_FOR_WARP = 34, -------warper sends this out to shut down other options for users.
-	MORPHING_WARPER_READY = 35,
-	MOVEMENT_WARPER_READY = 36,
-	RACING_WARPER_READY = 37,
-	MARATHON_WARPER_READY = 38,
+	AVATAR_DIED = 17,
+	CHARACTER_REMOVING = 18,
+	GET_READY_FOR_WARP = 19, -------warper sends this out to shut down other options for users.
+	MORPHING_WARPER_READY = 20,
+	MOVEMENT_WARPER_READY = 21,
+	RACING_WARPER_READY = 22,
+	MARATHON_WARPER_READY = 23,
 
-	WARP_DONE_RESTART_MORPHS = 46,
-	WARP_DONE_RESTART_MOVEMENT = 47,
-	WARP_DONE_RESTART_RACING = 48,
-	WARP_DONE_RESTART_MARATHONS = 49,
+	WARP_DONE_RESTART_MORPHS = 50,
+	WARP_DONE_RESTART_MOVEMENT = 51,
+	WARP_DONE_RESTART_RACING = 52,
+	WARP_DONE_RESTART_MARATHONS = 53,
 
-	MORPHING_RESTARTED = 50,
-	MOVEMENT_RESTARTED = 51,
-	RACING_RESTARTED = 52,
-	MARATHON_RESTARTED = 53,
+	MORPHING_RESTARTED = 54,
+	MOVEMENT_RESTARTED = 55,
+	RACING_RESTARTED = 56,
+	MARATHON_RESTARTED = 57,
 }
 
 local avatarEventTypesReverse = {}

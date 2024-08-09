@@ -207,7 +207,11 @@ module.setSignPosition = function(data: any)
 end
 
 --look up dynamic run stats for the signs included, which are likely ones which the user is approaching
-module.dynamicRunFrom = function(userId: number, startSignId: number, targetSignIds: { number })
+module.dynamicRunFrom = function(
+	userId: number,
+	startSignId: number,
+	targetSignIds: { number }
+): tt.dynamicRunFromData | nil
 	local targetSignIdsString = {}
 	for ii, el in ipairs(targetSignIds) do
 		table.insert(targetSignIdsString, tostring(el))

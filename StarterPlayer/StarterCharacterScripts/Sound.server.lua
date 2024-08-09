@@ -50,7 +50,6 @@ local function CreateNewSound(name, id, looped, pitch, parent, volume: number?)
 		volume = 0.65
 	end
 	sound.Volume = volume
-	--_annotate(name)
 	sound.Parent = parent
 
 	if DefaultServerSoundEvent then

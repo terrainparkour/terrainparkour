@@ -58,31 +58,31 @@ local function SetupASignVisually(part: Part)
 		child:Destroy()
 	end
 
-	local sguiName = "SignGui_" .. part.Name
-	local sGui = Instance.new("SurfaceGui")
-	sGui.Name = sguiName
-	sGui.Parent = part
+	local signGuiName = "SignGui_" .. part.Name
+	local surfaceGui = Instance.new("SurfaceGui")
+	surfaceGui.Name = signGuiName
+	surfaceGui.Parent = part
 
 	local canvasSize: Vector2
 
 	if enums.useLeftFaceSignNames[part.Name] then
 		canvasSize = Vector2.new(part.Size.Y * 30, part.Size.X * 30)
-		sGui.Face = Enum.NormalId.Left
+		surfaceGui.Face = Enum.NormalId.Left
 	else
 		canvasSize = Vector2.new(part.Size.Z * 30, part.Size.X * 30)
-		sGui.Face = Enum.NormalId.Top
+		surfaceGui.Face = Enum.NormalId.Top
 	end
-	sGui.CanvasSize = canvasSize
-	sGui.Brightness = 1.5
+	surfaceGui.CanvasSize = canvasSize
+	surfaceGui.Brightness = 1.5
 
-	sGui.Parent.TopSurface = Enum.SurfaceType.Smooth
-	sGui.Parent.BottomSurface = Enum.SurfaceType.Smooth
-	sGui.Parent.LeftSurface = Enum.SurfaceType.Smooth
-	sGui.Parent.RightSurface = Enum.SurfaceType.Smooth
-	sGui.Parent.FrontSurface = Enum.SurfaceType.Smooth
-	sGui.Parent.BackSurface = Enum.SurfaceType.Smooth
+	surfaceGui.Parent.TopSurface = Enum.SurfaceType.Smooth
+	surfaceGui.Parent.BottomSurface = Enum.SurfaceType.Smooth
+	surfaceGui.Parent.LeftSurface = Enum.SurfaceType.Smooth
+	surfaceGui.Parent.RightSurface = Enum.SurfaceType.Smooth
+	surfaceGui.Parent.FrontSurface = Enum.SurfaceType.Smooth
+	surfaceGui.Parent.BackSurface = Enum.SurfaceType.Smooth
 
-	local children = sGui:GetChildren()
+	local children = surfaceGui:GetChildren()
 	for _, c in ipairs(children) do
 		if c:IsA("TextLabel") then
 			c:Destroy()
@@ -90,7 +90,7 @@ local function SetupASignVisually(part: Part)
 	end
 
 	local textLabel = Instance.new("TextLabel")
-	textLabel.Parent = sGui
+	textLabel.Parent = surfaceGui
 	textLabel.AutoLocalize = true
 	textLabel.Text = part.Name
 	textLabel.Font = Enum.Font.Gotham

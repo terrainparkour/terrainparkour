@@ -8,10 +8,10 @@ local _annotate = annotater.getAnnotater(script)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local ShowClientSignProfileEvent = remotes.getRemoteEvent("ShowClientSignProfileEvent")
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local signProfileSguiCreator = require(game.ReplicatedStorage.commands.signProfileSguiCreator)
+local signProfileSguiCreator = require(game.ReplicatedStorage.gui.signProfile.signProfileSguiCreator)
 
 local function handle(data: tt.playerSignProfileData)
-	signProfileSguiCreator.createSgui(game.Players.LocalPlayer, data)
+	signProfileSguiCreator.CreateSignProfileSGui(game.Players.LocalPlayer, data)
 end
 
 ShowClientSignProfileEvent.OnClientEvent:Connect(handle)

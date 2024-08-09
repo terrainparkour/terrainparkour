@@ -11,27 +11,29 @@ local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local module = {}
 
 module.getHamburger = function(): ScreenGui
-	local sg = Instance.new("ScreenGui")
-	sg.Name = "HamburgerMenu"
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.IgnoreGuiInset = true
+	screenGui.Name = "HamburgerMenu"
 	local frame = Instance.new("Frame")
 	local corner = 32
 	frame.Size = UDim2.new(0, corner, 0, corner)
 	frame.Name = "hamburgerFrame"
-	frame.Parent = sg
+	frame.Parent = screenGui
 	frame.Position = UDim2.new(1, -1 * corner, 1, -1 * corner)
 	local tb = guiUtil.getTbSimple()
 	tb.Name = "button"
 	tb.Parent = frame
 	tb.Text = "S"
-	return sg
+	return screenGui
 end
 
 module.getMenuList = function(localPlayer: Player, buttons: { gt.button }, pgui: PlayerGui)
 	local userId = localPlayer.UserId
-	local sg = Instance.new("ScreenGui")
-	sg.Name = "MenuList"
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.IgnoreGuiInset = true
+	screenGui.Name = "MenuList"
 	local outerFrame = Instance.new("Frame")
-	outerFrame.Parent = sg
+	outerFrame.Parent = screenGui
 	outerFrame.Size = UDim2.new(0.4, 0, 0, 0)
 	outerFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
 	outerFrame.AutomaticSize = Enum.AutomaticSize.Y
@@ -65,7 +67,7 @@ module.getMenuList = function(localPlayer: Player, buttons: { gt.button }, pgui:
 			task.spawn(function()
 				local content = but.contentsGetter(localPlayer)
 				content.Parent = pgui
-				sg:Destroy()
+				screenGui:Destroy()
 			end)
 		end)
 	end
@@ -76,9 +78,9 @@ module.getMenuList = function(localPlayer: Player, buttons: { gt.button }, pgui:
 	tb.BackgroundColor3 = colors.redStop
 	tb.Parent = outerFrame
 	tb.Activated:Connect(function()
-		sg:Destroy()
+		screenGui:Destroy()
 	end)
-	return sg
+	return screenGui
 end
 
 _annotate("end")

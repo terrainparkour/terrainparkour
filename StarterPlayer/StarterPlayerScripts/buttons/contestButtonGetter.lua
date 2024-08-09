@@ -95,7 +95,8 @@ local function makeLeaderCell(runner: ContestResponseTypes.Runner, ii: number, l
 	img.BorderMode = Enum.BorderMode.Outline
 	img.BorderSizePixel = 0
 	img.Size = UDim2.new(1, 0, 0.5, 0)
-	local content = thumbnails.getThumbnailContent(runner.userId, Enum.ThumbnailType.HeadShot)
+	local content =
+		thumbnails.getThumbnailContent(runner.userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 	img.Image = content
 	img.BackgroundColor3 = useColor
 	img.Name = "03LeaderPortrait"
@@ -247,7 +248,7 @@ local function makeContestRow(
 
 	warp.Activated:Connect(function()
 		local signId = enums.namelower2signId[race.startSignName:lower()]
-		warper.WarpToSign(signId)
+		warper.WarpToSignId(signId)
 		lastCanvasPosition = scrollingFrame.CanvasPosition
 		parentSgui:Destroy()
 	end)
@@ -259,13 +260,14 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	local rowHeight = 30
 	--get contest status for player, aggregated info from other people too.
 	local scrollingFrameRows = #contest.races
-	local sg = Instance.new("ScreenGui")
-	sg.Name = "ContestScreenGui"
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.IgnoreGuiInset = true
+	screenGui.Name = "ContestScreenGui"
 	local outerFrame = Instance.new("Frame")
 	outerFrame.Name = "ContestFrame"
 	outerFrame.BorderMode = Enum.BorderMode.Inset
 	outerFrame.BorderSizePixel = 0
-	outerFrame.Parent = sg
+	outerFrame.Parent = screenGui
 	outerFrame.Size = UDim2.new(0.85, 0, 0.75, 0)
 	outerFrame.Position = UDim2.new(0.15 / 2, 0, 0.25 / 2, 0)
 	outerFrame.BackgroundTransparency = 1
@@ -321,10 +323,11 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 					.. " UTC\nRemaining: "
 					.. tostring(contest.contestremaining - ii)
 					.. " seconds."
-				if sg == nil then
+				if screenGui == nil then
 					break
 				end
 				wait(1)
+				_annotate("stuck in leaderSummaryRow")
 			end
 		end)
 	else
@@ -434,7 +437,7 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	vv.Parent = scrollingFrame
 
 	for ii, race: ContestResponseTypes.ContestRace in ipairs(contest.races) do
-		local rowFrame = makeContestRow(contest, race, ii + 10, sg, scrollingFrame, showScrollbar)
+		local rowFrame = makeContestRow(contest, race, ii + 10, screenGui, scrollingFrame, showScrollbar)
 		rowFrame.Parent = scrollingFrame
 	end
 
@@ -447,11 +450,11 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	tb.Activated:Connect(function()
 		--store last scroll position
 		lastCanvasPosition = scrollingFrame.CanvasPosition
-		sg:Destroy()
+		screenGui:Destroy()
 	end)
 	scrollingFrame.CanvasPosition = lastCanvasPosition
 
-	return sg
+	return screenGui
 end
 
 local function makeGetter(contest: ContestResponseTypes.Contest, userIds: { number }): (Player) -> ScreenGui

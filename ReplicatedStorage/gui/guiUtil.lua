@@ -21,7 +21,7 @@ module.getTl = function(
 	if transparency == nil then
 		transparency = 0
 	end
-	assert(transparency ~= nil)
+
 	local tl = Instance.new("TextLabel")
 	tl.ZIndex = 1
 	tl.TextTransparency = 1
@@ -74,7 +74,7 @@ module.getTb = function(
 	name: string,
 	size: UDim2,
 	padding: number,
-	parent: Frame | ScrollingFrame,
+	parent: Frame | ScrollingFrame | nil,
 	bgcolor: Color3,
 	borderSizePixel: number?,
 	transparency: number?
@@ -82,7 +82,7 @@ module.getTb = function(
 	if transparency == nil then
 		transparency = 0
 	end
-	assert(transparency ~= nil)
+	
 	local outerTb = Instance.new("TextButton")
 	outerTb.ZIndex = 1
 	outerTb.TextTransparency = 1
@@ -123,7 +123,7 @@ end
 module.setupKillOnClick = function(sgui: ScreenGui, excludeElementName: string?, actualExcludedFrame: Frame?)
 	local invisibleCloseModalButton = Instance.new("TextButton")
 	local mainFrame = sgui:FindFirstChildOfClass("Frame")
-	assert(mainFrame)
+	
 	invisibleCloseModalButton.Position = mainFrame.Position
 
 	invisibleCloseModalButton.Size = mainFrame.Size

@@ -61,7 +61,6 @@ local function touchedSignServer(hit: BasePart, sign: Part)
 
 	local player: Player = tpUtil.getPlayerForUsername(hit.Parent.Name)
 	if not player then
-		--_annotate("there was a hit but not a player?")
 		return false
 	end
 

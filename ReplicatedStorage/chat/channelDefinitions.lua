@@ -15,7 +15,7 @@ local module = {}
 --looks like this is a way to shuffle around pointers to actual channel objects.
 local channelsFromExternal = nil
 module.sendChannels = function(channels)
-	--_annotate(string.format("received #channels", #channels))
+	_annotate(string.format("received #channels", #channels))
 	channelsFromExternal = channels
 end
 
@@ -120,10 +120,10 @@ end
 
 module.getChannel = function(name)
 	while true do
-		wait(1)
 		if channelsFromExternal ~= nil then
 			break
 		end
+		wait(1)
 	end
 	for k, v in pairs(channelsFromExternal) do
 		if v.Name == name then

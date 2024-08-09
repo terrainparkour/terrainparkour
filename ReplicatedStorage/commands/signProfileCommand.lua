@@ -1,6 +1,9 @@
 --!strict
 
--- this is the sign profile command, it is used to show the sign profile on sign right-click.
+-- signProfileCommand
+-- this is the sign profile command, it is used to show the sign profile on sign right-click from user.
+-- data is loaded from server and then we highlight on client.
+-- it's the same as the client version, which is in signProfileDisplayer.client and is automatically set up.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
@@ -14,7 +17,7 @@ local ShowClientSignProfileEvent = remotes.getRemoteEvent("ShowClientSignProfile
 local module = {}
 
 local function prepareSignProfileData(username: string, signId: number): tt.playerSignProfileData
-	--_annotate(string.format("prepareSignProfileData username: %s, signId: %d", username, signId))
+	_annotate(string.format("prepareSignProfileData username: %s, signId: %d", username, signId))
 	local res: tt.playerSignProfileData = rdb.getSignProfileForUser(username, signId)["res"]
 	return res
 end

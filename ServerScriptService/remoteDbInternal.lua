@@ -1,4 +1,5 @@
 --!strict
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
@@ -32,14 +33,38 @@ end
 -- maps object/verb to path for communication into urls.py
 local function getPath(kind: string, data: any)
 	local stringdata = textUtil.getStringifiedTable(data)
-	if kind == "userJoined" then
+	if kind == "robloxUserJoined" then
 		local uu = data.username
 		if data.userId == enums.objects.TerrainParkour then
-			-- warn("flip.")
-			--why do i do this.  changing the cached username? probably unnecessary.
 			uu = "TerrainParkour"
 		end
-		return kind .. "/" .. tostring(stringdata.userId) .. "/" .. uu .. "/"
+		local useBoolean = ""
+		if stringdata.isMobile == "true" then
+			useBoolean = "true"
+		else
+			useBoolean = "false"
+		end
+		return kind
+			.. "/"
+			.. tostring(stringdata.userId)
+			.. "/"
+			.. uu
+			.. "/"
+			.. enums.gameVersion
+			.. "/"
+			.. useBoolean
+			.. "/"
+	elseif kind == "robloxUserJoinedFirst" then
+		return kind
+			.. "/"
+			.. stringdata.userId
+			.. "/"
+			.. stringdata.username
+			.. "/"
+			.. enums.gameVersion
+			.. "/"
+			.. tostring(stringdata.isMobile)
+			.. "/"
 	elseif kind == "beckon" then
 		return kind .. "/" .. tostring(stringdata.userId)
 	elseif kind == "getAwardsByUser" then
@@ -77,8 +102,6 @@ local function getPath(kind: string, data: any)
 			.. "/"
 			.. stringdata.marathonKind
 			.. "/"
-	elseif kind == "userJoinedFirst" then
-		return kind .. "/" .. stringdata.userId .. "/" .. stringdata.username .. "/"
 	elseif kind == "userLeft" then
 		return kind .. "/" .. stringdata.userId .. "/"
 	elseif kind == "userFoundSign" then
@@ -303,8 +326,8 @@ module.remoteGet = function(kind: string, data: any): any
 	local st = tick()
 	local res = httpservice.httpThrottledJsonGet(surl)
 	if config.isInStudio() or data.userId == enums.objects.TerrainParkour then
-		--_annotate(string.format("DONE %0.3f %s", tick() - st, url))
-		--_annotate(string.format("remoteDbInternal.remoteGet took: %0.3f %s", tick() - st, url))
+		_annotate(string.format("DONE %0.3f %s", tick() - st, url))
+		_annotate(string.format("remoteDbInternal.remoteGet took: %0.3f %s", tick() - st, url))
 	end
 	if not res.banned then
 		afterRemoteDbActions(kind, res)
@@ -327,10 +350,7 @@ module.remotePost = function(kind: string, data: any)
 	res.userId = tonumber(res.userId)
 	if config.isInStudio() or data.userId == enums.objects.TerrainParkour then
 		data.secret = nil
-		--_annotate(string.format("%0.3f kind: " .. kind .. " url:" .. url, tick() - st))
-		--_annotate(data)
-		--_annotate(res)
-		--_annotate(string.format("roundtrip endpoint time: %0.3f ", tick() - st))
+		_annotate(string.format("%0.3f kind: " .. kind .. " url:" .. url, tick() - st))
 	end
 
 	task.spawn(function()

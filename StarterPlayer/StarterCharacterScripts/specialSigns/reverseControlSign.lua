@@ -59,13 +59,9 @@ end
 
 -------------- MAIN --------------
 module.Kill = function()
-	--_annotate("killing")
-
-	--_annotate("killed")
 end
 
 module.Init = function()
-	--_annotate("init")
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
 end

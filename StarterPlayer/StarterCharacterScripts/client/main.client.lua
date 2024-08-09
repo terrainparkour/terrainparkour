@@ -21,6 +21,7 @@ local notifier = require(game.StarterPlayer.StarterCharacterScripts.client.notif
 local serverEvents = require(game.StarterPlayer.StarterCharacterScripts.client.serverEvents)
 
 local leaderboard = require(game.StarterPlayer.StarterCharacterScripts.client.leaderboard)
+local marathonClient = require(game.StarterPlayer.StarterCharacterScripts.client.marathonClient)
 local avatarEventMonitor = require(game.StarterPlayer.StarterCharacterScripts.client.avatarEventMonitor)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 local commands = require(game.StarterPlayer.StarterCharacterScripts.client.commands)
@@ -44,21 +45,21 @@ local setup = function()
 	settings.Reset()
 	serverEvents.Init()
 	leaderboard.Init()
+	marathonClient.Init()
 	avatarEventMonitor.Init()
 	warper.Init()
 	commands.Init()
 	textHighlighting.Init()
 	keyboard.Init()
+	serverEvents.Init()
 
 	-- you can't race til everything is set up.
 	racing.Init()
 	print("client main setup done.")
 end
 
---_annotate("outer layer of main.client.")
 setup()
 
---- if you reset we "kill" you (but not send .DIED??) --
 local resetBindable = Instance.new("BindableEvent")
 resetBindable.Event:Connect(function()
 	local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)

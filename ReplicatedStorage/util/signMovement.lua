@@ -28,7 +28,7 @@ module.rotate = function(sign: Part)
 			end
 			for deg = 0, 360 do
 				sign.Rotation = Vector3.new(0, -1 * deg, 0)
-				wait(1)
+				wait(0.1)
 			end
 		end
 	end)
@@ -45,7 +45,7 @@ module.rotateMeshpart = function(sign: MeshPart)
 		while true do
 			for deg = 0, 360 do
 				sign.Rotation = Vector3.new(0, -1 * deg, 0)
-				wait(1)
+				wait(0.1)
 			end
 		end
 	end)
@@ -92,12 +92,12 @@ module.fadeInSign = function(sign: Part)
 	sign.CanCollide = true
 	sign.CanTouch = true
 	-- cdholder.Parent = sign
-	local sg = sign:FindFirstChildOfClass("SurfaceGui")
-	if sg == nil then
+	local surfaceGui = sign:FindFirstChildOfClass("SurfaceGui")
+	if surfaceGui == nil then
 		return
 	end
-	assert(sg)
-	sg.Enabled = true
+
+	surfaceGui.Enabled = true
 	sendMessage(channel, "007 has appeared")
 end
 
@@ -105,13 +105,13 @@ module.fadeOutSign = function(sign: Part?, first: boolean)
 	if not sign then
 		return
 	end
-	assert(sign)
-	local sg = sign:FindFirstChildOfClass("SurfaceGui")
-	if sg == nil then
+
+	local surfaceGui = sign:FindFirstChildOfClass("SurfaceGui")
+	if surfaceGui == nil then
 		return
 	end
-	assert(sg)
-	sg.Enabled = false
+
+	surfaceGui.Enabled = false
 
 	task.spawn(function()
 		while sign.Transparency < 1 do

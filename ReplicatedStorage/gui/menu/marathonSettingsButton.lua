@@ -75,8 +75,9 @@ end
 --we already have clientside stuff which gets initial settings value.
 local getSettingsModal = function(localPlayer: Player): ScreenGui
 	local userId = localPlayer.UserId
-	local sg = Instance.new("ScreenGui")
-	sg.Name = "SettingsSgui"
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.IgnoreGuiInset = true
+	screenGui.Name = "SettingsSgui"
 
 	--just get marathon settings.
 	local userSettings: { [string]: tt.userSettingValue } =
@@ -89,7 +90,7 @@ local getSettingsModal = function(localPlayer: Player): ScreenGui
 	table.sort(settings, settingSort.SettingSort)
 
 	local outerFrame = Instance.new("Frame")
-	outerFrame.Parent = sg
+	outerFrame.Parent = screenGui
 	outerFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
 	outerFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
 	local vv = Instance.new("UIListLayout")
@@ -145,20 +146,20 @@ local getSettingsModal = function(localPlayer: Player): ScreenGui
 	tb.BackgroundColor3 = colors.redStop
 	tb.Parent = outerFrame
 	tb.Activated:Connect(function()
-		sg:Destroy()
+		screenGui:Destroy()
 	end)
-	return sg
+	return screenGui
 end
 
 local marathonSettingsButton: gt.actionButton = {
 	name = "Marathon Settings",
 	contentsGetter = getSettingsModal,
 	hoverHint = "Configure Marathons",
-	shortName = "Mara-\nthons",
+	shortName = "Marathons",
 	getActive = function()
 		return true
 	end,
-	widthXScale = 0.2,
+	widthXScale = 0.25,
 }
 
 module.marathonSettingsButton = marathonSettingsButton

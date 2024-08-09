@@ -51,8 +51,9 @@ local function makeLeaderPositionChip(
 	img.BorderMode = Enum.BorderMode.Outline
 	img.BorderSizePixel = 0
 	img.Size = UDim2.new(0.4, 0, 1, 0)
-	local content = thumbnails.getThumbnailContent(el.userId, Enum.ThumbnailType.HeadShot)
-	-- local content,_ = Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+	local content =
+		thumbnails.getThumbnailContent(el.userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+	-- local content,_ = Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 	img.Image = content
 	img.BackgroundColor3 = useColor
 	img.Name = "1img"
@@ -163,7 +164,6 @@ local function makePopRowFrame(
 		chip.AutomaticSize = Enum.AutomaticSize.Y
 		chip.Parent = leaderFrame
 	end
-	-- print("Pop:" .. tostring(pop.startSignId) .. " " .. pop.startSignName)
 
 	local mode = "found"
 	if not pop.hasFoundStart then
@@ -200,13 +200,14 @@ end
 local function getNewContents(player: Player, userIds: { number }): ScreenGui
 	local popResults: { PopularResponseTypes.popularRaceResult } = getNewRunsFunction:InvokeServer(userIds)
 
-	local sg = Instance.new("ScreenGui")
-	sg.Name = "PopularSG"
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.IgnoreGuiInset = true
+	screenGui.Name = "PopularSG"
 	local outerFrame = Instance.new("Frame")
 	outerFrame.Name = "PopularFrame"
 	outerFrame.BorderMode = Enum.BorderMode.Inset
 	outerFrame.BorderSizePixel = 0
-	outerFrame.Parent = sg
+	outerFrame.Parent = screenGui
 	outerFrame.Size = UDim2.new(0.5, 0, 0.6, 0)
 	outerFrame.Position = UDim2.new(0.25, 0, 0.2, 0)
 	outerFrame.BackgroundTransparency = 1
@@ -263,9 +264,9 @@ local function getNewContents(player: Player, userIds: { number }): ScreenGui
 		local rowFrame = makePopRowFrame(
 			pop,
 			ii,
-			sg,
+			screenGui,
 			scrollingFrame,
-			warper.WarpToSign
+			warper.WarpToSignId
 			--we make this new enclosure to make sure the type manager realizes taht in this case
 			--we don't care about the return value.
 		)
@@ -281,11 +282,11 @@ local function getNewContents(player: Player, userIds: { number }): ScreenGui
 	tb.Activated:Connect(function()
 		--store last scroll position
 		lastCanvasPosition = scrollingFrame.CanvasPosition
-		sg:Destroy()
+		screenGui:Destroy()
 	end)
 	scrollingFrame.CanvasPosition = lastCanvasPosition
 
-	return sg
+	return screenGui
 end
 
 local newButton: gt.actionButton = {
@@ -296,7 +297,7 @@ local newButton: gt.actionButton = {
 	getActive = function()
 		return true
 	end,
-	widthXScale = 0.2,
+	widthXScale = 0.25,
 }
 
 module.newButton = newButton

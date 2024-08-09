@@ -21,7 +21,7 @@ local playerRemovingFuncs: { storedFunc } = {}
 local function applyPlayerAddFuncs(player: Player)
 	for _, storedFunc: storedFunc in pairs(playerAddFuncs) do
 		task.spawn(function()
-			--_annotate("running.Add " .. storedFunc.name .. " on " .. player.Name)
+			_annotate("running.Add " .. storedFunc.name .. " on " .. player.Name)
 			storedFunc.func(player)
 		end)
 	end
@@ -29,7 +29,7 @@ end
 
 local function applyPlayerRemovingFuncs(player: Player)
 	for _, storedFunc in pairs(playerRemovingFuncs) do
-		--_annotate("running.Removing " .. storedFunc.name .. " on " .. player.Name)
+		_annotate("running.Removing " .. storedFunc.name .. " on " .. player.Name)
 		task.spawn(function()
 			storedFunc.func(player)
 		end)

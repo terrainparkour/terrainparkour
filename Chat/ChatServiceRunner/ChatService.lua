@@ -298,6 +298,7 @@ function methods:InternalApplyRobloxFilter(speakerName, message, toSpeakerName)
 				self:InternalNotifyFilterIssue()
 				return nil
 			end
+			_annotate("stuck in chatservice.")
 		end
 	else
 		--// Simulate filtering latency.

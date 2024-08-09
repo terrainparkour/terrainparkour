@@ -214,7 +214,11 @@ local function generateRowForRelatedSign(sign: any, ct: number, youlead: boolean
 	im.Size = UDim2.new(0.12, 0, 1, 0)
 	im.Name = "02-image"
 	if sign.best_userId then
-		local content2 = thumbnails.getThumbnailContent(sign.best_userId, Enum.ThumbnailType.HeadShot)
+		local content2 = thumbnails.getThumbnailContent(
+			sign.best_userId,
+			Enum.ThumbnailType.HeadShot,
+			Enum.ThumbnailSize.Size420x420
+		)
 		im.Image = content2
 	end
 	if youlead then
@@ -299,6 +303,7 @@ local function addUsernames(chunks)
 				break
 			end
 			wait(0.02)
+			_annotate("stuck in addUsernames")
 		end
 	end
 end
@@ -389,7 +394,8 @@ local function DisplaySignRelatedData(signRelatedData, sign)
 	img.Parent = leftFrame
 	img.Size = UDim2.new(1, 0, 0.7, 0)
 	--later make this user-scoped.
-	local content = thumbnails.getThumbnailContent(leader.userId, Enum.ThumbnailType.AvatarBust)
+	local content =
+		thumbnails.getThumbnailContent(leader.userId, Enum.ThumbnailType.AvatarBust, Enum.ThumbnailSize.Size420x420)
 	img.Position = UDim2.new(0, 0, 0.3, 0)
 	img.Image = content
 	img.Name = "04image."
@@ -435,7 +441,8 @@ local function DisplaySignRelatedData(signRelatedData, sign)
 			img2.BorderMode = Enum.BorderMode.Inset
 			img2.Size = UDim2.new(0.15, 0, 1, 0)
 			--later make this user-scoped.
-			local content2 = thumbnails.getThumbnailContent(el.userId, Enum.ThumbnailType.HeadShot)
+			local content2 =
+				thumbnails.getThumbnailContent(el.userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 			img2.Image = content2
 			img2.Parent = leaderRowFrame
 			img2.Name = "2"
@@ -566,11 +573,12 @@ local function SetupSigns()
 
 		sign = sign :: Part
 
-		local sg = Instance.new("SurfaceGui")
-		sg.Parent = playerGui
-		sg.Adornee = sign
-		sg.Face = Enum.NormalId.Top
-		sg.Name = "clickSg" .. sign.Name
+		local screenGui = Instance.new("SurfaceGui")
+		screenGui.IgnoreGuiInset = true
+		screenGui.Parent = playerGui
+		screenGui.Adornee = sign
+		screenGui.Face = Enum.NormalId.Top
+		screenGui.Name = "clickSg" .. sign.Name
 
 		local cd = Instance.new("ClickDetector")
 		local signId = tpUtil.looseSignName2SignId(sign.Name)

@@ -57,7 +57,7 @@ module.RegisterFunctionToListenForDomain = function(func: (tt.userSettingValue) 
 		)
 		return
 	end
-	--_annotate(string.format("successfully registered: %s %s", name, tostring(func)))
+	_annotate(string.format("successfully registered domain listnerer for: %s %s", listeningDomainName, tostring(func)))
 	domainSettingChangeMonitoringFunctions[listeningDomainName] = func
 end
 
@@ -65,7 +65,7 @@ end
 -- when this setting changes, call this function.
 module.RegisterFunctionToListenForSettingName = function(func: (tt.userSettingValue) -> nil, name: string)
 	-- let's make sure we're registering a setting which exists in the enums and things.
-	--_annotate(string.format("handle local setting cahgne receivere: %s %s", name, tostring(func)))
+	_annotate(string.format("handle local setting cahgne receivere: %s %s", name, tostring(func)))
 	local exi = false
 	for _, settingName in pairs(settingEnums.settingNames) do
 		if settingName == name then
@@ -79,9 +79,9 @@ module.RegisterFunctionToListenForSettingName = function(func: (tt.userSettingVa
 		warn("trying to register a setting change receiver with a name that doesn't exist: " .. name)
 		return
 	end
-	--_annotate(string.format("successfully registered: %s %s", name, tostring(func)))
+	_annotate(string.format("successfully registered: %s %s", name, tostring(func)))
 	if settingChangeMonitoringFunctions[name] ~= nil then
-		-- _annotate (string.format("trying to reset monitoring for setting which is already monitored. %s", name))
+		_annotate(string.format("trying to reset monitoring for setting which is already monitored. %s", name))
 		error(string.format("trying to reset monitoring for setting which is already monitored. %s", name))
 		return
 	end

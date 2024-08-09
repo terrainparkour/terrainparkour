@@ -97,14 +97,15 @@ end
 --we already have clientside stuff whic hgets initial settings value.
 local getSurveyModal = function(localPlayer: Player): ScreenGui
 	local userId = localPlayer.UserId
-	local sg = Instance.new("ScreenGui")
-	sg.Name = "SettingsSgui"
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.IgnoreGuiInset = true
+	screenGui.Name = "SettingsSgui"
 
 	--just get marathon settings.
 	local surveyData = settings.getSettingByDomain(settingEnums.settingDomains.SURVEYS)
 
 	local outerFrame = Instance.new("Frame")
-	outerFrame.Parent = sg
+	outerFrame.Parent = screenGui
 	outerFrame.Size = UDim2.new(0.5, 0, 0.5, 0)
 	outerFrame.Position = UDim2.new(0.25, 0, 0.3, 0)
 	local vv2 = Instance.new("UIListLayout")
@@ -172,14 +173,14 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 	tb.BorderSizePixel = 1
 	tb.Parent = outerFrame
 	tb.Activated:Connect(function()
-		sg:Destroy()
+		screenGui:Destroy()
 	end)
 
 	local publicNotice =
 		guiUtil.getTl("02ZZZpublicWarning", UDim2.new(1, 0, 0, 40), 1, outerFrame, colors.defaultGrey, 1, 0)
 	publicNotice.Text = "Your answers are public."
 
-	return sg
+	return screenGui
 end
 
 local surveySettingsButton: gt.button = {

@@ -58,27 +58,13 @@ module.Kill = function()
 	lastRuntimeUpdate = ""
 end
 
-local Update = nil
-
-local function startLoop()
-	spawn(function()
-		while true do
-			Update()
-			if theSgui == nil then
-				break
-			end
-			wait(0.01)
-		end
-	end)
-end
-
-Update = function()
+UpdateRunProgress = function()
 	local formattedRuntime = string.format("%.1fs", tick() - currentRunStartTick)
 	if lastRuntimeUpdate == formattedRuntime then
 		return true
 	end
 	if localPlayer.Character == nil or localPlayer.Character.PrimaryPart == nil then
-		--_annotate("well this happened.")
+		_annotate("nil char or nil primary part in runProgressSgui, kllin.")
 		module.Kill()
 		return false
 	end
@@ -125,6 +111,18 @@ Update = function()
 	return true
 end
 
+local function startRunProgressUpdateLoop()
+	spawn(function()
+		while true do
+			UpdateRunProgress()
+			if theSgui == nil then
+				break
+			end
+			wait(0.01)
+		end
+	end)
+end
+
 -- this is the lower-right GUI which continuously updates the time. ------
 -- why don't we try to have it only update like, when it'd be different? duh. -------------
 local debounceCreateRunProgressSgui = false
@@ -132,7 +130,7 @@ module.CreateRunProgressSgui = function(playerGui, startTimeTick, signName, pos)
 	-- store run const variables
 	-- non-const variables (such as the dynamic race text, etc.) will be updated via above.
 	if debounceCreateRunProgressSgui then
-		--_annotate("debounceCreateRunProgressSgui.")
+		_annotate("debounceCreateRunProgressSgui.")
 		return
 	end
 	debounceCreateRunProgressSgui = true
@@ -142,20 +140,21 @@ module.CreateRunProgressSgui = function(playerGui, startTimeTick, signName, pos)
 
 	currentRunStartTick = startTimeTick
 
-	local sgui: ScreenGui = playerGui:FindFirstChild("ActiveRunSGui") :: ScreenGui
-	if not sgui then
-		sgui = Instance.new("ScreenGui") :: ScreenGui
-		if sgui == nil then
+	local screenGui: ScreenGui = playerGui:FindFirstChild("ActiveRunSGui") :: ScreenGui
+	if not screenGui then
+		screenGui = Instance.new("ScreenGui") :: ScreenGui
+		screenGui.IgnoreGuiInset = true
+		if screenGui == nil then
 			return
 		end
-		sgui.Parent = playerGui
-		sgui.Name = "ActiveRunSGui"
-		sgui.Enabled = true
+		screenGui.Parent = playerGui
+		screenGui.Name = "ActiveRunSGui"
+		screenGui.Enabled = true
 	end
-	theSgui = sgui
+	theSgui = screenGui
 
 	local tb = Instance.new("TextButton")
-	tb.Parent = sgui
+	tb.Parent = screenGui
 	tb.Name = "RaceRunningButton"
 	tb.Size = UDim2.new(0.57, 0, 0.1, 0)
 	tb.Position = UDim2.new(0.0, 0, 0.9, 0)
@@ -177,7 +176,7 @@ module.CreateRunProgressSgui = function(playerGui, startTimeTick, signName, pos)
 	-- it partially bases its functions on the global variables received from outer.
 
 	debounceCreateRunProgressSgui = false
-	startLoop()
+	startRunProgressUpdateLoop()
 end
 
 _annotate("end")

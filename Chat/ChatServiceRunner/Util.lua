@@ -92,6 +92,7 @@ do
 				else
 					return funcId, func, priority
 				end
+				_annotate("stuck in getrIterator")
 			end
 		end
 	end

@@ -22,8 +22,6 @@ local SpecialChatColors = {
 }
 
 local function MakeIsInGroup(groupId, requiredRank)
-	assert(type(requiredRank) == "nil" or type(requiredRank) == "number", "requiredRank must be a number or nil")
-
 	return function(player)
 		if player and player.UserId then
 			local userId = player.UserId

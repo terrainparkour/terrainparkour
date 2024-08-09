@@ -73,9 +73,9 @@ local function receiveClientMessageAboutRunEnding(
 			)
 		end)
 
-		--_annotate("spawn - showbesttimes for: " .. tostring(userId))
+		_annotate("spawn - showbesttimes for: " .. tostring(userId))
 		raceCompleteData.showBestTimes(player, raceName, startSignId, endSignId, spd, false, userFinishedRunResponse)
-		--_annotate("spawn - preparing datatosend to otherPlayer LB.")
+		_annotate("spawn - preparing datatosend to otherPlayer LB.")
 		local lbRunUpdate: tt.lbUpdateFromRun = {
 			kind = "lbUpdate from run",
 			userId = userId,

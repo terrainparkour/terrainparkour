@@ -14,11 +14,15 @@ local goodScripts = { "movement", "avatarEventMonitor", "avatarEventFiring", "se
 goodScripts = { "warper", "dynamicRunning", "main", "movement" }
 
 goodScripts = { "warper", "serverWarping", "ghostSign", "morphs", "avatarEventFiring", "avatarManipulation" }
-goodScripts = { "movement" }
-goodScripts = {}
+goodScripts = { "windows", "marathonClient", "marathonStatic", "marathon" }
+goodScripts = { "textHighlighting" }
+goodScripts = { "dynamicServer", "dynamicRunning" }
+goodScripts = { "" }
+goodScripts = { "movement", "avatarEventMonitor", "avatarEventFiring", "avatarManipulation" }
+-- goodScripts = { "" }
 
 local showAllRegardless = false
--- showAllRegardless = true
+showAllRegardless = true
 
 local register = function(s: Script | ModuleScript | LocalScript): string
 	if startTick == nil then

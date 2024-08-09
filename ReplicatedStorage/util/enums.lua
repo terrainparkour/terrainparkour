@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.249 August 5 2024"
+module.gameVersion = "1.256"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -580,7 +580,7 @@ module.signName2Alias["🔥"] = "flame"
 module.signName2Alias["ディズニー"] = "disney"
 module.signName2Alias["Mægæ"] = "Maegae"
 module.signName2Alias["ඞ"] = "sus"
-module.signName2Alias["Ø"] = "null"
+module.signName2Alias["Ø"] = "nullsymbol"
 module.signName2Alias["👻"] = "ghost"
 module.signName2Alias["ataasinngorneq"] = "Monday - Greenlandic"
 module.signName2Alias["Дыццӕг"] = "Tuesday - Ossettian"
@@ -634,7 +634,7 @@ module.ExcludeSignNamesFromEndingAt = {
 --random race cannot start from these for preservation of sanctity reasons.
 module.ExcludeSignNamesFromStartingAt = {
 	"👻",
-	"Gemelo",
+	-- "Gemelo",
 	"💀",
 	"👍",
 	"🔥",
@@ -643,13 +643,13 @@ module.ExcludeSignNamesFromStartingAt = {
 	"007",
 	"65536",
 	"POGGOD",
-	"Obelisk",
+	-- "Obelisk",
 	"Troll Bridge",
 	"Helix",
-	"Elevator",
+	-- "Elevator",
 	"Sputnik",
 	"Maobahe",
-	"Mauna Loa",
+	-- "Mauna Loa",
 	"Hosho",
 	"Roblox",
 	-- "Aorta",
@@ -667,8 +667,8 @@ module.ExcludeSignNamesFromStartingAt = {
 	"Ooloi",
 	"Rapunzel",
 	"Rubble",
-	"Olympus",
-	"Summit",
+	-- "Olympus",
+	-- "Summit",
 	"Vesuvius",
 	-- "Wozniak",
 	-- "Klytus",
@@ -680,8 +680,8 @@ module.ExcludeSignNamesFromStartingAt = {
 	"Slig",
 	"Asana",
 	"Kew",
-	"Guru",
-	"Darwin",
+	-- "Guru",
+	-- "Darwin",
 	"Aphid",
 	"Ararat",
 	"Petrichor",
@@ -692,17 +692,17 @@ module.ExcludeSignNamesFromStartingAt = {
 	"Rosen",
 	"Roygbiv",
 	"Yang",
-	"Swiss",
+	-- "Swiss",
 	"Slig",
 	"Nakamura",
-	"Frow",
+	-- "Frow",
 	"Kongzi",
 	"Mogwai",
 	"Verne",
 	"Coagulate",
 	"Floor",
 	"Chomik",
-	"Neandertal",
+	-- "Neandertal",
 }
 
 local SignIdIsExcludedFromStart: { [number]: boolean } = {}
@@ -844,9 +844,13 @@ Internals
 * Keyboard command to kill highlight 'h'
  ]],
 	[237] = [[* draggable leaderboard (!) claude+1 hour
-	* keyboard shortcuts.
-	* new server slogans
+* keyboard shortcuts.
+* new server slogans
 ]],
+	[251] = [[* The leaderboard, server events, and marathon windows are now separate, draggable, resizable, and minimizable.
+* Tracking gamejoin versions
+]],
+	[252] = [[* fix sign profile mouseovers somewhat.]],
 }
 
 local SpecialSignDescriptions = {

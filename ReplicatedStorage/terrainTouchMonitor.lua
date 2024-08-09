@@ -56,7 +56,7 @@ module.initTracking = function(signName: string)
 		warn("initTracking: nil signName")
 		return
 	end
-	--_annotate(string.format("initTracking: %s", signName))
+	_annotate(string.format("initTracking: %s", signName))
 end
 
 module.GetSeenTerrainTypesThisRun = function(): number
@@ -85,7 +85,7 @@ module.CountNewFloorMaterial = function(fm: Enum.Material?)
 
 	--------- COUNTING IT ---------------
 	lastSeenTerrain = fm
-	--_annotate(string.format("Saw Terrain: %s", fm.Name))
+	_annotate(string.format("Saw Terrain: %s", fm.Name))
 	--track raw counts of seeing this terrain floor type
 	if not timesSeenTerrainFloorTypeCounts[fm] then
 		timesSeenTerrainFloorTypeCounts[fm] = 1

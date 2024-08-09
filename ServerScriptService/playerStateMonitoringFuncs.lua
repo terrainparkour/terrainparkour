@@ -28,11 +28,23 @@ module.BackfillBadges = function(player: Player): nil
 end
 
 module.LogJoin = function(player: Player): nil
+	local isMobile = true
 	local pc = #PlayersService:GetPlayers()
+	local UserInputService = game:GetService("UserInputService")
+	isMobile = UserInputService.TouchEnabled
+		and not UserInputService.KeyboardEnabled
+		and not UserInputService.MouseEnabled
+	--this won't work from server.
 	if pc == 1 then
-		remoteDbInternal.remoteGet("userJoinedFirst", { userId = player.UserId, username = player.Name })
+		remoteDbInternal.remoteGet(
+			"robloxUserJoinedFirst",
+			{ userId = player.UserId, username = player.Name, isMobile = isMobile }
+		)
 	else
-		remoteDbInternal.remoteGet("userJoined", { userId = player.UserId, username = player.Name })
+		remoteDbInternal.remoteGet(
+			"robloxUserJoined",
+			{ userId = player.UserId, username = player.Name, isMobile = isMobile }
+		)
 	end
 end
 

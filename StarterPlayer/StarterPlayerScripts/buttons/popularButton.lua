@@ -49,8 +49,9 @@ local function makeLeaderPositionChip(
 	img.BorderMode = Enum.BorderMode.Outline
 	img.BorderSizePixel = 0
 	img.Size = UDim2.new(0.4, 0, 1, 0)
-	local content = thumbnails.getThumbnailContent(el.userId, Enum.ThumbnailType.HeadShot)
-	-- local content,_ = Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+	local content =
+		thumbnails.getThumbnailContent(el.userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+	-- local content,_ = Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 	img.Image = content
 	img.BackgroundColor3 = useColor
 	img.Name = "1img"
@@ -161,7 +162,7 @@ local function makePopRowFrame(
 		chip.AutomaticSize = Enum.AutomaticSize.Y
 		chip.Parent = leaderFrame
 	end
-	--_annotate("Pop:" .. tostring(pop.startSignId) .. " " .. pop.startSignName)
+	_annotate("Pop:" .. tostring(pop.startSignId) .. " " .. pop.startSignName)
 
 	local mode = "found"
 	if not pop.hasFoundStart then
@@ -198,13 +199,14 @@ end
 local function getPopularContents(player: Player, userIds: { number })
 	local popResults: { PopularResponseTypes.popularRaceResult } = getPopularRunsFunction:InvokeServer(userIds)
 
-	local sg = Instance.new("ScreenGui")
-	sg.Name = "PopularSG"
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "PopularSG"
+	screenGui.IgnoreGuiInset = true
 	local outerFrame = Instance.new("Frame")
 	outerFrame.Name = "PopularFrame"
 	outerFrame.BorderMode = Enum.BorderMode.Inset
 	outerFrame.BorderSizePixel = 0
-	outerFrame.Parent = sg
+	outerFrame.Parent = screenGui
 	outerFrame.Size = UDim2.new(0.5, 0, 0.6, 0)
 	outerFrame.Position = UDim2.new(0.25, 0, 0.2, 0)
 	outerFrame.BackgroundTransparency = 1
@@ -258,7 +260,7 @@ local function getPopularContents(player: Player, userIds: { number })
 	vv.Parent = scrollingFrame
 
 	for ii, pop in ipairs(popResults) do
-		local rowFrame = makePopRowFrame(pop, ii, sg, scrollingFrame, warper.WarpToSign)
+		local rowFrame = makePopRowFrame(pop, ii, screenGui, scrollingFrame, warper.WarpToSignId)
 		rowFrame.Parent = scrollingFrame
 	end
 
@@ -271,22 +273,22 @@ local function getPopularContents(player: Player, userIds: { number })
 	tb.Activated:Connect(function()
 		--store last scroll position
 		lastCanvasPosition = scrollingFrame.CanvasPosition
-		sg:Destroy()
+		screenGui:Destroy()
 	end)
 	scrollingFrame.CanvasPosition = lastCanvasPosition
 
-	return sg
+	return screenGui
 end
 
 local popularButton: gt.actionButton = {
 	name = "Popular Button",
 	contentsGetter = getPopularContents,
 	hoverHint = "Show top popular runs",
-	shortName = "Pop",
+	shortName = "Popular",
 	getActive = function()
 		return true
 	end,
-	widthXScale = 0.2,
+	widthXScale = 0.25,
 }
 
 module.popularButton = popularButton

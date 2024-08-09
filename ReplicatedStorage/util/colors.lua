@@ -39,6 +39,7 @@ module.mePastColor = Color3.fromRGB(112, 136, 255)
 module.lightRed = Color3.fromRGB(255, 120, 130)
 module.lightOrange = Color3.fromRGB(255, 160, 100)
 module.lightGreen = Color3.fromRGB(100, 255, 0)
+module.darkGreen = Color3.fromRGB(13, 105, 59)
 module.lightYellow = Color3.fromRGB(255, 255, 10)
 
 module.signTextColor = Color3.fromRGB(255, 240, 241)

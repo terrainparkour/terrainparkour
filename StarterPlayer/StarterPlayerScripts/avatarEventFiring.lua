@@ -76,7 +76,7 @@ module.FireEvent = function(avatarEventType: number, details: mt.avatarEventDeta
 	end
 
 	if not avatarEventType then
-		warn("bad event.")
+		warn("bad event.", avatarEventType, details)
 		return
 	end
 
@@ -94,7 +94,7 @@ module.FireEvent = function(avatarEventType: number, details: mt.avatarEventDeta
 		warn(string.format("warp delay duration in this situation: %0.5f", duration))
 	end
 
-	--_annotate(string.format("Firing: %s", module.DescribeEvent(avatarEventType, details)))
+	_annotate(string.format("Firing: %s", module.DescribeEvent(avatarEventType, details)))
 	AvatarEventBindableEvent:Fire(actualEv)
 end
 

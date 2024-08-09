@@ -3,7 +3,7 @@
 -- 2024.08 simplified everything to use serverwarp.
 -- also added highlighting.
 -- there are two main kinds of warping.
--- 1. client initated.  the client sends a local bindable avatar monitoring event get_ready_for_warp.
+-- 1. client initated.  the client sends a local bindable avatar monitoring event getw_ready_for_warp.
 -- all listeners (all who must listen) get into a legal warping state and stay that way.
 -- nothing can happen to them until they are told wapr is done.
 -- when they're all ready, client warper tells the server to do the warp.
@@ -48,7 +48,7 @@ local function CreateTemporaryLightPillar(pos: Vector3, desc: string)
 	elseif desc == "destination" then
 		part.Color = Color3.fromRGB(160, 250, 160)
 	else
-		--_annotate("bad")
+		_annotate("bad")
 	end
 
 	task.spawn(function()
@@ -66,21 +66,21 @@ end
 -- this immediately warps them so should only be called via receiving an event which indicates that the client is fully locked.
 -- only call this as a response to the client sending in the event that they are fully locked.
 local function ServerDoWarpToPosition(player: Player, pos: Vector3, randomize: boolean): boolean
-	--_annotate(string.format("InnerWarp player=%s pos=%s randomize=%s", player.Name, tostring(pos), tostring(randomize)))
+	_annotate(string.format("InnerWarp player=%s pos=%s randomize=%s", player.Name, tostring(pos), tostring(randomize)))
 	if randomize then
 		pos = pos + Vector3.new(math.random(5), 25 + math.random(10), math.random(5))
 	end
 	if not player then
-		--_annotate("innerwarp.player nil")
+		_annotate("innerwarp.player nil")
 		return false
 	end
 	if not player.Character then
-		--_annotate("innerwarp.char nil")
+		_annotate("innerwarp.char nil")
 		return false
 	end
 	local character = player.Character or player.CharacterAdded:Wait()
 	if not character.HumanoidRootPart then
-		--_annotate("innerwarp.HRP nil")
+		_annotate("innerwarp.HRP nil")
 		return false
 	end
 	local rootPart = character.HumanoidRootPart
@@ -101,7 +101,7 @@ local function ServerDoWarpToPosition(player: Player, pos: Vector3, randomize: b
 			or state == Enum.HumanoidStateType.Swimming
 			or state == Enum.HumanoidStateType.PlatformStanding
 		then
-			--_annotate("state was already valid inside ServerDoWarpToPosition")
+			_annotate("state was (finally.) valid inside ServerDoWarpToPosition, state: " .. tostring(state))
 			break
 		end
 		humanoid.PlatformStand = true
@@ -113,52 +113,51 @@ local function ServerDoWarpToPosition(player: Player, pos: Vector3, randomize: b
 		humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
 		humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
 		task.wait(0.1)
-		print(state)
-		--_annotate("while true loop")
+		_annotate("while true loop stuck in state: " .. tostring(state))
 	end
 	CreateTemporaryLightPillar(rootPart.Position, "source")
 	--actually move AFTER momentum gone.
-	--_annotate("Actually changing CFrame")
+	_annotate("Actually changing CFrame")
 	rootPart.CFrame = CFrame.new(pos)
-	--_annotate("Changed CFrame")
+	_annotate("Changed CFrame")
 
 	CreateTemporaryLightPillar(pos, "destination")
-	--_annotate("innerWarp done")
+	_annotate("innerWarp done")
 	return true
 end
 
 -- if you are on the server and want to do a warp, then call this to make sure the player is fully locked out first.
 module.RequestClientToWarpToWarpRequest = function(player: Player, request: tt.serverWarpRequest)
-	--_annotate(
-	-- 	string.format(
-	-- 		"server warp command for %s: signId=%s highlightSignId=%s kind=%s position=%s",
-	-- 		player.Name,
-	-- 		tostring(request.signId),
-	-- 		tostring(request.highlightSignId),
-	-- 		tostring(request.kind),
-	-- 		tostring(request.position)
-	-- 	)
-	-- )
+	_annotate(
+		string.format(
+			"server warp command for %s: signId=%s highlightSignId=%s kind=%s position=%s",
+			player.Name,
+			tostring(request.signId),
+			tostring(request.highlightSignId),
+			tostring(request.kind),
+			tostring(request.position)
+		)
+	)
 	ServerRequestClientToWarpLockEvent:FireClient(player, request)
 end
 
 module.Init = function()
 	--when player clicks warp to <sign> they fire this event and go.
 	ClientRequestsWarpToRequestFunction.OnServerInvoke = function(player: Player, request: tt.serverWarpRequest): any
-		--_annotate("ClientRequestsWarpToRequestFunction.OnServerInvoke")
+		_annotate("ClientRequestsWarpToRequestFunction.OnServerInvoke")
 
 		if request.kind == "sign" then
-			--_annotate(
-			-- 	string.format(
-			-- 		"server has been asked by client to to do a warp of player=%s signId=%s, highlight=%s",
-			-- 		player.Name,
-			-- 		tostring(request.signId),
-			-- 		tostring(request.highlightSignId)
-			-- 	)
-			-- )
+			_annotate(
+				string.format(
+					"server has been asked by client to to do a warp of player=%s signId=%s, highlight=%s",
+					player.Name,
+					tostring(request.signId),
+					tostring(request.highlightSignId)
+				)
+			)
 			local pos: Vector3 | nil = tpUtil.signId2Position(request.signId)
 			if not pos then
-				--_annotate("no POS?" .. tostring(request.signId))
+				_annotate("no POS?" .. tostring(request.signId))
 				return false
 			end
 

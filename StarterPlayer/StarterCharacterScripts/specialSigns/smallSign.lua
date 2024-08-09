@@ -19,15 +19,15 @@ local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 -- local activeScaleMultiplerAbsolute = originalScale
 
 -------------- MAIN --------------
-module.Kill = function()
+module.InformRunEnded = function()
 	character:ScaleTo(1)
 	-- activeScaleMultiplerAbsolute = 1
 end
 
-module.Init = function()
+module.InformRunStarting = function()
 	-- originalScale = 1
 	-- activeScaleMultiplerAbsolute = originalScale
-	--_annotate("Player shranken.")
+	_annotate("Player shranken.")
 	-- local newMultipler = originalScale / activeScaleMultiplerAbsolute / 2
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
@@ -35,7 +35,7 @@ module.Init = function()
 	-- activeScaleMultiplerAbsolute = originalScale / 2
 end
 
-module.SawFloor = function(floorMaterial: Enum.Material?) end
+module.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?) end
 
 _annotate("end")
 return module

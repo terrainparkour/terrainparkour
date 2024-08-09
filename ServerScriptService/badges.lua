@@ -34,7 +34,7 @@ module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor): boole
 		end
 	end
 	if not grantedBadges[userId] then
-		--_annotate("\treset grantedBadges cache." .. userId)
+		_annotate("\treset grantedBadges cache." .. userId)
 		grantedBadges[userId] = {}
 	end
 	if badgeLookupLocks[userId] == nil then
@@ -44,7 +44,7 @@ module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor): boole
 		if not badgeLookupLocks[userId][badge.assetId] then
 			break
 		end
-		--_annotate("waiting on lookup.\t" .. badge.name)
+		_annotate("waiting on lookup.\t" .. badge.name)
 		wait(1)
 		--TODO very suspicious. what is this?
 	end
@@ -54,7 +54,7 @@ module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor): boole
 			local res = BadgeService:UserHasBadgeAsync(userId, badge.assetId)
 			if res then --these will fill it in, and later it'll be re-fed upstream.
 				task.spawn(function()
-					--_annotate("saving to remote " .. badge.name)
+					_annotate("saving to remote " .. badge.name)
 					rdb.saveUserBadgeGrant(userId, badge.assetId, badge.name)
 				end)
 			end
@@ -63,7 +63,7 @@ module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor): boole
 		end)
 		if e then
 			badgeLookupLocks[userId][badge.assetId] = nil
-			--_annotate("Nil out." .. badge.name)
+			_annotate(string.format("Nil out. %s %s", badge.name, e))
 			return nil
 		end
 	end

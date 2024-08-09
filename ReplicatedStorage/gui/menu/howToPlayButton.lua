@@ -10,11 +10,12 @@ local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local module = {}
 
 local getHowToPlayModal = function(localPlayer: Player): ScreenGui
-	local sg = Instance.new("ScreenGui")
-	sg.Name = "SettingsSgui"
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.IgnoreGuiInset = true
+	screenGui.Name = "SettingsSgui"
 
 	local outerFrame = Instance.new("Frame")
-	outerFrame.Parent = sg
+	outerFrame.Parent = screenGui
 	outerFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
 	outerFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
 	local vv2 = Instance.new("UIListLayout")
@@ -51,9 +52,9 @@ local getHowToPlayModal = function(localPlayer: Player): ScreenGui
 	local tb = guiUtil.getTb("ZZZSettingsCloseButton", UDim2.new(1, 0, 0, 40), 2, outerFrame, colors.redStop)
 	tb.Text = "Close"
 	tb.Activated:Connect(function()
-		sg:Destroy()
+		screenGui:Destroy()
 	end)
-	return sg
+	return screenGui
 end
 
 local howToPlayButton: gt.button = {

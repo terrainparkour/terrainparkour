@@ -3,8 +3,6 @@
 --warning: 2022.10 sometimes needs to be loaded late for some reason.
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
-local textHighlighting = require(game.ReplicatedStorage.gui.textHighlighting)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
 
@@ -60,48 +58,10 @@ module.KillFinalTooltip = function()
 	DestroyToolTips(1000000)
 end
 
-local function getMouseoverableButton(signName: string)
-	local button = Instance.new("TextButton")
-	button.Size = UDim2.new(0, 100, 0, 30)
-	button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-	button.BorderSizePixel = 2
-	button.BorderColor3 = Color3.fromRGB(100, 100, 100)
-	button.Text = ""
-
-	local textLabel = Instance.new("TextLabel")
-	textLabel.Size = UDim2.new(1, 0, 1, 0)
-	textLabel.BackgroundTransparency = 1
-	textLabel.Text = signName
-	textLabel.TextScaled = true
-	textLabel.Parent = button
-	local t = signName
-	button.MouseEnter:Connect(function()
-		if string.find(t, " %(") then
-			t = textUtil.stringSplit(t, " (")[1]
-		end
-		t = t:match("^%s*(.-)%s*$")
-
-		local signStatusSgui: ScreenGui = localPlayer.PlayerGui:FindFirstChild("SignStatusSgui")
-		if signStatusSgui then
-			local theBadFrame: Frame = signStatusSgui:FindFirstChild("SignStatusUIFrame")
-			if theBadFrame then
-				theBadFrame.Visible = false
-			end
-		end
-		local signId: number = tpUtil.signName2SignId(t)
-		textHighlighting.KillAllExistingHighlights()
-		textHighlighting.DoHighlightSingleSignId(signId)
-		textHighlighting.RotateCameraToFaceSignId(signId)
-		textHighlighting.PointPlayerAtSignId(signId)
-	end)
-
-	return button
-end
-
 --right=they float right+down rather than left+down from cursor. default is right.
 module.setupToolTip = function(
 	target: TextLabel | TextButton | ImageLabel | Frame,
-	tooltipContents: string | ImageLabel | { string }, --when its a {string} we make a grid of insane mouseover sign names which highlight.
+	tooltipContents: string | ImageLabel | { signName: string, extraText: string }, --when its a {string} we make a grid of insane mouseover sign names which highlight.
 	size: UDim2,
 	right: boolean?, --this refers to where the draws itself related to the mouse (i.e. default is the tooltip falls down to the lower right from the mouse, but if this is false, its to the lower left. )
 	xalignment: any?, --this refers to the text
@@ -118,7 +78,7 @@ module.setupToolTip = function(
 	if right == nil then
 		right = true
 	end
-	assert(tooltipContents)
+
 	local mouse: Mouse = localPlayer:GetMouse()
 
 	local myAge = 0
@@ -139,6 +99,13 @@ module.setupToolTip = function(
 		tooltipFrame.Size = size
 		tooltipFrame.Name = ephemeralToolTipFrameName
 		tooltipFrame.Parent = ttgui
+		local hh = Instance.new("UIListLayout")
+		hh.Parent = tooltipFrame
+		hh.FillDirection = Enum.FillDirection.Horizontal
+		hh.Wraps = true
+		hh.Name = "SignRelated-ToolTipListLayout"
+		hh.HorizontalAlignment = Enum.HorizontalAlignment.Left
+		hh.VerticalAlignment = Enum.VerticalAlignment.Top
 
 		local numberValue = Instance.new("NumberValue")
 		numberValue.Name = "AgeValue"
@@ -152,22 +119,6 @@ module.setupToolTip = function(
 			tl.Font = Enum.Font.Gotham
 			tl.TextXAlignment = xalignment
 			tl.TextYAlignment = Enum.TextYAlignment.Top
-		elseif typeof(tooltipContents) == "table" then
-			local listLayout = Instance.new("UIListLayout")
-			listLayout.Wraps = true
-			listLayout.Parent = tooltipFrame
-			listLayout.FillDirection = Enum.FillDirection.Horizontal
-			listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-			listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-			listLayout.Parent = tooltipFrame
-			listLayout.FillDirection = Enum.FillDirection.Vertical
-			listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-			listLayout.Padding = UDim.new(0, 5)
-
-			for _, signName in ipairs(tooltipContents) do
-				local button = getMouseoverableButton(signName)
-				button.Parent = tooltipFrame
-			end
 		else --image tooltips not working so well.
 			local s, e = pcall(function()
 				tooltipContents.Parent = tooltipFrame

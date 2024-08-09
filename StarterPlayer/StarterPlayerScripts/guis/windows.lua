@@ -9,22 +9,19 @@ local colors = require(game.ReplicatedStorage.util.colors)
 
 local module = {}
 
-local function GetLowerLeftLBFrameBottom(outerFrame: Frame): number
-	local lowest = nil
-	for _, y: Frame in pairs(outerFrame:GetChildren()) do
-		if y.ClassName == "Frame" then
-			local candidate = y.AbsolutePosition.Y + y.AbsoluteSize.Y
-			if lowest == nil then
-				lowest = UDim2.new(0, 0, 0, candidate)
-			elseif lowest.Y.Offset < candidate then
-				lowest = UDim2.new(0, 0, 0, candidate)
-			end
-		end
-	end
-	return lowest
+local buttonScalePixel = 15
+
+-- Helper function to calculate Vector2 delta
+local function calculateVector2Delta(input: Vector3, start: Vector2): Vector2
+	local delta = input - Vector3.new(start.X, start.Y, 0)
+	return Vector2.new(delta.X, delta.Y)
 end
 
-function module.SetupResizeability(outerFrame: Frame): TextButton
+function getLowerLeftOfFrame(frame: Frame): number
+	return frame.Size.Y.Offset + frame.Position.Y.Offset
+end
+
+local SetupResizeability = function(frame: Frame): TextButton
 	local resizing = false
 	local lastInputPosition = Vector2.new()
 	local initialFrameSize = Vector2.new()
@@ -33,17 +30,23 @@ function module.SetupResizeability(outerFrame: Frame): TextButton
 	-- Create resize handle as a TextButton directly on the input frame. No icon.
 	-- it should appear in the bottom left of the frame.
 	local resizeHandle = Instance.new("TextButton")
-	resizeHandle.Size = UDim2.new(0, 12, 0, 12)
-	resizeHandle.Position = UDim2.new(0, -12, 0, GetLowerLeftLBFrameBottom(outerFrame))
-	resizeHandle.AnchorPoint = Vector2.new(0, 0) -- must be 0,0 and never adjust this.
+	resizeHandle.Size = UDim2.new(0, buttonScalePixel, 0, buttonScalePixel)
+	resizeHandle.AnchorPoint = Vector2.new(0, 0)
+	resizeHandle.Position = UDim2.new(0, 0, 1, -1 * buttonScalePixel)
+
 	resizeHandle.Text = "O"
 	resizeHandle.BackgroundColor3 = Color3.new(0.8, 0.8, 0.8)
 	resizeHandle.BackgroundTransparency = 0
-	resizeHandle.Parent = outerFrame
-	resizeHandle.ZIndex = 2
-	resizeHandle.Name = "ResizeHandle_" .. outerFrame.Name
+	resizeHandle.Parent = frame
+	resizeHandle.ZIndex = 3
+	resizeHandle.Name = frame.Name .. "_resizer"
 
+	local deb = false
 	local function handleResize(input: InputObject)
+		if deb then
+			return
+		end
+		deb = true
 		-- this is the delta since the last time we resized (as the user drags)
 		local delta = Vector2.new(input.Position.X - lastInputPosition.X, input.Position.Y - lastInputPosition.Y)
 
@@ -53,18 +56,8 @@ function module.SetupResizeability(outerFrame: Frame): TextButton
 		-- do NOT remove the above explanatory comments above.
 
 		--continuously update the frame
-		initialFrameSize = outerFrame.Size
-		initialFramePosition = outerFrame.Position
-
-		-- print(
-		-- 	string.format(
-		-- 		"initial frame size: \n\tXScale=%f XOffset=%d \n\tYScale=%f YOffset=%d",
-		-- 		initialFrameSize.X.Scale,
-		-- 		initialFrameSize.X.Offset,
-		-- 		initialFrameSize.Y.Scale,
-		-- 		initialFrameSize.Y.Offset
-		-- 	)
-		-- )
+		initialFrameSize = frame.Size
+		initialFramePosition = frame.Position
 
 		local newSizeXScale = initialFrameSize.X.Scale
 		local newSizeXOffset = initialFrameSize.X.Offset - delta.X
@@ -72,27 +65,7 @@ function module.SetupResizeability(outerFrame: Frame): TextButton
 		local newSizeYScale = initialFrameSize.Y.Scale
 		local newSizeYOffset = initialFrameSize.Y.Offset + delta.Y
 
-		-- print(
-		-- 	string.format(
-		-- 		"new Size: \n\tXScale=%f XOffset=%d \n\tYScale=%f YOffset=%d",
-		-- 		newSizeXScale,
-		-- 		newSizeXOffset,
-		-- 		newSizeYScale,
-		-- 		newSizeYOffset
-		-- 	)
-		-- )
-
-		outerFrame.Size = UDim2.new(newSizeXScale, newSizeXOffset, newSizeYScale, newSizeYOffset)
-
-		-- print(
-		-- 	string.format(
-		-- 		"initial position: \n\tXScale=%f XOffset=%d \n\tYScale=%f YOffset=%d",
-		-- 		initialFramePosition.X.Scale,
-		-- 		initialFramePosition.X.Offset,
-		-- 		initialFramePosition.Y.Scale,
-		-- 		initialFramePosition.Y.Offset
-		-- 	)
-		-- )
+		frame.Size = UDim2.new(newSizeXScale, newSizeXOffset, newSizeYScale, newSizeYOffset)
 
 		local newPosition = UDim2.new(
 			initialFramePosition.X.Scale,
@@ -100,20 +73,12 @@ function module.SetupResizeability(outerFrame: Frame): TextButton
 			initialFramePosition.Y.Scale,
 			initialFramePosition.Y.Offset
 		)
-		-- print(
-		-- 	string.format(
-		-- 		"new position is: \n\tXscale=%f Xoffset=%f \n\tYscale=%f Yoffset=%f",
-		-- 		newPosition.X.Scale,
-		-- 		newPosition.X.Offset,
-		-- 		newPosition.Y.Scale,
-		-- 		newPosition.Y.Offset
-		-- 	)
-		-- )
 
-		outerFrame.Position = newPosition
+		frame.Position = newPosition
 
 		-- Update last input position
 		lastInputPosition = Vector2.new(input.Position.X, input.Position.Y)
+		deb = false
 	end
 
 	resizeHandle.InputBegan:Connect(function(input: InputObject)
@@ -123,8 +88,8 @@ function module.SetupResizeability(outerFrame: Frame): TextButton
 		then
 			resizing = true
 			lastInputPosition = input.Position
-			initialFrameSize = outerFrame.Size
-			initialFramePosition = outerFrame.Position
+			initialFrameSize = frame.Size
+			initialFramePosition = frame.Position
 		end
 	end)
 
@@ -148,27 +113,33 @@ function module.SetupResizeability(outerFrame: Frame): TextButton
 			resizing = false
 		end
 	end)
+
 	return resizeHandle
 end
 
-function module.SetupMinimizeability(outerFrame: Frame, framesToMinimize: { Frame })
-	--_annotate("create miminize button")
+local SetupMinimizeability = function(frame: Frame)
+	_annotate("create miminize button for: " .. frame.Name)
 
 	local isMinimized: boolean = false
 	local minimizeButton: TextButton
 	minimizeButton = Instance.new("TextButton")
-	minimizeButton.Size = UDim2.new(0, 12, 0, 12) -- Increased size
-	minimizeButton.Position = UDim2.new(0, 0, 0, GetLowerLeftLBFrameBottom(outerFrame))
+	minimizeButton.Size = UDim2.new(0, buttonScalePixel, 0, buttonScalePixel) -- Increased size
+	minimizeButton.Position = UDim2.new(0, buttonScalePixel, 1, -1 * buttonScalePixel)
+
 	minimizeButton.Text = "-"
 	minimizeButton.TextScaled = true
-	minimizeButton.Name = "MinimizeButton"
+	minimizeButton.Name = frame.Name .. "_minimizer"
 	minimizeButton.ZIndex = 10
 	minimizeButton.BackgroundColor3 = colors.defaultGrey
 	minimizeButton.TextColor3 = colors.black
 	minimizeButton.TextSize = 18 -- Larger text
 	minimizeButton.Font = Enum.Font.Gotham
-	minimizeButton.Parent = outerFrame -- Set as sibling to the frame
+	minimizeButton.Parent = frame -- Set as sibling to the frame
+	minimizeButton.ZIndex = 6
 
+	local childrenSizes: { [string]: UDim2 } = {}
+	local parentSize: UDim2 = {}
+	-- minimiize all Frame children of the outer frame.
 	minimizeButton.MouseButton1Click:Connect(function()
 		isMinimized = not isMinimized
 		if isMinimized then
@@ -176,65 +147,81 @@ function module.SetupMinimizeability(outerFrame: Frame, framesToMinimize: { Fram
 		else
 			minimizeButton.Text = "-"
 		end
-		for _, frame in pairs(framesToMinimize) do
-			frame.Visible = not isMinimized
+
+		-- find all child Frames and minimize them or restore them.
+		-- we shrink
+		for _, child: Frame in pairs(frame:GetChildren()) do
+			if child.ClassName == "Frame" then
+				if isMinimized then
+					-- back up the size
+					childrenSizes[child.Name] = child.Size
+					--shrink each to zero
+					child.Size = UDim2.new(0, 2 * buttonScalePixel, 0, buttonScalePixel)
+				else
+					--restore the size
+					child.Size = childrenSizes[child.Name]
+				end
+
+				child.Visible = not isMinimized
+			end
+		end
+
+		-- we also shrink the outerFrame
+		if isMinimized then
+			parentSize = frame.Size
+			frame.Size = UDim2.new(0, 50, 0, 20)
+		else
+			frame.Size = parentSize
 		end
 	end)
-
-	for _, frame in pairs(framesToMinimize) do
-		frame:GetPropertyChangedSignal("Size"):Connect(function()
-			-- print("Frame related parent changed Size: " .. frame.Name .. " " .. frame.Size.Y.Offset)
-			minimizeButton.Position = UDim2.new(0, 0, 0, GetLowerLeftLBFrameBottom(outerFrame))
-		end)
-		frame:GetPropertyChangedSignal("Position"):Connect(function()
-			-- print("Frame button related parent changed position;")
-			minimizeButton.Position = UDim2.new(0, 0, 0, GetLowerLeftLBFrameBottom(outerFrame))
-		end)
-	end
-end
-
---[[
-    How it works:
-    1. The module exposes a single function: SetupDraggability(frame)
-    2. When called, it sets up event listeners on the provided frame
-    3. On mouse click or touch, it starts tracking the drag
-    4. As the input moves, it updates the frame's position
-    5. When the input ends, it stops the drag operation
-
-    How to use:
-    1. Require this module in your script
-    2. Call the SetupDraggability function, passing in the frame you want to make draggable
-    
-    Example:
-    local draggability = require(path.to.this.module)
-    local myFrame = script.Parent.SomeFrame
-    draggability.SetupDraggability(myFrame)
-
-    Why it works:
-    - It uses Roblox's InputObject system to track user input
-    - It calculates the delta between the start position and current position
-    - The frame's position is updated based on this delta, creating a smooth dragging effect
-    - By using separate connections for InputChanged and InputEnded, it ensures clean disconnection when dragging stops
-]]
-
--- Helper function to calculate Vector2 delta
-local function calculateVector2Delta(input: Vector3, start: Vector2): Vector2
-	local delta = input - Vector3.new(start.X, start.Y, 0)
-	return Vector2.new(delta.X, delta.Y)
 end
 
 -- Function to update the frame position during dragging
-local function updateDrag(frame: Frame, input: InputObject, dragStart: Vector2, startPos: UDim2)
-	local delta = calculateVector2Delta(input.Position, dragStart)
-	frame.Position =
-		UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+local function updateDrag(
+	frame: Frame,
+	activelyChangingInput: InputObject,
+	mouseDragStart: Vector2,
+	framePositionAtStartOfDrag: UDim2
+)
+	local dragDelta = calculateVector2Delta(activelyChangingInput.Position, mouseDragStart)
+
+	local absoluteX = framePositionAtStartOfDrag.X.Scale * workspace.CurrentCamera.ViewportSize.X
+		+ framePositionAtStartOfDrag.X.Offset
+		+ dragDelta.X
+	local absoluteY = framePositionAtStartOfDrag.Y.Scale * workspace.CurrentCamera.ViewportSize.Y
+		+ framePositionAtStartOfDrag.Y.Offset
+		+ dragDelta.Y
+
+	-- Get the frame's size
+	local frameSize = frame.AbsoluteSize
+
+	-- Calculate the maximum allowed position
+	local maxX = workspace.CurrentCamera.ViewportSize.X - frameSize.X
+	local maxY = workspace.CurrentCamera.ViewportSize.Y - frameSize.Y
+
+	-- Cap the position to keep the frame on screen
+	-- but only if its visible. If not, let it go to the edge.
+	local cappedX: number
+	local cappedY: number
+	if frame.Visible then
+		cappedX = math.clamp(absoluteX, 0, maxX)
+		cappedY = math.clamp(absoluteY, 0, maxY)
+	else
+		cappedX = absoluteX
+		cappedY = absoluteY
+	end
+
+	-- Convert back to UDim2
+	local newPosition = UDim2.new(0, cappedX, 0, cappedY)
+	-- local newPosition = UDim2.new(0, absoluteX, 0, absoluteY)
+	frame.Position = newPosition
 end
 
 -- Main function to setup draggability for a frame
-function module.SetupDraggability(frame: Frame)
+local SetupDraggability = function(frame: Frame)
 	local dragging = false
-	local dragStart: Vector2?
-	local startPos: UDim2?
+	local mouseDragStartPosition: Vector2?
+	local framePositionAtStartOfDrag: UDim2?
 
 	frame.InputBegan:Connect(function(input: InputObject)
 		if
@@ -242,8 +229,9 @@ function module.SetupDraggability(frame: Frame)
 			or input.UserInputType == Enum.UserInputType.Touch
 		then
 			dragging = true
-			dragStart = Vector2.new(input.Position.X, input.Position.Y)
-			startPos = frame.Position
+			mouseDragStartPosition = Vector2.new(input.Position.X, input.Position.Y)
+			framePositionAtStartOfDrag = frame.Position
+			-- print("for this entire drag, startPOS is: " .. tostring(framePositionAtStartOfDrag))
 
 			-- Create a new connection for InputChanged while dragging
 			local dragConnection
@@ -255,7 +243,7 @@ function module.SetupDraggability(frame: Frame)
 						or changedInput.UserInputType == Enum.UserInputType.Touch
 					)
 				then
-					updateDrag(frame, changedInput, dragStart, startPos)
+					updateDrag(frame, changedInput, mouseDragStartPosition, framePositionAtStartOfDrag)
 				end
 			end)
 
@@ -273,6 +261,48 @@ function module.SetupDraggability(frame: Frame)
 			end)
 		end
 	end)
+end
+
+local SetupTitle = function(frame: Frame, titleFrame: Frame)
+	titleFrame.Size = UDim2.new(1, 0, 0, 20)
+	titleFrame.Position = UDim2.new(0, 0, 0, 0)
+	titleFrame.BackgroundColor3 = colors.defaultGrey
+	titleFrame.Parent = frame
+end
+
+local SetupCloseButton = function(frame: Frame) end
+
+-- based on name and params, set up a frame which is the "outer" frame. That will have the controls attached to it.
+-- you will be given the outer frame to position and the child "content" frame to populate
+module.SetupFrame = function(
+	name: string,
+	draggable: boolean,
+	resizable: boolean,
+	minimizable: boolean
+): { outerFrame: Frame, contentFrame: Frame }
+	local outerFrame = Instance.new("Frame")
+	outerFrame.Name = "outer_" .. name
+	outerFrame.BackgroundTransparency = 1
+	outerFrame.Visible = true
+
+	if draggable then
+		SetupDraggability(outerFrame)
+	end
+	if resizable then
+		SetupResizeability(outerFrame)
+	end
+	if minimizable then
+		SetupMinimizeability(outerFrame)
+	end
+
+	local contentFrame = Instance.new("Frame")
+	contentFrame.Parent = outerFrame
+	contentFrame.Name = "content_" .. name
+	contentFrame.Size = UDim2.new(1, 0, 1, 0)
+	contentFrame.BackgroundTransparency = 1
+	contentFrame.Position = UDim2.new(0, 0, 0, 0)
+	contentFrame.Visible = true
+	return { outerFrame = outerFrame, contentFrame = contentFrame }
 end
 
 _annotate("end")

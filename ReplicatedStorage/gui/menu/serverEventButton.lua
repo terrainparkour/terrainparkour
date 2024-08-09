@@ -33,7 +33,7 @@ local serverEventButton: gt.actionButton = {
 	getActive = function()
 		return true
 	end,
-	widthXScale = 0.4,
+	widthXScale = 0.25,
 }
 
 module.serverEventButton = serverEventButton

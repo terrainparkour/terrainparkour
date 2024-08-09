@@ -1,7 +1,5 @@
 --!strict
 
-
-
 -- pulseSign
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
@@ -18,7 +16,7 @@ local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 local pulseLaunchDebounce = false
 
 -------------- MAIN --------------
-module.Kill = function()
+module.InformRunEnded = function()
 	pulseLaunchDebounce = false
 end
 
@@ -26,7 +24,6 @@ local DoLaunchForPulse = function()
 	if pulseLaunchDebounce then
 		return
 	end
-	--_annotate("DEB.DoLaunchForPulse")
 	pulseLaunchDebounce = true
 
 	local daysSince1970 = os.difftime(
@@ -38,7 +35,6 @@ local DoLaunchForPulse = function()
 	local verticalAngle = math.rad(pulseRandom:NextInteger(45, 90))
 	local horizontalAngle = math.rad(pulseRandom:NextInteger(0, 359))
 	local pulsePower = pulseRandom:NextInteger(200, 1300)
-	-- print("pulsePower: " .. tostring(pulsePower))
 	local y = math.sin(verticalAngle)
 	local horizontalComponent = math.cos(verticalAngle)
 	local x = horizontalComponent * math.cos(horizontalAngle)
@@ -50,14 +46,14 @@ local DoLaunchForPulse = function()
 	pulseLaunchDebounce = false
 end
 
-module.Init = function()
+module.InformRunStarting = function()
 	pulseLaunchDebounce = false
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	DoLaunchForPulse()
 end
 
-module.SawFloor = function(floorMaterial: Enum.Material?) end
+module.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?) end
 
 _annotate("end")
 return module

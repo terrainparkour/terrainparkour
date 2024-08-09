@@ -75,7 +75,7 @@ local function makeBadgeRowFrame(
 	)
 
 	badgeNameLabel.Text = badge.name
-	toolTip.setupToolTip( badgeNameLabel, badge.hint or "", toolTip.enum.toolTipSize.NormalText)
+	toolTip.setupToolTip(badgeNameLabel, badge.hint or "", toolTip.enum.toolTipSize.NormalText)
 
 	badgeNameLabel.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -156,11 +156,12 @@ getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	local badgeInfo: { [number]: { tt.badgeAttainment } } =
 		badgeAttainmentsFunction:InvokeServer(orderedUserIdsInServer, "badgeButtonSetup.")
 
-	local sg = Instance.new("ScreenGui")
-	sg.Name = "badgeStatusFrame"
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.IgnoreGuiInset = true
+	screenGui.Name = "badgeStatusFrame"
 
 	local outerFrame = Instance.new("Frame")
-	outerFrame.Parent = sg
+	outerFrame.Parent = screenGui
 	outerFrame.Position = UDim2.new(0.2, 0, 0.3, 0)
 	outerFrame.Size = UDim2.new(0.6, 0, 0.5, 0)
 	outerFrame.Name = "03badgeStatusOuterFrame"
@@ -259,13 +260,14 @@ getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 		local img = Instance.new("ImageLabel")
 
 		img.Size = UDim2.new(0, 45, 0, 45)
-		local content = thumbnails.getThumbnailContent(userId, Enum.ThumbnailType.HeadShot)
+		local content =
+			thumbnails.getThumbnailContent(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 		img.Image = content
 		img.BackgroundColor3 = useColor
 		img.Name = string.format("02.%s.badgePortrait", username)
 		img.Parent = thisUserFrame
 		img.BorderMode = Enum.BorderMode.Outline
-		toolTip.setupToolTip( img, localPlayer.Name, UDim2.new(0, 200, 0, 60))
+		toolTip.setupToolTip(img, localPlayer.Name, UDim2.new(0, 200, 0, 60))
 	end
 
 	--note the individual attainments ARE in teh right order here.
@@ -338,10 +340,10 @@ getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	tb.BackgroundColor3 = colors.redStop
 	tb.Parent = outerFrame
 	tb.Activated:Connect(function()
-		sg:Destroy()
+		screenGui:Destroy()
 	end)
 
-	return sg
+	return screenGui
 end
 
 local badgeButton: gt.button = {

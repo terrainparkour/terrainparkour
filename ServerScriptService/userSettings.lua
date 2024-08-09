@@ -172,7 +172,7 @@ local debounceInnerSetup = false
 --src is just for debugging.
 local function innerSetupSettings(player: Player, src: string): { [string]: tt.userSettingValue }
 	while debounceInnerSetup do
-		--_annotate("settings.innersetup.wait " .. src)
+		_annotate("settings.innersetup.wait " .. src)
 		wait(0.05)
 	end
 	debounceInnerSetup = true

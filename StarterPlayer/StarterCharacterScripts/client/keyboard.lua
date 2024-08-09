@@ -1,11 +1,14 @@
 --!strict
 
+-- keyboard.client.luaclient
 -- client keyboard shortcuts
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 local textHighlighting = require(game.ReplicatedStorage.gui.textHighlighting)
+local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local settings = require(game.ReplicatedStorage.settings)
@@ -20,8 +23,9 @@ local fireEvent = avatarEventFiring.FireEvent
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
+local keyboardShortcutButton = require(game.StarterPlayer.StarterPlayerScripts.buttons.keyboardShortcutGui)
+local particleExplanationGui = require(game.StarterPlayer.StarterPlayerScripts.buttons.particleExplanationGui)
 
-local tt = require(game.ReplicatedStorage.types.gametypes)
 local UserInputService = game:GetService("UserInputService")
 
 ---------------- GLOBALS ---------------------
@@ -43,12 +47,12 @@ end
 local function ToggleLB(intendedState: boolean)
 	local items = { localPlayer:WaitForChild("PlayerGui"):FindFirstChild("LeaderboardScreenGui") }
 	if not items then
-		--_annotate("no leaderboard screen gui found.")
+		_annotate("no leaderboard screen gui found.")
 		return
 	end
 	for _, el in ipairs(items) do
 		if el == nil then
-			--_annotate("bad item.")
+			_annotate("bad item.")
 			continue
 		end
 		el.Enabled = intendedState
@@ -60,7 +64,7 @@ local function KillPopups()
 		if string.sub(el.Name, 0, 14) == "RaceResultSgui" then
 			el:Destroy()
 		end
-		if string.sub(el.Name, 0, 16) == "SignStatusSgui" then
+		if string.sub(el.Name, 0, 14) == "SignProfileSgui" then
 			el:Destroy()
 		end
 
@@ -82,8 +86,6 @@ local function KillPopups()
 	end
 end
 
-local keyboardShortcutButton = require(game.StarterPlayer.StarterPlayerScripts.buttons.keyboardShortcutGui)
-
 -------------- all the shortcuts are here. ----------------
 local function onInputBegin(inputObject, gameProcessedEvent)
 	if not inputObject.KeyCode then
@@ -101,11 +103,11 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 				useLastRunEnd = lastRunEnd
 			end
 			if lastRunStart ~= nil and lastRunEnd ~= nil then
-				warper.WarpToSign(lastRunStart, useLastRunEnd)
+				warper.WarpToSignId(lastRunStart, useLastRunEnd)
 			end
 		elseif inputObject.KeyCode == Enum.KeyCode.H then
 			textHighlighting.KillAllExistingHighlights()
-			print("kill all highlights.")
+			-- print("kill all highlights.")
 		elseif inputObject.KeyCode == Enum.KeyCode.Tab then
 			showLB = not showLB
 			ToggleLB(showLB)
@@ -115,6 +117,8 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 			fireEvent(mt.avatarEventTypes.RUN_KILL, { reason = "hit c on keyboard" })
 		elseif inputObject.KeyCode == Enum.KeyCode.K then
 			keyboardShortcutButton.CreateShortcutGui()
+		elseif inputObject.KeyCode == Enum.KeyCode.P then
+			particleExplanationGui.CreateParticleGui()
 		end
 	end
 end
@@ -127,25 +131,27 @@ local function handleUserSettingChanged(item: tt.userSettingValue): any
 	end
 end
 
-local deb = false
+-- we track the last run start so that they can warp back there.
+local debHandleAvatarEvent = false
 local function handleAvatarEvent(ev: mt.avatarEvent)
-	if deb then
-		--_annotate("deb, waiting in handleAvatarEvent")
-		task.wait()
+	while debHandleAvatarEvent do
+		_annotate("was locked while trying to set keyboard.")
+		_annotate(avatarEventFiring.DescribeEvent(ev.eventType, ev.details))
+		return
 	end
-	deb = true
+	debHandleAvatarEvent = true
 	if ev.eventType == mt.avatarEventTypes.RUN_START then
-		--_annotate(string.format("run start, setting lastRunStart to %d", ev.details.relatedSignId))
+		_annotate(string.format("run start, setting lastRunStart to %d", ev.details.relatedSignId))
 		lastRunStart = ev.details.relatedSignId
 	elseif ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
-		--_annotate(string.format("run complete, setting lastRunEnd to %d", ev.details.relatedSignId))
+		_annotate(string.format("run complete, setting lastRunEnd to %d", ev.details.relatedSignId))
 		lastRunEnd = ev.details.relatedSignId
 	end
-	deb = false
+	debHandleAvatarEvent = false
 end
 
 module.Init = function()
-	deb = false
+	debHandleAvatarEvent = false
 	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 	UserInputService.InputBegan:Connect(onInputBegin)
 

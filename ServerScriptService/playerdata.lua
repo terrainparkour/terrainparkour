@@ -7,7 +7,6 @@ local _annotate = annotater.getAnnotater(script)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
 local emojis = require(game.ReplicatedStorage.enums.emojis)
-
 local remoteDbInternal = require(game.ServerScriptService.remoteDbInternal)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local colors = require(game.ReplicatedStorage.util.colors)

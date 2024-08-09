@@ -42,7 +42,7 @@ local function addRow(
 		if bgcolor == nil then
 			bgcolor = colors.defaultGrey
 		end
-		assert(bgcolor)
+
 		local tl = guiUtil.getTl("01" .. text, UDim2.new(width, 0, 1, 0), 2, frame, bgcolor, 1)
 		tl.Text = text
 		if textColor ~= nil then
@@ -55,6 +55,7 @@ end
 
 module.createFindScreenGui = function(options: tt.signFindOptions): ScreenGui
 	local newFindSgui: ScreenGui = Instance.new("ScreenGui")
+	newFindSgui.IgnoreGuiInset = true
 	newFindSgui.Name = "NewFindSgui"
 
 	local detailsMessage = tostring(options.userTotalFindCount) .. "/" .. tostring(options.totalSignsInGame)
@@ -122,7 +123,11 @@ module.createFindScreenGui = function(options: tt.signFindOptions): ScreenGui
 			--default to shed, for some reason doesn't work tho.
 			options.lastFinderUserId = 261
 		end
-		local content = thumbnails.getThumbnailContent(options.lastFinderUserId, Enum.ThumbnailType.HeadShot)
+		local content = thumbnails.getThumbnailContent(
+			options.lastFinderUserId,
+			Enum.ThumbnailType.HeadShot,
+			Enum.ThumbnailSize.Size420x420
+		)
 		img.Image = content
 		img.BorderSizePixel = 1
 		img.BackgroundColor3 = colors.grey

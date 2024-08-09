@@ -18,8 +18,8 @@ local ServerEventRemoteEvent = remotes.getRemoteEvent("ServerEventRemoteEvent")
 local ServerEventRemoteFunction = remotes.getRemoteFunction("ServerEventRemoteFunction")
 
 local function serverEventClientReceiveMessage(message: string, data: any)
-	--_annotate("client received: " .. message)
-	--_annotate(data)
+	_annotate("client received: " .. message)
+	_annotate(data)
 
 	if message == serverEventEnums.messageTypes.UPDATE then
 		data = data :: { tt.runningServerEvent }
@@ -35,9 +35,10 @@ local function serverEventClientReceiveMessage(message: string, data: any)
 end
 
 module.Init = function()
-	--_annotate("serverEvents init start")
+	_annotate("serverEvents init start")
 	ServerEventRemoteEvent.OnClientEvent:Connect(serverEventClientReceiveMessage)
 	ServerEventRemoteFunction:InvokeServer(serverEventEnums.messageTypes.CONNECT, {})
+	serverEventGuis.Init()
 end
 
 _annotate("end")

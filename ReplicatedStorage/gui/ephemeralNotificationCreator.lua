@@ -44,17 +44,18 @@ module.notify = function(options: tt.ephemeralNotificationOptions)
 		print(options)
 	end
 
-	local sg = Instance.new("ScreenGui")
-	sg.Parent = playerGui
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Parent = playerGui
+	screenGui.IgnoreGuiInset = true
 	local sgName = "EphemeralNotificationSgui"
-	sg.Name = sgName
+	screenGui.Name = sgName
 
 	local frame = Instance.new("Frame")
 	local ephemeralNotificationFrame = "ephemeralNotificationFrame"
 	frame.Name = ephemeralNotificationFrame
 	frame.Size = UDim2.new(0.20, 0, 0.14, 0)
 	frame.Position = UDim2.new(0.77, 0, 0.84, 0)
-	frame.Parent = sg
+	frame.Parent = screenGui
 
 	local firstRowFrame = Instance.new("Frame")
 	firstRowFrame.Parent = frame
@@ -82,7 +83,8 @@ module.notify = function(options: tt.ephemeralNotificationOptions)
 	if useUserId < 1 then
 		useUserId = 261
 	end
-	local content = thumbnails.getThumbnailContent(useUserId, Enum.ThumbnailType.AvatarBust)
+	local content =
+		thumbnails.getThumbnailContent(useUserId, Enum.ThumbnailType.AvatarBust, Enum.ThumbnailSize.Size420x420)
 	im.Position = UDim2.new(0, 0, 0.3, 0)
 	im.Image = content
 	im.Name = "ephemeralImage"
@@ -115,11 +117,11 @@ module.notify = function(options: tt.ephemeralNotificationOptions)
 		warpTl.Parent = frame
 		-- local useHighlightSignId = options.highlightSignId and not enums.SignIdIsExcludedFromStart[options.highlightSignId] and rdb.hasUserFoundSign(op.UserId, startSignId)
 		warpTl.Activated:Connect(function()
-			warper.WarpToSign(options.warpToSignId, options.highlightSignId)
+			warper.WarpToSignId(options.warpToSignId, options.highlightSignId)
 		end)
 	end
 
-	guiUtil.setupKillOnClick(sg, warpName)
+	guiUtil.setupKillOnClick(screenGui, warpName)
 end
 
 _annotate("end")

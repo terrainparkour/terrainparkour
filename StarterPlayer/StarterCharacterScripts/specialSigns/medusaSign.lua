@@ -17,7 +17,6 @@ module.kill = function()
 	if Stone then
 		Stone = false
 	end
-	--_annotate("killed")
 end
 
 module.Init = function()

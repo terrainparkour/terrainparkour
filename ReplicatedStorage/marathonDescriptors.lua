@@ -5,6 +5,8 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
+local module = {}
+
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local mt = require(game.StarterPlayer.StarterPlayerScripts.marathonTypes)
 local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
@@ -15,7 +17,6 @@ local config = require(game.ReplicatedStorage.config)
 local TweenService = game:GetService("TweenService")
 local colors = require(game.ReplicatedStorage.util.colors)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
-local module = {}
 
 --return if you have found a sign of this length yet.
 local SignsOfLengthEvaluateFind = function(desc: mt.marathonDescriptor, signName: string): mt.userFoundSignResult
@@ -783,9 +784,6 @@ local function getSignsWithTrait(trait): { string }
 	local enums = require(game.ReplicatedStorage.util.enums)
 	for signName, signId in pairs(enums.name2signId) do
 		if not trait(signName) then
-			continue
-		end
-		if not tpUtil.SignNameCanBeHighlighted(signName) then
 			continue
 		end
 

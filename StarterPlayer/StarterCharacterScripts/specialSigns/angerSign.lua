@@ -37,8 +37,8 @@ local originalTexture
 local lastTerrain: Enum.Material? = nil
 
 -------------- MAIN --------------
-module.Kill = function()
-	--_annotate("killing")
+module.InformRunEnded = function()
+	_annotate("telling sign the run ended.")
 	humanoid.Health = 100
 	local head = character:FindFirstChild("Head")
 	if head then
@@ -52,15 +52,14 @@ module.Kill = function()
 	end
 	brokenOut = false
 	lastTerrain = nil
-
-	--_annotate("killed")
+	_annotate("done telling sign the run ended.")
 end
 
 local startDescriptionLoopingUpdate = function()
 	runOver = false
 	runProgressSgui.UpdateExtraRaceDescription("-40 if you hit a new terrain.")
 	task.spawn(function()
-		--_annotate("spawning")
+		_annotate("spawning desc updater.")
 		local lastHealthText = ""
 		while true do
 			if runOver then
@@ -82,20 +81,19 @@ local startDescriptionLoopingUpdate = function()
 				end
 			end
 			wait(0.05)
-			--_annotate("update text tight loop.")
 		end
-		--_annotate("update text tight loop. done")
+		_annotate("update text tight loop. done")
 	end)
 end
 
-module.Init = function()
-	--_annotate("init")
+module.InformRunStarting = function()
+	_annotate("init")
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	if not brokenOut then
 		runOver = true
 		while not brokenOut do
-			--_annotate("wait breakout")
+			_annotate("wait breakout")
 			wait(0.1)
 		end
 	end
@@ -104,7 +102,7 @@ module.Init = function()
 	if head then
 		local face: Decal = head:FindFirstChild("face") :: Decal
 		if face and face:IsA("Decal") then
-			--_annotate("face found")
+			_annotate("face found")
 			originalTexture = face.Texture
 			face.Texture = "rbxassetid://26618794" -- Angry face texture
 		end
@@ -116,7 +114,7 @@ module.Init = function()
 	startDescriptionLoopingUpdate()
 end
 
-module.SawFloor = function(floorMaterial: Enum.Material?)
+module.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?)
 	if not floorMaterial then
 		return
 	end
@@ -124,13 +122,13 @@ module.SawFloor = function(floorMaterial: Enum.Material?)
 		return
 	end
 	if floorMaterial ~= lastTerrain then
-		--_annotate("floorMaterial ~= lastFloor so taking damage.")
+		_annotate("floorMaterial ~= lastFloor so taking damage.")
 		lastTerrain = floorMaterial
 
 		if humanoid.Health <= 40 then
 			local signId = tpUtil.signName2SignId("🗯")
 			humanoid.Health = 100
-			warper.WarpToSign(signId)
+			warper.WarpToSignId(signId)
 			humanoid.Health = 100
 			return
 		end
@@ -141,7 +139,7 @@ module.SawFloor = function(floorMaterial: Enum.Material?)
 			humanoid.Health
 		)
 		runProgressSgui.UpdateMovementDetails(theText)
-		--_annotate("damage taken")
+		_annotate("damage taken")
 	end
 end
 

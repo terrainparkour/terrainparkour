@@ -72,15 +72,16 @@ end
 --we already have clientside stuff whic hgets initial settings value.
 local getUserSettingsModal = function(localPlayer: Player): ScreenGui
 	local userId = localPlayer.UserId
-	local sg = Instance.new("ScreenGui")
-	sg.Name = "SettingsSgui"
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.IgnoreGuiInset = true
+	screenGui.Name = "SettingsSgui"
 
 	--just get marathon settings.
 	local userSettings: { [string]: tt.userSettingValue } =
 		settings.getSettingByDomain(settingEnums.settingDomains.USERSETTINGS)
 
 	local outerFrame = Instance.new("Frame")
-	outerFrame.Parent = sg
+	outerFrame.Parent = screenGui
 	outerFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
 	outerFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
 	local vv = Instance.new("UIListLayout")
@@ -141,9 +142,9 @@ local getUserSettingsModal = function(localPlayer: Player): ScreenGui
 	tb.BackgroundColor3 = colors.redStop
 	tb.Parent = outerFrame
 	tb.Activated:Connect(function()
-		sg:Destroy()
+		screenGui:Destroy()
 	end)
-	return sg
+	return screenGui
 end
 
 local userSettingsButton: gt.button = {

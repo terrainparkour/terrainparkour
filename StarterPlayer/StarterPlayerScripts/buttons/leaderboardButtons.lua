@@ -40,12 +40,12 @@ module.initActionButtons = function(lbOuterFrame: Frame)
 	local actionButtonFrame = Instance.new("Frame")
 	actionButtonFrame.BorderMode = Enum.BorderMode.Inset
 	actionButtonFrame.BorderSizePixel = 0
-	actionButtonFrame.Position = UDim2.new(0.7, 0, 1, 0)
-	actionButtonFrame.Name = "4LeaderboardActionButtonFrame"
+	actionButtonFrame.Position = UDim2.new(0.4, 0, 1, 0)
+	actionButtonFrame.Name = "LeaderboardActionButtonFrame"
 	actionButtonFrame.BackgroundTransparency = 1
 	actionButtonFrame.Parent = lbOuterFrame
 
-	actionButtonFrame.Size = UDim2.new(0.3, 0, 0, 40)
+	actionButtonFrame.Size = UDim2.new(0.6, 0, 0, 17)
 
 	local h = Instance.new("UIListLayout")
 	h.HorizontalAlignment = Enum.HorizontalAlignment.Right

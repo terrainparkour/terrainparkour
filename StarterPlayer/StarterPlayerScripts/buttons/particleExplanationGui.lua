@@ -1,7 +1,7 @@
 --!strict
 
--- keyboardShortcutGui
--- client keyboard shortcut explanation UI
+-- particleExplanationUI
+-- what each one means.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
@@ -13,7 +13,7 @@ local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
 
-module.CreateShortcutGui = function()
+module.CreateParticleGui = function()
 	local playerGui: PlayerGui = localPlayer:WaitForChild("PlayerGui")
 	local existingGui: ScreenGui = playerGui:FindFirstChild("KeyboardShortcutsGui")
 
@@ -23,67 +23,20 @@ module.CreateShortcutGui = function()
 	end
 
 	local screenGui = Instance.new("ScreenGui")
-	screenGui.IgnoreGuiInset = true
-	screenGui.Name = "KeyboardShortcutsGui"
+	screenGui.Name = "ParticleExplanationGui"
 	screenGui.ResetOnSpawn = true
 	screenGui.Parent = playerGui
+	screenGui.IgnoreGuiInset = true
 	screenGui.Enabled = true
 
-	local outerKeyboardFrame = Instance.new("Frame")
-	outerKeyboardFrame.Name = "KeyboardOuterFrame"
-	outerKeyboardFrame.Size = UDim2.new(0.4, 0, 0.4, 0)
-	outerKeyboardFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
-	outerKeyboardFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	outerKeyboardFrame.Parent = screenGui
+	local s = windows.SetupFrame("keyboardShortcutsGui", true, true true)
+	local outerFrame = s.outerFrame
+	local contentFrame = s.contentFrame
 
-	local innerKeyboardFrame = Instance.new("Frame")
-	innerKeyboardFrame.Size = UDim2.new(1, 0, 1, 0)
-	innerKeyboardFrame.Position = UDim2.new(0, 0, 0, 0)
-	innerKeyboardFrame.BackgroundColor3 = Color3.fromRGB(197, 204, 211) -- Soft gray
-	innerKeyboardFrame.BorderSizePixel = 0
-	innerKeyboardFrame.Parent = outerKeyboardFrame
-
-	local UserInputService = game:GetService("UserInputService")
-	local dragging
-	local dragStart
-	local startPos
-
-	local function updateDrag(input)
-		local delta = input.Position - dragStart
-		innerKeyboardFrame.Position =
-			UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-	end
-
-	innerKeyboardFrame.InputBegan:Connect(function(input)
-		if
-			input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch
-		then
-			dragging = true
-			dragStart = input.Position
-			startPos = innerKeyboardFrame.Position
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					dragging = false
-				end
-			end)
-		end
-	end)
-
-	UserInputService.InputChanged:Connect(function(input)
-		if
-			input.UserInputType == Enum.UserInputType.MouseMovement
-			or input.UserInputType == Enum.UserInputType.Touch
-		then
-			if dragging then
-				updateDrag(input)
-			end
-		end
-	end)
-
-	local cornerRadius = Instance.new("UICorner")
-	cornerRadius.CornerRadius = UDim.new(0.05, 0) -- Gentler corners
-	cornerRadius.Parent = innerKeyboardFrame
+	outerFrame.Size = UDim2.new(0.4, 0, 0.4, 0)
+	outerFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
+	outerFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	outerFrame.Parent = screenGui
 
 	local title = Instance.new("TextLabel")
 	title.Size = UDim2.new(1, 0, 0.15, 0)
@@ -93,25 +46,22 @@ module.CreateShortcutGui = function()
 	title.TextColor3 = Color3.fromRGB(70, 70, 70) -- Dark gray text
 	title.TextScaled = true
 	title.Text = "Keyboard Shortcuts"
-	title.Parent = innerKeyboardFrame
+	title.Parent = contentFrame
 
-	local titleCorner = Instance.new("UICorner")
-	titleCorner.CornerRadius = UDim.new(0.2, 0)
-	titleCorner.Parent = title
-
-	local shortcutsList = Instance.new("ScrollingFrame")
-	shortcutsList.Size = UDim2.new(0.9, 0, 0.75, 0)
-	shortcutsList.Position = UDim2.new(0.05, 0, 0.2, 0)
-	shortcutsList.BackgroundTransparency = 1
-	shortcutsList.BorderSizePixel = 0
-	shortcutsList.ScrollBarThickness = 4
-	shortcutsList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	shortcutsList.CanvasSize = UDim2.new(0, 0, 0, 0)
-	shortcutsList.Parent = innerKeyboardFrame
+	local particleColorList = Instance.new("ScrollingFrame")
+	particleColorList.Size = UDim2.new(0.9, 0, 0.75, 0)
+	particleColorList.Position = UDim2.new(0.05, 0, 0.2, 0)
+	particleColorList.BackgroundTransparency = 1
+	particleColorList.BorderSizePixel = 0
+	particleColorList.ScrollBarThickness = 4
+	particleColorList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	particleColorList.CanvasSize = UDim2.new(0, 0, 0, 0)
+	particleColorList.Parent = contentFrame
 
 	local listLayout = Instance.new("UIListLayout")
 	listLayout.Padding = UDim.new(0, 8)
-	listLayout.Parent = shortcutsList
+	listLayout.Parent = particleColorList
+
 
 	local shortcuts = {
 		{ key = "1", desc = "Warp to last completed run", icon = "🏃" },
@@ -126,11 +76,7 @@ module.CreateShortcutGui = function()
 		shortcutFrame.Size = UDim2.new(1, 0, 0, 40)
 		shortcutFrame.BackgroundColor3 = Color3.fromRGB(184, 216, 186) -- Soft green
 		shortcutFrame.BorderSizePixel = 0
-		shortcutFrame.Parent = shortcutsList
-
-		local shortcutCorner = Instance.new("UICorner")
-		shortcutCorner.CornerRadius = UDim.new(0.2, 0)
-		shortcutCorner.Parent = shortcutFrame
+		shortcutFrame.Parent = particleColorList
 
 		local keyLabel = Instance.new("TextLabel")
 		keyLabel.Size = UDim2.new(0.15, 0, 0.8, 0)
@@ -171,8 +117,8 @@ module.CreateShortcutGui = function()
 	-- Adjust the ScrollingFrame's size
 	local function updateScrollingFrameSize()
 		local contentSize = listLayout.AbsoluteContentSize
-		shortcutsList.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y)
-		shortcutsList.Size = UDim2.new(0.9, 0, math.min(0.75, contentSize.Y / innerKeyboardFrame.AbsoluteSize.Y), 0)
+		particleColorList.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y)
+		particleColorList.Size = UDim2.new(0.9, 0, math.min(0.75, contentSize.Y / contentFrame.AbsoluteSize.Y), 0)
 	end
 
 	listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateScrollingFrameSize)
@@ -186,20 +132,13 @@ module.CreateShortcutGui = function()
 	closeButton.TextColor3 = Color3.fromRGB(70, 70, 70)
 	closeButton.Font = Enum.Font.Gotham
 	closeButton.TextSize = 14
-	closeButton.Parent = innerKeyboardFrame
+	closeButton.Parent = contentFrame
 
-	local closeCorner = Instance.new("UICorner")
-	closeCorner.CornerRadius = UDim.new(0.3, 0)
-	closeCorner.Parent = closeButton
-
-	closeButton.MouseButton1Click:Connect(function()
+	closeButton.Activated:Connect(function()
 		screenGui.Enabled = false
 	end)
 
-	-- windows.SetupDraggability(outerKeyboardFrame)
-	-- windows.SetupResizeability(outerKeyboardFrame)
-
-	return outerKeyboardFrame
+	return outerFrame
 end
 
 _annotate("end")

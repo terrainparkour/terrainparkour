@@ -57,43 +57,38 @@ local artificiallyCheckForSwimming = function(character)
 	local raycastParams = RaycastParams.new()
 	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 	raycastParams.FilterDescendantsInstances = { character }
-	local rootPart = character:FindFirstChild("HumanoidRootPart") :: Part
-	if not rootPart or not rootPart:IsA("BasePart") then
-		--_annotate("no rootpart.")
-		return
-	end
+	local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	-- we either RESEND swimming state once per second (the outer wait time for this check)
+	-- or we detect swimming manually and set it.
 	task.spawn(function()
 		local ii = 3.2
 		local result: RaycastResult = nil
-		local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
-
-		while ii < 4.8 do
-			local oldState = humanoid:GetState()
-			if oldState == Enum.HumanoidStateType.Swimming then
-				break
+		local foundSwim = false
+		local oldState = humanoid:GetState()
+		if oldState == Enum.HumanoidStateType.Swimming then
+			foundSwim = true
+		else
+			local rootPart = character:FindFirstChild("HumanoidRootPart") :: Part
+			if not rootPart or not rootPart.Position or not rootPart:IsA("BasePart") then
+			else
+				while ii < 4.8 do
+					result = workspace:Raycast(rootPart.Position, Vector3.new(0, -1 * ii, 0), raycastParams)
+					if result and result.Material == Enum.Material.Water then
+						_annotate("faking swimming changestate.")
+						foundSwim = true
+						break
+					end
+					ii += 0.1
+				end
 			end
-			if not rootPart then
-				break
-			end
-			if not rootPart.Position then
-				break
-			end
-			result = workspace:Raycast(rootPart.Position, Vector3.new(0, -1 * ii, 0), raycastParams)
-
-			--despite the warning, nil raycast happens all the time.  Doh.
-			--and raycasting appears not to work at all anyway.
-
-			if result and result.Material == Enum.Material.Water then
-				--_annotate("faking swimming changestate.")
-
-				local det = {
-					oldState = oldState,
-					newState = Enum.HumanoidStateType.Swimming,
-				}
-				fireEvent(mt.avatarEventTypes.STATE_CHANGED, det)
-				break
-			end
-			ii += 0.1
+		end
+		if foundSwim then
+			local det = {
+				oldState = oldState,
+				newState = Enum.HumanoidStateType.Swimming,
+			}
+			fireEvent(mt.avatarEventTypes.STATE_CHANGED, det)
+			-- YES this will resent swim events with both old and new state being swimming.
 		end
 	end)
 end
@@ -110,7 +105,6 @@ local InputChanged = function(input: InputObject, gameProcessedEvent: boolean, k
 	if input.KeyCode == Enum.KeyCode.LeftShift then
 		local theType = input.UserInputState == Enum.UserInputState.Begin and mt.avatarEventTypes.KEYBOARD_WALK
 			or mt.avatarEventTypes.KEYBOARD_RUN
-		--_annotate("typed, kind: " .. tostring(mt.avatarEventTypesReverse[theType]))
 		fireEvent(theType, {})
 	end
 end
@@ -118,7 +112,7 @@ end
 ------------------ FIRE INITIAL CHAR ADDED EVENT ------------------
 
 module.Init = function()
-	--_annotate(string.format("Init of avatarEventMonitor for %s", localPlayer.Name))
+	_annotate(string.format("Init of avatarEventMonitor for %s", localPlayer.Name))
 	localPlayer = Players.LocalPlayer
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
@@ -137,7 +131,7 @@ module.Init = function()
 				floorMaterial = currentMaterial,
 			}
 
-			--_annotate(string.format("Floor material changed from %s to %s", lastMaterial.Name, currentMaterial.Name))
+			_annotate(string.format("Floor material changed from %s to %s", lastMaterial.Name, currentMaterial.Name))
 			fireEvent(mt.avatarEventTypes.FLOOR_CHANGED, details)
 			lastMaterial = currentMaterial
 		end
@@ -208,28 +202,30 @@ module.Init = function()
 	-- this has a different sensitivity than the general changestate.
 	-- so we coerce this up to just another state changed thingie, and don't store it directly.
 	humanoid.Swimming:Connect(function(active)
-		local currentState = humanoid:GetState()
+		-- we used to use this to somehow improve swim detection.
+		if false then
+			local currentState = humanoid:GetState()
 
-		-- swimming just turned on
-		if active then
-			if currentState == Enum.HumanoidStateType.Swimming then
-				--_annotate("swimming active fired but state already swimming, bailing.")
+			-- swimming just turned on
+			if active then
+				if currentState == Enum.HumanoidStateType.Swimming then
+					return
+				end
+
+				humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
+				_annotate("force swimming")
+				--this should fire one right so we are picked up elsewhere?
+			else --swimming just turned off
+				if currentState ~= Enum.HumanoidStateType.Swimming then
+					_annotate("swimming inactive fired but we are already not swimming, bailing.")
+					return
+				end
+
+				_annotate(
+					"swimming turned off and we awere already swimming; turn it off asap. problem is, what to turn it to?"
+				)
 				return
 			end
-
-			-- humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
-			--_annotate("force swimming.")
-			--this should fire one right so we are picked up elsewhere?
-		else --swimming just turned off
-			if currentState ~= Enum.HumanoidStateType.Swimming then
-				--_annotate("swimming inactive fired but we are already not swimming, bailing.")
-				return
-			end
-
-			--_annotate(
-			-- 	"swimming turned off and we awere already swimming; turn it off asap. problem is, what to turn it to?"
-			-- )
-			return
 		end
 	end)
 
@@ -268,16 +264,32 @@ module.Init = function()
 	-- even if the user intended to move forward. This property is useful for detecting changes in the character's movement, such as starting or stopping,
 	-- as well as changes in direction, which can be used to trigger events or animations in the game.
 
+	local verySmallNubmer = 1 / 10000000
+
+	-- so we allow you to move arouind quite a bit without aactually sending a start/stop. cause even the most
+	-- minute bump can trigger a change.
 	humanoid:GetPropertyChangedSignal("MoveDirection"):Connect(function()
 		local currentMoveDirection = humanoid.MoveDirection
 		if currentMoveDirection ~= oldMoveDirection then
-			oldMoveDirection = currentMoveDirection
+			local gap = currentMoveDirection - oldMoveDirection
+			print(gap.Magnitude)
+			print(gap)
+			if
+				math.abs(gap.X) < verySmallNubmer
+				and math.abs(gap.Y) < verySmallNubmer
+				and math.abs(gap.Z) < verySmallNubmer
+			then
+				return
+			end
 
 			if currentMoveDirection == Vector3.new(0, 0, 0) then
-				fireEvent(mt.avatarEventTypes.AVATAR_STOPPED, {})
-			else
+				fireEvent(mt.avatarEventTypes.AVATAR_STOPPED_MOVING, {})
+			elseif oldMoveDirection == Vector3.new(0, 0, 0) then
 				fireEvent(mt.avatarEventTypes.AVATAR_STARTED_MOVING, {})
+			else
+				fireEvent(mt.avatarEventTypes.AVATAR_CHANGED_DIRECTION, {})
 			end
+			oldMoveDirection = currentMoveDirection
 		end
 	end)
 
@@ -295,14 +307,14 @@ module.Init = function()
 
 	-------- start artificial swimming check. -----------------
 	task.spawn(function()
-		--_annotate(string.format("avatarEventMonitor.Init: artificiallyCheckForSwimming for %s", localPlayer.Name))
+		_annotate(string.format("avatarEventMonitor.Init: artificiallyCheckForSwimming for %s", localPlayer.Name))
 		while true do
-			wait(1 / 30)
 			artificiallyCheckForSwimming(character)
+			wait(1)
 		end
 	end)
 
-	--_annotate(string.format("avatarEventMonitor.Init: done for %s", localPlayer.Name))
+	_annotate(string.format("avatarEventMonitor.Init: done for %s", localPlayer.Name))
 end
 
 _annotate("end")

@@ -1,6 +1,6 @@
 --!strict
 
--- ShiftGUI
+-- ShiftGUIa
 -- in-rojo copy of my production version of this so users can modify it.
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
