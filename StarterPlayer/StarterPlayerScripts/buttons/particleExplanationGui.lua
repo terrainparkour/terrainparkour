@@ -8,6 +8,7 @@ local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
+local particleEnums = require(game.StarterPlayer.StarterPlayerScripts.particleEnums)
 local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
 
 local PlayersService = game:GetService("Players")
@@ -29,7 +30,7 @@ module.CreateParticleGui = function()
 	screenGui.IgnoreGuiInset = true
 	screenGui.Enabled = true
 
-	local s = windows.SetupFrame("keyboardShortcutsGui", true, true true)
+	local s = windows.SetupFrame("keyboardShortcutsGui", true, true, true)
 	local outerFrame = s.outerFrame
 	local contentFrame = s.contentFrame
 
@@ -62,16 +63,7 @@ module.CreateParticleGui = function()
 	listLayout.Padding = UDim.new(0, 8)
 	listLayout.Parent = particleColorList
 
-
-	local shortcuts = {
-		{ key = "1", desc = "Warp to last completed run", icon = "🏃" },
-		{ key = "h", desc = "Remove sign highlights", icon = "🚫" },
-		{ key = "z", desc = "Cancel current race", icon = "🚫" },
-		{ key = "x", desc = "Remove popped up UIs and notifications", icon = "🗑️" },
-		{ key = "Tab", desc = "Toggle leaderboard", icon = "📊" },
-	}
-
-	for _, shortcut in ipairs(shortcuts) do
+	for _, descriptor in ipairs(particleEnums.ParticleDescriptors) do
 		local shortcutFrame = Instance.new("Frame")
 		shortcutFrame.Size = UDim2.new(1, 0, 0, 40)
 		shortcutFrame.BackgroundColor3 = Color3.fromRGB(184, 216, 186) -- Soft green

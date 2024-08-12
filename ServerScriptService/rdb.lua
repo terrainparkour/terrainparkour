@@ -202,8 +202,12 @@ module.userDied = function(userId: number, x: number, y: number, z: number)
 	})
 end
 
-module.setSignPosition = function(data: any)
+module.setSignPosition = function(data: { name: string, signId: number, x: number, y: number, z: number })
 	return remoteDbInternal.remoteGet("setSignPosition", data)
+end
+
+module.getOrCreateBooleanSetting = function(data: { domain: string, name: string })
+	return remoteDbInternal.remoteGet("getOrCreateBooleanSetting", data)
 end
 
 --look up dynamic run stats for the signs included, which are likely ones which the user is approaching

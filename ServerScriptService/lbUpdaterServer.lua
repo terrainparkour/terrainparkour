@@ -14,56 +14,56 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local module = {}
 
-local leaderboardUpdateEvent: RemoteEvent = ReplicatedStorage:WaitForChild("RemoteEvents")
+local LeaderboardUpdateEvent: RemoteEvent = ReplicatedStorage:WaitForChild("RemoteEvents")
 	:WaitForChild("LeaderboardUpdateEvent")
 
 module.updateLeaderboardForRun = function(player: Player, data: tt.lbUpdateFromRun)
 	task.spawn(function()
-		leaderboardUpdateEvent:FireClient(player, data)
+		LeaderboardUpdateEvent:FireClient(player, data)
 	end)
 end
 
 --ie tell player p about (their or another user's) find, with details within "data."
 module.updateLeaderboardForFind = function(player: Player, data: tt.signFindOptions)
 	task.spawn(function()
-		leaderboardUpdateEvent:FireClient(player, data)
+		LeaderboardUpdateEvent:FireClient(player, data)
 	end)
 end
 
 module.updateLeaderboardForEphemeralMarathon = function(player: Player, data: mt.lbUpdateFromEphemeralMarathonRun)
 	task.spawn(function()
-		leaderboardUpdateEvent:FireClient(player, data)
+		LeaderboardUpdateEvent:FireClient(player, data)
 	end)
 end
 
 module.updateLeaderboardForMarathon = function(player: Player, data: tt.pyUserFinishedRunResponse)
 	task.spawn(function()
-		leaderboardUpdateEvent:FireClient(player, data)
+		LeaderboardUpdateEvent:FireClient(player, data)
 	end)
 end
 
 module.sendLeaveInfoToSomeone = function(player: Player, userId: number)
 	task.spawn(function()
 		local data: tt.leaveOptions = { userId = userId, kind = "leave" }
-		leaderboardUpdateEvent:FireClient(player, data)
+		LeaderboardUpdateEvent:FireClient(player, data)
 	end)
 end
 
 module.sendUpdateToPlayer = function(player: Player, data: tt.afterData_getStatsByUser)
 	task.spawn(function()
-		leaderboardUpdateEvent:FireClient(player, data)
+		LeaderboardUpdateEvent:FireClient(player, data)
 	end)
 end
 
 module.updateLeaderboardBadgeStats = function(player: Player, data: tt.badgeUpdate)
 	task.spawn(function()
-		leaderboardUpdateEvent:FireClient(player, data)
+		LeaderboardUpdateEvent:FireClient(player, data)
 	end)
 end
 
 module.updateLeaderboardForServerEventCompletionRun = function(player: Player, data: tt.lbUpdateFromRun)
 	task.spawn(function()
-		leaderboardUpdateEvent:FireClient(player, data)
+		LeaderboardUpdateEvent:FireClient(player, data)
 	end)
 end
 

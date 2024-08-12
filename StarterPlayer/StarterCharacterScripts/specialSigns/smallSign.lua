@@ -7,8 +7,6 @@ local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
-local runProgressSgui = require(game.ReplicatedStorage.gui.runProgressSgui)
-
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
 local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model

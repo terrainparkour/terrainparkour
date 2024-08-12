@@ -1,0 +1,4193 @@
+diff --git a/ReplicatedStorage/UserSettings/settingEnums.lua b/ReplicatedStorage/UserSettings/settingEnums.lua
+index db51118..c6ff74c 100644
+--- a/ReplicatedStorage/UserSettings/settingEnums.lua
++++ b/ReplicatedStorage/UserSettings/settingEnums.lua
+@@ -8,6 +8,8 @@ local _annotate = annotater.getAnnotater(script)
+ 
+ local module = {}
+ 
++-- leaderboard settings: portrait, username, awards, tix, finds, rank, cwrs, cwrtop10s, wrs, top10s, races, runs, badges
++
+ local settingNames: { [string]: string } = {
+ 	ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION = "when you're warping with an implied destination, rotate your avatar and camera to face the direction",
+ 	ENABLE_DYNAMIC_RUNNING = "enable dynamic running",
+@@ -17,6 +19,21 @@ local settingNames: { [string]: string } = {
+ 	HIGHLIGHT_ON_RUN_COMPLETE_WARP = "do sign highlight when you click warp on a complete run",
+ 	HIGHLIGHT_ON_KEYBOARD_1_TO_WARP = "do sign highlight when you hit 1 to warp to the completed run",
+ 	HIGHLIGHT_AT_ALL = "do any sign highlighting at all, for example when warping to a server event run",
++	LEADERBOARD_ENABLE_PORTRAIT = "show portrait",
++	LEADERBOARD_ENABLE_USERNAME = "show username",
++	LEADERBOARD_ENABLE_AWARDS = "show awards",
++	LEADERBOARD_ENABLE_TIX = "show tix",
++	LEADERBOARD_ENABLE_FINDS = "show finds",
++	LEADERBOARD_ENABLE_FINDRANK = "show find rank",
++	LEADERBOARD_ENABLE_WRRANK = "show wr rank",
++	LEADERBOARD_ENABLE_CWRS = "show cwrs",
++	LEADERBOARD_ENABLE_WRS = "show wrs",
++	LEADERBOARD_ENABLE_CWRTOP10S = "show cwrtop10s",
++	LEADERBOARD_ENABLE_TOP10S = "show top10s",
++	LEADERBOARD_ENABLE_RACES = "show races",
++	LEADERBOARD_ENABLE_RUNS = "show runs",
++	LEADERBOARD_ENABLE_BADGES = "show badges",
++	SHOW_PARTICLES = "show particles",
+ }
+ 
+ module.settingNames = settingNames
+@@ -25,6 +42,7 @@ local settingDomains: { [string]: string } = {
+ 	SURVEYS = "Surveys",
+ 	MARATHONS = "Marathons",
+ 	USERSETTINGS = "UserSettings",
++	LEADERBOARD = "Leaderboard",
+ }
+ 
+ module.settingDomains = settingDomains
+diff --git a/ReplicatedStorage/avatarEventTypes.lua b/ReplicatedStorage/avatarEventTypes.lua
+index 1039677..5100f0e 100644
+--- a/ReplicatedStorage/avatarEventTypes.lua
++++ b/ReplicatedStorage/avatarEventTypes.lua
+@@ -43,7 +43,7 @@ local avatarEventTypes: { [string]: number } = {
+ 	CHARACTER_ADDED = 1, --when the character is added.
+ 	RUN_START = 2,
+ 	RUN_COMPLETE = 3,
+-	RUN_KILL = 4,
++	RUN_CANCEL = 4,
+ 	RETOUCH_SIGN = 5,
+ 	TOUCH_SIGN = 6, --distinct from retouch, end, run_start.
+ 
+diff --git a/ReplicatedStorage/chat/channelCommands.lua b/ReplicatedStorage/chat/channelCommands.lua
+index 3eb6be2..85755c5 100644
+--- a/ReplicatedStorage/chat/channelCommands.lua
++++ b/ReplicatedStorage/chat/channelCommands.lua
+@@ -106,7 +106,7 @@ module.wrs = function(speaker: Player, channel): boolean
+ 	end
+ 	local function getter(userId: number): any
+ 		local data2 = playerdata.getPlayerStatsByUserId(userId, "wrs_command")
+-		return { rank = data.wrRank, count = data2.userTotalWRCount }
++		return { rank = data.wrRank, count = data2.wrCount }
+ 	end
+ 	local res = text.generateTextForRankedList(data.res, playersInServer, speaker.UserId, getter)
+ 	for _, el in ipairs(res) do
+@@ -715,7 +715,7 @@ end
+ module.popular = function(speaker: Player, channel): boolean
+ 	--for testing, fake it like these people are also in the server.
+ 
+-	local userIdsInServer = { -2, enums.objects.TerrainParkour }
++	local userIdsInServer = { -2, enums.objects.TerrainParkourUserId }
+ 	userIdsInServer = {}
+ 	for _, player in ipairs(PlayersService:GetPlayers()) do
+ 		table.insert(userIdsInServer, player.UserId)
+@@ -766,7 +766,7 @@ module.finders = function(speaker: Player, channel): boolean
+ 	end
+ 	local function getter(userId: number): any
+ 		local data: tt.afterData_getStatsByUser = playerdata.getPlayerStatsByUserId(userId, "finders_command")
+-		return { rank = data.findRank, count = data.userTotalFindCount }
++		return { rank = data.findRank, count = data.findCount }
+ 	end
+ 	local res = text.generateTextForRankedList(data.res, playersInServer, speaker.UserId, getter)
+ 	for _, el in ipairs(res) do
+diff --git a/ReplicatedStorage/chat/commandParsing.lua b/ReplicatedStorage/chat/commandParsing.lua
+index d9050b4..12a395d 100644
+--- a/ReplicatedStorage/chat/commandParsing.lua
++++ b/ReplicatedStorage/chat/commandParsing.lua
+@@ -40,7 +40,7 @@ end
+ 
+ --if hardcoded admin user, allow the command.
+ local function CheckInternalAdminCmd(speaker, message)
+-	if speaker.UserId == enums.objects.TerrainParkour or speaker.UserId == -1 or speaker.UserId == -2 then
++	if speaker.UserId == enums.objects.TerrainParkourUserId or speaker.UserId == -1 or speaker.UserId == -2 then
+ 		local parts = textUtil.stringSplit(message, " ")
+ 
+ 		local cmd: string = parts[1]
+diff --git a/ReplicatedStorage/gui/menu/marathonSettingsButton.lua b/ReplicatedStorage/gui/menu/marathonSettingsButton.lua
+deleted file mode 100644
+index 2ab2c2a..0000000
+--- a/ReplicatedStorage/gui/menu/marathonSettingsButton.lua
++++ /dev/null
+@@ -1,168 +0,0 @@
+---!strict
+-
+--- marathonSettingsButton
+--- the button that opens the marathon settings from the leaderboard.
+--- ideally it'd auto-redraw the marathons but 2024 this seems not to be working.
+-
+-local annotater = require(game.ReplicatedStorage.util.annotater)
+-local _annotate = annotater.getAnnotater(script)
+-
+-local settings = require(game.ReplicatedStorage.settings)
+-local colors = require(game.ReplicatedStorage.util.colors)
+-local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+-local tt = require(game.ReplicatedStorage.types.gametypes)
+-local gt = require(game.ReplicatedStorage.gui.guiTypes)
+-local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+-local settingSort = require(game.ReplicatedStorage.settingSort)
+-
+-local PlayersService = game:GetService("Players")
+-
+-local module = {}
+-
+-local function makeSettingRowFrame(setting: tt.userSettingValue, player: Player, n: number): Frame
+-	local fr = Instance.new("Frame")
+-	fr.Name = string.format("33-%04d", n) .. "setting." .. setting.name
+-	fr.Size = UDim2.new(1, 0, 0, 30)
+-	local hh = Instance.new("UIListLayout")
+-	hh.Name = "settingRowFrameHH"
+-	hh.FillDirection = Enum.FillDirection.Horizontal
+-	hh.SortOrder = Enum.SortOrder.Name
+-	hh.Parent = fr
+-	local label = guiUtil.getTl("0", UDim2.new(0.2, 0, 1, 0), 4, fr, colors.defaultGrey, 1)
+-	label.TextScaled = false
+-	label.Text = setting.domain
+-	label.FontSize = Enum.FontSize.Size18
+-	label.TextXAlignment = Enum.TextXAlignment.Center
+-	label.TextYAlignment = Enum.TextYAlignment.Center
+-
+-	local tl = guiUtil.getTl("1", UDim2.new(0.5, 0, 1, 0), 4, fr, colors.defaultGrey, 1)
+-	tl.Text = setting.name
+-	tl.TextXAlignment = Enum.TextXAlignment.Left
+-	local usecolor: Color3
+-	if setting.value then
+-		usecolor = colors.greenGo
+-	else
+-		usecolor = colors.redStop
+-	end
+-	local toggleButton = guiUtil.getTb("SettingToggle" .. setting.name, UDim2.new(0.3, 0, 1, 0), 0, fr, usecolor)
+-	if setting.value then
+-		toggleButton.Text = "Yes"
+-	else
+-		toggleButton.Text = "No"
+-	end
+-
+-	toggleButton.Activated:Connect(function()
+-		if toggleButton.Text == "No" then
+-			toggleButton.Text = "Yes"
+-			toggleButton.BackgroundColor3 = colors.greenGo
+-			local par = toggleButton.Parent :: TextLabel
+-			par.BackgroundColor3 = colors.greenGo
+-			setting.value = true
+-			settings.setSetting(setting)
+-		else
+-			toggleButton.Text = "No"
+-			toggleButton.BackgroundColor3 = colors.redStop
+-			local par = toggleButton.Parent :: TextLabel
+-			par.BackgroundColor3 = colors.redStop
+-			setting.value = false
+-			settings.setSetting(setting)
+-		end
+-	end)
+-
+-	return fr
+-end
+-
+---we already have clientside stuff which gets initial settings value.
+-local getSettingsModal = function(localPlayer: Player): ScreenGui
+-	local userId = localPlayer.UserId
+-	local screenGui = Instance.new("ScreenGui")
+-	screenGui.IgnoreGuiInset = true
+-	screenGui.Name = "SettingsSgui"
+-
+-	--just get marathon settings.
+-	local userSettings: { [string]: tt.userSettingValue } =
+-		settings.getSettingByDomain(settingEnums.settingDomains.MARATHONS)
+-
+-	local settings = {}
+-	for _, setting in pairs(userSettings) do
+-		table.insert(settings, setting)
+-	end
+-	table.sort(settings, settingSort.SettingSort)
+-
+-	local outerFrame = Instance.new("Frame")
+-	outerFrame.Parent = screenGui
+-	outerFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
+-	outerFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
+-	local vv = Instance.new("UIListLayout")
+-	vv.Name = "SettingsModalVV"
+-	vv.FillDirection = Enum.FillDirection.Vertical
+-	vv.Parent = outerFrame
+-
+-	local headerFrame = Instance.new("Frame")
+-	headerFrame.Parent = outerFrame
+-	headerFrame.Name = "1"
+-	headerFrame.Size = UDim2.new(1, 0, 0, 20)
+-	local hh = Instance.new("UIListLayout")
+-	hh.FillDirection = Enum.FillDirection.Horizontal
+-	hh.Parent = headerFrame
+-	hh.Name = "SettingsModalHeaderHH"
+-	local tl = guiUtil.getTl("1", UDim2.new(0.2, 0, 0, 20), 4, headerFrame, colors.blueDone, 1)
+-	tl.Text = "Type"
+-
+-	local tl = guiUtil.getTl("2", UDim2.new(0.5, 0, 0, 20), 4, headerFrame, colors.blueDone, 1)
+-	tl.Text = "Name"
+-
+-	local tl = guiUtil.getTl("3", UDim2.new(0.3, 0, 0, 20), 4, headerFrame, colors.blueDone, 1)
+-	tl.Text = "Value"
+-
+-	--scrolling setting frame
+-	local frameName = "SettingsModal"
+-	local scrollingFrame = Instance.new("ScrollingFrame")
+-	scrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+-	scrollingFrame.ScrollBarThickness = 10
+-	scrollingFrame.Name = frameName
+-	scrollingFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+-	scrollingFrame.Parent = outerFrame
+-	scrollingFrame.Size = UDim2.new(1, 0, 1, -60)
+-	scrollingFrame.VerticalScrollBarInset = Enum.ScrollBarInset.Always
+-	scrollingFrame.CanvasSize = UDim2.new(1, 0, 1, 0)
+-	local vv = Instance.new("UIListLayout")
+-	vv.Name = "SettingsModalVV2"
+-	vv.FillDirection = Enum.FillDirection.Vertical
+-	vv.Parent = scrollingFrame
+-
+-	local player: Player = PlayersService:GetPlayerByUserId(userId)
+-	local ii = 1
+-	for _, setting in pairs(settings) do
+-		local rowFrame = makeSettingRowFrame(setting, player, ii)
+-		rowFrame.Parent = scrollingFrame
+-		ii += 1
+-	end
+-
+-	local tb = guiUtil.getTbSimple()
+-	tb.Text = "Close"
+-	tb.Name = "ZZZMarathonSettingsCloseButton"
+-	tb.Size = UDim2.new(1, 0, 0, 40)
+-	tb.BackgroundColor3 = colors.redStop
+-	tb.Parent = outerFrame
+-	tb.Activated:Connect(function()
+-		screenGui:Destroy()
+-	end)
+-	return screenGui
+-end
+-
+-local marathonSettingsButton: gt.actionButton = {
+-	name = "Marathon Settings",
+-	contentsGetter = getSettingsModal,
+-	hoverHint = "Configure Marathons",
+-	shortName = "Marathons",
+-	getActive = function()
+-		return true
+-	end,
+-	widthXScale = 0.25,
+-}
+-
+-module.marathonSettingsButton = marathonSettingsButton
+-
+-_annotate("end")
+-return module
+diff --git a/ReplicatedStorage/gui/menu/userSettingsButton.lua b/ReplicatedStorage/gui/menu/userSettingsButton.lua
+deleted file mode 100644
+index a5f2e5c..0000000
+--- a/ReplicatedStorage/gui/menu/userSettingsButton.lua
++++ /dev/null
+@@ -1,158 +0,0 @@
+---!strict
+-
+-local annotater = require(game.ReplicatedStorage.util.annotater)
+-local _annotate = annotater.getAnnotater(script)
+-
+-local colors = require(game.ReplicatedStorage.util.colors)
+-local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+-local tt = require(game.ReplicatedStorage.types.gametypes)
+-local gt = require(game.ReplicatedStorage.gui.guiTypes)
+-local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+-local settings = require(game.ReplicatedStorage.settings)
+-local settingSort = require(game.ReplicatedStorage.settingSort)
+-
+-local PlayersService = game:GetService("Players")
+-
+-local module = {}
+-
+-local function makeRowFrame(setting: tt.userSettingValue, player: Player, n: number): Frame
+-	local fr = Instance.new("Frame")
+-	fr.Name = string.format("33-%04d", n) .. "setting." .. setting.name
+-	fr.Size = UDim2.new(1, 0, 0, 30)
+-	local vv = Instance.new("UIListLayout")
+-	vv.FillDirection = Enum.FillDirection.Horizontal
+-	vv.SortOrder = Enum.SortOrder.Name
+-	vv.Parent = fr
+-	local domainTl = guiUtil.getTl("0", UDim2.new(0.22, 0, 1, 0), 4, fr, colors.defaultGrey, 1)
+-	domainTl.TextScaled = false
+-	domainTl.Text = setting.domain
+-	domainTl.FontSize = Enum.FontSize.Size18
+-	domainTl.TextXAlignment = Enum.TextXAlignment.Center
+-	domainTl.TextYAlignment = Enum.TextYAlignment.Center
+-
+-	local nameTl = guiUtil.getTl("1", UDim2.new(0.52, 0, 1, 0), 4, fr, colors.defaultGrey, 1)
+-	nameTl.Text = setting.name
+-	nameTl.TextXAlignment = Enum.TextXAlignment.Left
+-	local usecolor: Color3
+-	if setting.value then
+-		usecolor = colors.greenGo
+-	else
+-		usecolor = colors.redStop
+-	end
+-	local toggleButton = guiUtil.getTb("SettingToggle" .. setting.name, UDim2.new(0.26, 0, 1, 0), 0, fr, usecolor, 1)
+-	if setting.value then
+-		toggleButton.Text = "Yes"
+-	else
+-		toggleButton.Text = "No"
+-	end
+-	--just get marathon settings.
+-
+-	local settings = require(game.ReplicatedStorage.settings)
+-	toggleButton.Activated:Connect(function()
+-		if toggleButton.Text == "No" then
+-			toggleButton.Text = "Yes"
+-			toggleButton.BackgroundColor3 = colors.greenGo
+-			local par = toggleButton.Parent :: TextLabel
+-			par.BackgroundColor3 = colors.greenGo
+-			setting.value = true
+-			settings.setSetting(setting)
+-		else
+-			toggleButton.Text = "No"
+-			toggleButton.BackgroundColor3 = colors.redStop
+-			local par = toggleButton.Parent :: TextLabel
+-			par.BackgroundColor3 = colors.redStop
+-			setting.value = false
+-			settings.setSetting(setting)
+-		end
+-	end)
+-
+-	return fr
+-end
+-
+---we already have clientside stuff whic hgets initial settings value.
+-local getUserSettingsModal = function(localPlayer: Player): ScreenGui
+-	local userId = localPlayer.UserId
+-	local screenGui = Instance.new("ScreenGui")
+-	screenGui.IgnoreGuiInset = true
+-	screenGui.Name = "SettingsSgui"
+-
+-	--just get marathon settings.
+-	local userSettings: { [string]: tt.userSettingValue } =
+-		settings.getSettingByDomain(settingEnums.settingDomains.USERSETTINGS)
+-
+-	local outerFrame = Instance.new("Frame")
+-	outerFrame.Parent = screenGui
+-	outerFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
+-	outerFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
+-	local vv = Instance.new("UIListLayout")
+-	vv.FillDirection = Enum.FillDirection.Vertical
+-	vv.Parent = outerFrame
+-	vv.Name = "getrUserSettingsModal-vv"
+-
+-	local headerFrame = Instance.new("Frame")
+-	headerFrame.Parent = outerFrame
+-	headerFrame.Name = "01.Settings.Header"
+-	headerFrame.Size = UDim2.new(1, 0, 0, 45)
+-	local hh = Instance.new("UIListLayout")
+-	hh.FillDirection = Enum.FillDirection.Horizontal
+-	hh.Parent = headerFrame
+-	hh.Name = "SettingsModalHeaderHH"
+-	local typeTl = guiUtil.getTl("1", UDim2.new(0.22, 0, 1, 0), 4, headerFrame, colors.blueDone, 1)
+-	typeTl.Text = "Domain"
+-
+-	local nameTl = guiUtil.getTl("2", UDim2.new(0.52, 0, 1, 0), 4, headerFrame, colors.blueDone, 1)
+-	nameTl.Text = "Name"
+-
+-	local valueTl = guiUtil.getTl("3", UDim2.new(0.26, 0, 1, 0), 4, headerFrame, colors.blueDone, 1)
+-	valueTl.Text = "Value"
+-
+-	--scrolling setting frame
+-	local frameName = "SettingsModal"
+-	local scrollingFrame = Instance.new("ScrollingFrame")
+-	scrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+-	scrollingFrame.ScrollBarThickness = 10
+-	scrollingFrame.Name = frameName
+-	scrollingFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+-	scrollingFrame.Parent = outerFrame
+-	scrollingFrame.Size = UDim2.new(1, 0, 1, -60)
+-	scrollingFrame.VerticalScrollBarInset = Enum.ScrollBarInset.Always
+-	scrollingFrame.CanvasSize = UDim2.new(1, 0, 1, 0)
+-	local vv = Instance.new("UIListLayout")
+-	vv.FillDirection = Enum.FillDirection.Vertical
+-	vv.Parent = scrollingFrame
+-
+-	local player: Player = PlayersService:GetPlayerByUserId(userId)
+-	local ii = 0
+-	local settings = {}
+-	for _, setting in pairs(userSettings) do
+-		table.insert(settings, setting)
+-	end
+-	table.sort(settings, settingSort.SettingSort)
+-
+-	for _, setting in pairs(settings) do
+-		ii += 1
+-		local rowFrame = makeRowFrame(setting, player, ii)
+-		rowFrame.Parent = scrollingFrame
+-	end
+-
+-	local tb = guiUtil.getTbSimple()
+-	tb.Text = "Close"
+-	tb.Name = "ZZZMarathonSettingsCloseButton"
+-	tb.Size = UDim2.new(1, 0, 0, 40)
+-	tb.BackgroundColor3 = colors.redStop
+-	tb.Parent = outerFrame
+-	tb.Activated:Connect(function()
+-		screenGui:Destroy()
+-	end)
+-	return screenGui
+-end
+-
+-local userSettingsButton: gt.button = {
+-	name = "Settings",
+-	contentsGetter = getUserSettingsModal,
+-}
+-
+-module.userSettingsButton = userSettingsButton
+-
+-_annotate("end")
+-return module
+diff --git a/ReplicatedStorage/gui/runProgressSgui.lua b/ReplicatedStorage/gui/runProgressSgui.lua
+deleted file mode 100644
+index 881d161..0000000
+--- a/ReplicatedStorage/gui/runProgressSgui.lua
++++ /dev/null
+@@ -1,185 +0,0 @@
+-local colors = require(game.ReplicatedStorage.util.colors)
+-
+--- runProgressSgui
+--- the one in the lower left, where you can cancel out of a race.
+-local annotater = require(game.ReplicatedStorage.util.annotater)
+-local _annotate = annotater.getAnnotater(script)
+-
+-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+-local localPlayer: Player = game.Players.LocalPlayer
+-local enums = require(game.ReplicatedStorage.util.enums)
+-local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
+-
+-local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
+-local fireEvent = avatarEventFiring.FireEvent
+-local mt = require(game.ReplicatedStorage.avatarEventTypes)
+-
+-local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+-local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
+-
+-local module = {}
+-
+-local currentRunStartTick: number = 0
+-local currentRunSignName: string = ""
+-local currentRunStartPosition: Vector3 = Vector3.zero
+-local theSgui: ScreenGui = nil
+-local theTextButton: TextButton = nil
+-local optionalRaceDescription = ""
+-local movementDetails = ""
+-local lastRuntimeUpdate = ""
+-
+---receive updates to these items. otherwise I am independent
+-module.UpdateExtraRaceDescription = function(outerRaceDescription: string): boolean
+-	optionalRaceDescription = outerRaceDescription
+-	return theSgui ~= nil
+-end
+-
+-module.UpdateMovementDetails = function(outerMovementDetails: string): boolean
+-	movementDetails = outerMovementDetails
+-	return theSgui ~= nil
+-end
+-
+-module.UpdateStartTime = function(n: number)
+-	currentRunStartTick = n
+-end
+-
+-module.Kill = function()
+-	if theSgui then
+-		theSgui:Destroy()
+-	end
+-	if theTextButton then
+-		theTextButton:Destroy()
+-	end
+-	currentRunStartTick = 0
+-	currentRunSignName = ""
+-	currentRunStartPosition = Vector3.zero
+-	optionalRaceDescription = ""
+-	movementDetails = ""
+-	lastRuntimeUpdate = ""
+-end
+-
+-UpdateRunProgress = function()
+-	local formattedRuntime = string.format("%.1fs", tick() - currentRunStartTick)
+-	if lastRuntimeUpdate == formattedRuntime then
+-		return true
+-	end
+-	if localPlayer.Character == nil or localPlayer.Character.PrimaryPart == nil then
+-		_annotate("nil char or nil primary part in runProgressSgui, kllin.")
+-		module.Kill()
+-		return false
+-	end
+-	lastRuntimeUpdate = formattedRuntime
+-
+-	local pos = localPlayer.Character.PrimaryPart.Position
+-	local distance = tpUtil.getDist(pos, currentRunStartPosition)
+-
+-	-- special race descriptors for weird limit runs. ----
+-	local raceDescriptionText = ""
+-	if optionalRaceDescription or movementDetails ~= "" then
+-		raceDescriptionText = " " .. optionalRaceDescription .. " " .. movementDetails
+-	end
+-	--- bit weird to calculate this here but whatever. --
+-	local mult = humanoid.WalkSpeed / movementEnums.constants.globalDefaultRunSpeed
+-	local speedupDescription = ""
+-
+-	if mult ~= 1 then
+-		local multDescriptor = "+"
+-		if mult < 1 then
+-			multDescriptor = ""
+-		end
+-		speedupDescription = string.format("%s%0.1f%%", multDescriptor, (mult - 1) * 100)
+-	end
+-
+-	local optionalSignAliasText = ""
+-	local alias = enums.signName2Alias[currentRunSignName]
+-	if alias ~= nil then
+-		if not enums.aliasesWhichAreVeryCloseSoDontNeedToBeShown[currentRunSignName] then
+-			optionalSignAliasText = " (" .. alias .. ")"
+-		end
+-	end
+-
+-	local text = string.format(
+-		"%s %s%s\nFrom: %s%s (%.1fd)",
+-		formattedRuntime,
+-		speedupDescription,
+-		raceDescriptionText,
+-		currentRunSignName,
+-		optionalSignAliasText,
+-		distance
+-	)
+-	theTextButton.Text = text
+-	return true
+-end
+-
+-local function startRunProgressUpdateLoop()
+-	spawn(function()
+-		while true do
+-			UpdateRunProgress()
+-			if theSgui == nil then
+-				break
+-			end
+-			wait(0.01)
+-		end
+-	end)
+-end
+-
+--- this is the lower-right GUI which continuously updates the time. ------
+--- why don't we try to have it only update like, when it'd be different? duh. -------------
+-local debounceCreateRunProgressSgui = false
+-module.CreateRunProgressSgui = function(playerGui, startTimeTick, signName, pos)
+-	-- store run const variables
+-	-- non-const variables (such as the dynamic race text, etc.) will be updated via above.
+-	if debounceCreateRunProgressSgui then
+-		_annotate("debounceCreateRunProgressSgui.")
+-		return
+-	end
+-	debounceCreateRunProgressSgui = true
+-	module.Kill()
+-	currentRunSignName = signName
+-	currentRunStartPosition = pos
+-
+-	currentRunStartTick = startTimeTick
+-
+-	local activeRunSgui: ScreenGui = playerGui:FindFirstChild("ActiveRunSGui") :: ScreenGui
+-	if not activeRunSgui then
+-		activeRunSgui = Instance.new("ScreenGui") :: ScreenGui
+-		activeRunSgui.IgnoreGuiInset = true
+-		if activeRunSgui == nil then
+-			return
+-		end
+-		activeRunSgui.Parent = playerGui
+-		activeRunSgui.Name = "ActiveRunSGui"
+-		activeRunSgui.Enabled = true
+-	end
+-	theSgui = activeRunSgui
+-
+-	local tb = Instance.new("TextButton")
+-	tb.Parent = activeRunSgui
+-	tb.Name = "RaceRunningButton"
+-
+-	tb.Size = UDim2.new(0.4, 0, 0.1, 0)
+-	tb.Position = UDim2.new(0.3, 0, 0.9, 0)
+-	tb.TextTransparency = 0
+-	tb.BackgroundColor3 = colors.black
+-	tb.BackgroundTransparency = 0.85
+-	tb.TextScaled = true
+-	tb.TextColor3 = colors.yellow
+-	tb.TextXAlignment = Enum.TextXAlignment.Right
+-	tb.Text = ""
+-	tb.Font = Enum.Font.RobotoCondensed
+-	tb.TextTransparency = 0
+-	theTextButton = tb
+-
+-	tb.Activated:Connect(function()
+-		fireEvent(mt.avatarEventTypes.RUN_KILL, { reason = "clicked on raceRunningSgui" })
+-	end)
+-
+-	-- no create an updater which continuously runs.
+-	-- it partially bases its functions on the global variables received from outer.
+-
+-	debounceCreateRunProgressSgui = false
+-	startRunProgressUpdateLoop()
+-end
+-
+-_annotate("end")
+-return module
+diff --git a/ReplicatedStorage/gui/runresults/findGuiCreator.lua b/ReplicatedStorage/gui/runresults/findGuiCreator.lua
+index a5d94d3..52b29f6 100644
+--- a/ReplicatedStorage/gui/runresults/findGuiCreator.lua
++++ b/ReplicatedStorage/gui/runresults/findGuiCreator.lua
+@@ -58,7 +58,7 @@ module.createFindScreenGui = function(options: tt.signFindOptions): ScreenGui
+ 	newFindSgui.IgnoreGuiInset = true
+ 	newFindSgui.Name = "NewFindSgui"
+ 
+-	local detailsMessage = tostring(options.userTotalFindCount) .. "/" .. tostring(options.totalSignsInGame)
++	local detailsMessage = tostring(options.findCount) .. "/" .. tostring(options.totalSignsInGame)
+ 	local finderMessage = tpUtil.getCardinalEmoji(options.signTotalFinds) .. " finder!"
+ 
+ 	local frame = Instance.new("Frame")
+diff --git a/ReplicatedStorage/gui/signProfile/signProfileGrindingGui.lua b/ReplicatedStorage/gui/signProfile/signProfileGrindingGui.lua
+index c3ed795..9d10628 100644
+--- a/ReplicatedStorage/gui/signProfile/signProfileGrindingGui.lua
++++ b/ReplicatedStorage/gui/signProfile/signProfileGrindingGui.lua
+@@ -24,7 +24,7 @@ local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
+ local function getIndividualGrindButton(startSignId: number, num: number, rr: tt.relatedRace): TextButton | nil
+ 	local name = string.format("%d GrindUIButtonTo %s", num, rr.signName)
+ 	local button = guiUtil.getTb(name, UDim2.new(0, 95, 0, 30), 1, nil, colors.lightBlue, 1)
+-	-- button.Size = UDim2.new(0, 95, 0, 30)
++
+ 	button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+ 	button.BorderSizePixel = 1
+ 	button.BorderColor3 = Color3.fromRGB(100, 100, 100)
+@@ -60,21 +60,19 @@ module.MakeSignProfileGrindingGui = function(startSignId: number, sourceName: st
+ 	local outerFrame = d.outerFrame
+ 	local contentFrame = d.contentFrame
+ 
+-	outerFrame.Size = UDim2.new(0, 120, 0.4, 0)
++	outerFrame.Size = UDim2.new(0, 103, 0.4, 0)
+ 	outerFrame.BackgroundColor3 = colors.defaultGrey
+-	outerFrame.Position = UDim2.new(0.0, 0, 0.1, 0)
++	outerFrame.Position = UDim2.new(0, 0, 0.1, 0)
+ 	outerFrame.BackgroundTransparency = 0
+ 
+-	local hh = Instance.new("UIListLayout")
+-	hh.Wraps = true
+-	hh.Parent = contentFrame
+-	hh.FillDirection = Enum.FillDirection.Horizontal
+-	hh.HorizontalAlignment = Enum.HorizontalAlignment.Left
+-	hh.SortOrder = Enum.SortOrder.LayoutOrder
+-	hh.Parent = contentFrame
+-	hh.VerticalAlignment = Enum.VerticalAlignment.Top
+-	hh.Padding = UDim.new(0, 5)
+-	hh.Wraps = true
++	local vv = Instance.new("UIListLayout")
++	vv.Parent = contentFrame
++	vv.FillDirection = Enum.FillDirection.Vertical
++	vv.HorizontalAlignment = Enum.HorizontalAlignment.Left
++	vv.VerticalAlignment = Enum.VerticalAlignment.Top
++	vv.Padding = UDim.new(0, 0)
++	vv.Wraps = false
++	vv.Name = "vv"
+ 
+ 	local titleRow = Instance.new("Frame")
+ 	titleRow.Name = "01_GrindUITitleRowFrame"
+@@ -90,25 +88,50 @@ module.MakeSignProfileGrindingGui = function(startSignId: number, sourceName: st
+ 	titleTextLabel.Parent = titleRow
+ 	titleTextLabel.TextScaled = true
+ 
+-	local count = 0
+-	-- local rrcount = #guys
+-	-- local heightPerYScale = 1 / rrcount
+-	local innerContentFrame = Instance.new("Frame")
+-	innerContentFrame.Size = UDim2.new(1, 0, 1, -48)
+-	innerContentFrame.BackgroundColor3 = colors.defaultGrey
+-	innerContentFrame.Parent = contentFrame
+-	innerContentFrame.Name = "02_GrindUIInnerContentFrame"
++	local scrollFrame = Instance.new("ScrollingFrame")
++	scrollFrame.Name = "03_ScrollingFrame"
++	scrollFrame.Size = UDim2.new(1, 0, 1, -78)
++	scrollFrame.Position = UDim2.new(0, 0, 0, 0)
++	scrollFrame.BackgroundTransparency = 1
++	scrollFrame.BorderSizePixel = 0
++	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- Set initial canvas size to 0
++	scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y -- Automatically size canvas vertically
++	scrollFrame.ScrollBarThickness = 2
++	scrollFrame.Parent = contentFrame
++
++	-- Add close button at the bottom
++	local closeButton = Instance.new("TextButton")
++	closeButton.Name = "04_CloseButton"
++	closeButton.Size = UDim2.new(1, 0, 0, 30)
++	closeButton.Position = UDim2.new(0, 0, 1, -30)
++	closeButton.BackgroundColor3 = Color3.new(0.87, 0.3, 0.3)
++	closeButton.BorderSizePixel = 0
++	closeButton.Text = "Close"
++	closeButton.TextColor3 = Color3.new(1, 1, 1)
++	closeButton.TextScaled = true
++	closeButton.Parent = contentFrame
++
++	closeButton.Activated:Connect(function()
++		outerFrame:Destroy()
++	end)
+ 
+-	local vv = Instance.new("UIListLayout")
+-	vv.Parent = innerContentFrame
+-	vv.FillDirection = Enum.FillDirection.Vertical
+-	vv.HorizontalAlignment = Enum.HorizontalAlignment.Left
+-	vv.VerticalAlignment = Enum.VerticalAlignment.Top
+-	vv.Padding = UDim.new(0, 5)
+-	vv.Wraps = true
+-	vv.Name = "02_GrindUIInnerContentFrame_UIListLayout"
++	local scrollFrameContent = Instance.new("Frame")
++	scrollFrameContent.Size = UDim2.new(1, 0, 1, 0)
++	scrollFrameContent.BackgroundColor3 = colors.defaultGrey
++	scrollFrameContent.Parent = scrollFrame
++	scrollFrameContent.Name = "02_GrindUIInnerContentFrame"
++	local vv2 = Instance.new("UIListLayout")
++	vv2.Parent = scrollFrameContent
++	vv2.FillDirection = Enum.FillDirection.Vertical
++	vv2.HorizontalAlignment = Enum.HorizontalAlignment.Left
++	vv2.VerticalAlignment = Enum.VerticalAlignment.Top
++	vv2.Padding = UDim.new(0, 3)
++	vv2.SortOrder = Enum.SortOrder.LayoutOrder
++	vv2.Wraps = true
++	vv2.Name = "vv2"
+ 
+ 	local ii = 0
++	local buttons = {}
+ 	for _, rr in ipairs(guys) do
+ 		local sign = tpUtil.signId2Sign(rr.signId)
+ 		if not sign then
+@@ -117,17 +140,19 @@ module.MakeSignProfileGrindingGui = function(startSignId: number, sourceName: st
+ 
+ 		local button = getIndividualGrindButton(startSignId, ii, rr)
+ 		if button then
+-			button.Parent = innerContentFrame
+-			count += 1
++			table.insert(buttons, button)
++			button.Parent = scrollFrameContent
++			ii += 1
+ 		end
+-		ii += 1
+ 	end
+ 
+-	local tb = guiUtil.getTb("ZZZCloseButton", UDim2.new(0, 95, 0, 30), 2, innerContentFrame, colors.redStop, 1, 0)
+-	tb.Text = "Close"
+-	tb.Activated:Connect(function()
+-		outerFrame:Destroy()
+-	end)
++	local sz = math.min((ii * 30), 300)
++	outerFrame.Size = UDim2.new(0, 101, 0, sz + 84)
++	scrollFrame.Size = UDim2.new(1, 0, 1, -78)
++	scrollFrame.CanvasSize = UDim2.new(1, 0, 0, sz) -- Adjust canvas size based on number of items
++	-- scrollFrame.ScrollingEnabled = true
++	scrollFrame.ScrollingDirection = Enum.ScrollingDirection.Y
++
+ 	return outerFrame
+ end
+ 
+diff --git a/ReplicatedStorage/gui/signProfile/signProfileRows.lua b/ReplicatedStorage/gui/signProfile/signProfileRows.lua
+index 974e260..c0e4c05 100644
+--- a/ReplicatedStorage/gui/signProfile/signProfileRows.lua
++++ b/ReplicatedStorage/gui/signProfile/signProfileRows.lua
+@@ -38,9 +38,7 @@ export type signProfileChipType = {
+     ]]
+ --
+ local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
+-local signGrindUIScreenGui: ScreenGui = Instance.new("ScreenGui")
+-signGrindUIScreenGui.Name = "AsignGrindUIScreenGui"
+-signGrindUIScreenGui.Parent = playerGui
++local signGrindUIScreenGui: ScreenGui = nil
+ 
+ -- for a list of relationships, creates a nice row.
+ local createPlacementRowForSetOfRaces = function(
+@@ -106,7 +104,16 @@ local createPlacementRowForSetOfRaces = function(
+ 				end
+ 				local subwindowTitle = string.format("Grinding %s %s from %s", term, sourceContext, sourceSignName)
+ 				local s = signProfileGrindingGui.MakeSignProfileGrindingGui(startSignId, subwindowTitle, fakeRrs)
+-				signGrindUIScreenGui.IgnoreGuiInset = true
++				signGrindUIScreenGui = playerGui:FindFirstChild("SignGrindUIScreenGui")
++
++				if not signGrindUIScreenGui then
++					signGrindUIScreenGui = Instance.new("ScreenGui")
++					signGrindUIScreenGui.Name = "SignGrindUIScreenGui"
++					signGrindUIScreenGui.Parent = playerGui
++					signGrindUIScreenGui.IgnoreGuiInset = true
++				end
++				signGrindUIScreenGui.Enabled = true
++
+ 				s.Parent = signGrindUIScreenGui
+ 			end)
+ 		end
+@@ -132,7 +139,15 @@ local createPlacementRowForSetOfRaces = function(
+ 		clicker.Activated:Connect(function()
+ 			local subwindowTitle = string.format("Grinding Unrun %s from %s", sourceContext, sourceSignName)
+ 			local s = signProfileGrindingGui.MakeSignProfileGrindingGui(startSignId, subwindowTitle, unruns)
+-			signGrindUIScreenGui.IgnoreGuiInset = true
++			signGrindUIScreenGui = playerGui:FindFirstChild("SignGrindUIScreenGui")
++
++			if not signGrindUIScreenGui then
++				signGrindUIScreenGui = Instance.new("ScreenGui")
++				signGrindUIScreenGui.Name = "SignGrindUIScreenGui"
++				signGrindUIScreenGui.Parent = playerGui
++				signGrindUIScreenGui.IgnoreGuiInset = true
++			end
++			signGrindUIScreenGui.Enabled = true
+ 			s.Parent = signGrindUIScreenGui
+ 		end)
+ 	end
+@@ -179,8 +194,8 @@ local signProfileCRWRowMaker = function(data: tt.playerSignProfileData): { tt.si
+ 	return placementChips
+ end
+ 
+-local dist = 0
+ local signProfileDistanceRowMaker = function(data: tt.playerSignProfileData): { tt.signProfileChipType }
++	local dist = 0
+ 	local res: { tt.signProfileChipType } = {}
+ 	for _, rel in ipairs(data.relationships) do
+ 		dist += rel.runCount * rel.dist
+diff --git a/ReplicatedStorage/gui/textHighlighting.lua b/ReplicatedStorage/gui/textHighlighting.lua
+index 01f90d3..38efae3 100644
+--- a/ReplicatedStorage/gui/textHighlighting.lua
++++ b/ReplicatedStorage/gui/textHighlighting.lua
+@@ -219,7 +219,7 @@ local function handleAvatarEvent(event: mt.avatarEvent)
+ 		event.eventType == mt.avatarEventTypes.AVATAR_DIED
+ 		or event.eventType == mt.avatarEventTypes.GET_READY_FOR_WARP
+ 		or event.eventType == mt.avatarEventTypes.RUN_COMPLETE
+-		or event.eventType == mt.avatarEventTypes.RUN_KILL
++		or event.eventType == mt.avatarEventTypes.RUN_CANCEL
+ 	then
+ 		module.KillAllExistingHighlights()
+ 	end
+diff --git a/ReplicatedStorage/settings.lua b/ReplicatedStorage/settings.lua
+index c0f71f2..d612d06 100644
+--- a/ReplicatedStorage/settings.lua
++++ b/ReplicatedStorage/settings.lua
+@@ -31,6 +31,7 @@ local settingChangeMonitoringFunctions: { [string]: (tt.userSettingValue) -> nil
+ local domainSettingChangeMonitoringFunctions: { [string]: (tt.userSettingValue) -> nil } = {}
+ 
+ module.Reset = function()
++	_annotate("RESET settings monitor functions!!")
+ 	settingChangeMonitoringFunctions = {}
+ 	domainSettingChangeMonitoringFunctions = {}
+ end
+@@ -63,9 +64,10 @@ end
+ 
+ -- anyone who wants to be told that a specific setting has changed can register here by saying like:
+ -- when this setting changes, call this function.
++-- big problem: I think this can only have one handle listening per setting. Easy to fix, just haven't done it yet. watch out if things are confusing.
+ module.RegisterFunctionToListenForSettingName = function(func: (tt.userSettingValue) -> nil, name: string)
+ 	-- let's make sure we're registering a setting which exists in the enums and things.
+-	_annotate(string.format("handle local setting cahgne receivere: %s %s", name, tostring(func)))
++	_annotate(string.format("handle local setting change receivere: %s %s", name, tostring(func)))
+ 	local exi = false
+ 	for _, settingName in pairs(settingEnums.settingNames) do
+ 		if settingName == name then
+@@ -90,10 +92,12 @@ end
+ 
+ --also just tell registered scripts this change happened
+ local function LocalNotifySettingChange(setting: tt.userSettingValue)
++	_annotate("LocalNotifySettingChange: " .. setting.name .. " " .. tostring(setting.value))
+ 	for name: string, funcWhichCaresAboutThisSettingChange: (tt.userSettingValue) -> nil in
+ 		pairs(settingChangeMonitoringFunctions)
+ 	do
+ 		if setting.name == name then
++			_annotate("APPLY " .. tostring(name) .. " " .. tostring(funcWhichCaresAboutThisSettingChange))
+ 			funcWhichCaresAboutThisSettingChange(setting)
+ 		end
+ 	end
+diff --git a/ReplicatedStorage/terrainTouchMonitor.lua b/ReplicatedStorage/terrainTouchMonitor.lua
+index 3486938..17cdb26 100644
+--- a/ReplicatedStorage/terrainTouchMonitor.lua
++++ b/ReplicatedStorage/terrainTouchMonitor.lua
+@@ -10,7 +10,7 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
+ local _annotate = annotater.getAnnotater(script)
+ 
+ local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
+-local runProgressSgui = require(game.ReplicatedStorage.gui.runProgressSgui)
++local activeRunSGui = require(game.ReplicatedStorage.gui.activeRunSGui)
+ local textUtil = require(game.ReplicatedStorage.util.textUtil)
+ 
+ local PlayersService = game:GetService("Players")
+@@ -59,7 +59,7 @@ module.initTracking = function(signName: string)
+ 	_annotate(string.format("initTracking: %s", signName))
+ end
+ 
+-module.GetSeenTerrainTypesThisRun = function(): number
++module.GetSeenTerrainTypesCountThisRun = function(): number
+ 	return seenFloorCount
+ end
+ 
+@@ -110,7 +110,7 @@ module.CountNewFloorMaterial = function(fm: Enum.Material?)
+ 
+ 		local listOfSeenTerrains = textUtil.stringJoin(", ", t)
+ 
+-		runProgressSgui.UpdateMovementDetails(listOfSeenTerrains)
++		activeRunSGui.UpdateMovementDetails(listOfSeenTerrains)
+ 	elseif currentRunSignName == "cOld mOld on a sLate pLate" then
+ 		local t: { string } = {}
+ 		for a, b in pairs(movementEnums.AllTerrainNames) do
+@@ -122,28 +122,28 @@ module.CountNewFloorMaterial = function(fm: Enum.Material?)
+ 		table.sort(t)
+ 		local remainingTouchables = textUtil.stringJoin(", ", t)
+ 		local remainingTouchableTerrains = string.format("Remaining: %s", remainingTouchables)
+-		runProgressSgui.UpdateMovementDetails(remainingTouchableTerrains)
++		activeRunSGui.UpdateMovementDetails(remainingTouchableTerrains)
+ 	end
+ 
+ 	-------- KILLING RUN IF NECESSARY--------------
+ 	if currentRunSignName == "cOld mOld on a sLate pLate" then
+ 		for k, num in pairs(timesSeenTerrainFloorTypeCounts) do
+ 			if num > 1 then
+-				fireEvent(mt.avatarEventTypes.RUN_KILL, { reason = "cold violation" })
++				fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "cold violation" })
+ 				break
+ 			end
+ 		end
+ 	elseif currentRunSignName == "Keep Off the Grass" then
+ 		if fm == Enum.Material.LeafyGrass or fm == Enum.Material.Grass then
+-			fireEvent(mt.avatarEventTypes.RUN_KILL, { reason = "Keep off the grass terrainTouch" })
++			fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "Keep off the grass terrainTouch" })
+ 		end
+ 	elseif currentRunSignName == "Triple" then
+ 		if seenFloorCount > 3 then
+-			fireEvent(mt.avatarEventTypes.RUN_KILL, { reason = "triple terrainTouch" })
++			fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "triple terrainTouch" })
+ 		end
+ 	elseif currentRunSignName == "Quadruple" then
+ 		if seenFloorCount > 4 then
+-			fireEvent(mt.avatarEventTypes.RUN_KILL, { reason = "quadruple terrainTouch" })
++			fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "quadruple terrainTouch" })
+ 		end
+ 	end
+ end
+diff --git a/ReplicatedStorage/types/gametypes.lua b/ReplicatedStorage/types/gametypes.lua
+index 3cc27f7..a1ca878 100644
+--- a/ReplicatedStorage/types/gametypes.lua
++++ b/ReplicatedStorage/types/gametypes.lua
+@@ -13,7 +13,7 @@ export type signFindOptions = {
+ 	lastFinderUsername: string,
+ 	signName: string,
+ 	totalSignsInGame: number,
+-	userTotalFindCount: number,
++	findCount: number,
+ 	signTotalFinds: number,
+ 	findRank: number,
+ }
+@@ -27,7 +27,7 @@ export type pyUserFoundSign = {
+ 	success: string,
+ 	created: boolean,
+ 	actionResults: { actionResult },
+-	userTotalFindCount: number,
++	findCount: number,
+ 	findRank: number,
+ 	signTotalFinds: number,
+ 	totalSignsInGame: number,
+@@ -76,8 +76,8 @@ export type pyUserFinishedRunResponse = {
+ 	userTotalRaceCount: number,
+ 	userTotalRunCount: number,
+ 	userMarathonRunCount: number,
+-	userCompetitiveWRCount: number,
+-	userTotalWRCount: number,
++	cwrs: number,
++	wrCount: number,
+ 	totalRunsOfThisRaceCount: number,
+ 	userTix: number,
+ 	userTotalTop10Count: number,
+@@ -86,7 +86,7 @@ export type pyUserFinishedRunResponse = {
+ 	totalRacersOfThisRaceCount: number,
+ 
+ 	userRaceRunCount: number,
+-	userTotalFindCount: number,
++	findCount: number,
+ 
+ 	--for display options
+ 	raceName: string,
+@@ -155,13 +155,14 @@ export type afterData_getStatsByUser = {
+ 	kind: string,
+ 	userId: number,
+ 	runs: number,
+-	userTotalFindCount: number,
++	findCount: number,
+ 	findRank: number,
+ 	top10s: number,
++	cwrtop10s: number,
+ 	races: number,
+ 	userTix: number,
+-	userCompetitiveWRCount: number,
+-	userTotalWRCount: number,
++	cwrs: number,
++	wrCount: number,
+ 	wrRank: number,
+ 	totalSignCount: number,
+ 	awardCount: number,
+@@ -176,8 +177,8 @@ export type lbUpdateFromRun = {
+ 	top10s: number,
+ 	races: number,
+ 	runs: number,
+-	userCompetitiveWRCount: number,
+-	userTotalWRCount: number,
++	cwrs: number,
++	wrCount: number,
+ 	awardCount: number,
+ }
+ 
+@@ -188,15 +189,15 @@ export type lbUserStats = {
+ 	top10s: number,
+ 	races: number,
+ 	runs: number,
+-	userCompetitiveWRCount: number,
+-	userTotalWRCount: number,
++	cwrs: number,
++	wrCount: number,
+ 	awardCount: number,
+ }
+ 
+ export type lbUpdateFromFind = {
+ 	kind: string,
+ 	userId: number,
+-	userTotalFindCount: number,
++	findCount: number,
+ 	userTix: number,
+ 	findRank: number,
+ }
+@@ -223,7 +224,11 @@ export type badgeOptions = {
+ 	userId: number,
+ }
+ 
++-- note that these don't have the user on them.
++-- thats' because we are typically in a situaiton where we both know the user,
++-- this also enables us to have userSettings.lua on the server which just stores them all plus defaults
+ export type userSettingValue = { name: string, domain: string, value: boolean? }
++
+ export type userSettingValuesWithDistributions = { name: string, domain: string, value: boolean?, percentage: number }
+ 
+ --for the left side of a sign popup.
+diff --git a/ReplicatedStorage/util/annotater.lua b/ReplicatedStorage/util/annotater.lua
+index bdff15a..f28a81d 100644
+--- a/ReplicatedStorage/util/annotater.lua
++++ b/ReplicatedStorage/util/annotater.lua
+@@ -20,8 +20,8 @@ goodScripts = { "dynamicServer", "dynamicRunning" }
+ goodScripts = { "movement", "avatarEventMonitor", "avatarEventFiring", "avatarManipulation", "particleEnums" }
+ goodScripts = { "particleEnums", "avatarEventFiring" }
+ goodScripts = { "particleEnums", "movement", "avatarEventMonitor" }
+--- goodScripts = { "movement" }
+-goodScripts = {}
++goodScripts = { "particles", "settings" }
++goodScripts = { "" }
+ 
+ local showAllRegardless = false
+ -- showAllRegardless = true
+diff --git a/ReplicatedStorage/util/badgeEnums.lua b/ReplicatedStorage/util/badgeEnums.lua
+index a3bcca9..4568287 100644
+--- a/ReplicatedStorage/util/badgeEnums.lua
++++ b/ReplicatedStorage/util/badgeEnums.lua
+@@ -1197,12 +1197,12 @@ local badges: { [string]: tt.badgeDescriptor } = {
+ 		badgeClass = badgeClasses.CONTRIBUTION,
+ 		hint = "",
+ 	},
+-	-- Unused1 = {
+-	-- 	name = "A",
+-	-- 	assetId = 86721891033161,
+-	-- 	badgeClass = badgeClasses.CONTRIBUTION,
+-	-- 	hint = "",
+-	-- },
++	NinjaParkour = {
++		name = "Ninja Parkour",
++		assetId = 3207146526819510,
++		badgeClass = badgeClasses.META,
++		hint = "",
++	},
+ 	-- Unused2 = {
+ 	-- 	name = "B",
+ 	-- 	assetId = 1882550611928475,
+@@ -1226,7 +1226,7 @@ local badges: { [string]: tt.badgeDescriptor } = {
+ 	-- 	assetId = 2024605262725247,
+ 	-- 	badgeClass = badgeClasses.CONTRIBUTION,
+ 	-- 	hint = "",
+-	-- },
++	-- }, 403420218226961 1512490259388669 1727264501522954 179125274571469
+ }
+ 
+ module.badges = badges
+diff --git a/ReplicatedStorage/util/enums.lua b/ReplicatedStorage/util/enums.lua
+index cb9a4ce..b3ecc8c 100644
+--- a/ReplicatedStorage/util/enums.lua
++++ b/ReplicatedStorage/util/enums.lua
+@@ -2,7 +2,7 @@
+ 
+ local module = {}
+ 
+-module.gameVersion = "1.258"
++module.gameVersion = "1.272"
+ 
+ --do not change these! only deletions without fillin are allowed.
+ local name2signId: { [string]: number } = {
+@@ -563,6 +563,7 @@ local name2signId: { [string]: number } = {
+ 	["◄"] = 551,
+ 	["🗯"] = 552,
+ 	["Gemelo"] = 553,
++	["Cow"] = 554,
+ }
+ 
+ --aliases of symbolic signs to their english alias.
+@@ -651,25 +652,25 @@ module.ExcludeSignNamesFromStartingAt = {
+ 	-- "Obelisk",
+ 	-- "Gemelo",
+ 
+-	"Helix",
++	-- "Helix",
+ 	-- "Elevator",
+-	"Sputnik",
+-	"Maobahe",
++	-- "Sputnik",
++	-- "Maobahe",
+ 	-- "Mauna Loa",
+-	"Hosho",
+-	"Roblox",
++	-- "Hosho",
++	-- "Roblox",
+ 	-- "Aorta",
+-	"Pretzel",
+-	"Beehive",
++	-- "Pretzel",
++	-- "Beehive",
+ 	-- "Pharoah",
+-	"Subterranean Temple",
+-	"Blanc",
+-	"Flint",
++	-- "Subterranean Temple",
++	-- "Blanc",
++	-- "Flint",
+ 	-- "Woodingdean",
+ 
+ 	-- "Lignin",
+-	"Mencius",
+-	"Ooloi",
++	-- "Mencius",
++	-- "Ooloi",
+ 	-- "Rapunzel",
+ 	"Rubble",
+ 	-- "Olympus",
+@@ -750,9 +751,14 @@ module.signCount = signCount
+ local objects = {}
+ 
+ --users
+-objects.TerrainParkour = 164062733
+-objects.Brouhahaha = 90115385
+-objects.terrainparkorffc = 7030441423
++objects.TerrainParkourUserId = 164062733
++objects.BrouhahahaUserId = 90115385
++objects.terrainparkorffcUserId = 7030441423
++objects.ninjaParkourGroupId = 3200785
++objects.TerrainParkourPlaceId = 868107368
++objects.TerrainParkourUniverseId = 360479749
++objects.TerrainParkourDevGamePlaceId = 1
++objects.TerrainParkourDevGameUniverseId = 1
+ 
+ module.objects = objects
+ 
+@@ -860,6 +866,13 @@ Internals
+ also, some particles. working on fixing them and giving them all meaning, also will bea ble to be turned off
+ also fixed small UI bugs with minimize buttons not working totally.
+ and I'm working on more stuff soon.]],
++	[258] = [[* fixed a few speedup bugs where you wouldn't accelerate sometimes.
++* reduced particles and made them hopefully more useful. lots of other ideas here including a "random particle sign". But for now really turned them down a lot. I've been thinking that in a way, they are like gears in trackmania. Or could be... see unreleased code.
++* I have some more ideas about this but all that should change here today is fixing things.
++* Some other logical fixes in here too, nothing that should effect runs normally.
++* moved running UI to center and gave it a light background. This UI will likely change and also be more configurable and moveable and controllable, etc in the future for you.]],
++	[261] = [[* actually fix lacking speedups as you run? Also somewhat improve race running UI
++* make speed display continuous rather than only showing up when you are on a run.]],
+ }
+ 
+ local SpecialSignDescriptions = {
+@@ -870,6 +883,7 @@ local SpecialSignDescriptions = {
+ 	["Fosbury"] = "High Jump",
+ 	["Bolt"] = "faast",
+ 	["Salekhard"] = "slip",
++	["Hypergravity"] = "so heavy",
+ 	["👻"] = "ghost",
+ }
+ module.SpecialSignDescriptions = SpecialSignDescriptions
+diff --git a/ServerScriptService/EphemeralMarathons/ephemeralMarathon.lua b/ServerScriptService/EphemeralMarathons/ephemeralMarathon.lua
+index ae5bdce..12f3341 100644
+--- a/ServerScriptService/EphemeralMarathons/ephemeralMarathon.lua
++++ b/ServerScriptService/EphemeralMarathons/ephemeralMarathon.lua
+@@ -6,7 +6,7 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
+ local _annotate = annotater.getAnnotater(script)
+ 
+ local notify = require(game.ReplicatedStorage.notify)
+-local lbupdater = require(game.ServerScriptService.lbupdater)
++local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
+ local mt = require(game.ServerScriptService.EphemeralMarathons.ephemeralMarathonTypes)
+ local PlayerService = game:GetService("Players")
+ 
+@@ -80,7 +80,7 @@ local serverInvokeEphemeralMarathonComplete = function(player: Player, marathonI
+ 
+ 	--TODO fix this to update their marathon display.
+ 	for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
+-		lbupdater.updateLeaderboardForEphemeralMarathon(otherPlayer, run)
++		lbUpdaterServer.updateLeaderboardForEphemeralMarathon(otherPlayer, run)
+ 	end
+ end
+ 
+diff --git a/ServerScriptService/badges.lua b/ServerScriptService/badges.lua
+index 5625f5d..9adb700 100644
+--- a/ServerScriptService/badges.lua
++++ b/ServerScriptService/badges.lua
+@@ -78,24 +78,20 @@ end
+ local function getProgressForStatsKindAndNumber(el: tt.badgeDescriptor, stats: tt.afterData_getStatsByUser): number
+ 	if el.badgeClass == "top10s" then
+ 		return math.min(stats.top10s, el.baseNumber)
+-	end
+-	if el.badgeClass == "tix" then
++	elseif el.badgeClass == "tix" then
+ 		return math.min(stats.userTix, el.baseNumber)
+-	end
+-	if el.badgeClass == "finds" then
+-		return math.min(stats.userTotalFindCount, el.baseNumber)
+-	end
+-	if el.badgeClass == "wrs" then
+-		return math.min(stats.userTotalWRCount, el.baseNumber)
+-	end
+-	if el.badgeClass == "cwrs" then
+-		return math.min(stats.userCompetitiveWRCount, el.baseNumber)
+-	end
+-	if el.badgeClass == "races" then
++	elseif el.badgeClass == "finds" then
++		return math.min(stats.findCount, el.baseNumber)
++	elseif el.badgeClass == "wrs" then
++		return math.min(stats.wrCount, el.baseNumber)
++	elseif el.badgeClass == "cwrs" then
++		return math.min(stats.cwrs, el.baseNumber)
++	elseif el.badgeClass == "races" then
+ 		return math.min(stats.races, el.baseNumber)
+-	end
+-	if el.badgeClass == "runs" then
++	elseif el.badgeClass == "runs" then
+ 		return math.min(stats.runs, el.baseNumber)
++	elseif el.badgeClass == "cwrtop10s" then
++		return math.min(stats.cwrtop10s, el.baseNumber)
+ 	end
+ 	warn("fail badgeClass progress lookup.")
+ 	return 0
+diff --git a/ServerScriptService/data/new.lua b/ServerScriptService/data/new.lua
+index b694c40..2daa136 100644
+--- a/ServerScriptService/data/new.lua
++++ b/ServerScriptService/data/new.lua
+@@ -14,7 +14,7 @@ local enums = require(game.ReplicatedStorage.util.enums)
+ local module = {}
+ 
+ module.GetNew = function(player: Player, userIds: { number }): { PopularResponseTypes.popularRaceResult }
+-	local userIdsInServer: { number } = { 261, tostring(enums.objects.TerrainParkour), -1, -2 }
++	local userIdsInServer: { number } = { 261, tostring(enums.objects.TerrainParkourUserId), -1, -2 }
+ 	userIdsInServer = {}
+ 	for _, userId in ipairs(userIds) do
+ 		table.insert(userIdsInServer, tostring(userId))
+diff --git a/ServerScriptService/data/popular.lua b/ServerScriptService/data/popular.lua
+index c6fc273..e29a8c3 100644
+--- a/ServerScriptService/data/popular.lua
++++ b/ServerScriptService/data/popular.lua
+@@ -14,7 +14,7 @@ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+ local module = {}
+ 
+ module.GetPopular = function(player: Player, userIds: { number }): { PopularResponseTypes.popularRaceResult }
+-	local userIdsInServer: { number } = { 261, tostring(enums.objects.TerrainParkour), -1, -2 }
++	local userIdsInServer: { number } = { 261, tostring(enums.objects.TerrainParkourUserId), -1, -2 }
+ 	userIdsInServer = {}
+ 	for _, userId in ipairs(userIds) do
+ 		table.insert(userIdsInServer, tostring(userId))
+diff --git a/ServerScriptService/lbupdater.lua b/ServerScriptService/lbupdater.lua
+deleted file mode 100644
+index 268c354..0000000
+--- a/ServerScriptService/lbupdater.lua
++++ /dev/null
+@@ -1,71 +0,0 @@
+---!strict
+-
+---any backend that notices something happening that is part of the leaderboard should import this
+---list of events and call the appropriate one, with the appropriate luau typed data on it,
+---so that all users currently connected to that instance will get the LB update.
+-
+-local annotater = require(game.ReplicatedStorage.util.annotater)
+-local _annotate = annotater.getAnnotater(script)
+-
+-local tt = require(game.ReplicatedStorage.types.gametypes)
+-local mt = require(game.ServerScriptService.EphemeralMarathons.ephemeralMarathonTypes)
+-
+-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-
+-local module = {}
+-
+-local leaderboardUpdateEvent: RemoteEvent = ReplicatedStorage:WaitForChild("RemoteEvents")
+-	:WaitForChild("LeaderboardUpdateEvent")
+-
+-module.updateLeaderboardForRun = function(player: Player, data: tt.lbUpdateFromRun)
+-	task.spawn(function()
+-		leaderboardUpdateEvent:FireClient(player, data)
+-	end)
+-end
+-
+---ie tell player p about (their or another user's) find, with details within "data."
+-module.updateLeaderboardForFind = function(player: Player, data: tt.signFindOptions)
+-	task.spawn(function()
+-		leaderboardUpdateEvent:FireClient(player, data)
+-	end)
+-end
+-
+-module.updateLeaderboardForEphemeralMarathon = function(player: Player, data: mt.lbUpdateFromEphemeralMarathonRun)
+-	task.spawn(function()
+-		leaderboardUpdateEvent:FireClient(player, data)
+-	end)
+-end
+-
+-module.updateLeaderboardForMarathon = function(player: Player, data: tt.pyUserFinishedRunResponse)
+-	task.spawn(function()
+-		leaderboardUpdateEvent:FireClient(player, data)
+-	end)
+-end
+-
+-module.sendLeaveInfoToSomeone = function(player: Player, userId: number)
+-	task.spawn(function()
+-		local data: tt.leaveOptions = { userId = userId, kind = "leave" }
+-		leaderboardUpdateEvent:FireClient(player, data)
+-	end)
+-end
+-
+-module.sendUpdateToPlayer = function(player: Player, data: tt.afterData_getStatsByUser)
+-	task.spawn(function()
+-		leaderboardUpdateEvent:FireClient(player, data)
+-	end)
+-end
+-
+-module.updateLeaderboardBadgeStats = function(player: Player, data: tt.badgeUpdate)
+-	task.spawn(function()
+-		leaderboardUpdateEvent:FireClient(player, data)
+-	end)
+-end
+-
+-module.updateLeaderboardForServerEventCompletionRun = function(player: Player, data: tt.lbUpdateFromRun)
+-	task.spawn(function()
+-		leaderboardUpdateEvent:FireClient(player, data)
+-	end)
+-end
+-
+-_annotate("end")
+-return module
+diff --git a/ServerScriptService/leaderboardBadgeEvents.lua b/ServerScriptService/leaderboardBadgeEvents.lua
+index de97cbc..5a3da52 100644
+--- a/ServerScriptService/leaderboardBadgeEvents.lua
++++ b/ServerScriptService/leaderboardBadgeEvents.lua
+@@ -5,7 +5,7 @@
+ local annotater = require(game.ReplicatedStorage.util.annotater)
+ local _annotate = annotater.getAnnotater(script)
+ 
+-local lbupdater = require(game.ServerScriptService.lbupdater)
++local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
+ local tt = require(game.ReplicatedStorage.types.gametypes)
+ 
+ local PlayerService = game:GetService("Players")
+@@ -19,7 +19,7 @@ module.updateBadgeLb = function(player: Player, userIdToInformThemAbout: number,
+ 		local bstats: tt.badgeUpdate =
+ 			{ kind = "badge update", userId = userIdToInformThemAbout, badgeCount = badgecount }
+ 		_annotate("Updating " .. player.UserId .. " about badges from: " .. userIdToInformThemAbout)
+-		lbupdater.updateLeaderboardBadgeStats(player, bstats)
++		lbUpdaterServer.updateLeaderboardBadgeStats(player, bstats)
+ 	end)
+ end
+ 
+diff --git a/ServerScriptService/leaderboardEvents.lua b/ServerScriptService/leaderboardEvents.lua
+deleted file mode 100644
+index 435d08d..0000000
+--- a/ServerScriptService/leaderboardEvents.lua
++++ /dev/null
+@@ -1,101 +0,0 @@
+---!strict
+-
+--- on join type methods for triggering other players local LBs to update.
+-
+-local annotater = require(game.ReplicatedStorage.util.annotater)
+-local _annotate = annotater.getAnnotater(script)
+-
+-local PlayerService = game:GetService("Players")
+-local colors = require(game.ReplicatedStorage.util.colors)
+-local channeldefinitions = require(game.ReplicatedStorage.chat.channeldefinitions)
+-local playerdata = require(game.ServerScriptService.playerdata)
+-local lbupdater = require(game.ServerScriptService.lbupdater)
+-local tt = require(game.ReplicatedStorage.types.gametypes)
+-
+-local module = {}
+-
+-local racersChannel = channeldefinitions.getChannel("Racers")
+-
+---this whole set of functions seems highly strange.
+--- why should this be so hard?
+--- a lot of them are of the form: when a player joins the server, set further rules such taht if they
+--- do something else, update other people?
+--- i don't get why instead it isn't like, when a player joins, they should get everyone's current state, and also subscribe to new updates.
+--- so it's basically: catchup, follow.
+-
+---leaver should be updated to everyone. this is called when a player actually leaves.
+-module.RemoveFromLeaderboardImmediate = function(player: Player)
+-	_annotate("this player left: " .. player.Name)
+-	for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
+-		if otherPlayer.UserId == player.UserId then
+-			continue
+-		end
+-		lbupdater.sendLeaveInfoToSomeone(otherPlayer, player.UserId)
+-	end
+-end
+-
+-module.PostJoinToRacersImmediate = function(player: Player)
+-	_annotate("Posting join to racers: " .. player.Name)
+-	local character = player.Character or player.CharacterAdded:Wait()
+-	local statTag = playerdata.getPlayerDescriptionLine(player.UserId)
+-	local text = player.Name .. " joined! " .. statTag
+-	local options = { ChatColor = colors.greenGo }
+-	racersChannel:SendSystemMessage(text, options)
+-end
+-
+-module.PostLeaveToRacersImmediate = function(player: Player)
+-	_annotate("Posting leave to racers: " .. player.Name)
+-	local statTag = playerdata.getPlayerDescriptionLine(player.UserId)
+-	local text = player.Name .. " left! " .. statTag
+-	local options = { ChatColor = colors.redStop }
+-	racersChannel:SendSystemMessage(text, options)
+-end
+-
+---update joiner about current players
+-local function updatePlayerLbAboutAllImmediate(player: Player)
+-	local character = player.Character or player.CharacterAdded:Wait()
+-	for _, otherPlayer: Player in ipairs(PlayerService:GetPlayers()) do
+-		local stats: tt.afterData_getStatsByUser =
+-			playerdata.getPlayerStatsByUserId(otherPlayer.UserId, "update joiner lb")
+-		lbupdater.sendUpdateToPlayer(player, stats)
+-		_annotate(string.format("Updating player: %s about %s", player.Name, otherPlayer.Name))
+-	end
+-end
+-
+-module.SetPlayerToReceiveUpdates = function(player: Player)
+-	_annotate("Setting player to receive updates: " .. player.Name)
+-	player.CharacterAdded:Connect(function(_)
+-		_annotate("Player " .. player.Name .. " was added, so telling " .. player.Name .. " about it.")
+-		return updatePlayerLbAboutAllImmediate(player)
+-	end)
+-	local character = player.Character or player.CharacterAdded:Wait()
+-	updatePlayerLbAboutAllImmediate(player)
+-end
+-
+-local function updateOthersAboutPlayerImmediate(player: Player)
+-	local stats: tt.afterData_getStatsByUser =
+-		playerdata.getPlayerStatsByUserId(player.UserId, "update other about joiner")
+-	local character = player.Character or player.CharacterAdded:Wait()
+-	for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
+-		if otherPlayer.UserId == player.UserId then
+-			continue
+-		end
+-		_annotate(string.format("Updating %s about player: %s", otherPlayer.Name, player.Name))
+-		lbupdater.sendUpdateToPlayer(otherPlayer, stats)
+-	end
+-end
+-
+--- when a player is added
+--- we make it so that, for that player,
+--- when that player initially spawns (or respawns)
+-module.UpdateOthersAboutJoinerLb = function(player: Player)
+-	player.CharacterAdded:Connect(function()
+-		_annotate("Player " .. player.Name .. " was added, so telling others about it - top.")
+-		updateOthersAboutPlayerImmediate(player)
+-	end)
+-	_annotate("Player " .. player.Name .. " initial add backfull, so telling others.")
+-	updateOthersAboutPlayerImmediate(player)
+-end
+-
+-_annotate("end")
+-return module
+diff --git a/ServerScriptService/marathon.lua b/ServerScriptService/marathon.lua
+index 0038855..7a64b1d 100644
+--- a/ServerScriptService/marathon.lua
++++ b/ServerScriptService/marathon.lua
+@@ -7,7 +7,7 @@ local rdb = require(game.ServerScriptService.rdb)
+ local notify = require(game.ReplicatedStorage.notify)
+ 
+ local tt = require(game.ReplicatedStorage.types.gametypes)
+-local lbupdater = require(game.ServerScriptService.lbupdater)
++local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
+ local PlayerService = game:GetService("Players")
+ 
+ local grantBadge = require(game.ServerScriptService.grantBadge)
+@@ -44,7 +44,7 @@ local serverInvokeMarathonComplete = function(
+ 	notify.notifyPlayerAboutMarathonResults(player, pyUserFinishedRunResponse)
+ 
+ 	for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
+-		lbupdater.updateLeaderboardForMarathon(otherPlayer, pyUserFinishedRunResponse)
++		lbUpdaterServer.updateLeaderboardForMarathon(otherPlayer, pyUserFinishedRunResponse)
+ 	end
+ end
+ 
+diff --git a/ServerScriptService/playerdata.lua b/ServerScriptService/playerdata.lua
+index f8eab13..114b152 100644
+--- a/ServerScriptService/playerdata.lua
++++ b/ServerScriptService/playerdata.lua
+@@ -10,6 +10,7 @@ local emojis = require(game.ReplicatedStorage.enums.emojis)
+ local remoteDbInternal = require(game.ServerScriptService.remoteDbInternal)
+ local textUtil = require(game.ReplicatedStorage.util.textUtil)
+ local colors = require(game.ReplicatedStorage.util.colors)
++local rdb = require(game.ServerScriptService.rdb)
+ 
+ local PlayersService = game:GetService("Players")
+ local tt = require(game.ReplicatedStorage.types.gametypes)
+@@ -41,14 +42,13 @@ end
+ module.getPlayerStatsByUserId = function(userId: number, kind: string): tt.afterData_getStatsByUser
+ 	local stats: tt.afterData_getStatsByUser = remoteDbInternal.remoteGet("getStatsByUser", { userId = userId })
+ 	stats.kind = kind
+-	local rdb = require(game.ServerScriptService.rdb)
+ 	local totalSignCount = rdb.getGameSignCount()
+ 	stats.totalSignCount = totalSignCount
+ 	return stats
+ end
+ 
+-module.convertStatsToDescriptionLine = function(data)
+-	local text = data.userTotalFindCount .. " signs found "
++module.convertStatsToDescriptionLine = function(data: tt.afterData_getStatsByUser)
++	local text = data.findCount .. " signs found "
+ 
+ 	if data.races > 0 then
+ 		text = text .. " / " .. data.races .. " races"
+@@ -59,12 +59,30 @@ module.convertStatsToDescriptionLine = function(data)
+ 	if data.top10s > 0 then
+ 		text = text .. " / " .. data.top10s .. " top10s"
+ 	end
+-	if data.userTotalWRCount > 0 then
+-		text = text .. " / " .. data.userTotalWRCount .. " World Records"
++	if data.wrCount > 0 then
++		text = text .. " / " .. data.wrCount .. " World Records"
++	end
++	if data.cwrs > 0 then
++		text = text .. " / " .. data.cwrs .. " Competitive WRs."
++	end
++	if data.userTix > 0 then
++		text = text .. " / " .. data.userTix .. " Tix!"
+ 	end
+-	if data.userCompetitiveWRCount > 0 then
+-		text = text .. " / " .. data.userCompetitiveWRCount .. " Competitive WRs."
++	if data.awardCount > 0 then
++		text = text .. " / " .. data.awardCount .. " awards"
++	end
++
++	if data.cwrtop10s > 0 then
++		text = text .. " / " .. data.cwrtop10s .. " CWR Top 10s"
+ 	end
++
++	if data.findCount > 0 then
++		text = text .. " / " .. data.findCount .. " signs found"
++	end
++	if data.wrRank > 0 then
++		text = text .. " / " .. data.wrRank .. " WR Rank"
++	end
++
+ 	return text
+ end
+ 
+@@ -76,7 +94,7 @@ end
+ module.getPlayerDescriptionMultiline = function(userId: number)
+ 	local data: tt.afterData_getStatsByUser = module.getPlayerStatsByUserId(userId, "desc multiline")
+ 	local text: string = "\n"
+-		.. data.userTotalFindCount
++		.. data.findCount
+ 		.. " signs found\n"
+ 		.. data.runs
+ 		.. " runs\n"
+@@ -84,7 +102,7 @@ module.getPlayerDescriptionMultiline = function(userId: number)
+ 		.. " races\n"
+ 		.. data.top10s
+ 		.. " top10s\n"
+-		.. data.userTotalWRCount
++		.. data.wrCount
+ 		.. " World Records\n"
+ 		.. data.userTix
+ 		.. " Tix!"
+diff --git a/ServerScriptService/presence.lua b/ServerScriptService/presence.lua
+index 396f905..41118af 100644
+--- a/ServerScriptService/presence.lua
++++ b/ServerScriptService/presence.lua
+@@ -4,7 +4,7 @@
+ local annotater = require(game.ReplicatedStorage.util.annotater)
+ local _annotate = annotater.getAnnotater(script)
+ 
+-local leaderboardEvents = require(game.ServerScriptService.leaderboardEvents)
++local leaderboardServer = require(game.ServerScriptService.leaderboardServer)
+ local leaderboardBadgeEvents = require(game.ServerScriptService.leaderboardBadgeEvents)
+ local playerMonitoring = require(game.ServerScriptService.playerStateMonitoringFuncs)
+ local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
+@@ -47,15 +47,15 @@ module.Init = function()
+ 	table.insert(playerAddFuncs, { func = playerMonitoring.LogLocationOnDeath, name = "logLocationOnDeath" })
+ 	table.insert(
+ 		playerAddFuncs,
+-		{ func = leaderboardEvents.UpdateOthersAboutJoinerLb, name = "UpdateOthersAboutJoinerLb" }
++		{ func = leaderboardServer.UpdateOthersAboutJoinerLb, name = "UpdateOthersAboutJoinerLb" }
+ 	)
+-	table.insert(playerAddFuncs, { func = leaderboardEvents.SetPlayerToReceiveUpdates, name = "UpdateOwnLeaderboard" })
++	table.insert(playerAddFuncs, { func = leaderboardServer.SetPlayerToReceiveUpdates, name = "UpdateOwnLeaderboard" })
+ 	table.insert(
+ 		playerAddFuncs,
+ 		{ func = leaderboardBadgeEvents.TellPlayerAboutAllOthersBadges, name = "TellAllAboutMeBadges" }
+ 	)
+ 	table.insert(playerAddFuncs, { func = leaderboardBadgeEvents.TellMeAboutOBadges, name = "TellMeAboutOBadges" })
+-	table.insert(playerAddFuncs, { func = leaderboardEvents.PostJoinToRacersImmediate, name = "PostJoinToRacers" })
++	table.insert(playerAddFuncs, { func = leaderboardServer.PostJoinToRacersImmediate, name = "PostJoinToRacers" })
+ 
+ 	PlayersService.PlayerAdded:Connect(applyPlayerAddFuncs)
+ 
+@@ -69,11 +69,11 @@ module.Init = function()
+ 	table.insert(playerRemovingFuncs, { func = playerMonitoring.LogPlayerLeft, name = "LogPlayerLeft" })
+ 	table.insert(
+ 		playerRemovingFuncs,
+-		{ func = leaderboardEvents.RemoveFromLeaderboardImmediate, name = "RemoveFromLeaderboard" }
++		{ func = leaderboardServer.RemoveFromLeaderboardImmediate, name = "RemoveFromLeaderboard" }
+ 	)
+ 	table.insert(
+ 		playerRemovingFuncs,
+-		{ func = leaderboardEvents.PostLeaveToRacersImmediate, name = "PostLeaveToRacers" }
++		{ func = leaderboardServer.PostLeaveToRacersImmediate, name = "PostLeaveToRacers" }
+ 	)
+ 
+ 	PlayersService.PlayerRemoving:Connect(applyPlayerRemovingFuncs)
+diff --git a/ServerScriptService/raceEnding.lua b/ServerScriptService/raceEnding.lua
+index cac498f..ccfce9a 100644
+--- a/ServerScriptService/raceEnding.lua
++++ b/ServerScriptService/raceEnding.lua
+@@ -1,6 +1,6 @@
+ --!strict
+ 
+---very simple
++-- BV very simple
+ 
+ local annotater = require(game.ReplicatedStorage.util.annotater)
+ local _annotate = annotater.getAnnotater(script)
+@@ -12,7 +12,7 @@ local signInfo = require(game.ReplicatedStorage.signInfo)
+ local rdb = require(game.ServerScriptService.rdb)
+ local banning = require(game.ServerScriptService.banning)
+ local raceCompleteData = require(game.ServerScriptService.raceCompleteData)
+-local lbupdater = require(game.ServerScriptService.lbupdater)
++local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
+ local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
+ local remotes = require(game.ReplicatedStorage.util.remotes)
+ 
+@@ -83,13 +83,13 @@ local function receiveClientMessageAboutRunEnding(
+ 			top10s = userFinishedRunResponse.userTotalTop10Count,
+ 			races = userFinishedRunResponse.userTotalRaceCount,
+ 			runs = userFinishedRunResponse.userTotalRunCount,
+-			userCompetitiveWRCount = userFinishedRunResponse.userCompetitiveWRCount,
+-			userTotalWRCount = userFinishedRunResponse.userTotalWRCount,
++			cwrs = userFinishedRunResponse.cwrs,
++			wrCount = userFinishedRunResponse.wrCount,
+ 			awardCount = userFinishedRunResponse.awardCount,
+ 		}
+ 
+ 		for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
+-			lbupdater.updateLeaderboardForRun(otherPlayer, lbRunUpdate)
++			lbUpdaterServer.updateLeaderboardForRun(otherPlayer, lbRunUpdate)
+ 		end
+ 	end)
+ 
+diff --git a/ServerScriptService/rdb.lua b/ServerScriptService/rdb.lua
+index a506f24..05f0d01 100644
+--- a/ServerScriptService/rdb.lua
++++ b/ServerScriptService/rdb.lua
+@@ -202,10 +202,14 @@ module.userDied = function(userId: number, x: number, y: number, z: number)
+ 	})
+ end
+ 
+-module.setSignPosition = function(data: any)
++module.setSignPosition = function(data: { name: string, signId: number, x: number, y: number, z: number })
+ 	return remoteDbInternal.remoteGet("setSignPosition", data)
+ end
+ 
++module.getOrCreateBooleanSetting = function(data: { domain: string, name: string })
++	return remoteDbInternal.remoteGet("getOrCreateBooleanSetting", data)
++end
++
+ --look up dynamic run stats for the signs included, which are likely ones which the user is approaching
+ module.dynamicRunFrom = function(
+ 	userId: number,
+diff --git a/ServerScriptService/remoteDbInternal.lua b/ServerScriptService/remoteDbInternal.lua
+index 7672e78..1b1f15c 100644
+--- a/ServerScriptService/remoteDbInternal.lua
++++ b/ServerScriptService/remoteDbInternal.lua
+@@ -35,7 +35,7 @@ local function getPath(kind: string, data: any)
+ 	local stringdata = textUtil.getStringifiedTable(data)
+ 	if kind == "robloxUserJoined" then
+ 		local uu = data.username
+-		if data.userId == enums.objects.TerrainParkour then
++		if data.userId == enums.objects.TerrainParkourUserId then
+ 			uu = "TerrainParkour"
+ 		end
+ 		local useBoolean = ""
+@@ -54,6 +54,10 @@ local function getPath(kind: string, data: any)
+ 			.. "/"
+ 			.. useBoolean
+ 			.. "/"
++	elseif kind == "getOrCreateBooleanSetting" then
++		local safeDomain = HttpService:UrlEncode(stringdata.domain)
++		local safeName = HttpService:UrlEncode(stringdata.name)
++		return kind .. "/" .. safeDomain .. "/" .. safeName .. "/"
+ 	elseif kind == "robloxUserJoinedFirst" then
+ 		return kind
+ 			.. "/"
+@@ -319,13 +323,13 @@ module.remoteGet = function(kind: string, data: any): any
+ 	local url = getRemoteUrl(path)
+ 	local surl: string = host.addSecretStr(url)
+ 
+-	if config.isInStudio() or data.userId == enums.objects.TerrainParkour then
++	if config.isInStudio() or data.userId == enums.objects.TerrainParkourUserId then
+ 		data.secret = nil
+ 		--clear secret for later printing.
+ 	end
+ 	local st = tick()
+ 	local res = httpservice.httpThrottledJsonGet(surl)
+-	if config.isInStudio() or data.userId == enums.objects.TerrainParkour then
++	if config.isInStudio() or data.userId == enums.objects.TerrainParkourUserId then
+ 		_annotate(string.format("DONE %0.3f %s", tick() - st, url))
+ 		_annotate(string.format("remoteDbInternal.remoteGet took: %0.3f %s", tick() - st, url))
+ 	end
+@@ -348,7 +352,7 @@ module.remotePost = function(kind: string, data: any)
+ 	local st: number = tick()
+ 	local res = httpservice.httpThrottledJsonPost(url, data)
+ 	res.userId = tonumber(res.userId)
+-	if config.isInStudio() or data.userId == enums.objects.TerrainParkour then
++	if config.isInStudio() or data.userId == enums.objects.TerrainParkourUserId then
+ 		data.secret = nil
+ 		_annotate(string.format("%0.3f kind: " .. kind .. " url:" .. url, tick() - st))
+ 	end
+diff --git a/ServerScriptService/serverEvents.lua b/ServerScriptService/serverEvents.lua
+index d191f2d..21c4323 100644
+--- a/ServerScriptService/serverEvents.lua
++++ b/ServerScriptService/serverEvents.lua
+@@ -14,7 +14,7 @@ local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
+ local config = require(game.ReplicatedStorage.config)
+ local rdb = require(game.ServerScriptService.rdb)
+ local PlayersService = game:GetService("Players")
+-local lbupdater = require(game.ServerScriptService.lbupdater)
++local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
+ local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
+ 
+ local ServerEventRemoteEvent = remotes.getRemoteEvent("ServerEventRemoteEvent")
+@@ -100,7 +100,7 @@ local function endServerEvent(serverEvent: tt.runningServerEvent): boolean
+ 			if not otherStats then
+ 				continue
+ 			end
+-			lbupdater.updateLeaderboardForServerEventCompletionRun(otherPlayer, otherStats)
++			lbUpdaterServer.updateLeaderboardForServerEventCompletionRun(otherPlayer, otherStats)
+ 		end
+ 	end
+ 	return true
+diff --git a/ServerScriptService/setupFindTouchMonitoring.lua b/ServerScriptService/setupFindTouchMonitoring.lua
+index 95309f2..add4d05 100644
+--- a/ServerScriptService/setupFindTouchMonitoring.lua
++++ b/ServerScriptService/setupFindTouchMonitoring.lua
+@@ -6,7 +6,7 @@ local _annotate = annotater.getAnnotater(script)
+ local PlayerService = game:GetService("Players")
+ --setup sign touch events and also trigger telling user about them.
+ local tt = require(game.ReplicatedStorage.types.gametypes)
+-local lbupdater = require(game.ServerScriptService.lbupdater)
++local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
+ local enums = require(game.ReplicatedStorage.util.enums)
+ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+ local notify = require(game.ReplicatedStorage.notify)
+@@ -35,7 +35,7 @@ local function doNewFind(player: Player, signId: number, sign: Part)
+ 			lastFinderUsername = rdb.getUsernameByUserId(res.lastFinderUserId),
+ 			signName = sign.Name,
+ 			totalSignsInGame = signInfo.getSignCountInGameForUserConsumption(),
+-			userTotalFindCount = res.userTotalFindCount,
++			findCount = res.findCount,
+ 			signTotalFinds = res.signTotalFinds,
+ 			findRank = res.findRank,
+ 		}
+@@ -44,7 +44,7 @@ local function doNewFind(player: Player, signId: number, sign: Part)
+ 
+ 		--update all players leaderboards.
+ 		for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
+-			lbupdater.updateLeaderboardForFind(otherPlayer, options)
++			lbUpdaterServer.updateLeaderboardForFind(otherPlayer, options)
+ 		end
+ 	end)
+ end
+diff --git a/ServerScriptService/userSettings.lua b/ServerScriptService/userSettings.lua
+index 7daceca..7749ec5 100644
+--- a/ServerScriptService/userSettings.lua
++++ b/ServerScriptService/userSettings.lua
+@@ -1,6 +1,6 @@
+ --!strict
+ 
+--- userSettings settings lookup on server
++-- userSettings.lua settings storage on server
+ 
+ -- TODO product goals 2022.10
+ -- get all settings for user
+@@ -27,7 +27,7 @@ local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
+ 
+ local remotes = require(game.ReplicatedStorage.util.remotes)
+ 
+-local getUserSettingsFunction: RemoteFunction = remotes.getRemoteFunction("GetUserSettingsFunction")
++local GetUserSettingsFunction: RemoteFunction = remotes.getRemoteFunction("GetUserSettingsFunction")
+ local userSettingsChangedFunction: RemoteFunction = remotes.getRemoteFunction("UserSettingsChangedFunction")
+ 
+ local module = {}
+@@ -37,6 +37,7 @@ local userSettingsCache: { [number]: { [string]: tt.userSettingValue } } = {}
+ --2022.10
+ --note these are filled in and returned to users when the user has no stored value.
+ --note "value" means default here.
++-- this is also a lot like just a list of all the general BooleanSettings
+ local defaultSettingsValues: { tt.userSettingValue } = {
+ 	--a real impactful user setting
+ 	{
+@@ -44,6 +45,11 @@ local defaultSettingsValues: { tt.userSettingValue } = {
+ 		domain = settingEnums.settingDomains.USERSETTINGS,
+ 		value = false,
+ 	},
++	{
++		name = settingEnums.settingNames.SHOW_PARTICLES,
++		domain = settingEnums.settingDomains.USERSETTINGS,
++		value = true,
++	},
+ 	{
+ 		name = settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION,
+ 		domain = settingEnums.settingDomains.USERSETTINGS,
+@@ -79,6 +85,77 @@ local defaultSettingsValues: { tt.userSettingValue } = {
+ 		domain = settingEnums.settingDomains.USERSETTINGS,
+ 		value = true,
+ 	},
++	{
++		name = settingEnums.settingNames.LEADERBOARD_ENABLE_PORTRAIT,
++		domain = settingEnums.settingDomains.LEADERBOARD,
++		value = true,
++	},
++	{
++		name = settingEnums.settingNames.LEADERBOARD_ENABLE_USERNAME,
++		domain = settingEnums.settingDomains.LEADERBOARD,
++		value = true,
++	},
++	{
++		name = settingEnums.settingNames.LEADERBOARD_ENABLE_AWARDS,
++		domain = settingEnums.settingDomains.LEADERBOARD,
++		value = true,
++	},
++	{
++		name = settingEnums.settingNames.LEADERBOARD_ENABLE_TIX,
++		domain = settingEnums.settingDomains.LEADERBOARD,
++		value = true,
++	},
++	{
++		name = settingEnums.settingNames.LEADERBOARD_ENABLE_FINDS,
++		domain = settingEnums.settingDomains.LEADERBOARD,
++		value = true,
++	},
++	{
++		name = settingEnums.settingNames.LEADERBOARD_ENABLE_FINDRANK,
++		domain = settingEnums.settingDomains.LEADERBOARD,
++		value = true,
++	},
++	{
++		name = settingEnums.settingNames.LEADERBOARD_ENABLE_WRRANK,
++		domain = settingEnums.settingDomains.LEADERBOARD,
++		value = true,
++	},
++	{
++		name = settingEnums.settingNames.LEADERBOARD_ENABLE_CWRS,
++		domain = settingEnums.settingDomains.LEADERBOARD,
++		value = true,
++	},
++	{
++		name = settingEnums.settingNames.LEADERBOARD_ENABLE_WRS,
++		domain = settingEnums.settingDomains.LEADERBOARD,
++		value = true,
++	},
++	{
++		name = settingEnums.settingNames.LEADERBOARD_ENABLE_CWRTOP10S,
++		domain = settingEnums.settingDomains.LEADERBOARD,
++		value = true,
++	},
++	{
++		name = settingEnums.settingNames.LEADERBOARD_ENABLE_TOP10S,
++		domain = settingEnums.settingDomains.LEADERBOARD,
++		value = true,
++	},
++	{
++		name = settingEnums.settingNames.LEADERBOARD_ENABLE_RACES,
++		domain = settingEnums.settingDomains.LEADERBOARD,
++		value = true,
++	},
++	{
++		name = settingEnums.settingNames.LEADERBOARD_ENABLE_RUNS,
++		domain = settingEnums.settingDomains.LEADERBOARD,
++		value = true,
++	},
++	{
++		name = settingEnums.settingNames.LEADERBOARD_ENABLE_BADGES,
++		domain = settingEnums.settingDomains.LEADERBOARD,
++		value = true,
++	},
++	-- MARATHON SETTINGS
+ 
+ 	{ name = "enable alphafree", domain = settingEnums.settingDomains.MARATHONS },
+ 	{ name = "enable alphaordered", domain = settingEnums.settingDomains.MARATHONS },
+@@ -209,6 +286,8 @@ local getUserSettingByName = function(player: Player, settingName: string): tt.u
+ 	error("missing setting of name " .. settingName)
+ end
+ 
++-- if you get a missing setting for a user, we just store it in server memory. if they CHANGE it, we actually store to dbserver. otherwise
++-- it only exists on the game server. and that's okay?
+ local getUserSettingsByDomain = function(player: Player, domain: string): { [string]: tt.userSettingValue }
+ 	local userSettings = innerSetupSettings(player, "getUserSettingsByDomain " .. domain)
+ 	local res = {}
+@@ -247,6 +326,9 @@ local function userChangedSettingFromUI(userId: number, setting: tt.userSettingV
+ 		error("empty should not happen")
+ 	end
+ 
++	--todo ADD CUSTOMIZER BADGE
++	-- ERROR("ADD BADGE HERE.")
++
+ 	local res = rdb.updateSettingForUser(userId, setting.value, setting.name, setting.domain)
+ 	userSettingsCache[userId][setting.name] = setting
+ 
+@@ -268,11 +350,21 @@ local function userChangedSettingFromUI(userId: number, setting: tt.userSettingV
+ end
+ 
+ module.Init = function()
+-	getUserSettingsFunction.OnServerInvoke = module.getUserSettingsRouter
++	GetUserSettingsFunction.OnServerInvoke = module.getUserSettingsRouter
+ 
+ 	userSettingsChangedFunction.OnServerInvoke = function(player: Player, setting: tt.userSettingValue)
+ 		return userChangedSettingFromUI(player.UserId, setting)
+ 	end
++
++	-- on startup I should hit the server for each of these that are new at least.
++	for _, setting: tt.userSettingValue in pairs(defaultSettingsValues) do
++		-- hit server for some of them.
++		-- MAGIC this just hits the server, creating all missing settings, if needed.
++		if setting.domain == settingEnums.settingDomains.LEADERBOARD then
++			local data = { domain = setting.domain, name = setting.name }
++			rdb.getOrCreateBooleanSetting(data)
++		end
++	end
+ end
+ 
+ _annotate("end")
+diff --git a/StarterGui/ShiftLockButton/ImageButton/ShiftGUI.lua b/StarterGui/ShiftLockButton/ImageButton/ShiftGUI.lua
+deleted file mode 100644
+index 3327e77..0000000
+--- a/StarterGui/ShiftLockButton/ImageButton/ShiftGUI.lua
++++ /dev/null
+@@ -1,85 +0,0 @@
+---!strict
+-
+--- ShiftGUIa
+--- in-rojo copy of my production version of this so users can modify it.
+-local annotater = require(game.ReplicatedStorage.util.annotater)
+-local _annotate = annotater.getAnnotater(script)
+-
+-local MobileCameraFramework = {}
+-local players = game:GetService("Players")
+-local runservice = game:GetService("RunService")
+-local ContextActionService = game:GetService("ContextActionService")
+-local player = players.LocalPlayer
+-local character = player.Character or player.CharacterAdded:Wait()
+-local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+-local humanoid = character.Humanoid
+-local camera = workspace.CurrentCamera
+-local button = script.Parent
+-
+---Visiblity
+-uis = game:GetService("UserInputService")
+-ismobile = uis.TouchEnabled
+-button.Visible = ismobile
+-
+-local states = {
+-	OFF = "rbxasset://textures/ui/mouseLock_off@2x.png",
+-	ON = "rbxasset://textures/ui/mouseLock_on@2x.png",
+-}
+-local MAX_LENGTH = 900000
+-local active = false
+-local ENABLED_OFFSET = CFrame.new(1.7, 0, 0)
+-local DISABLED_OFFSET = CFrame.new(-1.7, 0, 0)
+-local function UpdateImage(STATE)
+-	button.Image = states[STATE]
+-end
+-local function UpdateAutoRotate(BOOL)
+-	humanoid.AutoRotate = BOOL
+-end
+-local function GetUpdatedCameraCFrame(CAMERA)
+-	return CFrame.new(
+-		humanoidRootPart.Position,
+-		Vector3.new(
+-			CAMERA.CFrame.LookVector.X * MAX_LENGTH,
+-			humanoidRootPart.Position.Y,
+-			CAMERA.CFrame.LookVector.Z * MAX_LENGTH
+-		)
+-	)
+-end
+-local function EnableShiftlock()
+-	UpdateAutoRotate(false)
+-	UpdateImage("ON")
+-	humanoidRootPart.CFrame = GetUpdatedCameraCFrame(camera)
+-	camera.CFrame = camera.CFrame * ENABLED_OFFSET
+-end
+-local function DisableShiftlock()
+-	UpdateAutoRotate(true)
+-	UpdateImage("OFF")
+-	camera.CFrame = camera.CFrame * DISABLED_OFFSET
+-	pcall(function()
+-		active:Disconnect()
+-		active = nil
+-	end)
+-end
+-UpdateImage("OFF")
+-active = false
+-function ShiftLock()
+-	if not active then
+-		active = runservice.RenderStepped:Connect(function()
+-			EnableShiftlock()
+-		end)
+-	else
+-		DisableShiftlock()
+-	end
+-end
+-ContextActionService:BindAction("ShiftLOCK", ShiftLock, false, "On")
+-ContextActionService:SetPosition("ShiftLOCK", UDim2.new(0.8, 0, 0.8, 0))
+-button.MouseButton1Click:Connect(function()
+-	if not active then
+-		active = runservice.RenderStepped:Connect(function()
+-			EnableShiftlock()
+-		end)
+-	else
+-		DisableShiftlock()
+-	end
+-end)
+-return MobileCameraFramework
+diff --git a/StarterGui/ShiftLockButton/starterGui.lua b/StarterGui/ShiftLockButton/starterGui.lua
+deleted file mode 100644
+index e18c489..0000000
+--- a/StarterGui/ShiftLockButton/starterGui.lua
++++ /dev/null
+@@ -1,137 +0,0 @@
+---!strict
+-
+--- starterGui. Added fork of existing starterGui so users can modify it. Todo
+-local annotater = require(game.ReplicatedStorage.util.annotater)
+-local _annotate = annotater.getAnnotater(script)
+-
+-local Players = game:GetService("Players")
+-local UserInputService = game:GetService("UserInputService")
+-local Settings = UserSettings()
+-local GameSettings = Settings.GameSettings
+-local ShiftLockController = {}
+-while not Players.LocalPlayer do
+-	wait()
+-end
+-local LocalPlayer = Players.LocalPlayer
+-local Mouse = LocalPlayer:GetMouse()
+-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+-local ScreenGui, InputCn
+-local IsShiftLockMode = true
+-local IsShiftLocked = true
+-local IsActionBound = false
+-
+-ShiftLockController.OnShiftLockToggled = Instance.new("BindableEvent")
+-local function isShiftLockMode()
+-	return LocalPlayer.DevEnableMouseLock
+-		and GameSettings.ControlMode == Enum.ControlMode.MouseLockSwitch
+-		and LocalPlayer.DevComputerMovementMode ~= Enum.DevComputerMovementMode.ClickToMove
+-		and GameSettings.ComputerMovementMode ~= Enum.ComputerMovementMode.ClickToMove
+-		and LocalPlayer.DevComputerMovementMode ~= Enum.DevComputerMovementMode.Scriptable
+-end
+-if not UserInputService.TouchEnabled then
+-	IsShiftLockMode = isShiftLockMode()
+-end
+-local function onShiftLockToggled()
+-	IsShiftLocked = not IsShiftLocked
+-	ShiftLockController.OnShiftLockToggled:Fire()
+-end
+-local initialize = function()
+-	--print("enabled")
+-end
+-function ShiftLockController:IsShiftLocked()
+-	return IsShiftLockMode and IsShiftLocked
+-end
+-function ShiftLockController:SetIsInFirstPerson(isInFirstPerson)
+-	IsInFirstPerson = isInFirstPerson
+-end
+-local function mouseLockSwitchFunc(actionName, inputState, inputObject)
+-	if IsShiftLockMode then
+-		onShiftLockToggled()
+-	end
+-end
+-local function disableShiftLock()
+-	if ScreenGui then
+-		ScreenGui.Parent = nil
+-	end
+-	IsShiftLockMode = false
+-	Mouse.Icon = ""
+-	if InputCn then
+-		InputCn:disconnect()
+-		InputCn = nil
+-	end
+-	IsActionBound = false
+-	ShiftLockController.OnShiftLockToggled:Fire()
+-end
+-local onShiftInputBegan = function(inputObject, isProcessed)
+-	if isProcessed then
+-		return
+-	end
+-	if
+-		inputObject.UserInputType ~= Enum.UserInputType.Keyboard
+-		or inputObject.KeyCode == Enum.KeyCode.LeftShift
+-		or inputObject.KeyCode == Enum.KeyCode.RightShift
+-	then
+-	end
+-end
+-local function enableShiftLock()
+-	IsShiftLockMode = isShiftLockMode()
+-	if IsShiftLockMode then
+-		if ScreenGui then
+-			ScreenGui.Parent = PlayerGui
+-		end
+-		if IsShiftLocked then
+-			ShiftLockController.OnShiftLockToggled:Fire()
+-		end
+-		if not IsActionBound then
+-			InputCn = UserInputService.InputBegan:connect(onShiftInputBegan)
+-			IsActionBound = true
+-		end
+-	end
+-end
+-GameSettings.Changed:connect(function(property)
+-	if property == "ControlMode" then
+-		if GameSettings.ControlMode == Enum.ControlMode.MouseLockSwitch then
+-			enableShiftLock()
+-		else
+-			disableShiftLock()
+-		end
+-	elseif property == "ComputerMovementMode" then
+-		if GameSettings.ComputerMovementMode == Enum.ComputerMovementMode.ClickToMove then
+-			disableShiftLock()
+-		else
+-			enableShiftLock()
+-		end
+-	end
+-end)
+-LocalPlayer.Changed:connect(function(property)
+-	if property == "DevEnableMouseLock" then
+-		if LocalPlayer.DevEnableMouseLock then
+-			enableShiftLock()
+-		else
+-			disableShiftLock()
+-		end
+-	elseif property == "DevComputerMovementMode" then
+-		if
+-			LocalPlayer.DevComputerMovementMode == Enum.DevComputerMovementMode.ClickToMove
+-			or LocalPlayer.DevComputerMovementMode == Enum.DevComputerMovementMode.Scriptable
+-		then
+-			disableShiftLock()
+-		else
+-			enableShiftLock()
+-		end
+-	end
+-end)
+-LocalPlayer.CharacterAdded:connect(function(character)
+-	if not UserInputService.TouchEnabled then
+-		initialize()
+-	end
+-end)
+-if not UserInputService.TouchEnabled then
+-	initialize()
+-	if isShiftLockMode() then
+-		InputCn = UserInputService.InputBegan:connect(onShiftInputBegan)
+-		IsActionBound = true
+-	end
+-end
+-enableShiftLock()
+-return ShiftLockController
+diff --git a/StarterPlayer/StarterCharacterScripts/Sound.server.lua b/StarterPlayer/StarterCharacterScripts/Sound.server.lua
+deleted file mode 100644
+index 4041e72..0000000
+--- a/StarterPlayer/StarterCharacterScripts/Sound.server.lua
++++ /dev/null
+@@ -1,97 +0,0 @@
+---!strict
+-
+---[[
+-	Author: @spotco
+-	This script creates sounds which are placed under the character head.
+-	These sounds are used by the "LocalSound" script.
+-
+-	To modify this script, copy it to your "StarterPlayer/StarterCharacterScripts" folder keeping the same script name ("Sound").
+-	The default Sound script loaded for every character will then be replaced with your copy of the script.
+-]]
+-
+-local annotater = require(game.ReplicatedStorage.util.annotater)
+-local _annotate = annotater.getAnnotater(script)
+-
+-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-local Players = game:GetService("Players")
+-
+-local SOUND_EVENT_FOLDER_NAME = "DefaultSoundEvents"
+-local DEFAULT_SERVER_SOUND_EVENT_NAME = "DefaultServerSoundEvent"
+-
+-local SoundEventFolder: Folder = ReplicatedStorage:FindFirstChild(SOUND_EVENT_FOLDER_NAME)
+-local DefaultServerSoundEvent = nil
+-
+-if not SoundEventFolder then
+-	SoundEventFolder = Instance.new("Folder")
+-	SoundEventFolder.Name = SOUND_EVENT_FOLDER_NAME
+-	SoundEventFolder.Archivable = false
+-	SoundEventFolder.Parent = ReplicatedStorage
+-end
+-
+-DefaultServerSoundEvent = SoundEventFolder:FindFirstChild(DEFAULT_SERVER_SOUND_EVENT_NAME)
+-
+-if not DefaultServerSoundEvent then
+-	DefaultServerSoundEvent = Instance.new("RemoteEvent", SoundEventFolder)
+-
+-	DefaultServerSoundEvent.Name = DEFAULT_SERVER_SOUND_EVENT_NAME
+-	DefaultServerSoundEvent.OnServerEvent:Connect(function() end)
+-end
+-
+-local function CreateNewSound(name, id, looped, pitch, parent, volume: number?)
+-	local sound = Instance.new("Sound")
+-	sound.SoundId = id
+-	sound.Name = name
+-	sound.archivable = false
+-	sound.Pitch = pitch
+-	sound.Looped = looped
+-	sound.MinDistance = 5
+-	sound.MaxDistance = 150
+-	if volume == nil then
+-		volume = 0.65
+-	end
+-	sound.Volume = volume
+-	sound.Parent = parent
+-
+-	if DefaultServerSoundEvent then
+-		local CharacterSoundEvent = Instance.new("RemoteEvent", sound)
+-		CharacterSoundEvent.Name = "CharacterSoundEvent"
+-		CharacterSoundEvent.OnServerEvent:Connect(function(player, playing, resetPosition)
+-			if type(playing) ~= "boolean" then
+-				return
+-			end
+-			if type(resetPosition) ~= "boolean" then
+-				return
+-			end
+-
+-			if player.Character ~= script.Parent then
+-				return
+-			end
+-			for _, p in pairs(Players:GetPlayers()) do
+-				if p ~= player then
+-					-- Connect to the dispatcher to check if the player has loaded.
+-					SoundEventFolder:FindFirstChild("SoundDispatcher"):Fire(p, sound, playing, resetPosition)
+-				end
+-			end
+-		end)
+-	end
+-	return sound
+-end
+-
+-local head = script.Parent:FindFirstChild("Head")
+-if not head then
+-	error("Sound script parent has no child Head.")
+-	return
+-end
+-
+-local audio = require(game.ReplicatedStorage.util.audio)
+-
+-CreateNewSound("GettingUp", "rbxasset://sounds/action_get_up.mp3", false, 1, head)
+-CreateNewSound("Died", "rbxassetid://" .. tostring(audio.audios.oof.assetId), false, 1, head)
+-CreateNewSound("FreeFalling", "rbxasset://sounds/action_falling.mp3", true, 1, head)
+-CreateNewSound("Jumping", "rbxasset://sounds/action_jump.mp3", false, 1, head)
+-CreateNewSound("Landing", "rbxasset://sounds/action_jump_land.mp3", false, 1, head)
+-CreateNewSound("Splash", "rbxasset://sounds/impact_water.mp3", false, 1, head)
+-CreateNewSound("Running", "rbxassetid://" .. tostring(audio.audios.runningConcrete.assetId), true, 1, head)
+-CreateNewSound("Swimming", "rbxassetid://" .. tostring(audio.audios.runningMuddy.assetId), true, 1, head, 0.15)
+-CreateNewSound("Climbing", "rbxasset://sounds/action_footsteps_plastic.mp3", true, 1, head)
+-_annotate("end")
+diff --git a/StarterPlayer/StarterCharacterScripts/client/joinTesting.lua b/StarterPlayer/StarterCharacterScripts/client/joinTesting.lua
+index 0726d92..8fbfc19 100644
+--- a/StarterPlayer/StarterCharacterScripts/client/joinTesting.lua
++++ b/StarterPlayer/StarterCharacterScripts/client/joinTesting.lua
+@@ -15,13 +15,14 @@ test = function()
+ 			kind = "joiner update other lb",
+ 			userId = 90115385,
+ 			runs = 123,
+-			userTotalFindCount = 123,
++			findCount = 123,
+ 			findRank = 123,
+ 			top10s = 123,
+ 			races = 123,
+ 			userTix = 123,
+-			userCompetitiveWRCount = 123,
+-			userTotalWRCount = 123,
++			cwrs = 123,
++			cwrtop10s = 123,
++			wrCount = 123,
+ 			wrRank = 123,
+ 			totalSignCount = 123,
+ 			awardCount = 123,
+diff --git a/StarterPlayer/StarterCharacterScripts/client/keyboard.lua b/StarterPlayer/StarterCharacterScripts/client/keyboard.lua
+index 87ddc93..5bfc1c4 100644
+--- a/StarterPlayer/StarterCharacterScripts/client/keyboard.lua
++++ b/StarterPlayer/StarterCharacterScripts/client/keyboard.lua
+@@ -117,11 +117,11 @@ local function onInputBegin(inputObject, gameProcessedEvent)
+ 			-- strangely, this key used to do a lot, even when you weren't running.
+ 			-- because basically it kills the movementHistory store in movement, which can have effects on the player
+ 			-- even when not running!
+-			fireEvent(mt.avatarEventTypes.RUN_KILL, { reason = "hit z on keyboard" })
++			fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "hit z on keyboard" })
+ 		elseif inputObject.KeyCode == Enum.KeyCode.K then
+ 			keyboardShortcutButton.CreateShortcutGui()
+-		elseif inputObject.KeyCode == Enum.KeyCode.P then
+-			particleExplanationGui.CreateParticleGui()
++			-- elseif inputObject.KeyCode == Enum.KeyCode.P then
++			-- 	particleExplanationGui.CreateParticleGui()
+ 		end
+ 	end
+ end
+diff --git a/StarterPlayer/StarterCharacterScripts/client/leaderboard.lua b/StarterPlayer/StarterCharacterScripts/client/leaderboard.lua
+index 8259055..d535222 100644
+--- a/StarterPlayer/StarterCharacterScripts/client/leaderboard.lua
++++ b/StarterPlayer/StarterCharacterScripts/client/leaderboard.lua
+@@ -18,19 +18,25 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
+ local _annotate = annotater.getAnnotater(script)
+ 
+ local module = {}
++
++--TYPE
+ local tt = require(game.ReplicatedStorage.types.gametypes)
+-local settings = require(game.ReplicatedStorage.settings)
+-local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+-local leaderboardButtons = require(game.StarterPlayer.StarterPlayerScripts.buttons.leaderboardButtons)
+-local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+ 
++--UTIL
++local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
++local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
++
++local settings = require(game.ReplicatedStorage.settings)
+ local enums = require(game.ReplicatedStorage.util.enums)
++
+ local colors = require(game.ReplicatedStorage.util.colors)
+ local thumbnails = require(game.ReplicatedStorage.thumbnails)
+ 
+ local remotes = require(game.ReplicatedStorage.util.remotes)
+ 
++local leaderboardButtons = require(game.StarterPlayer.StarterPlayerScripts.buttons.leaderboardButtons)
++
+ local marathonClient = require(game.StarterPlayer.StarterCharacterScripts.client.marathonClient)
+ local localRdb = require(game.ReplicatedStorage.localRdb)
+ local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
+@@ -41,7 +47,7 @@ local TweenService = game:GetService("TweenService")
+ 
+ -------------------EVENTS ---------------------
+ -- we setup the event, but what if upstream playerjoinfunc is called first?
+-local leaderboardUpdateEvent = remotes.getRemoteEvent("LeaderboardUpdateEvent")
++local LeaderboardUpdateEvent = remotes.getRemoteEvent("LeaderboardUpdateEvent")
+ 
+ ----------------- TYPES ---------------------
+ 
+@@ -52,7 +58,7 @@ type LeaderboardUserData = { [number]: genericLeaderboardUpdateDataType }
+ 
+ local lbUserData: LeaderboardUserData = {}
+ 
+-export type lbUserCell = {
++export type lbUserCellDescriptor = {
+ 	name: string,
+ 	num: number,
+ 	widthScaleImportance: number,
+@@ -60,7 +66,7 @@ export type lbUserCell = {
+ 	tooltip: string,
+ }
+ 
+-local lbUserCellDescriptors: { [string]: lbUserCell } = {
++local lbUserCellDescriptors: { [string]: lbUserCellDescriptor } = {
+ 	portrait = { name = "portrait", num = 1, widthScaleImportance = 14, userFacingName = "portrait", tooltip = "" },
+ 	username = { name = "username", num = 3, widthScaleImportance = 25, userFacingName = "username", tooltip = "" },
+ 	awardCount = {
+@@ -77,8 +83,8 @@ local lbUserCellDescriptors: { [string]: lbUserCell } = {
+ 		userFacingName = "tix",
+ 		tooltip = "",
+ 	},
+-	userTotalFindCount = {
+-		name = "userTotalFindCount",
++	findCount = {
++		name = "findCount",
+ 		num = 9,
+ 		widthScaleImportance = 10,
+ 		userFacingName = "finds",
+@@ -88,23 +94,37 @@ local lbUserCellDescriptors: { [string]: lbUserCell } = {
+ 		name = "findRank",
+ 		num = 11,
+ 		widthScaleImportance = 8,
+-		userFacingName = "rank",
++		userFacingName = "find rank",
+ 		tooltip = "",
+ 	},
+-	userCompetitiveWRCount = {
+-		name = "userCompetitiveWRCount",
++	cwrs = {
++		name = "cwrs",
+ 		num = 13,
+ 		widthScaleImportance = 12,
+ 		userFacingName = "cwrs",
+ 		tooltip = "",
+ 	},
+-	userTotalWRCount = {
+-		name = "userTotalWRCount",
++	cwrtop10s = {
++		name = "cwrtop10s",
++		num = 14,
++		widthScaleImportance = 11,
++		userFacingName = "cwr top10s",
++		tooltip = "",
++	},
++	wrCount = {
++		name = "wrCount",
+ 		num = 15,
+ 		widthScaleImportance = 10,
+ 		userFacingName = "wrs",
+ 		tooltip = "",
+ 	},
++	wrRank = {
++		name = "wrRank",
++		num = 16,
++		widthScaleImportance = 8,
++		userFacingName = "wr rank",
++		tooltip = "",
++	},
+ 	top10s = {
+ 		name = "top10s",
+ 		num = 18,
+@@ -151,24 +171,31 @@ local lbUserRowFrame: Frame? = nil
+ local lbIsEnabled: boolean = true
+ 
+ -- the initial width and height scales.
+-local initialWidthScale = 0.45
+-local initialHeightScale = 0.11
++local initialWidthScale = 0.40
++local initialHeightScale = 0.08
+ local headerRowYOffsetFixed = 24
+ -- local headerRowShrinkFactor = 0.6
+ 
++local enabledDescriptors: { [string]: boolean } = {}
++
++-- this will block things like adding rows.
++local loadedSettings = false
++
+ ------------------FUNCTIONS--------------
+ local function calculateCellWidths(): { [string]: number }
+ 	local totalWidthWeightScale = 0
++	local cellWidths: { [string]: number } = {}
+ 	for _, lbUserCellDescriptor in pairs(lbUserCellDescriptors) do
+-		totalWidthWeightScale += lbUserCellDescriptor.widthScaleImportance
++		if enabledDescriptors[lbUserCellDescriptor.name] then
++			totalWidthWeightScale += lbUserCellDescriptor.widthScaleImportance
++		end
+ 	end
+-
+-	local cellWidths: { [string]: number } = {}
+ 	for _, lbUserCellDescriptor in pairs(lbUserCellDescriptors) do
+-		local widthYScale = lbUserCellDescriptor.widthScaleImportance / totalWidthWeightScale
+-		cellWidths[lbUserCellDescriptor.name] = widthYScale
++		if enabledDescriptors[lbUserCellDescriptor.name] then
++			cellWidths[lbUserCellDescriptor.name] = lbUserCellDescriptor.widthScaleImportance / totalWidthWeightScale
++		end
+ 	end
+-
++	_annotate(cellWidths)
+ 	return cellWidths
+ end
+ 
+@@ -188,7 +215,10 @@ local function makeLeaderboardHeaderRow(): Frame
+ 
+ 	local cellWidths = calculateCellWidths()
+ 
+-	for _, lbUserCellDescriptor: lbUserCell in pairs(lbUserCellDescriptors) do
++	for _, lbUserCellDescriptor: lbUserCellDescriptor in pairs(lbUserCellDescriptors) do
++		if not enabledDescriptors[lbUserCellDescriptor.name] then
++			continue
++		end
+ 		local myWidthScale = cellWidths[lbUserCellDescriptor.name]
+ 
+ 		local el = guiUtil.getTl(
+@@ -227,6 +257,10 @@ end
+ --important to use all lbUserCellParams here to make the row complete
+ --even if an update comes before the loading of full stats.
+ 
++local function getNameForDescriptor(descriptor: lbUserCellDescriptor): string
++	return string.format("%02d.cell.%s", descriptor.num, descriptor.name)
++end
++
+ local deb = false
+ local function createRowForUser(userId: number, username: string): Frame?
+ 	if deb then
+@@ -250,7 +284,7 @@ local function createRowForUser(userId: number, username: string): Frame?
+ 	end
+ 
+ 	local userTixCount: number = userDataFromCache.userTix :: number
+-	local rowName = string.format("%s_A_PlayerRow_%s", tostring(bignum - userTixCount), username)
++	local rowName = string.format("%s_PlayerRow_%s", tostring(bignum - userTixCount), username)
+ 	userRowFrame.Name = rowName
+ 	-- local rowYScale = 1 / (playerRowCount + 2) -- +1 for header, +1 for new row
+ 	-- rowFrame.Size = UDim2.fromScale(1, rowYScale)
+@@ -270,14 +304,19 @@ local function createRowForUser(userId: number, username: string): Frame?
+ 
+ 	local cellWidths = calculateCellWidths()
+ 
+-	for _, lbUserCellDescriptor: lbUserCell in pairs(lbUserCellDescriptors) do
++	for _, lbUserCellDescriptor: lbUserCellDescriptor in pairs(lbUserCellDescriptors) do
++		if not enabledDescriptors[lbUserCellDescriptor.name] then
++			_annotate('skipping adding col: "' .. lbUserCellDescriptor.name .. '"')
++			continue
++		end
++		_annotate("adding col: " .. lbUserCellDescriptor.name)
+ 		local widthYScale = cellWidths[lbUserCellDescriptor.name]
+ 
+ 		if lbUserCellDescriptor.name == "portrait" then
+ 			local portraitCell = Instance.new("Frame")
+ 			portraitCell.Size = UDim2.fromScale(widthYScale, 1)
+ 			portraitCell.BackgroundTransparency = 1
+-			portraitCell.Name = string.format("%02d.%s", lbUserCellDescriptor.num, lbUserCellDescriptor.name)
++			portraitCell.Name = getNameForDescriptor(lbUserCellDescriptor)
+ 			portraitCell.Parent = userRowFrame
+ 
+ 			local img = Instance.new("ImageLabel")
+@@ -326,15 +365,9 @@ local function createRowForUser(userId: number, username: string): Frame?
+ 				avatarImages.Visible = false
+ 			end)
+ 		else --it's a textlabel whatever we're generating anyway.
+-			local tl = guiUtil.getTl(
+-				string.format("%02d.value", lbUserCellDescriptor.num),
+-				UDim2.fromScale(widthYScale, 1),
+-				2,
+-				userRowFrame,
+-				bgcolor,
+-				1,
+-				0
+-			)
++			local cellName = getNameForDescriptor(lbUserCellDescriptor)
++			local tl: TextLabel =
++				guiUtil.getTl(cellName, UDim2.fromScale(widthYScale, 1), 2, userRowFrame, bgcolor, 1, 0)
+ 
+ 			--find text for value.
+ 			if lbUserCellDescriptor.name == "findRank" then
+@@ -342,6 +375,11 @@ local function createRowForUser(userId: number, username: string): Frame?
+ 				if foundRank ~= nil then
+ 					tl.Text = tpUtil.getCardinalEmoji(foundRank)
+ 				end
++			elseif lbUserCellDescriptor.name == "wrRank" then
++				local wrRank = userDataFromCache.wrRank
++				if wrRank ~= nil then
++					tl.Text = tpUtil.getCardinalEmoji(wrRank)
++				end
+ 			elseif lbUserCellDescriptor.name == "username" then
+ 				tl.Text = username
+ 			elseif lbUserCellDescriptor.name == "badges" then
+@@ -360,17 +398,24 @@ local function createRowForUser(userId: number, username: string): Frame?
+ end
+ 
+ local comdeb = false
+-local function completelyResetUserLB()
++local function completelyResetUserLB(forceResize: boolean)
+ 	if comdeb then
+ 		return
+ 	end
+ 	comdeb = true
+-	_annotate("completely reset? lb")
++	_annotate(string.format("completely reset? lb, forceResize: %s", tostring(forceResize)))
+ 	--make initial row only. then as things happen (people join, or updates come in, apply them in-place)
+ 	local pgui: PlayerGui = localPlayer:WaitForChild("PlayerGui")
+ 
+-	local oldLbSgui: ScreenGui? = pgui:FindFirstChild("LeaderboardScreenGui") :: ScreenGui?
++	local oldLbSgui: ScreenGui = pgui:FindFirstChild("LeaderboardScreenGui") :: ScreenGui?
++	local oldSize
++	local oldPosition
+ 	if oldLbSgui ~= nil then
++		local old: Frame = oldLbSgui:FindFirstChild("outer_lb")
++		if old then
++			oldSize = old.Size
++			oldPosition = old.Position
++		end
+ 		oldLbSgui:Destroy()
+ 	end
+ 
+@@ -395,8 +440,21 @@ local function completelyResetUserLB()
+ 	local lbOuterFrame = lbSystemFrames.outerFrame
+ 	local lbContentFrame = lbSystemFrames.contentFrame
+ 
+-	lbOuterFrame.Position = UDim2.fromScale(1 - initialWidthScale, 0)
+-	lbOuterFrame.Size = UDim2.new(initialWidthScale, 0, initialHeightScale, 0)
++	if forceResize then
++		_annotate("forced resize of LB.")
++		lbOuterFrame.Size = UDim2.new(initialWidthScale, 0, initialHeightScale, 0)
++		lbOuterFrame.Position = UDim2.fromScale(1 - initialWidthScale, 0)
++	else
++		if oldSize then
++			_annotate("using old size: " .. tostring(oldSize))
++			lbOuterFrame.Size = oldSize
++			lbOuterFrame.Position = oldPosition
++		else
++			_annotate("tried to not erset size but there was no old size loaded?")
++			lbOuterFrame.Size = UDim2.new(initialWidthScale, 0, initialHeightScale, 0)
++			lbOuterFrame.Position = UDim2.fromScale(1 - initialWidthScale, 0)
++		end
++	end
+ 	lbOuterFrame.Parent = lbSgui
+ 
+ 	local headerRow = makeLeaderboardHeaderRow()
+@@ -420,43 +478,6 @@ local function completelyResetUserLB()
+ 	leaderboardButtons.initActionButtons(lbOuterFrame)
+ 	playerRowCount = 0
+ 
+-	local serverEventsSystemFrames = windows.SetupFrame("serverEvents", true, true, true)
+-	local serverEventsOuterFrame = serverEventsSystemFrames.outerFrame
+-	local serverEventsContentFrame = serverEventsSystemFrames.contentFrame
+-	local serverEventTitle = Instance.new("TextLabel")
+-	serverEventTitle.Text = "Server Events"
+-	serverEventTitle.Parent = serverEventsContentFrame
+-	serverEventTitle.Size = UDim2.new(1, 0, 0, 12)
+-	serverEventTitle.TextScaled = true
+-	serverEventTitle.Name = "0ServerEventTitle"
+-	serverEventTitle.Font = Enum.Font.Gotham
+-
+-	serverEventTitle.Position = UDim2.new(0, 0, 0, 0)
+-	serverEventTitle.BackgroundColor3 = colors.defaultGrey
+-	serverEventsOuterFrame.Parent = lbSgui
+-	serverEventsOuterFrame.Size = UDim2.new(0.15, 0, 0.08, 0)
+-	serverEventsOuterFrame.Position = UDim2.new(0.8, 0, 0.2, 0)
+-
+-	serverEventsContentFrame.BorderMode = Enum.BorderMode.Inset
+-
+-	local vv = Instance.new("UIListLayout")
+-	vv.Name = "serverEventContents-vv"
+-	vv.Parent = serverEventsContentFrame
+-	vv.FillDirection = Enum.FillDirection.Vertical
+-
+-	local marathonFrames = windows.SetupFrame("marathons", true, true, true)
+-	local marathonOuterFrame = marathonFrames.outerFrame
+-	local marathonContentFrame = marathonFrames.contentFrame
+-	marathonOuterFrame.Parent = lbSgui
+-	marathonOuterFrame.Size = UDim2.new(0.4, 0, 0.1, 0)
+-	marathonOuterFrame.Position = UDim2.new(0.6, 0, 0.35, 0)
+-
+-	local hh = Instance.new("UIListLayout")
+-	hh.Name = "marathons-hh"
+-	hh.Parent = marathonContentFrame
+-	hh.FillDirection = Enum.FillDirection.Vertical
+-	hh.SortOrder = Enum.SortOrder.Name
+-
+ 	if #userId2rowframe > 0 then
+ 		_annotate("resetting but userId2rowframe not empty?")
+ 	end
+@@ -517,6 +538,10 @@ end
+ -- store the data in-memory.
+ local debounceUpdateUserLeaderboardRow = {}
+ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataType): ()
++	while not loadedSettings do
++		wait(0.1)
++		_annotate("waiting for settings to load for updateUserLeaderboardRow")
++	end
+ 	while debounceUpdateUserLeaderboardRow[userData.userId] do
+ 		_annotate(string.format("waiting for user %s to finish receiving their lb update", userData.userId))
+ 		wait(0.1)
+@@ -527,10 +552,10 @@ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataTy
+ 		return
+ 	end
+ 	local subjectUserId = userData.userId
+-	local receivedUserData = ""
+-	for a, b in pairs(userData) do
+-		receivedUserData = receivedUserData .. string.format("\t%s=%s ", tostring(a), tostring(b))
+-	end
++	-- local receivedUserData = ""
++	-- for a, b in pairs(userData) do
++	-- 	receivedUserData = receivedUserData .. string.format("\t%s=%s ", tostring(a), tostring(b))
++	-- end
+ 	-- 2_annotate(string.format("got info about: %s: %s", tostring(subjectUserId), receivedUserData))
+ 
+ 	--check if this client's user has any lbframe.
+@@ -542,7 +567,7 @@ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataTy
+ 
+ 	if lbUserRowFrame == nil then
+ 		--2_annotate("compoletely reset them cause no lbframe.")
+-		completelyResetUserLB()
++		completelyResetUserLB(false)
+ 	end
+ 
+ 	--first check if there is anything worthwhile to draw - anything changed.
+@@ -591,13 +616,36 @@ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataTy
+ 
+ 	for _, change: tt.leaderboardUserDataChange in pairs(userDataChanges) do
+ 		-- find the userCellDescriptor corresponding to it.
++		-- we just hide these always.
++		if change.key == "kind" or change.key == "userId" or change.key == "totalSignCount" then
++			continue
++		end
+ 
+-		local descriptor = nil
+-		for _, lbUserCellDescriptor in pairs(lbUserCellDescriptors) do
+-			if lbUserCellDescriptor.name == change.key then
+-				descriptor = lbUserCellDescriptor
+-				break
+-			end
++		local ovt = change.oldValue and tostring(change.oldValue) or ""
++		_annotate(
++			string.format(
++				"trying to update lb for change %s %s=>%s",
++				tostring(change.key),
++				tostring(ovt),
++				tostring(change.newValue)
++			)
++		)
++		if enabledDescriptors[change.key] == nil then
++			_annotate("missing descriptor status at all for received change for: " .. tostring(change.key))
++			return
++		end
++
++		if not enabledDescriptors[change.key] then
++			_annotate("showing this is not enabled for this user.")
++			break
++		end
++
++		local descriptor = lbUserCellDescriptors[change.key]
++		if not descriptor then
++			-- this can be okay. for example, we also return values such as "kind" of the update, and "userId" in the row value.
++			-- those don't all need to be shown.
++			_annotate("werror, this descriptor should not be missing. " .. change.key)
++			continue
+ 		end
+ 
+ 		--if we receive a tix update, update rowframe. This is because we order by tix count.
+@@ -608,16 +656,14 @@ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataTy
+ 			userRowFrame.Name = newName
+ 		end
+ 
+-		--if no descriptor, quit. effectively the same as name doesn't appear in: updateUserLbRowKeys
+-		--note: this can happen because lbupdates have full BE stats in them, not all of which we render into LB
+-		if descriptor == nil then
+-			--2_annotate("we don't have a descriptor for: " .. change.key)
+-			continue
+-		end
+-		--2_annotate("applying data about: " .. change.key)
+-		local targetName = string.format("%02d.value", descriptor.num)
++		local targetName = getNameForDescriptor(descriptor)
+ 		--it's important this targetname matches via interpolatino
+ 		local oldTextLabelParent: TextLabel = userRowFrame:FindFirstChild(targetName) :: TextLabel
++		if oldTextLabelParent == nil then
++			-- this user isn't displaying that data.
++			-- still, we have stored it so if they re-enable it we are good.
++			continue
++		end
+ 		local oldTextLabel: TextLabel = oldTextLabelParent:FindFirstChild("Inner")
+ 
+ 		if oldTextLabel == nil then
+@@ -737,6 +783,10 @@ end
+ --First keyed to receive data about a userId. But later overloading data to just be blobs  of things of specific types to display in leaderboard.
+ local receiveDataDebouncer = false
+ module.ClientReceiveNewLeaderboardData = function(lbUpdateData: genericLeaderboardUpdateDataType)
++	while not loadedSettings do
++		_annotate("waiting for user's leaderboard settings to load.")
++		wait(0.1)
++	end
+ 	if receiveDataDebouncer then
+ 		wait(0.1)
+ 	end
+@@ -770,21 +820,65 @@ end
+ --note there is an init call here so user settings _will_ show up here and we should
+ --be careful not to mistakenly reinit LB needlessly.
+ local function handleUserSettingChanged(setting: tt.userSettingValue, initial: boolean)
++	while not initial and not loadedSettings do
++		wait(0.1)
++		_annotate("waiting for settings to load for updateUserLeaderboardRow")
++	end
+ 	if setting.name == settingEnums.settingNames.HIDE_LEADERBOARD and not initial then
+ 		if setting.value then
+ 			lbIsEnabled = false
+ 			marathonClient.CloseAllMarathons()
+-			completelyResetUserLB()
++			completelyResetUserLB(true)
+ 		else
+ 			lbIsEnabled = true
+-			completelyResetUserLB()
++			completelyResetUserLB(true)
+ 			marathonClient.Init()
+ 		end
+ 	end
++
++	if setting.domain == settingEnums.settingDomains.LEADERBOARD then
++		if setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_PORTRAIT then
++			enabledDescriptors["portrait"] = setting.value
++		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_USERNAME then
++			enabledDescriptors["username"] = setting.value
++		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_AWARDS then
++			enabledDescriptors["awardCount"] = setting.value
++		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_TIX then
++			enabledDescriptors["userTix"] = setting.value
++		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_FINDS then
++			enabledDescriptors["findCount"] = setting.value
++		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_FINDRANK then
++			enabledDescriptors["findRank"] = setting.value
++		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_WRRANK then
++			enabledDescriptors["wrRank"] = setting.value
++		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_WRS then
++			enabledDescriptors["wrCount"] = setting.value
++		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_CWRS then
++			enabledDescriptors["cwrs"] = setting.value
++		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_CWRTOP10S then
++			enabledDescriptors["cwrtop10s"] = setting.value
++		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_TOP10S then
++			enabledDescriptors["top10s"] = setting.value
++		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_RACES then
++			enabledDescriptors["races"] = setting.value
++		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_RUNS then
++			enabledDescriptors["runs"] = setting.value
++		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_BADGES then
++			enabledDescriptors["badgeCount"] = setting.value
++		else
++			warn("unknown leaderboard setting: " .. tostring(setting.name))
++		end
++	end
++	_annotate(string.format("accepted setting: %s=%s", tostring(setting.name), tostring(setting.value)))
++	if not initial then
++		_annotate("completely resetting userLB cause setting changed")
++		completelyResetUserLB(false)
++	end
+ end
+ 
+ module.Init = function()
+-	localPlayer = Players.LocalPlayer
++	loadedSettings = false
++	enabledDescriptors = {}
+ 	playerRowCount = 0
+ 	--the user-focused rowFrames go here.
+ 	userId2rowframe = {}
+@@ -792,13 +886,34 @@ module.Init = function()
+ 	lbUserRowFrame = nil
+ 	lbIsEnabled = true
+ 
+-	settings.RegisterFunctionToListenForSettingName(function(item: tt.userSettingValue): any
+-		return handleUserSettingChanged(item, false)
+-	end, settingEnums.settingNames.HIDE_LEADERBOARD)
++	localPlayer = Players.LocalPlayer
++
++	-- load initial default userSetting values.
++
+ 	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingNames.HIDE_LEADERBOARD), true)
+-	leaderboardUpdateEvent.OnClientEvent:Connect(function(data)
++
++	for _, userSetting in pairs(settings.getSettingByDomain(settingEnums.settingDomains.LEADERBOARD)) do
++		handleUserSettingChanged(userSetting, true)
++	end
++
++	-- all column settings are loaded so we can draw the LB.
++
++	--initial load at game start.
++	completelyResetUserLB(true)
++	loadedSettings = true
++	-- now we hook up to listen to user data events
++	LeaderboardUpdateEvent.OnClientEvent:Connect(function(data)
+ 		module.ClientReceiveNewLeaderboardData(data)
+ 	end)
++
++	-- now we listen for subsequent setting changes.
++	settings.RegisterFunctionToListenForSettingName(function(item: tt.userSettingValue): any
++		return handleUserSettingChanged(item, false)
++	end, settingEnums.settingNames.HIDE_LEADERBOARD)
++
++	settings.RegisterFunctionToListenForDomain(function(item: tt.userSettingValue): any
++		return handleUserSettingChanged(item, false)
++	end, settingEnums.settingDomains.LEADERBOARD)
+ end
+ 
+ _annotate("end")
+diff --git a/StarterPlayer/StarterCharacterScripts/client/main.client.lua b/StarterPlayer/StarterCharacterScripts/client/main.client.lua
+index 93aaa6e..9f222f2 100644
+--- a/StarterPlayer/StarterCharacterScripts/client/main.client.lua
++++ b/StarterPlayer/StarterCharacterScripts/client/main.client.lua
+@@ -36,13 +36,13 @@ local mt = require(game.ReplicatedStorage.avatarEventTypes)
+ 
+ ---------- CALL INIT ON ALL THOSE THINGS SINCE THEY'RE STILL LOADED ONLY ONE TIME even if the user resets or dies etc. -----------
+ local setup = function()
++	settings.Reset()
+ 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+ 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
+ 	movement.Init()
+ 	morphs.Init()
+ 	particles.Init()
+ 	notifier.Init()
+-	settings.Reset()
+ 	serverEvents.Init()
+ 	leaderboard.Init()
+ 	marathonClient.Init()
+@@ -61,6 +61,8 @@ end
+ setup()
+ 
+ local resetBindable = Instance.new("BindableEvent")
++
++--this is about the user resetting themself. screwed up, definitely.
+ resetBindable.Event:Connect(function()
+ 	local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
+ 	local fireEvent = avatarEventFiring.FireEvent
+diff --git a/StarterPlayer/StarterCharacterScripts/client/marathonClient.lua b/StarterPlayer/StarterCharacterScripts/client/marathonClient.lua
+index ce04d41..5dac004 100644
+--- a/StarterPlayer/StarterCharacterScripts/client/marathonClient.lua
++++ b/StarterPlayer/StarterCharacterScripts/client/marathonClient.lua
+@@ -7,16 +7,16 @@ local _annotate = annotater.getAnnotater(script)
+ local module = {}
+ 
+ local tt = require(game.ReplicatedStorage.types.gametypes)
+-
++local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
+ local colors = require(game.ReplicatedStorage.util.colors)
+ local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
+ local fireEvent = avatarEventFiring.FireEvent
+ local marathonStatic = require(game.ReplicatedStorage.marathonStatic)
+ local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+-local lbMarathonRowY = 18
++-- local lbMarathonRowY = 18
+ local remotes = require(game.ReplicatedStorage.util.remotes)
+ local toolTip = require(game.ReplicatedStorage.gui.toolTip)
+-local marathonTypes = require(game.StarterPlayer.StarterPlayerScripts.marathonTypes)
++-- local marathonTypes = require(game.StarterPlayer.StarterPlayerScripts.marathonTypes)
+ local settings = require(game.ReplicatedStorage.settings)
+ local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+ 
+@@ -49,7 +49,7 @@ local function getMarathonContentFrame(): Frame
+ 	return pl:FindFirstChild("content_marathons", true)
+ end
+ 
+-local function setSize()
++local function setMarathonSize()
+ 	local marathonContentFrame: Frame = getMarathonContentFrame()
+ 	if marathonContentFrame == nil then
+ 		return
+@@ -215,7 +215,7 @@ module.InitMarathonVisually = function(desc: marathonTypes.marathonDescriptor)
+ 		module.InitMarathonVisually(desc)
+ 	end)
+ 	resetTile.Parent = thisMarathonFrame
+-	setSize()
++	setMarathonSize()
+ 	--reset marathonContentFrame size.
+ end
+ 
+@@ -392,7 +392,7 @@ local disableMarathon = function(desc: marathonTypes.marathonDescriptor)
+ 	end
+ 
+ 	table.remove(joinableMarathonKinds, target)
+-	setSize()
++	setMarathonSize()
+ 	_annotate(string.format("marathon.disabled:%s", desc.kind))
+ end
+ 
+@@ -464,15 +464,39 @@ module.Init = function()
+ 	--blocker to confirm the user has completed warp
+ 	isMarathonBlockedByWarp = false
+ 
++	local pgui: PlayerGui = localPlayer:WaitForChild("PlayerGui")
++	local existingMarathonScreenGui = pgui:FindFirstChild("MarathonScreenGui")
++	if existingMarathonScreenGui then
++		existingMarathonScreenGui:Destroy()
++	end
++	local marathonScreenGui: ScreenGui = Instance.new("ScreenGui")
++	marathonScreenGui.Name = "MarathonScreenGui"
++	marathonScreenGui.Parent = pgui
++	marathonScreenGui.IgnoreGuiInset = true
++
++	local marathonFrames = windows.SetupFrame("marathons", true, true, true)
++	local marathonOuterFrame = marathonFrames.outerFrame
++	local marathonContentFrame = marathonFrames.contentFrame
++	marathonOuterFrame.Parent = marathonScreenGui
++	marathonOuterFrame.Size = UDim2.new(0.4, 0, 0.1, 0)
++
++	marathonOuterFrame.Position = UDim2.new(0.6, 0, 0.35, 0)
++	local hh = Instance.new("UIListLayout")
++	hh.Name = "marathons-hh"
++	hh.Parent = marathonContentFrame
++	hh.FillDirection = Enum.FillDirection.Vertical
++	hh.SortOrder = Enum.SortOrder.Name
++	setMarathonSize()
++
+ 	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
+-	settings.RegisterFunctionToListenForDomain(function(item: tt.userSettingValue): any
+-		return HandleMarathonSettingsChanged(item)
+-	end, settingEnums.settingDomains.MARATHONS)
+ 
+ 	for _, userSetting in pairs(settings.getSettingByDomain(settingEnums.settingDomains.MARATHONS)) do
+ 		HandleMarathonSettingsChanged(userSetting)
+ 	end
+-	setSize()
++
++	settings.RegisterFunctionToListenForDomain(function(item: tt.userSettingValue): any
++		return HandleMarathonSettingsChanged(item)
++	end, settingEnums.settingDomains.MARATHONS)
+ end
+ 
+ _annotate("end")
+diff --git a/StarterPlayer/StarterCharacterScripts/client/morphs.lua b/StarterPlayer/StarterCharacterScripts/client/morphs.lua
+index 28166d7..78a3cb7 100644
+--- a/StarterPlayer/StarterCharacterScripts/client/morphs.lua
++++ b/StarterPlayer/StarterCharacterScripts/client/morphs.lua
+@@ -27,6 +27,7 @@ local pulseSign = require(game.StarterPlayer.StarterCharacterScripts.specialSign
+ local bigSign = require(game.StarterPlayer.StarterCharacterScripts.specialSigns.bigSign)
+ local smallSign = require(game.StarterPlayer.StarterCharacterScripts.specialSigns.smallSign)
+ local ghostSign = require(game.StarterPlayer.StarterCharacterScripts.specialSigns.ghostSign)
++local cowSign = require(game.StarterPlayer.StarterCharacterScripts.specialSigns.cowSign)
+ local avatarManipulation = require(game.StarterPlayer.StarterPlayerScripts.avatarManipulation)
+ 
+ ----------- GLOBALS -----------
+@@ -89,7 +90,7 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
+ 	end
+ 
+ 	-- ROUTE THESE - WHY NOT HAVE THE SIGN ITSELF MONITOR THE SITUATION?
+-	if ev.eventType == mt.avatarEventTypes.RUN_KILL or ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
++	if ev.eventType == mt.avatarEventTypes.RUN_CANCEL or ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
+ 		_annotate("killing or ending run.")
+ 		if activeRunSignModule then
+ 			activeRunSignModule.InformRunEnded()
+@@ -97,7 +98,7 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
+ 			-- warn("skipping killing in morph without an active run...")
+ 		end
+ 
+-		--note: among many other places, the fact that the user can arbitrarily send run_kill by hitting z at any time makes this confusing!
++		--note: among many other places, the fact that the user can arbitrarily send RUN_CANCEL by hitting z at any time makes this confusing!
+ 		avatarManipulation.ResetPhysicalAvatarMorphs(humanoid, character)
+ 		avatarManipulation.ResetMomentum(humanoid, character)
+ 		_annotate("reset momentum1")
+@@ -123,6 +124,8 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
+ 			activeRunSignModule = ghostSign
+ 		elseif ev.details.relatedSignName == "🗯" then
+ 			activeRunSignModule = angerSign
++		elseif ev.details.relatedSignName == "Cow" then
++			activeRunSignModule = cowSign
+ 		end
+ 		if activeRunSignModule then
+ 			_annotate("initting active module.")
+diff --git a/StarterPlayer/StarterCharacterScripts/client/movement.lua b/StarterPlayer/StarterCharacterScripts/client/movement.lua
+index 4a16b0e..6b8a6fd 100644
+--- a/StarterPlayer/StarterCharacterScripts/client/movement.lua
++++ b/StarterPlayer/StarterCharacterScripts/client/movement.lua
+@@ -1,6 +1,6 @@
+ --!strict
+ 
+--- listens to avatar events and adjusts movement speed accordingly.
++-- A listens to avatar events and adjusts movement speed accordingly.
+ -- you always speed up according to terrain.
+ -- the only special rules are, when you touch a sign at all, your local history is cleared.
+ -- if it's a start: you get the traits of the sign. if end, you lose them.
+@@ -12,6 +12,7 @@ local _annotate = annotater.getAnnotater(script)
+ local module = {}
+ 
+ local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
++local colors = require(game.ReplicatedStorage.util.colors)
+ local remotes = require(game.ReplicatedStorage.util.remotes)
+ 
+ local mt = require(game.ReplicatedStorage.avatarEventTypes)
+@@ -32,16 +33,25 @@ local isMovementBlockedByWarp = false
+ -- the game name of the applied physics movement type now.
+ local activeCurrentWorldPhysicsName = "default"
+ 
+-local lastTouchedFloor: Enum.Material? = nil
++-- just the speed and jump updater text.
++local lastSpeedTextUpdated = ""
++local lastJumpPowerTextUpdated = ""
+ 
+ ----------------- MOVEMENT HISTORY -----------------
+--- a list of movement history events, in a sane order.
++-- a list of movement history events, in a true time order.
+ local movementEventHistory: { mt.avatarEvent } = {}
+ local activeRunSignName = ""
++local lastTouchedFloor: Enum.Material? = nil
+ 
+ ------------------------ UTILS -----------------------
+ 
+-local adjustPlayerMovementGui = function(speed, jumpPower)
++local jumpLabel: TextLabel
++local speedLabel: TextLabel
++local speedIncreaseLabel: TextLabel
++local speedGuiTransparency = 0.7
++
++-- just create one time per character load.
++local function CreateSpeedGui()
+ 	local playerGui = localPlayer:WaitForChild("PlayerGui")
+ 	local speedSgui: ScreenGui = playerGui:FindFirstChild("SpeedGui") :: ScreenGui
+ 	if not speedSgui then
+@@ -54,33 +64,97 @@ local adjustPlayerMovementGui = function(speed, jumpPower)
+ 		speedSgui.Name = "SpeedGui"
+ 		speedSgui.Enabled = true
+ 	end
+-
+ 	local speedFrame = Instance.new("Frame")
+ 	speedFrame.Parent = speedSgui
+-	local findScreenGuiName = "SpeedFrame"
+-	speedFrame.Name = findScreenGuiName
+-	speedFrame.Size = UDim2.new(0.06, 0, 0.06, 0)
+-	speedFrame.Position = UDim2.new(0.90, 0, 0.93, 0)
+-
+-	local vlayout = Instance.new("UIListLayout")
+-	vlayout.Parent = speedFrame
+-	vlayout.FillDirection = Enum.FillDirection.Vertical
+-	vlayout.VerticalAlignment = Enum.VerticalAlignment.Center
+-	vlayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+-
+-	local speedText = string.format("%0.3f", speed)
+-	local speedLabel = Instance.new("TextLabel")
+-	speedLabel.Parent = speedFrame
+-	speedLabel.Text = speedText
++	speedFrame.Name = "SpeedFrame"
++	speedFrame.Size = UDim2.new(0.5, 0, 0.08, 0)
++	speedFrame.Position = UDim2.new(0.30, 0, 0.91, 0)
++	speedFrame.BackgroundTransparency = 1
++	speedFrame.BorderSizePixel = 2
++	speedFrame.BorderColor3 = colors.meColor
++	speedFrame.BorderMode = Enum.BorderMode.Inset
++	local vv = Instance.new("UIListLayout")
++	vv.Parent = speedFrame
++	vv.Name = "SpeedFrameLayout"
++	vv.FillDirection = Enum.FillDirection.Horizontal
++	vv.VerticalAlignment = Enum.VerticalAlignment.Top
++	vv.HorizontalAlignment = Enum.HorizontalAlignment.Left
++	vv.SortOrder = Enum.SortOrder.Name
++
++	speedIncreaseLabel = Instance.new("TextLabel")
++
++	speedIncreaseLabel.TextScaled = true
++	speedIncreaseLabel.Name = "3SpeedIncreaseLabel"
++	speedIncreaseLabel.TextScaled = true
++	speedIncreaseLabel.TextColor3 = colors.meColor
++	speedIncreaseLabel.Font = Enum.Font.Gotham
++	speedIncreaseLabel.Size = UDim2.new(0.5, 0, 1, 0)
++	speedIncreaseLabel.BackgroundTransparency = speedGuiTransparency
++	speedIncreaseLabel.BorderSizePixel = 0
++	speedIncreaseLabel.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json")
++	speedIncreaseLabel.Text = ""
++	speedIncreaseLabel.BackgroundColor3 = colors.black
++	speedIncreaseLabel.TextXAlignment = Enum.TextXAlignment.Left
++	speedIncreaseLabel.Parent = speedFrame
++
++	speedLabel = Instance.new("TextLabel")
+ 	speedLabel.TextScaled = true
+-	speedLabel.Size = UDim2.new(1, 0, 0.5, 0)
++	speedLabel.Name = "2SpeedLabel"
++	-- speedLabel.Font = Enum.Font.Gotham
++	speedLabel.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json")
++	speedLabel.Size = UDim2.new(0.5, 0, 1, 0)
++	speedLabel.TextColor3 = colors.meColor
++	speedLabel.BackgroundTransparency = speedGuiTransparency
++	speedLabel.Text = ""
++	speedLabel.BackgroundColor3 = colors.black
++	speedLabel.TextXAlignment = Enum.TextXAlignment.Left
++	speedLabel.Parent = speedFrame
+ 
+-	local jumpText = string.format("%0.3f", jumpPower)
+-	local jumpLabel = Instance.new("TextLabel")
+-	jumpLabel.Parent = speedFrame
+-	jumpLabel.Text = jumpText
++	jumpLabel = Instance.new("TextLabel")
++	jumpLabel.Name = "3JumpLabel"
+ 	jumpLabel.TextScaled = true
+-	jumpLabel.Size = UDim2.new(1, 0, 0.5, 0)
++	jumpLabel.TextColor3 = colors.meColor
++	jumpLabel.Font = Enum.Font.Gotham
++	jumpLabel.Size = UDim2.new(0.26, 0, 1, 0)
++	jumpLabel.BackgroundTransparency = speedGuiTransparency
++	jumpLabel.BorderSizePixel = 0
++	jumpLabel.Text = ""
++	jumpLabel.BackgroundColor3 = colors.black
++	jumpLabel.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json")
++	jumpLabel.TextXAlignment = Enum.TextXAlignment.Center
++	jumpLabel.Parent = speedFrame
++	jumpLabel.Visible = false
++end
++
++local adjustSpeedGui = function(speed, jumpPower)
++	local speedText = string.format("%0.1f", speed)
++	local jumpText = string.format("%d", jumpPower)
++	if speedText ~= lastSpeedTextUpdated or jumpText ~= lastJumpPowerTextUpdated then
++		jumpLabel.Text = jumpText
++		lastSpeedTextUpdated = speedText
++		lastJumpPowerTextUpdated = jumpText
++
++		speedLabel.Text = speedText
++		jumpLabel.Text = jumpText
++
++		-- the part that says like "+X%"
++		local mult = humanoid.WalkSpeed / movementEnums.constants.globalDefaultRunSpeed
++		if mult ~= 1 then
++			local multOptionalPlusText = "+"
++			if mult < 1 then
++				multOptionalPlusText = ""
++			end
++			local gain = (mult - 1) * 100
++			speedIncreaseLabel.Text = string.format("%s%0.1f%%", multOptionalPlusText, gain)
++			speedIncreaseLabel.Visible = true
++			speedIncreaseLabel.BackgroundTransparency = speedGuiTransparency
++		else
++			speedIncreaseLabel.Text = ""
++			speedIncreaseLabel.BackgroundTransparency = 1
++		end
++	end
++
++	--additional stuff to clearly highlight speedups, breaking certain speeds etc change the sound, appearance etc slightly.
+ end
+ 
+ local InternalSetJumpPower = function(jumpPower: number)
+@@ -100,7 +174,9 @@ local InternalSetJumpPower = function(jumpPower: number)
+ end
+ 
+ local lastNotifiedSpeed: number = humanoid.WalkSpeed
+-local minimumSpeedAdjustment = 0.001
++local minimumSpeedAdjustment = 0.1
++-- we also at least always update speed every 2 seconds so you don't sit there stuck at -0.1% forever after stopping.
++local lastUpdateSpeedTime = 0
+ -- NOTE the normal run speed is technically called humanoid.WalkSpeed.
+ local InternalSetSpeed = function(speed: number)
+ 	if speed == humanoid.WalkSpeed then
+@@ -115,11 +191,14 @@ local InternalSetSpeed = function(speed: number)
+ 	local notificationGapSpeed = math.abs(speed - lastNotifiedSpeed)
+ 	-- we notify everyone (e.g. particles) that the speed has increased only this much.
+ 	-- it's something like a gear system, actually.
+-	if notificationGapSpeed < minimumSpeedAdjustment then
++	local now = tick()
++	local timeGap = now - lastUpdateSpeedTime
++	if notificationGapSpeed < minimumSpeedAdjustment and timeGap < 2 then
+ 		return
+ 		-- oh snap so now we only ACTUALLY UPDATE SPEED when it's changed by
+ 		-- more than this. Talk about GEARS! a value of 0.3 means that the player literally only increases
+ 	end
++	lastUpdateSpeedTime = now
+ 	humanoid.WalkSpeed = speed
+ 	-- Correcting the type of the details parameter to mt.avatarEventDetails
+ 	-- print(string.format("notified new speed: %0.3f", speed))
+@@ -128,6 +207,7 @@ local InternalSetSpeed = function(speed: number)
+ 		newSpeed = speed,
+ 	})
+ 	lastNotifiedSpeed = speed
++	adjustSpeedGui(speed, humanoid.JumpPower)
+ end
+ 
+ local function ApplyNewPhysicsFloor(name: string, props: PhysicalProperties)
+@@ -235,16 +315,16 @@ local adjustSpeed = function()
+ 			return
+ 		end
+ 		-- if movementHistoryEvent.eventType == mt.avatarEventTypes.STATE_CHANGED then
+-		-- _annotate(
+-		-- 	"\t"
+-		-- 		.. mt.avatarEventTypesReverse[movementHistoryEvent.eventType]
+-		-- 		.. " : "
+-		-- 		.. movementHistoryEvent.details.oldState.Name
+-		-- 		.. " -> "
+-		-- 		.. movementHistoryEvent.details.newState.Name
+-		-- )
++		-- 	_annotate(
++		-- 		"\t"
++		-- 			.. mt.avatarEventTypesReverse[movementHistoryEvent.eventType]
++		-- 			.. " : "
++		-- 			.. movementHistoryEvent.details.oldState.Name
++		-- 			.. " -> "
++		-- 			.. movementHistoryEvent.details.newState.Name
++		-- 	)
+ 		-- else
+-		_annotate("\t" .. mt.avatarEventTypesReverse[movementHistoryEvent.eventType])
++		-- 	_annotate("\t" .. mt.avatarEventTypesReverse[movementHistoryEvent.eventType])
+ 		-- end
+ 		local eventAge = adjustSpeedStartTick - movementHistoryEvent.timestamp
+ 
+@@ -265,8 +345,10 @@ local adjustSpeed = function()
+ 				end
+ 				isTouchingNonTerrainRightNow = false
+ 			else
+-				_annotate("is touching nonterrain?)")
+-				isTouchingNonTerrainRightNow = true
++				-- basically if the very last thing they do is actively touch a sign, they will not speed up.
++				-- _annotate("is touching nonterrain?)")
++				-- isTouchingNonTerrainRightNow = true
++				-- actually just disable this. I'll allow speedup on signs. But I will not allow pausing on a sign, stopping there, and gaining speedup.
+ 			end
+ 
+ 			-- also notice if they've touched lava recently ---
+@@ -300,6 +382,9 @@ local adjustSpeed = function()
+ 			and movementHistoryEvent.details
+ 			and movementHistoryEvent.details.newState == Enum.HumanoidStateType.Jumping
+ 		then
++			_annotate(string.format("seconds of jump in window: %0.0f", secondsOfJumpInWindow))
++			-- remember we only count jumps within the last 3 seconds. So, multiple of them can count.
++			-- but not many.
+ 			secondsOfJumpInWindow = secondsOfJumpInWindow + 3 - eventAge
+ 		elseif movementHistoryEvent.eventType == mt.avatarEventTypes.STATE_CHANGED then
+ 			if
+@@ -347,6 +432,7 @@ local adjustSpeed = function()
+ 
+ 	------------- VALUES TO CALCULATE BASED ON HISTORY
+ 	local jumpSpeedMultiplier = 1
++	local currentRunJumpPowerMultiplier = 1
+ 
+ 	---------------------- SPEED CALCULATIONS --------------------------
+ 
+@@ -415,7 +501,7 @@ local adjustSpeed = function()
+ 			speedMultiplierFromSameTerrain = 1 + effectiveTimeOnCurrentTerrain / firstLinearSectionDivider
+ 		else
+ 			speedMultiplierFromSameTerrain = 1
+-				+ firstLinearSectionEnd / firstLinearSectionDivider
++				+ firstLinearSectionEnd / firstLinearSectionDivider --they can only get up to 11s of credit within the first linear section.
+ 				+ (math.log(effectiveTimeOnCurrentTerrain) - math.log(firstLinearSectionEnd - 7)) / 79
+ 		end
+ 		_annotate(string.format("speed multiplier: %0.2f", speedMultiplierFromSameTerrain))
+@@ -469,11 +555,15 @@ local adjustSpeed = function()
+ 	end
+ 
+ 	----------- JUMP POWER -----------------
++	if activeRunSignName == "Hypergravity" then
++		currentRunJumpPowerMultiplier = 0
++	end
+ 
+ 	local newJumpPower = movementEnums.constants.globalDefaultJumpPower
+ 		* floorJumpPowerMultiplier
+ 		* lastFloorJumpPowerMultiplier
+ 		* runJumpPowerMultiplier
++		* currentRunJumpPowerMultiplier
+ 
+ 	if isMovementBlockedByWarp then
+ 		debounceAdjustSpeed = false
+@@ -530,7 +620,7 @@ local eventsWeCareAbout = {
+ 
+ 	mt.avatarEventTypes.RUN_START,
+ 	mt.avatarEventTypes.RUN_COMPLETE,
+-	mt.avatarEventTypes.RUN_KILL,
++	mt.avatarEventTypes.RUN_CANCEL,
+ 	mt.avatarEventTypes.RETOUCH_SIGN,
+ 	-- mt.avatarEventTypes.TOUCH_SIGN,
+ 	-- I *believe* this is right not to include TOUCH_SIGN here.
+@@ -641,7 +731,19 @@ local handleAvatarEvent = function(ev: mt.avatarEvent)
+ 		}
+ 		table.insert(movementEventHistory, currentFloorEvent)
+ 		_annotate(string.format("Added fake floor event for current floor: %s", tostring(humanoid.FloorMaterial)))
+-	elseif ev.eventType == mt.avatarEventTypes.RUN_KILL or ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
++
++		-- also I think we should add a fake started moving event here, if they are moving at all. so that if they hit a sign, then stop, then
++		-- retouch or touch, they have their initial state.
++		-- this only matters if they completely don't move after that either; once they do a real movement this will be irrelevant since
++		local mov = humanoid.MoveDirection
++		if mov == Vector3.new(0, 0, 0) then
++			_annotate("fired fake STOP moving event after retouch.")
++			fireEvent(mt.avatarEventTypes.AVATAR_STOPPED_MOVING, {})
++		else
++			_annotate("fired fake START moving event after retouch when allegedly they were moving.")
++			fireEvent(mt.avatarEventTypes.AVATAR_STARTED_MOVING, {})
++		end
++	elseif ev.eventType == mt.avatarEventTypes.RUN_CANCEL or ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
+ 		if activeRunSignName == "" then
+ 			_annotate("weird, ended run while not on one. hmmm")
+ 			_annotate(ev.details.reason)
+@@ -691,6 +793,7 @@ module.Init = function()
+ 	movementEventHistory = {}
+ 	activeRunSignName = {}
+ 	debounceAdjustSpeed = false
++	CreateSpeedGui()
+ 
+ 	task.spawn(function()
+ 		while true do
+diff --git a/StarterPlayer/StarterCharacterScripts/client/particles.lua b/StarterPlayer/StarterCharacterScripts/client/particles.lua
+index 086baee..9224d0d 100644
+--- a/StarterPlayer/StarterCharacterScripts/client/particles.lua
++++ b/StarterPlayer/StarterCharacterScripts/client/particles.lua
+@@ -10,12 +10,27 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
+ local mt = require(game.ReplicatedStorage.avatarEventTypes)
+ local remotes = require(game.ReplicatedStorage.util.remotes)
+ local colors = require(game.ReplicatedStorage.util.colors)
++local settings = require(game.ReplicatedStorage.settings)
++local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+ local particleEnums = require(game.StarterPlayer.StarterPlayerScripts.particleEnums)
+ 
++local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
++
+ local Players = game:GetService("Players")
+ local localPlayer: Player = Players.LocalPlayer
++
++--- GLOBALS
+ local emitters: { [string]: ParticleEmitter } = {}
+ 
++-- the string is a composition of ev.eventType and also possibly details such as the new state etc.
++-- as long as the key is unique, we good
++local myDescriptors: { [string]: tt.particleDescriptor } = {}
++
++local particlesEnabledAtAll: boolean = true
++local connection: RBXScriptConnection? = nil
++
++---START
++
+ local createParticleEmitter = function(desc: tt.particleDescriptor)
+ 	local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+ 	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
+@@ -98,10 +113,6 @@ local function doEmit(desc: tt.particleDescriptor, particleEmitter: ParticleEmit
+ 	end)
+ end
+ 
+--- the string is a composition of ev.eventType and also possibly details such as the new state etc.
+--- as long as the key is unique, we good
+-local myDescriptors: { [string]: tt.particleDescriptor } = {}
+-
+ local getOrCreateDescriptor = function(key: string): tt.particleDescriptor
+ 	if not myDescriptors[key] then
+ 		myDescriptors[key] = particleEnums.getRandomParticleDescriptor(localPlayer.UserId, key)
+@@ -116,7 +127,7 @@ local eventsWeCareAbout = {
+ 	mt.avatarEventTypes.RETOUCH_SIGN,
+ 
+ 	-- mt.avatarEventTypes.RUN_COMPLETE,
+-	-- mt.avatarEventTypes.RUN_KILL,
++	-- mt.avatarEventTypes.RUN_CANCEL,
+ 
+ 	-- mt.avatarEventTypes.TOUCH_SIGN,
+ 	-- mt.avatarEventTypes.RESET_CHARACTER,
+@@ -163,7 +174,7 @@ local emitParticleForEvent = function(ev: mt.avatarEvent)
+ 		key = "touch"
+ 	elseif ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
+ 		key = "runcomplete"
+-	elseif ev.eventType == mt.avatarEventTypes.RUN_KILL then
++	elseif ev.eventType == mt.avatarEventTypes.RUN_CANCEL then
+ 		key = "runkill"
+ 	elseif ev.eventType == mt.avatarEventTypes.AVATAR_RESET then
+ 		key = "reset"
+@@ -268,9 +279,38 @@ local handleAvatarEvent = function(ev: mt.avatarEvent)
+ 	emitParticleForEvent(ev)
+ end
+ 
++local function handleShowParticleSettingChange(setting: tt.userSettingValue)
++	_annotate("handleShowParticleSettingChange: " .. setting.name .. " " .. tostring(setting.value))
++
++	if setting.name == settingEnums.settingNames.SHOW_PARTICLES then
++		particlesEnabledAtAll = setting.value
++
++		if particlesEnabledAtAll then
++			_annotate("enabled, connecting")
++			connection = AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
++		else
++			_annotate("disabled, disconnecting")
++			for _, emitter in pairs(emitters) do
++				emitter.Rate = 0
++			end
++
++			if connection then
++				connection:Disconnect()
++				connection = nil
++			end
++		end
++	end
++end
++
+ module.Init = function()
+-	local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
+-	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
++	_annotate("init")
++	settings.RegisterFunctionToListenForSettingName(
++		handleShowParticleSettingChange,
++		settingEnums.settingNames.SHOW_PARTICLES
++	)
++
++	handleShowParticleSettingChange(settings.getSettingByName(settingEnums.settingNames.SHOW_PARTICLES))
++	_annotate("init done")
+ end
+ 
+ _annotate("end")
+diff --git a/StarterPlayer/StarterCharacterScripts/client/racing.lua b/StarterPlayer/StarterCharacterScripts/client/racing.lua
+index e6f05eb..5ae19c3 100644
+--- a/StarterPlayer/StarterCharacterScripts/client/racing.lua
++++ b/StarterPlayer/StarterCharacterScripts/client/racing.lua
+@@ -1,6 +1,6 @@
+ --!strict
+ 
+--- 4.29.2022 redo to trust client
++-- A 4.29.2022 redo to trust client
+ -- completely locally track times and then just hit the endpoint with what they are
+ -- What is this: the guy who does local tracking of the time for a run.
+ 
+@@ -26,7 +26,7 @@ local mt = require(game.ReplicatedStorage.avatarEventTypes)
+ local enums = require(game.ReplicatedStorage.util.enums)
+ local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
+ local fireEvent = avatarEventFiring.FireEvent
+-local runProgressSgui = require(game.ReplicatedStorage.gui.runProgressSgui)
++local activeRunSGui = require(game.ReplicatedStorage.gui.activeRunSGui)
+ local terrainTouchMonitor = require(game.ReplicatedStorage.terrainTouchMonitor)
+ 
+ ---------- CHARACTER -------------
+@@ -58,13 +58,16 @@ local isAvatarLegalToTouchSigns = true
+ ----------- this is for the special runs which have limitations on how many terrains you can see as you run and things like that.----------
+ ---------- we probably should just monitor them ourselves ?--------------
+ 
+--- stop the process of counting the run. this happens when any kind of illegal avatar things happens mostly like dying or leaving.
+-local function killClientRun(context: string)
+-	_annotate("killClientRun." .. context)
++-- stop the process of counting the run.
++-- this happens when any kind of illegal avatar things happens mostly like dying or leaving.
++-- this modifes local state so further touches won't count as ending the run etc.
++-- it also calls the singleton for managing the run UI and tells it to stop.
++local function endClientRun(context: string)
++	_annotate("endClientRun, reason:" .. context)
+ 	currentRunStartTick = 0
+ 	currentRunSignName = ""
+ 	dynamicRunning.endDynamic()
+-	runProgressSgui.Kill()
++	activeRunSGui.KillActiveRun()
+ 	clientTouchDebounce[localPlayer.Name] = false
+ end
+ 
+@@ -119,10 +122,10 @@ local function TouchedSign(signId: number, touchTimeTick: number)
+ 		------- START RUN ------------
+ 		_annotate(string.format("started run START" .. signName))
+ 		currentRunSignName = signName
+-		runProgressSgui.CreateRunProgressSgui(playerGui, touchTimeTick, signName, sign.Position)
++		activeRunSGui.StartActiveRunGui(touchTimeTick, signName, sign.Position)
+ 		local signOverallTextDescription = enums.SpecialSignDescriptions[currentRunSignName]
+ 		if signOverallTextDescription then
+-			runProgressSgui.UpdateExtraRaceDescription(signOverallTextDescription)
++			activeRunSGui.UpdateExtraRaceDescription(signOverallTextDescription)
+ 		end
+ 
+ 		dynamicRunning.startDynamic(localPlayer, signName, touchTimeTick)
+@@ -139,7 +142,7 @@ local function TouchedSign(signId: number, touchTimeTick: number)
+ 			_annotate(string.format("updated start of run by: %0.4f", gap))
+ 			dynamicRunning.resetDynamicTiming(touchTimeTick)
+ 			fireEvent(mt.avatarEventTypes.RETOUCH_SIGN, { relatedSignId = signId, relatedSignName = signName })
+-			runProgressSgui.UpdateStartTime(currentRunStartTick)
++			activeRunSGui.UpdateStartTime(currentRunStartTick)
+ 		end
+ 		_annotate(string.format("touched sign again: %s", signName))
+ 	else
+@@ -152,16 +155,24 @@ local function TouchedSign(signId: number, touchTimeTick: number)
+ 			relatedSignName = signName,
+ 		}
+ 		fireEvent(mt.avatarEventTypes.RUN_COMPLETE, details)
+-		local floorSeen: number = terrainTouchMonitor.GetSeenTerrainTypesThisRun()
++		local floorSeen: number = terrainTouchMonitor.GetSeenTerrainTypesCountThisRun()
+ 		if not currentRunSignName then
+ 			error("currentRunSignName is nil")
+ 		end
+ 		if not signName then
+ 			error("signName is nil")
+ 		end
+-		_annotate(string.format("end run from %s to %s in %dms", currentRunSignName, signName, runMilliseconds))
++		_annotate(
++			string.format(
++				"end run from %s to %s in %dms, %d floors",
++				currentRunSignName,
++				signName,
++				runMilliseconds,
++				floorSeen
++			)
++		)
+ 		TellServerRunEndedRemoteEvent:FireServer(currentRunSignName, signName, runMilliseconds, floorSeen)
+-		killClientRun("normal end run.")
++		endClientRun("normal end run.")
+ 		lastRunCompleteTime = tick()
+ 	end
+ 	clientTouchDebounce[localPlayer.Name] = false
+@@ -176,7 +187,7 @@ local eventsWeCareAbout: { number } = {
+ 
+ 	mt.avatarEventTypes.AVATAR_RESET,
+ 	-- mt.avatarEventTypes.RUN_COMPLETE, ---we send this to other people so we don't care about it.
+-	mt.avatarEventTypes.RUN_KILL, ------ other people killing our runs.
++	mt.avatarEventTypes.RUN_CANCEL, ------ other people killing our runs.
+ 	-- mt.avatarEventTypes.RETOUCH_SIGN,
+ 	mt.avatarEventTypes.TOUCH_SIGN,
+ 	mt.avatarEventTypes.AVATAR_DIED,
+@@ -209,14 +220,14 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
+ 	if ev.eventType == mt.avatarEventTypes.GET_READY_FOR_WARP then
+ 		_annotate("GET_READY_FOR_WARP")
+ 		isRacingBlockedByWarp = true
+-		killClientRun("warping.")
++		endClientRun("warping.")
+ 		fireEvent(mt.avatarEventTypes.RACING_WARPER_READY, {})
+ 		_annotate("GET_READY_FOR_WARP DONE")
+ 		return
+ 	elseif ev.eventType == mt.avatarEventTypes.WARP_DONE_RESTART_RACING then
+ 		_annotate("WARP_DONE_RESTART_RACING")
+ 		-- perhaps at this point there are still floating touch events?
+-		killClientRun("warping DONE.")
++		endClientRun("warping DONE.")
+ 		isRacingBlockedByWarp = false
+ 		fireEvent(mt.avatarEventTypes.RACING_RESTARTED, {})
+ 		_annotate("WARP_DONE_RESTART_RACING DONE")
+@@ -234,9 +245,9 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
+ 		ev.eventType == mt.avatarEventTypes.AVATAR_DIED
+ 		or ev.eventType == mt.avatarEventTypes.AVATAR_RESET
+ 		or ev.eventType == mt.avatarEventTypes.CHARACTER_REMOVING
+-		or ev.eventType == mt.avatarEventTypes.RUN_KILL
++		or ev.eventType == mt.avatarEventTypes.RUN_CANCEL
+ 	then
+-		killClientRun(string.format("player %s so end run.", mt.avatarEventTypesReverse[ev.eventType]))
++		endClientRun(string.format("player %s so end run.", mt.avatarEventTypesReverse[ev.eventType]))
+ 		adjustPlayerFreedomToDoRuns(true, mt.avatarEventTypesReverse[ev.eventType])
+ 	elseif ev.eventType == mt.avatarEventTypes.FLOOR_CHANGED then
+ 		terrainTouchMonitor.CountNewFloorMaterial(ev.details.floorMaterial)
+diff --git a/StarterPlayer/StarterCharacterScripts/client/serverEvents.lua b/StarterPlayer/StarterCharacterScripts/client/serverEvents.lua
+index 3a17683..9631a29 100644
+--- a/StarterPlayer/StarterCharacterScripts/client/serverEvents.lua
++++ b/StarterPlayer/StarterCharacterScripts/client/serverEvents.lua
+@@ -1,5 +1,6 @@
+ --!strict
+ 
++-- serverEvents.lua on the client.
+ -- listens on client for events, and calls into drawing methods.
+ 
+ local annotater = require(game.ReplicatedStorage.util.annotater)
+@@ -11,9 +12,13 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
+ local remotes = require(game.ReplicatedStorage.util.remotes)
+ local serverEventGuis = require(game.StarterPlayer.StarterPlayerScripts.guis.serverEventGuis)
+ local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
+-
++local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
++local colors = require(game.ReplicatedStorage.util.colors)
++--
+ local PlayersService = game:GetService("Players")
+ local localPlayer = PlayersService.LocalPlayer
++
++-- EVENTS -----------------
+ local ServerEventRemoteEvent = remotes.getRemoteEvent("ServerEventRemoteEvent")
+ local ServerEventRemoteFunction = remotes.getRemoteFunction("ServerEventRemoteFunction")
+ 
+@@ -36,9 +41,43 @@ end
+ 
+ module.Init = function()
+ 	_annotate("serverEvents init start")
++
++	local pgui: PlayerGui = localPlayer:WaitForChild("PlayerGui")
++	local existingServerEventScreenGui = pgui:FindFirstChild("ServerEventScreenGui")
++	if existingServerEventScreenGui then
++		existingServerEventScreenGui:Destroy()
++	end
++	local serverEventScreenGui: ScreenGui = Instance.new("ScreenGui")
++	serverEventScreenGui.Name = "ServerEventScreenGui"
++	serverEventScreenGui.Parent = pgui
++	serverEventScreenGui.IgnoreGuiInset = true
++
++	local serverEventsSystemFrames = windows.SetupFrame("serverEvents", true, true, true)
++	local serverEventsOuterFrame = serverEventsSystemFrames.outerFrame
++	local serverEventsContentFrame = serverEventsSystemFrames.contentFrame
++	local serverEventTitle = Instance.new("TextLabel")
++	serverEventTitle.Text = "Server Events"
++	serverEventTitle.Parent = serverEventsContentFrame
++	serverEventTitle.Size = UDim2.new(1, 0, 0, 12)
++	serverEventTitle.TextScaled = true
++	serverEventTitle.Name = "0ServerEventTitle"
++	serverEventTitle.Font = Enum.Font.Gotham
++
++	serverEventTitle.Position = UDim2.new(0, 0, 0, 0)
++	serverEventTitle.BackgroundColor3 = colors.defaultGrey
++	serverEventsOuterFrame.Parent = serverEventScreenGui
++	serverEventsOuterFrame.Size = UDim2.new(0.15, 0, 0.08, 0)
++	serverEventsOuterFrame.Position = UDim2.new(0.8, 0, 0.2, 0)
++
++	serverEventsContentFrame.BorderMode = Enum.BorderMode.Inset
++
++	local vv = Instance.new("UIListLayout")
++	vv.Name = "serverEventContents-vv"
++	vv.Parent = serverEventsContentFrame
++	vv.FillDirection = Enum.FillDirection.Vertical
++	serverEventGuis.Init()
+ 	ServerEventRemoteEvent.OnClientEvent:Connect(serverEventClientReceiveMessage)
+ 	ServerEventRemoteFunction:InvokeServer(serverEventEnums.messageTypes.CONNECT, {})
+-	serverEventGuis.Init()
+ end
+ 
+ _annotate("end")
+diff --git a/StarterPlayer/StarterCharacterScripts/specialSigns/angerSign.lua b/StarterPlayer/StarterCharacterScripts/specialSigns/angerSign.lua
+index 8427488..81ee82e 100644
+--- a/StarterPlayer/StarterCharacterScripts/specialSigns/angerSign.lua
++++ b/StarterPlayer/StarterCharacterScripts/specialSigns/angerSign.lua
+@@ -10,7 +10,7 @@ When the player touches the sign for the first time, .Init() is called. In this
+ 
+ If the player steps on a new floor, SawFloor is called. And then when the run ends (either player dies, cancels, completes it, quits etc) then .Kill() will be called to clean up. The next time they start a run from this sign, the same process will occur, so the methods have to clean up after themselves.
+ 
+-This sign uses more things. runProgressSgui is a singleton which controls the active running sign gui (in the lower left)
++This sign uses more things. activeRunSGui is a singleton which controls the active running sign gui (in the lower left)
+ You can send extra strings to it to display more information.
+ Obviously I want to be able to do more there, not just text but full UIs etc.
+ ]]
+@@ -22,7 +22,7 @@ local module = {}
+ 
+ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+ local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
+-local runProgressSgui = require(game.ReplicatedStorage.gui.runProgressSgui)
++local activeRunSGui = require(game.ReplicatedStorage.gui.activeRunSGui)
+ local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
+ local Players = game:GetService("Players")
+ local localPlayer: Player = Players.LocalPlayer
+@@ -30,40 +30,48 @@ local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wai
+ local humanoid = character:WaitForChild("Humanoid") :: Humanoid
+ 
+ ----------- GLOBALS -----------
+-
+-local runOver = true
+-local brokenOut = true
++local signId = tpUtil.signName2SignId("🗯")
+ local originalTexture
+ local lastTerrain: Enum.Material? = nil
++local loopRunning = false
++local killLoop = false
+ 
+ -------------- MAIN --------------
+ module.InformRunEnded = function()
+ 	_annotate("telling sign the run ended.")
+-	humanoid.Health = 100
+-	local head = character:FindFirstChild("Head")
+-	if head then
+-		local face: Decal = head:FindFirstChild("face") :: Decal
+-		if originalTexture and face and face:IsA("Decal") then
+-			face.Texture = originalTexture
+-		end
+-	end
+-	if not runOver then
+-		runOver = true
++	if loopRunning then
++		killLoop = true
+ 	end
+-	brokenOut = false
+-	lastTerrain = nil
+-	_annotate("done telling sign the run ended.")
++	task.spawn(function()
++		while loopRunning do
++			_annotate("wait loop die.")
++			wait(0.1)
++		end
++
++		humanoid.Health = 100
++		local head = character:FindFirstChild("Head")
++		if head then
++			local face: Decal = head:FindFirstChild("face") :: Decal
++			if originalTexture and face and face:IsA("Decal") then
++				face.Texture = originalTexture
++			end
++		end
++
++		lastTerrain = nil
++		_annotate("-------------ENDED----------------")
++	end)
+ end
+ 
+ local startDescriptionLoopingUpdate = function()
+-	runOver = false
+-	runProgressSgui.UpdateExtraRaceDescription("-40 if you hit a new terrain.")
++	activeRunSGui.UpdateExtraRaceDescription("-40 if you hit a new terrain.")
+ 	task.spawn(function()
+ 		_annotate("spawning desc updater.")
+ 		local lastHealthText = ""
++		loopRunning = true
+ 		while true do
+-			if runOver then
+-				brokenOut = true
++			if killLoop then
++				loopRunning = false
++				killLoop = false
+ 				break
+ 			end
+ 			local terrainText = lastTerrain and lastTerrain.Name or ""
+@@ -73,14 +81,15 @@ local startDescriptionLoopingUpdate = function()
+ 			local healthText = string.format("\nYour health is: %d%s", humanoid.Health, terrainText)
+ 			if healthText ~= lastHealthText then
+ 				lastHealthText = healthText
+-				local ok1 = runProgressSgui.UpdateMovementDetails(healthText)
++				local ok1 = activeRunSGui.UpdateMovementDetails(healthText)
+ 				if not ok1 then
+-					runOver = true
+-					brokenOut = true
++					module.InformRunEnded()
++					loopRunning = false
++					killLoop = false
+ 					break
+ 				end
+ 			end
+-			wait(0.05)
++			wait(1 / 30)
+ 		end
+ 		_annotate("update text tight loop. done")
+ 	end)
+@@ -90,13 +99,6 @@ module.InformRunStarting = function()
+ 	_annotate("init")
+ 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
+ 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
+-	if not brokenOut then
+-		runOver = true
+-		while not brokenOut do
+-			_annotate("wait breakout")
+-			wait(0.1)
+-		end
+-	end
+ 
+ 	local head = character:FindFirstChild("Head")
+ 	if head then
+@@ -108,10 +110,13 @@ module.InformRunStarting = function()
+ 		end
+ 	end
+ 
+-	runProgressSgui.UpdateExtraRaceDescription("You take 40 damage from switching terrain!")
++	activeRunSGui.UpdateExtraRaceDescription("You take 40 damage from switching terrain!")
+ 	lastTerrain = nil
+ 	humanoid.Health = 100
++	assert(not loopRunning, "loop running?")
+ 	startDescriptionLoopingUpdate()
++	assert(loopRunning, "loop running?")
++	assert(not killLoop, "killLoop running?")
+ end
+ 
+ module.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?)
+@@ -128,6 +133,7 @@ module.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?)
+ 		if humanoid.Health <= 40 then
+ 			local signId = tpUtil.signName2SignId("🗯")
+ 			humanoid.Health = 100
++			module.InformRunEnded()
+ 			warper.WarpToSignId(signId)
+ 			humanoid.Health = 100
+ 			return
+@@ -138,7 +144,7 @@ module.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?)
+ 			floorMaterial.Name,
+ 			humanoid.Health
+ 		)
+-		runProgressSgui.UpdateMovementDetails(theText)
++		activeRunSGui.UpdateMovementDetails(theText)
+ 		_annotate("damage taken")
+ 	end
+ end
+diff --git a/StarterPlayer/StarterCharacterScripts/specialSigns/reverseControlSign.lua b/StarterPlayer/StarterCharacterScripts/specialSigns/reverseControlSign.lua
+index 96e452a..eca8392 100644
+--- a/StarterPlayer/StarterCharacterScripts/specialSigns/reverseControlSign.lua
++++ b/StarterPlayer/StarterCharacterScripts/specialSigns/reverseControlSign.lua
+@@ -11,7 +11,7 @@ local module = {}
+ 
+ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+ local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
+-local runProgressSgui = require(game.ReplicatedStorage.gui.runProgressSgui)
++local activeRunSGui = require(game.ReplicatedStorage.gui.activeRunSGui)
+ local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
+ local Players = game:GetService("Players")
+ local localPlayer: Player = Players.LocalPlayer
+diff --git a/StarterPlayer/StarterCharacterScripts/specialSigns/smallSign.lua b/StarterPlayer/StarterCharacterScripts/specialSigns/smallSign.lua
+index 97fddaa..fc692b6 100644
+--- a/StarterPlayer/StarterCharacterScripts/specialSigns/smallSign.lua
++++ b/StarterPlayer/StarterCharacterScripts/specialSigns/smallSign.lua
+@@ -7,8 +7,6 @@ local _annotate = annotater.getAnnotater(script)
+ 
+ local module = {}
+ 
+-local runProgressSgui = require(game.ReplicatedStorage.gui.runProgressSgui)
+-
+ local Players = game:GetService("Players")
+ local localPlayer: Player = Players.LocalPlayer
+ local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
+diff --git a/StarterPlayer/StarterPlayerScripts/avatarEventFiring.lua b/StarterPlayer/StarterPlayerScripts/avatarEventFiring.lua
+index 6606fd3..fcdd72d 100644
+--- a/StarterPlayer/StarterPlayerScripts/avatarEventFiring.lua
++++ b/StarterPlayer/StarterPlayerScripts/avatarEventFiring.lua
+@@ -91,7 +91,7 @@ module.FireEvent = function(avatarEventType: number, details: mt.avatarEventDeta
+ 	elseif actualEv.eventType == mt.avatarEventTypes.MARATHON_RESTARTED then
+ 		local duration = actualEv.timestamp - lastWarpStart
+ 		lastWarpStart = nil
+-		warn(string.format("warp delay duration in this situation: %0.5f", duration))
++		_annotate(string.format("warp delay duration in this situation: %0.5f", duration))
+ 	end
+ 
+ 	_annotate(string.format("Firing: %s", module.DescribeEvent(avatarEventType, details)))
+diff --git a/StarterPlayer/StarterPlayerScripts/buttons/hamburger.client.lua b/StarterPlayer/StarterPlayerScripts/buttons/hamburger.client.lua
+index 6bc1d64..ecf37f2 100644
+--- a/StarterPlayer/StarterPlayerScripts/buttons/hamburger.client.lua
++++ b/StarterPlayer/StarterPlayerScripts/buttons/hamburger.client.lua
+@@ -16,13 +16,10 @@ local badgeButton = require(game.ReplicatedStorage.gui.menu.badgeButton)
+ local surveyButton = require(game.ReplicatedStorage.gui.menu.surveyButton)
+ local howToPlayButton = require(game.ReplicatedStorage.gui.menu.howToPlayButton)
+ 
+-local userSettingsButton = require(game.ReplicatedStorage.gui.menu.userSettingsButton)
+-
+ local buttons: { gt.button } = {
+ 	howToPlayButton.howToPlayButton,
+ 	badgeButton.badgeButton,
+ 	surveyButton.surveySettingsButton,
+-	userSettingsButton.userSettingsButton,
+ }
+ 
+ local function setupMenu()
+diff --git a/StarterPlayer/StarterPlayerScripts/buttons/leaderboardButtons.lua b/StarterPlayer/StarterPlayerScripts/buttons/leaderboardButtons.lua
+index af8609e..ada0c73 100644
+--- a/StarterPlayer/StarterPlayerScripts/buttons/leaderboardButtons.lua
++++ b/StarterPlayer/StarterPlayerScripts/buttons/leaderboardButtons.lua
+@@ -1,6 +1,7 @@
+ --!strict
+ 
+---draw an action button row with hints along the bottom of the local screen (popular, new)
++-- leaderboardButtons.lua on client.
++-- draw an action button row with hints along the bottom of the local screen (popular, new, marathon settings, lb settings, random race.)
+ 
+ local annotater = require(game.ReplicatedStorage.util.annotater)
+ local _annotate = annotater.getAnnotater(script)
+@@ -11,27 +12,39 @@ local PlayersService = game:GetService("Players")
+ 
+ local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+ 
+-local localPlayer = PlayersService.LocalPlayer
+ local colors = require(game.ReplicatedStorage.util.colors)
++
++--TYPE
+ local gt = require(game.ReplicatedStorage.gui.guiTypes)
+ 
+-local vscdebug = require(game.ReplicatedStorage.vscdebug)
++-- local vscdebug = require(game.ReplicatedStorage.vscdebug)
+ local toolTip = require(game.ReplicatedStorage.gui.toolTip)
+ 
+ local popularButton = require(game.StarterPlayer.StarterPlayerScripts.buttons.popularButton)
+ local newButton = require(game.StarterPlayer.StarterPlayerScripts.buttons.newButton)
+ local contestButtonGetter = require(game.StarterPlayer.StarterPlayerScripts.buttons.contestButtonGetter)
+-local contestButtons = contestButtonGetter.getContestButtons({ localPlayer.UserId })
+-local marathonSettingsButton = require(game.ReplicatedStorage.gui.menu.marathonSettingsButton)
++
++local editDomainSettingsButton = require(game.ReplicatedStorage.gui.menu.editDomainSettingsButton)
+ local serverEventButton = require(game.ReplicatedStorage.gui.menu.serverEventButton)
+ 
++local localPlayer = PlayersService.LocalPlayer
++local contestButtons = contestButtonGetter.getContestButtons({ localPlayer.UserId })
++
++local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
++
++-- MAIN ----------------------------
++
+ local actionButtons: { gt.actionButton } = {
+-	marathonSettingsButton.marathonSettingsButton,
++	editDomainSettingsButton.getGenericSettingsEditor(settingEnums.settingDomains.MARATHONS),
++	editDomainSettingsButton.getGenericSettingsEditor(settingEnums.settingDomains.LEADERBOARD),
++	editDomainSettingsButton.getGenericSettingsEditor(settingEnums.settingDomains.USERSETTINGS),
+ 	popularButton.popularButton,
+ 	newButton.newButton,
+ 	serverEventButton.serverEventButton,
+ }
+ 
++-- if any contests are enabled, add them as action buttons.
++
+ for _, contestButton in ipairs(contestButtons) do
+ 	table.insert(actionButtons, contestButton)
+ end
+@@ -53,9 +66,14 @@ module.initActionButtons = function(lbOuterFrame: Frame)
+ 	h.Parent = actionButtonFrame
+ 
+ 	local pgui = localPlayer:FindFirstChildOfClass("PlayerGui")
++	local totalXWeights = 0
++	for _, but in ipairs(actionButtons) do
++		totalXWeights = totalXWeights + but.widthXScale
++	end
+ 
+ 	local bignum = 10000
+ 	for ii, but in ipairs(actionButtons) do
++		local myXScale = but.widthXScale / totalXWeights
+ 		local color = colors.defaultGrey
+ 		if but.getActive ~= nil then
+ 			if not but.getActive() then
+@@ -64,7 +82,7 @@ module.initActionButtons = function(lbOuterFrame: Frame)
+ 		end
+ 
+ 		local buttonName = tostring(bignum - ii) .. "." .. but.name
+-		local buttonTb = guiUtil.getTb(buttonName, UDim2.new(but.widthXScale, 0, 1, 0), 2, actionButtonFrame, color, 1)
++		local buttonTb = guiUtil.getTb(buttonName, UDim2.new(myXScale, 0, 1, 0), 2, actionButtonFrame, color, 1)
+ 		buttonTb.Text = but.shortName
+ 
+ 		--reverse order they're listed in actionButtons above
+diff --git a/StarterPlayer/StarterPlayerScripts/buttons/particleExplanationGui.lua b/StarterPlayer/StarterPlayerScripts/buttons/particleExplanationGui.lua
+index e62c6b6..76b6933 100644
+--- a/StarterPlayer/StarterPlayerScripts/buttons/particleExplanationGui.lua
++++ b/StarterPlayer/StarterPlayerScripts/buttons/particleExplanationGui.lua
+@@ -8,6 +8,7 @@ local _annotate = annotater.getAnnotater(script)
+ 
+ local module = {}
+ 
++local particleEnums = require(game.StarterPlayer.StarterPlayerScripts.particleEnums)
+ local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
+ 
+ local PlayersService = game:GetService("Players")
+@@ -62,8 +63,6 @@ module.CreateParticleGui = function()
+ 	listLayout.Padding = UDim.new(0, 8)
+ 	listLayout.Parent = particleColorList
+ 
+-	
+-
+ 	for _, descriptor in ipairs(particleEnums.ParticleDescriptors) do
+ 		local shortcutFrame = Instance.new("Frame")
+ 		shortcutFrame.Size = UDim2.new(1, 0, 0, 40)
+diff --git a/StarterPlayer/StarterPlayerScripts/guis/serverEventGuis.lua b/StarterPlayer/StarterPlayerScripts/guis/serverEventGuis.lua
+index a238411..aef69d0 100644
+--- a/StarterPlayer/StarterPlayerScripts/guis/serverEventGuis.lua
++++ b/StarterPlayer/StarterPlayerScripts/guis/serverEventGuis.lua
+@@ -1,9 +1,12 @@
+ --!strict
+ 
+---drawers for serverEvent rows of LB
++--serverEventGuis.lua static in StarterPlayer
++--drawers for serverEvent rows
+ local annotater = require(game.ReplicatedStorage.util.annotater)
+ local _annotate = annotater.getAnnotater(script)
+ 
++local module = {}
++
+ local PlayersService = game:GetService("Players")
+ local localPlayer = PlayersService.LocalPlayer
+ local tt = require(game.ReplicatedStorage.types.gametypes)
+@@ -16,19 +19,16 @@ local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
+ 
+ local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
+ 
+-local module = {}
+-
+-module.replServerEvent = function(serverEvent: tt.runningServerEvent): string
++local replServerEvent = function(serverEvent: tt.runningServerEvent): string
+ 	local from = tpUtil.signId2signName(serverEvent.startSignId)
+ 	local to = tpUtil.signId2signName(serverEvent.endSignId)
+ 	return from .. " - " .. to .. " with " .. tostring(#serverEvent.userBests) .. " runners"
+ end
+ 
+---just re-get the outer lbframe by name.
+-local function getLbServerEventFrame(initial: boolean?): Frame | nil
+-	_annotate("getLbServerEventFrame")
+-	-- wait(1) --TODO remove and fix.
+-	--TODO 2024 commented out the wait.
++-- the only thing called in Init?
++local function getServerEventContentsFrame(initial: boolean?): Frame | nil
++	_annotate("getServerEventFrame")
++
+ 	local playerGui = localPlayer:WaitForChild("PlayerGui")
+ 	local serverEventContents: Frame = playerGui:FindFirstChild("content_serverEvents", true)
+ 	if serverEventContents == nil then
+@@ -45,11 +45,6 @@ local function getLbServerEventFrame(initial: boolean?): Frame | nil
+ 	local height = serverEventEnums.serverEventRowHeight * #runningEventFrames
+ 	_annotate("set size to: " .. tostring(height))
+ 
+-	-- if #runningEventFrames == 0 then
+-	-- 	serverEventContents.Parent.Visible = false
+-	-- else
+-	-- 	serverEventContents.Parent.Visible = true
+-	-- end
+ 	if #runningEvents > 0 then
+ 		local targetSize = 1 / #runningEventFrames
+ 		for _, event: Frame in pairs(runningEventFrames) do
+@@ -292,54 +287,54 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
+ end
+ 
+ module.updateEventVisually = function(serverEvent: tt.runningServerEvent, userId: number)
+-	local lbServerEventFrame = getLbServerEventFrame()
++	local serverEventContentsFrame = getServerEventContentsFrame()
+ 
+-	while lbServerEventFrame == nil do
++	while serverEventContentsFrame == nil do
+ 		wait(1)
+ 		_annotate("waited on SEF.")
+ 	end
+ 	while true do
+-		lbServerEventFrame = getLbServerEventFrame()
+-		if lbServerEventFrame ~= nil then
++		serverEventContentsFrame = getServerEventContentsFrame()
++		if serverEventContentsFrame ~= nil then
+ 			break
+ 		end
+ 		_annotate("wait. in update event visually")
+ 		task.wait(0.1)
+ 	end
+-	_annotate("update" .. module.replServerEvent(serverEvent))
+-	if lbServerEventFrame == nil then
++	_annotate("update" .. replServerEvent(serverEvent))
++	if serverEventContentsFrame == nil then
+ 		error("zx")
+ 	end
+-	local lbServerEventRowName = determineServerEventRowName(serverEvent)
++	local serverEventRowName = determineServerEventRowName(serverEvent)
+ 
+-	local exi: Frame = lbServerEventFrame:FindFirstChild(lbServerEventRowName, true)
++	local exi: Frame = serverEventContentsFrame:FindFirstChild(serverEventRowName, true)
+ 	if exi then
+ 		exi:Destroy()
+ 	end
+ 
+ 	exi = makeNewServerEventRow(serverEvent, userId)
+-	exi.Parent = lbServerEventFrame
+-	getLbServerEventFrame()
++	exi.Parent = serverEventContentsFrame
++	getServerEventContentsFrame()
+ end
+ 
+ module.endEventVisually = function(serverEvent: tt.runningServerEvent)
+-	_annotate("ending" .. module.replServerEvent(serverEvent))
+-	local lb = getLbServerEventFrame()
+-	local lbServerEventRowName = determineServerEventRowName(serverEvent)
+-	local exi = lb:FindFirstChild(lbServerEventRowName)
++	_annotate("ending" .. replServerEvent(serverEvent))
++	local serverEventContentsFrame = getServerEventContentsFrame()
++	local serverEventRowName = determineServerEventRowName(serverEvent)
++	local exi = serverEventContentsFrame:FindFirstChild(serverEventRowName)
+ 	if exi then
+ 		exi:Destroy()
+ 	else
+ 		-- warn("no serverEvent to descroy. hmm.")
+ 	end
+-	getLbServerEventFrame()
++	getServerEventContentsFrame()
+ end
+ 
+ -- remotes.getBindableEvent("ServerEventLocalClientWarpBindableEvent")
+ _annotate("end")
+ 
+ module.Init = function()
+-	getLbServerEventFrame(true)
++	getServerEventContentsFrame(true)
+ end
+ 
+ return module
+diff --git a/StarterPlayer/StarterPlayerScripts/guis/windows.lua b/StarterPlayer/StarterPlayerScripts/guis/windows.lua
+index 271508b..7e20e87 100644
+--- a/StarterPlayer/StarterPlayerScripts/guis/windows.lua
++++ b/StarterPlayer/StarterPlayerScripts/guis/windows.lua
+@@ -138,7 +138,7 @@ local SetupMinimizeability = function(frame: Frame)
+ 	minimizeButton.ZIndex = 6
+ 
+ 	local childrenSizes: { [string]: UDim2 } = {}
+-	local parentSize: UDim2 = {}
++	local parentSize: UDim2
+ 	-- minimiize all Frame children of the outer frame.
+ 	minimizeButton.MouseButton1Click:Connect(function()
+ 		isMinimized = not isMinimized
+diff --git a/StarterPlayer/StarterPlayerScripts/movementEnums.lua b/StarterPlayer/StarterPlayerScripts/movementEnums.lua
+index 7bbadd0..1b3e742 100644
+--- a/StarterPlayer/StarterPlayerScripts/movementEnums.lua
++++ b/StarterPlayer/StarterPlayerScripts/movementEnums.lua
+@@ -60,7 +60,7 @@ module.GetJumpPowerByFloorMultipler = function(activeFloor): number
+ 	elseif activeFloor == Enum.Material.CrackedLava then
+ 		return 1.15
+ 	elseif activeFloor == Enum.Material.Concrete then
+-		return 1
++		return 1.05
+ 	elseif activeFloor == Enum.Material.Cobblestone then
+ 		return 1
+ 	elseif activeFloor == Enum.Material.WoodPlanks then
+@@ -74,7 +74,9 @@ module.GetJumpPowerByFloorMultipler = function(activeFloor): number
+ 	elseif activeFloor == Enum.Material.Glacier or activeFloor == Enum.Material.Ice then
+ 		return 1
+ 	elseif activeFloor == Enum.Material.Sand then
+-		return 1
++		return 0.96
++	elseif activeFloor == Enum.Material.Mud then
++		return 0.87
+ 	end
+ 	return defaultJumpPowerMultiplier
+ end
+diff --git a/StarterPlayer/StarterPlayerScripts/warper.lua b/StarterPlayer/StarterPlayerScripts/warper.lua
+index 91d4ab8..808856d 100644
+--- a/StarterPlayer/StarterPlayerScripts/warper.lua
++++ b/StarterPlayer/StarterPlayerScripts/warper.lua
+@@ -127,6 +127,7 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
+ 		return
+ 	end
+ 	if movementIsReady and racingIsReady and morphingIsReady and marathonIsReady then
++		-- this is actually the local warping.
+ 		_annotate("ready to warp")
+ 
+ 		if currentWarpRequest == nil then
+@@ -174,6 +175,7 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
+ 			_annotate("highlighting " .. tostring(currentWarpRequest.highlightSignId))
+ 			textHighlighting.KillAllExistingHighlights()
+ 			textHighlighting.DoHighlightSingleSignId(currentWarpRequest.highlightSignId)
++			textHighlighting.RotateCameraToFaceSignId(currentWarpRequest.highlightSignId)
+ 		else
+ 			_annotate("not highlighting")
+ 		end

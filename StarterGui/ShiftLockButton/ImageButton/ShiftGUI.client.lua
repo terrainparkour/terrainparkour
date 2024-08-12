@@ -16,6 +16,10 @@ local humanoid = character.Humanoid
 local camera = workspace.CurrentCamera
 local button = script.Parent
 
+if script.Parent.ClassName == "Folder" then
+	return
+end
+
 --Visiblity
 uis = game:GetService("UserInputService")
 ismobile = uis.TouchEnabled

@@ -127,6 +127,7 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 		return
 	end
 	if movementIsReady and racingIsReady and morphingIsReady and marathonIsReady then
+		-- this is actually the local warping.
 		_annotate("ready to warp")
 
 		if currentWarpRequest == nil then
@@ -174,6 +175,7 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 			_annotate("highlighting " .. tostring(currentWarpRequest.highlightSignId))
 			textHighlighting.KillAllExistingHighlights()
 			textHighlighting.DoHighlightSingleSignId(currentWarpRequest.highlightSignId)
+			textHighlighting.RotateCameraToFaceSignId(currentWarpRequest.highlightSignId)
 		else
 			_annotate("not highlighting")
 		end

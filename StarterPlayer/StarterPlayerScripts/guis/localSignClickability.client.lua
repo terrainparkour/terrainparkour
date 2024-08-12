@@ -573,12 +573,11 @@ local function SetupSigns()
 
 		sign = sign :: Part
 
-		local screenGui = Instance.new("SurfaceGui")
-		screenGui.IgnoreGuiInset = true
-		screenGui.Parent = playerGui
-		screenGui.Adornee = sign
-		screenGui.Face = Enum.NormalId.Top
-		screenGui.Name = "clickSg" .. sign.Name
+		local surfacegui = Instance.new("SurfaceGui")
+		surfacegui.Parent = playerGui
+		surfacegui.Adornee = sign
+		surfacegui.Face = Enum.NormalId.Top
+		surfacegui.Name = "clickSg" .. sign.Name
 
 		local cd = Instance.new("ClickDetector")
 		local signId = tpUtil.looseSignName2SignId(sign.Name)

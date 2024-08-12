@@ -16,13 +16,10 @@ local badgeButton = require(game.ReplicatedStorage.gui.menu.badgeButton)
 local surveyButton = require(game.ReplicatedStorage.gui.menu.surveyButton)
 local howToPlayButton = require(game.ReplicatedStorage.gui.menu.howToPlayButton)
 
-local userSettingsButton = require(game.ReplicatedStorage.gui.menu.userSettingsButton)
-
 local buttons: { gt.button } = {
 	howToPlayButton.howToPlayButton,
 	badgeButton.badgeButton,
 	surveyButton.surveySettingsButton,
-	userSettingsButton.userSettingsButton,
 }
 
 local function setupMenu()

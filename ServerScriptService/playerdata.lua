@@ -10,6 +10,7 @@ local emojis = require(game.ReplicatedStorage.enums.emojis)
 local remoteDbInternal = require(game.ServerScriptService.remoteDbInternal)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
+local rdb = require(game.ServerScriptService.rdb)
 
 local PlayersService = game:GetService("Players")
 local tt = require(game.ReplicatedStorage.types.gametypes)
@@ -41,14 +42,13 @@ end
 module.getPlayerStatsByUserId = function(userId: number, kind: string): tt.afterData_getStatsByUser
 	local stats: tt.afterData_getStatsByUser = remoteDbInternal.remoteGet("getStatsByUser", { userId = userId })
 	stats.kind = kind
-	local rdb = require(game.ServerScriptService.rdb)
 	local totalSignCount = rdb.getGameSignCount()
 	stats.totalSignCount = totalSignCount
 	return stats
 end
 
-module.convertStatsToDescriptionLine = function(data)
-	local text = data.userTotalFindCount .. " signs found "
+module.convertStatsToDescriptionLine = function(data: tt.afterData_getStatsByUser)
+	local text = data.findCount .. " signs found "
 
 	if data.races > 0 then
 		text = text .. " / " .. data.races .. " races"
@@ -59,12 +59,30 @@ module.convertStatsToDescriptionLine = function(data)
 	if data.top10s > 0 then
 		text = text .. " / " .. data.top10s .. " top10s"
 	end
-	if data.userTotalWRCount > 0 then
-		text = text .. " / " .. data.userTotalWRCount .. " World Records"
+	if data.wrCount > 0 then
+		text = text .. " / " .. data.wrCount .. " World Records"
 	end
-	if data.userCompetitiveWRCount > 0 then
-		text = text .. " / " .. data.userCompetitiveWRCount .. " Competitive WRs."
+	if data.cwrs > 0 then
+		text = text .. " / " .. data.cwrs .. " Competitive WRs."
 	end
+	if data.userTix > 0 then
+		text = text .. " / " .. data.userTix .. " Tix!"
+	end
+	if data.awardCount > 0 then
+		text = text .. " / " .. data.awardCount .. " awards"
+	end
+
+	if data.cwrtop10s > 0 then
+		text = text .. " / " .. data.cwrtop10s .. " CWR Top 10s"
+	end
+
+	if data.findCount > 0 then
+		text = text .. " / " .. data.findCount .. " signs found"
+	end
+	if data.wrRank > 0 then
+		text = text .. " / " .. data.wrRank .. " WR Rank"
+	end
+
 	return text
 end
 
@@ -76,7 +94,7 @@ end
 module.getPlayerDescriptionMultiline = function(userId: number)
 	local data: tt.afterData_getStatsByUser = module.getPlayerStatsByUserId(userId, "desc multiline")
 	local text: string = "\n"
-		.. data.userTotalFindCount
+		.. data.findCount
 		.. " signs found\n"
 		.. data.runs
 		.. " runs\n"
@@ -84,7 +102,7 @@ module.getPlayerDescriptionMultiline = function(userId: number)
 		.. " races\n"
 		.. data.top10s
 		.. " top10s\n"
-		.. data.userTotalWRCount
+		.. data.wrCount
 		.. " World Records\n"
 		.. data.userTix
 		.. " Tix!"

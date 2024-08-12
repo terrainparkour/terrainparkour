@@ -35,7 +35,7 @@ local function getPath(kind: string, data: any)
 	local stringdata = textUtil.getStringifiedTable(data)
 	if kind == "robloxUserJoined" then
 		local uu = data.username
-		if data.userId == enums.objects.TerrainParkour then
+		if data.userId == enums.objects.TerrainParkourUserId then
 			uu = "TerrainParkour"
 		end
 		local useBoolean = ""
@@ -54,6 +54,10 @@ local function getPath(kind: string, data: any)
 			.. "/"
 			.. useBoolean
 			.. "/"
+	elseif kind == "getOrCreateBooleanSetting" then
+		local safeDomain = HttpService:UrlEncode(stringdata.domain)
+		local safeName = HttpService:UrlEncode(stringdata.name)
+		return kind .. "/" .. safeDomain .. "/" .. safeName .. "/"
 	elseif kind == "robloxUserJoinedFirst" then
 		return kind
 			.. "/"
@@ -319,13 +323,13 @@ module.remoteGet = function(kind: string, data: any): any
 	local url = getRemoteUrl(path)
 	local surl: string = host.addSecretStr(url)
 
-	if config.isInStudio() or data.userId == enums.objects.TerrainParkour then
+	if config.isInStudio() or data.userId == enums.objects.TerrainParkourUserId then
 		data.secret = nil
 		--clear secret for later printing.
 	end
 	local st = tick()
 	local res = httpservice.httpThrottledJsonGet(surl)
-	if config.isInStudio() or data.userId == enums.objects.TerrainParkour then
+	if config.isInStudio() or data.userId == enums.objects.TerrainParkourUserId then
 		_annotate(string.format("DONE %0.3f %s", tick() - st, url))
 		_annotate(string.format("remoteDbInternal.remoteGet took: %0.3f %s", tick() - st, url))
 	end
@@ -348,7 +352,7 @@ module.remotePost = function(kind: string, data: any)
 	local st: number = tick()
 	local res = httpservice.httpThrottledJsonPost(url, data)
 	res.userId = tonumber(res.userId)
-	if config.isInStudio() or data.userId == enums.objects.TerrainParkour then
+	if config.isInStudio() or data.userId == enums.objects.TerrainParkourUserId then
 		data.secret = nil
 		_annotate(string.format("%0.3f kind: " .. kind .. " url:" .. url, tick() - st))
 	end

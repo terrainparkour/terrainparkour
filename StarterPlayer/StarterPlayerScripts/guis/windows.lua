@@ -1,7 +1,7 @@
 --!strict
 
 -- resizeability
--- generic module to add resize functionality to frames2
+-- generic module to add resize functionality to frames
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 local UserInputService = game:GetService("UserInputService")
@@ -27,8 +27,8 @@ local SetupResizeability = function(frame: Frame): TextButton
 	local initialFrameSize = Vector2.new()
 	local initialFramePosition = UDim2.new()
 
-	-- Create resize handle as a TextButton directly on the input frame. No icon.
-	-- it should appear in the bottom left of the frame.
+	-- Create resize handle as a TextButton directly on the input frame.
+	-- it should appear in the bottom left of the frame, just outside the bottom left corner.
 	local resizeHandle = Instance.new("TextButton")
 	resizeHandle.Size = UDim2.new(0, buttonScalePixel, 0, buttonScalePixel)
 	resizeHandle.AnchorPoint = Vector2.new(0, 0)
@@ -138,7 +138,7 @@ local SetupMinimizeability = function(frame: Frame)
 	minimizeButton.ZIndex = 6
 
 	local childrenSizes: { [string]: UDim2 } = {}
-	local parentSize: UDim2 = {}
+	local parentSize: UDim2
 	-- minimiize all Frame children of the outer frame.
 	minimizeButton.MouseButton1Click:Connect(function()
 		isMinimized = not isMinimized

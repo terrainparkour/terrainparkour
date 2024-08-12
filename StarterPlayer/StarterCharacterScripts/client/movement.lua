@@ -1,6 +1,6 @@
 --!strict
 
--- listens to avatar events and adjusts movement speed accordingly.
+-- A listens to avatar events and adjusts movement speed accordingly.
 -- you always speed up according to terrain.
 -- the only special rules are, when you touch a sign at all, your local history is cleared.
 -- if it's a start: you get the traits of the sign. if end, you lose them.
@@ -12,6 +12,7 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
+local colors = require(game.ReplicatedStorage.util.colors)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 
 local mt = require(game.ReplicatedStorage.avatarEventTypes)
@@ -32,16 +33,25 @@ local isMovementBlockedByWarp = false
 -- the game name of the applied physics movement type now.
 local activeCurrentWorldPhysicsName = "default"
 
-local lastTouchedFloor: Enum.Material? = nil
+-- just the speed and jump updater text.
+local lastSpeedTextUpdated = ""
+local lastJumpPowerTextUpdated = ""
 
 ----------------- MOVEMENT HISTORY -----------------
--- a list of movement history events, in a sane order.
+-- a list of movement history events, in a true time order.
 local movementEventHistory: { mt.avatarEvent } = {}
 local activeRunSignName = ""
+local lastTouchedFloor: Enum.Material? = nil
 
 ------------------------ UTILS -----------------------
 
-local adjustPlayerMovementGui = function(speed, jumpPower)
+local jumpLabel: TextLabel
+local speedLabel: TextLabel
+local speedIncreaseLabel: TextLabel
+local speedGuiTransparency = 0.7
+
+-- just create one time per character load.
+local function CreateSpeedGui()
 	local playerGui = localPlayer:WaitForChild("PlayerGui")
 	local speedSgui: ScreenGui = playerGui:FindFirstChild("SpeedGui") :: ScreenGui
 	if not speedSgui then
@@ -54,33 +64,97 @@ local adjustPlayerMovementGui = function(speed, jumpPower)
 		speedSgui.Name = "SpeedGui"
 		speedSgui.Enabled = true
 	end
-
 	local speedFrame = Instance.new("Frame")
 	speedFrame.Parent = speedSgui
-	local findScreenGuiName = "SpeedFrame"
-	speedFrame.Name = findScreenGuiName
-	speedFrame.Size = UDim2.new(0.06, 0, 0.06, 0)
-	speedFrame.Position = UDim2.new(0.90, 0, 0.93, 0)
+	speedFrame.Name = "SpeedFrame"
+	speedFrame.Size = UDim2.new(0.5, 0, 0.08, 0)
+	speedFrame.Position = UDim2.new(0.30, 0, 0.91, 0)
+	speedFrame.BackgroundTransparency = 1
+	speedFrame.BorderSizePixel = 2
+	speedFrame.BorderColor3 = colors.meColor
+	speedFrame.BorderMode = Enum.BorderMode.Inset
+	local vv = Instance.new("UIListLayout")
+	vv.Parent = speedFrame
+	vv.Name = "SpeedFrameLayout"
+	vv.FillDirection = Enum.FillDirection.Horizontal
+	vv.VerticalAlignment = Enum.VerticalAlignment.Top
+	vv.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	vv.SortOrder = Enum.SortOrder.Name
 
-	local vlayout = Instance.new("UIListLayout")
-	vlayout.Parent = speedFrame
-	vlayout.FillDirection = Enum.FillDirection.Vertical
-	vlayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	vlayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	speedIncreaseLabel = Instance.new("TextLabel")
 
-	local speedText = string.format("%0.3f", speed)
-	local speedLabel = Instance.new("TextLabel")
-	speedLabel.Parent = speedFrame
-	speedLabel.Text = speedText
+	speedIncreaseLabel.TextScaled = true
+	speedIncreaseLabel.Name = "3SpeedIncreaseLabel"
+	speedIncreaseLabel.TextScaled = true
+	speedIncreaseLabel.TextColor3 = colors.meColor
+	speedIncreaseLabel.Font = Enum.Font.Gotham
+	speedIncreaseLabel.Size = UDim2.new(0.5, 0, 1, 0)
+	speedIncreaseLabel.BackgroundTransparency = speedGuiTransparency
+	speedIncreaseLabel.BorderSizePixel = 0
+	speedIncreaseLabel.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json")
+	speedIncreaseLabel.Text = ""
+	speedIncreaseLabel.BackgroundColor3 = colors.black
+	speedIncreaseLabel.TextXAlignment = Enum.TextXAlignment.Left
+	speedIncreaseLabel.Parent = speedFrame
+
+	speedLabel = Instance.new("TextLabel")
 	speedLabel.TextScaled = true
-	speedLabel.Size = UDim2.new(1, 0, 0.5, 0)
+	speedLabel.Name = "2SpeedLabel"
+	-- speedLabel.Font = Enum.Font.Gotham
+	speedLabel.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json")
+	speedLabel.Size = UDim2.new(0.5, 0, 1, 0)
+	speedLabel.TextColor3 = colors.meColor
+	speedLabel.BackgroundTransparency = speedGuiTransparency
+	speedLabel.Text = ""
+	speedLabel.BackgroundColor3 = colors.black
+	speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+	speedLabel.Parent = speedFrame
 
-	local jumpText = string.format("%0.3f", jumpPower)
-	local jumpLabel = Instance.new("TextLabel")
-	jumpLabel.Parent = speedFrame
-	jumpLabel.Text = jumpText
+	jumpLabel = Instance.new("TextLabel")
+	jumpLabel.Name = "3JumpLabel"
 	jumpLabel.TextScaled = true
-	jumpLabel.Size = UDim2.new(1, 0, 0.5, 0)
+	jumpLabel.TextColor3 = colors.meColor
+	jumpLabel.Font = Enum.Font.Gotham
+	jumpLabel.Size = UDim2.new(0.26, 0, 1, 0)
+	jumpLabel.BackgroundTransparency = speedGuiTransparency
+	jumpLabel.BorderSizePixel = 0
+	jumpLabel.Text = ""
+	jumpLabel.BackgroundColor3 = colors.black
+	jumpLabel.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json")
+	jumpLabel.TextXAlignment = Enum.TextXAlignment.Center
+	jumpLabel.Parent = speedFrame
+	jumpLabel.Visible = false
+end
+
+local adjustSpeedGui = function(speed, jumpPower)
+	local speedText = string.format("%0.1f", speed)
+	local jumpText = string.format("%d", jumpPower)
+	if speedText ~= lastSpeedTextUpdated or jumpText ~= lastJumpPowerTextUpdated then
+		jumpLabel.Text = jumpText
+		lastSpeedTextUpdated = speedText
+		lastJumpPowerTextUpdated = jumpText
+
+		speedLabel.Text = speedText
+		jumpLabel.Text = jumpText
+
+		-- the part that says like "+X%"
+		local mult = humanoid.WalkSpeed / movementEnums.constants.globalDefaultRunSpeed
+		if mult ~= 1 then
+			local multOptionalPlusText = "+"
+			if mult < 1 then
+				multOptionalPlusText = ""
+			end
+			local gain = (mult - 1) * 100
+			speedIncreaseLabel.Text = string.format("%s%0.1f%%", multOptionalPlusText, gain)
+			speedIncreaseLabel.Visible = true
+			speedIncreaseLabel.BackgroundTransparency = speedGuiTransparency
+		else
+			speedIncreaseLabel.Text = ""
+			speedIncreaseLabel.BackgroundTransparency = 1
+		end
+	end
+
+	--additional stuff to clearly highlight speedups, breaking certain speeds etc change the sound, appearance etc slightly.
 end
 
 local InternalSetJumpPower = function(jumpPower: number)
@@ -99,26 +173,41 @@ local InternalSetJumpPower = function(jumpPower: number)
 	})
 end
 
+local lastNotifiedSpeed: number = humanoid.WalkSpeed
+local minimumSpeedAdjustment = 0.1
+-- we also at least always update speed every 2 seconds so you don't sit there stuck at -0.1% forever after stopping.
+local lastUpdateSpeedTime = 0
 -- NOTE the normal run speed is technically called humanoid.WalkSpeed.
 local InternalSetSpeed = function(speed: number)
 	if speed == humanoid.WalkSpeed then
 		return
 	end
+
 	local oldSpeed = humanoid.WalkSpeed
-	local gap = math.abs(speed - oldSpeed)
-	if gap == 0 then
+	if speed == oldSpeed then
 		return
 	end
 
-	humanoid.WalkSpeed = speed
-	if gap < 1 then
+	local notificationGapSpeed = math.abs(speed - lastNotifiedSpeed)
+	-- we notify everyone (e.g. particles) that the speed has increased only this much.
+	-- it's something like a gear system, actually.
+	local now = tick()
+	local timeGap = now - lastUpdateSpeedTime
+	if notificationGapSpeed < minimumSpeedAdjustment and timeGap < 2 then
 		return
+		-- oh snap so now we only ACTUALLY UPDATE SPEED when it's changed by
+		-- more than this. Talk about GEARS! a value of 0.3 means that the player literally only increases
 	end
+	lastUpdateSpeedTime = now
+	humanoid.WalkSpeed = speed
 	-- Correcting the type of the details parameter to mt.avatarEventDetails
+	-- print(string.format("notified new speed: %0.3f", speed))
 	fireEvent(mt.avatarEventTypes.DO_SPEED_CHANGE, {
-		oldSpeed = oldSpeed,
+		oldSpeed = lastNotifiedSpeed,
 		newSpeed = speed,
 	})
+	lastNotifiedSpeed = speed
+	adjustSpeedGui(speed, humanoid.JumpPower)
 end
 
 local function ApplyNewPhysicsFloor(name: string, props: PhysicalProperties)
@@ -180,6 +269,7 @@ local adjustSpeed = function()
 		debounceAdjustSpeed = false
 		return
 	end
+	local adjustSpeedStartTick = tick()
 
 	-- if they've CHANGED to swimming in the past 4s, OR ARE STILL SWIMMING, set swimming.
 	local swamInLast4Seconds: boolean = false
@@ -187,16 +277,20 @@ local adjustSpeed = function()
 	-- if they've been touching lava in the past 4s, set lava.
 	local lavaInLast4Seconds: boolean = false
 
-	-- if you JUST jumped this is 4s and it degrades linearly so if you jumped 3s ago, this is 1s.  ALSO multiple historical jumps all count.
+	-- if you JUST jumped this is 4s and it degrades linearly so if you jumped 3s ago, this is 1s.
+	-- ALSO multiple historical jumps all count.
 	local secondsOfJumpInWindow = 0
 
-	local adjustSpeedStartTick = tick()
-
 	-- how long we've been running (or jumping? on this terrain.)
+	-- 2024.08.09 to fix a bug, I'm changing this from defaulting to zero,
+	-- to defaulting to the time of the first event.
+	-- that's because in cases likee retouch_sign, we nuke history, forgetting the player is moving.
+	-- and so they show up as not moving throughout the race, and then we nuke it. that's quite bad.
+	-- in general I need to stop treating the movement states as actually valid. That's the real problem.
 	local startTimeOnThisTerrain = 0
 
 	--are they continuing to move at end of processing all events?
-	local playerIsMoving = false
+	local playerIsMoving = true --DOH just set this to true to start. To fix 2024.08.08 failure to accelerate.
 	local globalIsWalking = false
 
 	local runJumpPowerMultiplier = 1.0
@@ -205,13 +299,33 @@ local adjustSpeed = function()
 	-- as we are reviewing history, we track the contemporaneous active terrain.
 	local activeTerrain: Enum.Material? = nil
 
+	--if the user is in a run, and just stands on a sign while otherwise valid, we shouldn't speed them up.
+	-- OTOH if they continue running, they should get the benefit of having skipped momentarily onto this sign but still
+	-- be considered to not have violated terrain consistency.
+	local isTouchingNonTerrainRightNow = true
+
+	_annotate("reconsidering SPEED-===-=-=-=-=-=-=-=-=-=-=-")
 	-- this only covers things that happen after a sign is touched.
-	for _, movementHistoryEvent in pairs(movementEventHistory) do
+	-- hmm okay SURELY the minimum start time on this terrain should be... the first event which occurred?
+	-- because somehow people are reaching the end of the run with no speedup.
+	for _, movementHistoryEvent: mt.avatarEvent in pairs(movementEventHistory) do
 		if isMovementBlockedByWarp then
 			_annotate("broke out of adjust speed due to warp.")
 			debounceAdjustSpeed = false
 			return
 		end
+		-- if movementHistoryEvent.eventType == mt.avatarEventTypes.STATE_CHANGED then
+		-- 	_annotate(
+		-- 		"\t"
+		-- 			.. mt.avatarEventTypesReverse[movementHistoryEvent.eventType]
+		-- 			.. " : "
+		-- 			.. movementHistoryEvent.details.oldState.Name
+		-- 			.. " -> "
+		-- 			.. movementHistoryEvent.details.newState.Name
+		-- 	)
+		-- else
+		-- 	_annotate("\t" .. mt.avatarEventTypesReverse[movementHistoryEvent.eventType])
+		-- end
 		local eventAge = adjustSpeedStartTick - movementHistoryEvent.timestamp
 
 		-- we DO record AIR.  So if a user does: grass, air, grass again, the 2nd grass should not reset the time on the terrain
@@ -223,16 +337,28 @@ local adjustSpeed = function()
 				-- or maybe, different but at least not resetting.
 				if movementHistoryEvent.details.floorMaterial ~= activeTerrain then
 					startTimeOnThisTerrain = eventAge
+					_annotate("accepted new floor actually: " .. movementHistoryEvent.details.floorMaterial.Name)
+					-- we reset the start time. subsequently this will have the effect of meaning the
+					-- recalculation of their "gain speed" time is affected (negatively, for shorter gain-times.)
 					activeTerrain = movementHistoryEvent.details.floorMaterial
+					startTimeOnThisTerrain = eventAge
 				end
+				isTouchingNonTerrainRightNow = false
+			else
+				-- basically if the very last thing they do is actively touch a sign, they will not speed up.
+				-- _annotate("is touching nonterrain?)")
+				-- isTouchingNonTerrainRightNow = true
+				-- actually just disable this. I'll allow speedup on signs. But I will not allow pausing on a sign, stopping there, and gaining speedup.
 			end
 
-			---- also notice if they've touched lava recently ---
+			-- also notice if they've touched lava recently ---
 			if eventAge < 4 and movementHistoryEvent.details.floorMaterial == Enum.Material.CrackedLava then
 				lavaInLast4Seconds = true
 
 				-- this is necessary because lava penalty is from the last time they touched lava
 				-- whereas the prior check just triggers when they initially touch it (as a change)
+
+				-- TODO check if you touch lava for 4+ seconds do you reset and not feel penalties? just like the swim bug.
 				startTimeOnThisTerrain = eventAge
 			end
 
@@ -256,6 +382,9 @@ local adjustSpeed = function()
 			and movementHistoryEvent.details
 			and movementHistoryEvent.details.newState == Enum.HumanoidStateType.Jumping
 		then
+			_annotate(string.format("seconds of jump in window: %0.0f", secondsOfJumpInWindow))
+			-- remember we only count jumps within the last 3 seconds. So, multiple of them can count.
+			-- but not many.
 			secondsOfJumpInWindow = secondsOfJumpInWindow + 3 - eventAge
 		elseif movementHistoryEvent.eventType == mt.avatarEventTypes.STATE_CHANGED then
 			if
@@ -268,12 +397,11 @@ local adjustSpeed = function()
 			end
 		elseif movementHistoryEvent.eventType == mt.avatarEventTypes.CHARACTER_ADDED then
 			startTimeOnThisTerrain = eventAge
+			-- elseif movementHistoryEvent.eventType == mt.avatarEventTypes.AVATAR_CHANGED_DIRECTION then
+			-- do nothing. Although if we really want to do something interesting, we could use this information.
 		elseif movementHistoryEvent.eventType == mt.avatarEventTypes.RUN_START then
 			startTimeOnThisTerrain = eventAge
-		elseif
-			movementHistoryEvent.eventType == mt.avatarEventTypes.RETOUCH_SIGN
-			or movementHistoryEvent.eventType == mt.avatarEventTypes.TOUCH_SIGN
-		then
+		elseif movementHistoryEvent.eventType == mt.avatarEventTypes.RETOUCH_SIGN then
 			startTimeOnThisTerrain = eventAge
 		else
 			warn("unhandled event type in adjustSpeed: " .. mt.avatarEventTypesReverse[movementHistoryEvent.eventType])
@@ -284,7 +412,18 @@ local adjustSpeed = function()
 
 	------------- RESET TERRAIN SPEEDUP IF YOU STOP -------------------------
 	if not playerIsMoving then
+		_annotate("player is not moving so setting starttime to zero!!!")
 		startTimeOnThisTerrain = 0
+	end
+	if isTouchingNonTerrainRightNow then
+		_annotate("player is not touching terrain right ")
+		-- but we won't punish them if they jump off to continue norma.
+		startTimeOnThisTerrain = 0
+	end
+
+	if startTimeOnThisTerrain == 0 then
+		_annotate("startTimeOnThisTerrain ===> somehow " .. startTimeOnThisTerrain)
+		-- this likely was a bug due to mistakenly not sending some initiating event that allows us to count at least the very beginning of the race as the minimum terrain time?
 	end
 
 	------------- start speeding up immediately, tried 0.6 before and it felt like a bug.
@@ -293,20 +432,79 @@ local adjustSpeed = function()
 
 	------------- VALUES TO CALCULATE BASED ON HISTORY
 	local jumpSpeedMultiplier = 1
+	local currentRunJumpPowerMultiplier = 1
 
 	---------------------- SPEED CALCULATIONS --------------------------
 
 	local speedMultiplerFromRunLength = 1
 	local speedMultiplierFromSameTerrain = 1
-	local timeAfterWhichSpeedupIsntLinear = 11
 
-	------------- speedup goes nonlinear after 11s. This isn't ideal, it'd be better to have it continuously increasing but at a slower and slower rate.
-	if effectiveTimeOnCurrentTerrain < timeAfterWhichSpeedupIsntLinear then
-		speedMultiplierFromSameTerrain = 1 + effectiveTimeOnCurrentTerrain / 120
+	local useProvisionalNewSpeed = false
+	if useProvisionalNewSpeed then
+		---------------PREVIOUS WORLD------------ (AKA movementV2)------------
+		--[[local firstLinearSection = 11
+        local firstLinearSectionDivider = 120
+        
+        if effectiveTimeOnCurrentTerrain < firstLinearSection then
+            speedMultiplierFromSameTerrain = 1 + effectiveTimeOnCurrentTerrain / 120
+        else
+            speedMultiplierFromSameTerrain = 1
+                + firstLinearSection / 120
+                + (math.log(effectiveTimeOnCurrentTerrain) - math.log(firstLinearSection - 7)) / 80
+        end
+        ]]
+
+		--------------NEW WORLD ----------------- AKA gotta beat the glitchers -------------------------
+		local firstLinearSectionEnd = 1.5
+		local firstLinearSectionDivider = 90
+
+		local secondLinearSectionEnd = 4
+		local secondLinearSectionDivider = 95
+
+		local thirdLinearSectionEnd = 7
+		local thirdLinearSectionDivider = 110
+
+		local fourthLinearSectionEnd = 11
+		local fourthLinearSectionDivider = 120
+
+		local fifthLinearSectionEnd = 15
+		local fifthLinearSectionDivider = 150
+
+		---- SO in effect, you are linear for the first 5 sections. The first 4 are categorically speeding you up faster than the previous movementV2 rules.
+		---- The 5th section is linear, but at an even slower rate for N more seconds and then we fall back to the same very bad logarithmic rule.
+		-- now, all this is moderated by how we now calculate speedups MUCH less smoothly. We literally used to calculate it every 1/60th. But now the lastNotifiedSpeed area
+		-- is VERY powerful since it pretty much ignores the "calculated" appropriate speed for the player, and does not apply it, UNTIL a threshold is passed. This seems like it will make
+		-- their speed gain rates look more stair-stepped. Right now the trigger goes continuously for the first part of a long same-terrain run, but from then its visibly emitting green particles
+		-- not sure if that will be useful at elite level. Definitely it will be noticeable.
+
+		local timeInSection1 = math.max(0, math.min(firstLinearSectionEnd, effectiveTimeOnCurrentTerrain))
+		local timeInSection2 = math.max(0, effectiveTimeOnCurrentTerrain - secondLinearSectionEnd)
+		local timeInSection3 = math.max(0, effectiveTimeOnCurrentTerrain - thirdLinearSectionEnd)
+		local timeInSection4 = math.max(0, effectiveTimeOnCurrentTerrain - fourthLinearSectionEnd)
+		local timeInSection5 = math.max(0, effectiveTimeOnCurrentTerrain - fifthLinearSectionEnd)
+		local timeInFinalSection = math.max(0, effectiveTimeOnCurrentTerrain - fifthLinearSectionDivider)
+		local totalGain = timeInSection1 / firstLinearSectionDivider
+			+ timeInSection2 / secondLinearSectionDivider
+			+ timeInSection3 / thirdLinearSectionDivider
+			+ timeInSection4 / fourthLinearSectionDivider
+			+ timeInSection5 / fifthLinearSectionDivider
+
+		print("totalGain is: " .. totalGain)
+		print("totalGain is:")
 	else
-		speedMultiplierFromSameTerrain = 1
-			+ timeAfterWhichSpeedupIsntLinear / 120
-			+ (math.log(effectiveTimeOnCurrentTerrain) - math.log(timeAfterWhichSpeedupIsntLinear - 7)) / 80
+		------------- speedup goes nonlinear after 11s. This isn't ideal, it'd be better to have it continuously increasing but at a slower and slower rate.
+		-- aka the old world, still enabled.-------------
+		local firstLinearSectionEnd = 11
+		local firstLinearSectionDivider = 120
+
+		if effectiveTimeOnCurrentTerrain < firstLinearSectionEnd then
+			speedMultiplierFromSameTerrain = 1 + effectiveTimeOnCurrentTerrain / firstLinearSectionDivider
+		else
+			speedMultiplierFromSameTerrain = 1
+				+ firstLinearSectionEnd / firstLinearSectionDivider --they can only get up to 11s of credit within the first linear section.
+				+ (math.log(effectiveTimeOnCurrentTerrain) - math.log(firstLinearSectionEnd - 7)) / 79
+		end
+		_annotate(string.format("speed multiplier: %0.2f", speedMultiplierFromSameTerrain))
 	end
 
 	----------------- jump power ----------------
@@ -357,11 +555,15 @@ local adjustSpeed = function()
 	end
 
 	----------- JUMP POWER -----------------
+	if activeRunSignName == "Hypergravity" then
+		currentRunJumpPowerMultiplier = 0
+	end
 
 	local newJumpPower = movementEnums.constants.globalDefaultJumpPower
 		* floorJumpPowerMultiplier
 		* lastFloorJumpPowerMultiplier
 		* runJumpPowerMultiplier
+		* currentRunJumpPowerMultiplier
 
 	if isMovementBlockedByWarp then
 		debounceAdjustSpeed = false
@@ -412,16 +614,18 @@ local eventsWeCareAbout = {
 	mt.avatarEventTypes.KEYBOARD_RUN,
 	mt.avatarEventTypes.KEYBOARD_WALK,
 	mt.avatarEventTypes.STATE_CHANGED,
-	-- mt.avatarEventTypes.CHANGE_DIRECTION,
+	-- mt.avatarEventTypes.AVATAR_CHANGED_DIRECTION, -- let's ignore this. it really happens a lot.
 	mt.avatarEventTypes.AVATAR_STARTED_MOVING,
-	-- mt.avatarEventTypes.AVATAR_CHANGED_DIRECTION, --maybe useful later.
 	mt.avatarEventTypes.AVATAR_STOPPED_MOVING,
 
 	mt.avatarEventTypes.RUN_START,
 	mt.avatarEventTypes.RUN_COMPLETE,
-	mt.avatarEventTypes.RUN_KILL,
+	mt.avatarEventTypes.RUN_CANCEL,
 	mt.avatarEventTypes.RETOUCH_SIGN,
 	-- mt.avatarEventTypes.TOUCH_SIGN,
+	-- I *believe* this is right not to include TOUCH_SIGN here.
+	-- The process for management of movement during a run is: the user does something to start a run and we correctly
+	-- evaluate it.  then if they retouch we just clear history again.
 	mt.avatarEventTypes.GET_READY_FOR_WARP,
 	mt.avatarEventTypes.WARP_DONE_RESTART_MOVEMENT,
 }
@@ -510,10 +714,36 @@ local handleAvatarEvent = function(ev: mt.avatarEvent)
 	elseif ev.eventType == mt.avatarEventTypes.RETOUCH_SIGN then
 		------ nuke history, and add a START event from here. ----------
 		if activeRunSignName == "" then
+			warn("retouch while not on a run huh")
 			_annotate("retouch while not on a run huh")
 		end
 		movementEventHistory = {}
-	elseif ev.eventType == mt.avatarEventTypes.RUN_KILL or ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
+		--fix this up so at least the run history makes some kind of sense.
+		table.insert(movementEventHistory, ev)
+		--patch it up with current touching floor, too.
+		-- Add a fake event for the current floor
+		local currentFloorEvent: mt.avatarEvent = {
+			eventType = mt.avatarEventTypes.FLOOR_CHANGED,
+			timestamp = ev.timestamp + 0.001,
+			details = {
+				floorMaterial = humanoid.FloorMaterial,
+			},
+		}
+		table.insert(movementEventHistory, currentFloorEvent)
+		_annotate(string.format("Added fake floor event for current floor: %s", tostring(humanoid.FloorMaterial)))
+
+		-- also I think we should add a fake started moving event here, if they are moving at all. so that if they hit a sign, then stop, then
+		-- retouch or touch, they have their initial state.
+		-- this only matters if they completely don't move after that either; once they do a real movement this will be irrelevant since
+		local mov = humanoid.MoveDirection
+		if mov == Vector3.new(0, 0, 0) then
+			_annotate("fired fake STOP moving event after retouch.")
+			fireEvent(mt.avatarEventTypes.AVATAR_STOPPED_MOVING, {})
+		else
+			_annotate("fired fake START moving event after retouch when allegedly they were moving.")
+			fireEvent(mt.avatarEventTypes.AVATAR_STARTED_MOVING, {})
+		end
+	elseif ev.eventType == mt.avatarEventTypes.RUN_CANCEL or ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
 		if activeRunSignName == "" then
 			_annotate("weird, ended run while not on one. hmmm")
 			_annotate(ev.details.reason)
@@ -563,6 +793,7 @@ module.Init = function()
 	movementEventHistory = {}
 	activeRunSignName = {}
 	debounceAdjustSpeed = false
+	CreateSpeedGui()
 
 	task.spawn(function()
 		while true do

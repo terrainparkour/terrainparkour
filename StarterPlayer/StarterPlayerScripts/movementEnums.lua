@@ -60,7 +60,7 @@ module.GetJumpPowerByFloorMultipler = function(activeFloor): number
 	elseif activeFloor == Enum.Material.CrackedLava then
 		return 1.15
 	elseif activeFloor == Enum.Material.Concrete then
-		return 1
+		return 1.05
 	elseif activeFloor == Enum.Material.Cobblestone then
 		return 1
 	elseif activeFloor == Enum.Material.WoodPlanks then
@@ -74,7 +74,9 @@ module.GetJumpPowerByFloorMultipler = function(activeFloor): number
 	elseif activeFloor == Enum.Material.Glacier or activeFloor == Enum.Material.Ice then
 		return 1
 	elseif activeFloor == Enum.Material.Sand then
-		return 1
+		return 0.96
+	elseif activeFloor == Enum.Material.Mud then
+		return 0.87
 	end
 	return defaultJumpPowerMultiplier
 end
@@ -135,7 +137,7 @@ local EnumIsTerrain = function(mat: Enum.Material?): boolean
 	if terrainEnumSet[mat.Value] ~= nil then
 		return true
 	end
-
+	-- print("material was not terrain: " .. mat.Name)
 	return false
 end
 module.EnumIsTerrain = EnumIsTerrain

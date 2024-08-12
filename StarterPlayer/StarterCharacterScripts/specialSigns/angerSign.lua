@@ -10,7 +10,7 @@ When the player touches the sign for the first time, .Init() is called. In this 
 
 If the player steps on a new floor, SawFloor is called. And then when the run ends (either player dies, cancels, completes it, quits etc) then .Kill() will be called to clean up. The next time they start a run from this sign, the same process will occur, so the methods have to clean up after themselves.
 
-This sign uses more things. runProgressSgui is a singleton which controls the active running sign gui (in the lower left)
+This sign uses more things. activeRunSGui is a singleton which controls the active running sign gui (in the lower left)
 You can send extra strings to it to display more information.
 Obviously I want to be able to do more there, not just text but full UIs etc.
 ]]
@@ -22,7 +22,7 @@ local module = {}
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
-local runProgressSgui = require(game.ReplicatedStorage.gui.runProgressSgui)
+local activeRunSGui = require(game.ReplicatedStorage.gui.activeRunSGui)
 local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
@@ -30,40 +30,48 @@ local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wai
 local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 ----------- GLOBALS -----------
-
-local runOver = true
-local brokenOut = true
+local signId = tpUtil.signName2SignId("🗯")
 local originalTexture
 local lastTerrain: Enum.Material? = nil
+local loopRunning = false
+local killLoop = false
 
 -------------- MAIN --------------
 module.InformRunEnded = function()
 	_annotate("telling sign the run ended.")
-	humanoid.Health = 100
-	local head = character:FindFirstChild("Head")
-	if head then
-		local face: Decal = head:FindFirstChild("face") :: Decal
-		if originalTexture and face and face:IsA("Decal") then
-			face.Texture = originalTexture
+	if loopRunning then
+		killLoop = true
+	end
+	task.spawn(function()
+		while loopRunning do
+			_annotate("wait loop die.")
+			wait(0.1)
 		end
-	end
-	if not runOver then
-		runOver = true
-	end
-	brokenOut = false
-	lastTerrain = nil
-	_annotate("done telling sign the run ended.")
+
+		humanoid.Health = 100
+		local head = character:FindFirstChild("Head")
+		if head then
+			local face: Decal = head:FindFirstChild("face") :: Decal
+			if originalTexture and face and face:IsA("Decal") then
+				face.Texture = originalTexture
+			end
+		end
+
+		lastTerrain = nil
+		_annotate("-------------ENDED----------------")
+	end)
 end
 
 local startDescriptionLoopingUpdate = function()
-	runOver = false
-	runProgressSgui.UpdateExtraRaceDescription("-40 if you hit a new terrain.")
+	activeRunSGui.UpdateExtraRaceDescription("-40 if you hit a new terrain.")
 	task.spawn(function()
 		_annotate("spawning desc updater.")
 		local lastHealthText = ""
+		loopRunning = true
 		while true do
-			if runOver then
-				brokenOut = true
+			if killLoop then
+				loopRunning = false
+				killLoop = false
 				break
 			end
 			local terrainText = lastTerrain and lastTerrain.Name or ""
@@ -73,14 +81,15 @@ local startDescriptionLoopingUpdate = function()
 			local healthText = string.format("\nYour health is: %d%s", humanoid.Health, terrainText)
 			if healthText ~= lastHealthText then
 				lastHealthText = healthText
-				local ok1 = runProgressSgui.UpdateMovementDetails(healthText)
+				local ok1 = activeRunSGui.UpdateMovementDetails(healthText)
 				if not ok1 then
-					runOver = true
-					brokenOut = true
+					module.InformRunEnded()
+					loopRunning = false
+					killLoop = false
 					break
 				end
 			end
-			wait(0.05)
+			wait(1 / 30)
 		end
 		_annotate("update text tight loop. done")
 	end)
@@ -90,13 +99,6 @@ module.InformRunStarting = function()
 	_annotate("init")
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
-	if not brokenOut then
-		runOver = true
-		while not brokenOut do
-			_annotate("wait breakout")
-			wait(0.1)
-		end
-	end
 
 	local head = character:FindFirstChild("Head")
 	if head then
@@ -108,10 +110,13 @@ module.InformRunStarting = function()
 		end
 	end
 
-	runProgressSgui.UpdateExtraRaceDescription("You take 40 damage from switching terrain!")
+	activeRunSGui.UpdateExtraRaceDescription("You take 40 damage from switching terrain!")
 	lastTerrain = nil
 	humanoid.Health = 100
+	assert(not loopRunning, "loop running?")
 	startDescriptionLoopingUpdate()
+	assert(loopRunning, "loop running?")
+	assert(not killLoop, "killLoop running?")
 end
 
 module.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?)
@@ -128,6 +133,7 @@ module.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?)
 		if humanoid.Health <= 40 then
 			local signId = tpUtil.signName2SignId("🗯")
 			humanoid.Health = 100
+			module.InformRunEnded()
 			warper.WarpToSignId(signId)
 			humanoid.Health = 100
 			return
@@ -138,7 +144,7 @@ module.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?)
 			floorMaterial.Name,
 			humanoid.Health
 		)
-		runProgressSgui.UpdateMovementDetails(theText)
+		activeRunSGui.UpdateMovementDetails(theText)
 		_annotate("damage taken")
 	end
 end

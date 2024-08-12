@@ -1197,12 +1197,12 @@ local badges: { [string]: tt.badgeDescriptor } = {
 		badgeClass = badgeClasses.CONTRIBUTION,
 		hint = "",
 	},
-	-- Unused1 = {
-	-- 	name = "A",
-	-- 	assetId = 86721891033161,
-	-- 	badgeClass = badgeClasses.CONTRIBUTION,
-	-- 	hint = "",
-	-- },
+	NinjaParkour = {
+		name = "Ninja Parkour",
+		assetId = 3207146526819510,
+		badgeClass = badgeClasses.META,
+		hint = "",
+	},
 	-- Unused2 = {
 	-- 	name = "B",
 	-- 	assetId = 1882550611928475,
@@ -1226,7 +1226,7 @@ local badges: { [string]: tt.badgeDescriptor } = {
 	-- 	assetId = 2024605262725247,
 	-- 	badgeClass = badgeClasses.CONTRIBUTION,
 	-- 	hint = "",
-	-- },
+	-- }, 403420218226961 1512490259388669 1727264501522954 179125274571469
 }
 
 module.badges = badges

@@ -7,16 +7,16 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
-
+local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
 local colors = require(game.ReplicatedStorage.util.colors)
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
 local marathonStatic = require(game.ReplicatedStorage.marathonStatic)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
-local lbMarathonRowY = 18
+-- local lbMarathonRowY = 18
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
-local marathonTypes = require(game.StarterPlayer.StarterPlayerScripts.marathonTypes)
+-- local marathonTypes = require(game.StarterPlayer.StarterPlayerScripts.marathonTypes)
 local settings = require(game.ReplicatedStorage.settings)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
@@ -49,7 +49,7 @@ local function getMarathonContentFrame(): Frame
 	return pl:FindFirstChild("content_marathons", true)
 end
 
-local function setSize()
+local function setMarathonSize()
 	local marathonContentFrame: Frame = getMarathonContentFrame()
 	if marathonContentFrame == nil then
 		return
@@ -215,7 +215,7 @@ module.InitMarathonVisually = function(desc: marathonTypes.marathonDescriptor)
 		module.InitMarathonVisually(desc)
 	end)
 	resetTile.Parent = thisMarathonFrame
-	setSize()
+	setMarathonSize()
 	--reset marathonContentFrame size.
 end
 
@@ -392,7 +392,7 @@ local disableMarathon = function(desc: marathonTypes.marathonDescriptor)
 	end
 
 	table.remove(joinableMarathonKinds, target)
-	setSize()
+	setMarathonSize()
 	_annotate(string.format("marathon.disabled:%s", desc.kind))
 end
 
@@ -464,15 +464,39 @@ module.Init = function()
 	--blocker to confirm the user has completed warp
 	isMarathonBlockedByWarp = false
 
+	local pgui: PlayerGui = localPlayer:WaitForChild("PlayerGui")
+	local existingMarathonScreenGui = pgui:FindFirstChild("MarathonScreenGui")
+	if existingMarathonScreenGui then
+		existingMarathonScreenGui:Destroy()
+	end
+	local marathonScreenGui: ScreenGui = Instance.new("ScreenGui")
+	marathonScreenGui.Name = "MarathonScreenGui"
+	marathonScreenGui.Parent = pgui
+	marathonScreenGui.IgnoreGuiInset = true
+
+	local marathonFrames = windows.SetupFrame("marathons", true, true, true)
+	local marathonOuterFrame = marathonFrames.outerFrame
+	local marathonContentFrame = marathonFrames.contentFrame
+	marathonOuterFrame.Parent = marathonScreenGui
+	marathonOuterFrame.Size = UDim2.new(0.4, 0, 0.1, 0)
+
+	marathonOuterFrame.Position = UDim2.new(0.6, 0, 0.35, 0)
+	local hh = Instance.new("UIListLayout")
+	hh.Name = "marathons-hh"
+	hh.Parent = marathonContentFrame
+	hh.FillDirection = Enum.FillDirection.Vertical
+	hh.SortOrder = Enum.SortOrder.Name
+	setMarathonSize()
+
 	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
-	settings.RegisterFunctionToListenForDomain(function(item: tt.userSettingValue): any
-		return HandleMarathonSettingsChanged(item)
-	end, settingEnums.settingDomains.MARATHONS)
 
 	for _, userSetting in pairs(settings.getSettingByDomain(settingEnums.settingDomains.MARATHONS)) do
 		HandleMarathonSettingsChanged(userSetting)
 	end
-	setSize()
+
+	settings.RegisterFunctionToListenForDomain(function(item: tt.userSettingValue): any
+		return HandleMarathonSettingsChanged(item)
+	end, settingEnums.settingDomains.MARATHONS)
 end
 
 _annotate("end")

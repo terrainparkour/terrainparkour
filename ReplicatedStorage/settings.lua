@@ -31,6 +31,7 @@ local settingChangeMonitoringFunctions: { [string]: (tt.userSettingValue) -> nil
 local domainSettingChangeMonitoringFunctions: { [string]: (tt.userSettingValue) -> nil } = {}
 
 module.Reset = function()
+	_annotate("RESET settings monitor functions!!")
 	settingChangeMonitoringFunctions = {}
 	domainSettingChangeMonitoringFunctions = {}
 end
@@ -63,9 +64,10 @@ end
 
 -- anyone who wants to be told that a specific setting has changed can register here by saying like:
 -- when this setting changes, call this function.
+-- big problem: I think this can only have one handle listening per setting. Easy to fix, just haven't done it yet. watch out if things are confusing.
 module.RegisterFunctionToListenForSettingName = function(func: (tt.userSettingValue) -> nil, name: string)
 	-- let's make sure we're registering a setting which exists in the enums and things.
-	_annotate(string.format("handle local setting cahgne receivere: %s %s", name, tostring(func)))
+	_annotate(string.format("handle local setting change receivere: %s %s", name, tostring(func)))
 	local exi = false
 	for _, settingName in pairs(settingEnums.settingNames) do
 		if settingName == name then
@@ -90,10 +92,12 @@ end
 
 --also just tell registered scripts this change happened
 local function LocalNotifySettingChange(setting: tt.userSettingValue)
+	_annotate("LocalNotifySettingChange: " .. setting.name .. " " .. tostring(setting.value))
 	for name: string, funcWhichCaresAboutThisSettingChange: (tt.userSettingValue) -> nil in
 		pairs(settingChangeMonitoringFunctions)
 	do
 		if setting.name == name then
+			_annotate("APPLY " .. tostring(name) .. " " .. tostring(funcWhichCaresAboutThisSettingChange))
 			funcWhichCaresAboutThisSettingChange(setting)
 		end
 	end

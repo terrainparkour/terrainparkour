@@ -1,6 +1,6 @@
 --!strict
 
--- userSettings settings lookup on server
+-- userSettings.lua settings storage on server
 
 -- TODO product goals 2022.10
 -- get all settings for user
@@ -27,7 +27,7 @@ local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
 
 local remotes = require(game.ReplicatedStorage.util.remotes)
 
-local getUserSettingsFunction: RemoteFunction = remotes.getRemoteFunction("GetUserSettingsFunction")
+local GetUserSettingsFunction: RemoteFunction = remotes.getRemoteFunction("GetUserSettingsFunction")
 local userSettingsChangedFunction: RemoteFunction = remotes.getRemoteFunction("UserSettingsChangedFunction")
 
 local module = {}
@@ -37,12 +37,18 @@ local userSettingsCache: { [number]: { [string]: tt.userSettingValue } } = {}
 --2022.10
 --note these are filled in and returned to users when the user has no stored value.
 --note "value" means default here.
+-- this is also a lot like just a list of all the general BooleanSettings
 local defaultSettingsValues: { tt.userSettingValue } = {
 	--a real impactful user setting
 	{
 		name = settingEnums.settingNames.HIDE_LEADERBOARD,
 		domain = settingEnums.settingDomains.USERSETTINGS,
 		value = false,
+	},
+	{
+		name = settingEnums.settingNames.SHOW_PARTICLES,
+		domain = settingEnums.settingDomains.USERSETTINGS,
+		value = true,
 	},
 	{
 		name = settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION,
@@ -79,6 +85,77 @@ local defaultSettingsValues: { tt.userSettingValue } = {
 		domain = settingEnums.settingDomains.USERSETTINGS,
 		value = true,
 	},
+	{
+		name = settingEnums.settingNames.LEADERBOARD_ENABLE_PORTRAIT,
+		domain = settingEnums.settingDomains.LEADERBOARD,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.LEADERBOARD_ENABLE_USERNAME,
+		domain = settingEnums.settingDomains.LEADERBOARD,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.LEADERBOARD_ENABLE_AWARDS,
+		domain = settingEnums.settingDomains.LEADERBOARD,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.LEADERBOARD_ENABLE_TIX,
+		domain = settingEnums.settingDomains.LEADERBOARD,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.LEADERBOARD_ENABLE_FINDS,
+		domain = settingEnums.settingDomains.LEADERBOARD,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.LEADERBOARD_ENABLE_FINDRANK,
+		domain = settingEnums.settingDomains.LEADERBOARD,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.LEADERBOARD_ENABLE_WRRANK,
+		domain = settingEnums.settingDomains.LEADERBOARD,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.LEADERBOARD_ENABLE_CWRS,
+		domain = settingEnums.settingDomains.LEADERBOARD,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.LEADERBOARD_ENABLE_WRS,
+		domain = settingEnums.settingDomains.LEADERBOARD,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.LEADERBOARD_ENABLE_CWRTOP10S,
+		domain = settingEnums.settingDomains.LEADERBOARD,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.LEADERBOARD_ENABLE_TOP10S,
+		domain = settingEnums.settingDomains.LEADERBOARD,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.LEADERBOARD_ENABLE_RACES,
+		domain = settingEnums.settingDomains.LEADERBOARD,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.LEADERBOARD_ENABLE_RUNS,
+		domain = settingEnums.settingDomains.LEADERBOARD,
+		value = true,
+	},
+	{
+		name = settingEnums.settingNames.LEADERBOARD_ENABLE_BADGES,
+		domain = settingEnums.settingDomains.LEADERBOARD,
+		value = true,
+	},
+	-- MARATHON SETTINGS
 
 	{ name = "enable alphafree", domain = settingEnums.settingDomains.MARATHONS },
 	{ name = "enable alphaordered", domain = settingEnums.settingDomains.MARATHONS },
@@ -209,6 +286,8 @@ local getUserSettingByName = function(player: Player, settingName: string): tt.u
 	error("missing setting of name " .. settingName)
 end
 
+-- if you get a missing setting for a user, we just store it in server memory. if they CHANGE it, we actually store to dbserver. otherwise
+-- it only exists on the game server. and that's okay?
 local getUserSettingsByDomain = function(player: Player, domain: string): { [string]: tt.userSettingValue }
 	local userSettings = innerSetupSettings(player, "getUserSettingsByDomain " .. domain)
 	local res = {}
@@ -247,6 +326,9 @@ local function userChangedSettingFromUI(userId: number, setting: tt.userSettingV
 		error("empty should not happen")
 	end
 
+	--todo ADD CUSTOMIZER BADGE
+	-- ERROR("ADD BADGE HERE.")
+
 	local res = rdb.updateSettingForUser(userId, setting.value, setting.name, setting.domain)
 	userSettingsCache[userId][setting.name] = setting
 
@@ -268,10 +350,20 @@ local function userChangedSettingFromUI(userId: number, setting: tt.userSettingV
 end
 
 module.Init = function()
-	getUserSettingsFunction.OnServerInvoke = module.getUserSettingsRouter
+	GetUserSettingsFunction.OnServerInvoke = module.getUserSettingsRouter
 
 	userSettingsChangedFunction.OnServerInvoke = function(player: Player, setting: tt.userSettingValue)
 		return userChangedSettingFromUI(player.UserId, setting)
+	end
+
+	-- on startup I should hit the server for each of these that are new at least.
+	for _, setting: tt.userSettingValue in pairs(defaultSettingsValues) do
+		-- hit server for some of them.
+		-- MAGIC this just hits the server, creating all missing settings, if needed.
+		if setting.domain == settingEnums.settingDomains.LEADERBOARD then
+			local data = { domain = setting.domain, name = setting.name }
+			rdb.getOrCreateBooleanSetting(data)
+		end
 	end
 end
 

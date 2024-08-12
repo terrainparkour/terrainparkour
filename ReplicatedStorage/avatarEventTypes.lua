@@ -1,6 +1,14 @@
 --!strict
 
---special luau types for movement.
+-- avatarEventTypes.lua
+-- special luau types for movement.
+
+--[[avatarEventTypes.lua:
+This file defines the avatarEventDetails type and the avatarEventTypes enum.
+The code is well-structured and follows a clear naming convention for the event types.
+The avatarEventDetails type provides a good structure for passing event-specific data.
+The reverse lookup table avatarEventTypesReverse is a useful addition for mapping event numbers back to their string representations.
+Overall, this file serves as a clean and organized central location for defining event types and their associated data structures.]]
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
@@ -35,16 +43,15 @@ local avatarEventTypes: { [string]: number } = {
 	CHARACTER_ADDED = 1, --when the character is added.
 	RUN_START = 2,
 	RUN_COMPLETE = 3,
-	RUN_KILL = 4,
+	RUN_CANCEL = 4,
 	RETOUCH_SIGN = 5,
 	TOUCH_SIGN = 6, --distinct from retouch, end, run_start.
 
-	-- CHANGE_DIRECTION = 6, --this is the roblox property, which contains both the movement vector3 (direction), which also will turn to 0,0,0 if the player totally stops.
 	FLOOR_CHANGED = 7,
 	STATE_CHANGED = 8, --this is where we load all swimming, jumping
 	AVATAR_STOPPED_MOVING = 9, --since change direction is sent way too often when currently all we actually care about is if they have stopped
 	AVATAR_STARTED_MOVING = 10,
-	AVATAR_CHANGED_DIRECTION = 101,
+	-- AVATAR_CHANGED_DIRECTION = 101, -- this works, with some hackery to evaluate the magnitude of the change. But it's not useful yet.
 
 	AVATAR_RESET = 11, -- resetting avatar.
 

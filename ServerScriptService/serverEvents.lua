@@ -14,7 +14,7 @@ local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
 local config = require(game.ReplicatedStorage.config)
 local rdb = require(game.ServerScriptService.rdb)
 local PlayersService = game:GetService("Players")
-local lbupdater = require(game.ServerScriptService.lbupdater)
+local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
 
 local ServerEventRemoteEvent = remotes.getRemoteEvent("ServerEventRemoteEvent")
@@ -100,7 +100,7 @@ local function endServerEvent(serverEvent: tt.runningServerEvent): boolean
 			if not otherStats then
 				continue
 			end
-			lbupdater.updateLeaderboardForServerEventCompletionRun(otherPlayer, otherStats)
+			lbUpdaterServer.updateLeaderboardForServerEventCompletionRun(otherPlayer, otherStats)
 		end
 	end
 	return true

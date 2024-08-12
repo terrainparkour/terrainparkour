@@ -1,5 +1,6 @@
 --!strict
 
+-- leaderboardServer.lua
 -- on join type methods for triggering other players local LBs to update.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
@@ -9,7 +10,7 @@ local PlayerService = game:GetService("Players")
 local colors = require(game.ReplicatedStorage.util.colors)
 local channeldefinitions = require(game.ReplicatedStorage.chat.channeldefinitions)
 local playerdata = require(game.ServerScriptService.playerdata)
-local lbupdater = require(game.ServerScriptService.lbupdater)
+local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local module = {}
@@ -30,7 +31,7 @@ module.RemoveFromLeaderboardImmediate = function(player: Player)
 		if otherPlayer.UserId == player.UserId then
 			continue
 		end
-		lbupdater.sendLeaveInfoToSomeone(otherPlayer, player.UserId)
+		lbUpdaterServer.sendLeaveInfoToSomeone(otherPlayer, player.UserId)
 	end
 end
 
@@ -57,7 +58,7 @@ local function updatePlayerLbAboutAllImmediate(player: Player)
 	for _, otherPlayer: Player in ipairs(PlayerService:GetPlayers()) do
 		local stats: tt.afterData_getStatsByUser =
 			playerdata.getPlayerStatsByUserId(otherPlayer.UserId, "update joiner lb")
-		lbupdater.sendUpdateToPlayer(player, stats)
+		lbUpdaterServer.sendUpdateToPlayer(player, stats)
 		_annotate(string.format("Updating player: %s about %s", player.Name, otherPlayer.Name))
 	end
 end
@@ -81,7 +82,7 @@ local function updateOthersAboutPlayerImmediate(player: Player)
 			continue
 		end
 		_annotate(string.format("Updating %s about player: %s", otherPlayer.Name, player.Name))
-		lbupdater.sendUpdateToPlayer(otherPlayer, stats)
+		lbUpdaterServer.sendUpdateToPlayer(otherPlayer, stats)
 	end
 end
 

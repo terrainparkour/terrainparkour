@@ -6,7 +6,7 @@ local _annotate = annotater.getAnnotater(script)
 local PlayerService = game:GetService("Players")
 --setup sign touch events and also trigger telling user about them.
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local lbupdater = require(game.ServerScriptService.lbupdater)
+local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local enums = require(game.ReplicatedStorage.util.enums)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local notify = require(game.ReplicatedStorage.notify)
@@ -35,7 +35,7 @@ local function doNewFind(player: Player, signId: number, sign: Part)
 			lastFinderUsername = rdb.getUsernameByUserId(res.lastFinderUserId),
 			signName = sign.Name,
 			totalSignsInGame = signInfo.getSignCountInGameForUserConsumption(),
-			userTotalFindCount = res.userTotalFindCount,
+			findCount = res.findCount,
 			signTotalFinds = res.signTotalFinds,
 			findRank = res.findRank,
 		}
@@ -44,7 +44,7 @@ local function doNewFind(player: Player, signId: number, sign: Part)
 
 		--update all players leaderboards.
 		for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
-			lbupdater.updateLeaderboardForFind(otherPlayer, options)
+			lbUpdaterServer.updateLeaderboardForFind(otherPlayer, options)
 		end
 	end)
 end

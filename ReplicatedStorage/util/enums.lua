@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.256"
+module.gameVersion = "1.272"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -563,6 +563,7 @@ local name2signId: { [string]: number } = {
 	["◄"] = 551,
 	["🗯"] = 552,
 	["Gemelo"] = 553,
+	["Cow"] = 554,
 }
 
 --aliases of symbolic signs to their english alias.
@@ -633,39 +634,44 @@ module.ExcludeSignNamesFromEndingAt = {
 
 --random race cannot start from these for preservation of sanctity reasons.
 module.ExcludeSignNamesFromStartingAt = {
+	"007",
+	"65536",
+	"POGGOD",
+	"Chaoskampf",
+	"Nyx",
 	"👻",
-	-- "Gemelo",
+
 	"💀",
 	"👍",
 	"🔥",
 	"Ø",
 	"Chirality",
-	"007",
-	"65536",
-	"POGGOD",
+	"Why",
+	"Troll Bridge", -- the above should likely never be warpable.
+
 	-- "Obelisk",
-	"Troll Bridge",
-	"Helix",
+	-- "Gemelo",
+
+	-- "Helix",
 	-- "Elevator",
-	"Sputnik",
-	"Maobahe",
+	-- "Sputnik",
+	-- "Maobahe",
 	-- "Mauna Loa",
-	"Hosho",
-	"Roblox",
+	-- "Hosho",
+	-- "Roblox",
 	-- "Aorta",
-	"Pretzel",
-	"Beehive",
-	"Pharoah",
-	"Subterranean Temple",
-	"Blanc",
-	"Flint",
-	"Woodingdean",
-	"Chaoskampf",
-	"Nyx",
-	"Lignin",
-	"Mencius",
-	"Ooloi",
-	"Rapunzel",
+	-- "Pretzel",
+	-- "Beehive",
+	-- "Pharoah",
+	-- "Subterranean Temple",
+	-- "Blanc",
+	-- "Flint",
+	-- "Woodingdean",
+
+	-- "Lignin",
+	-- "Mencius",
+	-- "Ooloi",
+	-- "Rapunzel",
 	"Rubble",
 	-- "Olympus",
 	-- "Summit",
@@ -745,9 +751,14 @@ module.signCount = signCount
 local objects = {}
 
 --users
-objects.TerrainParkour = 164062733
-objects.Brouhahaha = 90115385
-objects.terrainparkorffc = 7030441423
+objects.TerrainParkourUserId = 164062733
+objects.BrouhahahaUserId = 90115385
+objects.terrainparkorffcUserId = 7030441423
+objects.ninjaParkourGroupId = 3200785
+objects.TerrainParkourPlaceId = 868107368
+objects.TerrainParkourUniverseId = 360479749
+objects.TerrainParkourDevGamePlaceId = 1
+objects.TerrainParkourDevGameUniverseId = 1
 
 module.objects = objects
 
@@ -851,6 +862,17 @@ Internals
 * Tracking gamejoin versions
 ]],
 	[252] = [[* fix sign profile mouseovers somewhat.]],
+	[257] = [[* leaderboard redos. server fixes. fixed swim bug with flying and i think also with stopping swimming slowdown incorrectly.
+also, some particles. working on fixing them and giving them all meaning, also will bea ble to be turned off
+also fixed small UI bugs with minimize buttons not working totally.
+and I'm working on more stuff soon.]],
+	[258] = [[* fixed a few speedup bugs where you wouldn't accelerate sometimes.
+* reduced particles and made them hopefully more useful. lots of other ideas here including a "random particle sign". But for now really turned them down a lot. I've been thinking that in a way, they are like gears in trackmania. Or could be... see unreleased code.
+* I have some more ideas about this but all that should change here today is fixing things.
+* Some other logical fixes in here too, nothing that should effect runs normally.
+* moved running UI to center and gave it a light background. This UI will likely change and also be more configurable and moveable and controllable, etc in the future for you.]],
+	[261] = [[* actually fix lacking speedups as you run? Also somewhat improve race running UI
+* make speed display continuous rather than only showing up when you are on a run.]],
 }
 
 local SpecialSignDescriptions = {
@@ -861,6 +883,7 @@ local SpecialSignDescriptions = {
 	["Fosbury"] = "High Jump",
 	["Bolt"] = "faast",
 	["Salekhard"] = "slip",
+	["Hypergravity"] = "so heavy",
 	["👻"] = "ghost",
 }
 module.SpecialSignDescriptions = SpecialSignDescriptions

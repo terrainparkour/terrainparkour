@@ -17,12 +17,14 @@ goodScripts = { "warper", "serverWarping", "ghostSign", "morphs", "avatarEventFi
 goodScripts = { "windows", "marathonClient", "marathonStatic", "marathon" }
 goodScripts = { "textHighlighting" }
 goodScripts = { "dynamicServer", "dynamicRunning" }
+goodScripts = { "movement", "avatarEventMonitor", "avatarEventFiring", "avatarManipulation", "particleEnums" }
+goodScripts = { "particleEnums", "avatarEventFiring" }
+goodScripts = { "particleEnums", "movement", "avatarEventMonitor" }
+goodScripts = { "particles", "settings" }
 goodScripts = { "" }
-goodScripts = { "movement", "avatarEventMonitor", "avatarEventFiring", "avatarManipulation" }
--- goodScripts = { "" }
 
 local showAllRegardless = false
-showAllRegardless = true
+-- showAllRegardless = true
 
 local register = function(s: Script | ModuleScript | LocalScript): string
 	if startTick == nil then

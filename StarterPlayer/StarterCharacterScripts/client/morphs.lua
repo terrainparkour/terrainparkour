@@ -27,6 +27,7 @@ local pulseSign = require(game.StarterPlayer.StarterCharacterScripts.specialSign
 local bigSign = require(game.StarterPlayer.StarterCharacterScripts.specialSigns.bigSign)
 local smallSign = require(game.StarterPlayer.StarterCharacterScripts.specialSigns.smallSign)
 local ghostSign = require(game.StarterPlayer.StarterCharacterScripts.specialSigns.ghostSign)
+local cowSign = require(game.StarterPlayer.StarterCharacterScripts.specialSigns.cowSign)
 local avatarManipulation = require(game.StarterPlayer.StarterPlayerScripts.avatarManipulation)
 
 ----------- GLOBALS -----------
@@ -89,13 +90,15 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 	end
 
 	-- ROUTE THESE - WHY NOT HAVE THE SIGN ITSELF MONITOR THE SITUATION?
-	if ev.eventType == mt.avatarEventTypes.RUN_KILL or ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
+	if ev.eventType == mt.avatarEventTypes.RUN_CANCEL or ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
 		_annotate("killing or ending run.")
 		if activeRunSignModule then
 			activeRunSignModule.InformRunEnded()
 		else
 			-- warn("skipping killing in morph without an active run...")
 		end
+
+		--note: among many other places, the fact that the user can arbitrarily send RUN_CANCEL by hitting z at any time makes this confusing!
 		avatarManipulation.ResetPhysicalAvatarMorphs(humanoid, character)
 		avatarManipulation.ResetMomentum(humanoid, character)
 		_annotate("reset momentum1")
@@ -121,6 +124,8 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 			activeRunSignModule = ghostSign
 		elseif ev.details.relatedSignName == "🗯" then
 			activeRunSignModule = angerSign
+		elseif ev.details.relatedSignName == "Cow" then
+			activeRunSignModule = cowSign
 		end
 		if activeRunSignModule then
 			_annotate("initting active module.")

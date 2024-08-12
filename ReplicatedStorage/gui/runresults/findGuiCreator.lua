@@ -58,7 +58,7 @@ module.createFindScreenGui = function(options: tt.signFindOptions): ScreenGui
 	newFindSgui.IgnoreGuiInset = true
 	newFindSgui.Name = "NewFindSgui"
 
-	local detailsMessage = tostring(options.userTotalFindCount) .. "/" .. tostring(options.totalSignsInGame)
+	local detailsMessage = tostring(options.findCount) .. "/" .. tostring(options.totalSignsInGame)
 	local finderMessage = tpUtil.getCardinalEmoji(options.signTotalFinds) .. " finder!"
 
 	local frame = Instance.new("Frame")

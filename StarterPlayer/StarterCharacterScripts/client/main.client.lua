@@ -36,13 +36,13 @@ local mt = require(game.ReplicatedStorage.avatarEventTypes)
 
 ---------- CALL INIT ON ALL THOSE THINGS SINCE THEY'RE STILL LOADED ONLY ONE TIME even if the user resets or dies etc. -----------
 local setup = function()
+	settings.Reset()
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	movement.Init()
 	morphs.Init()
 	particles.Init()
 	notifier.Init()
-	settings.Reset()
 	serverEvents.Init()
 	leaderboard.Init()
 	marathonClient.Init()
@@ -61,6 +61,8 @@ end
 setup()
 
 local resetBindable = Instance.new("BindableEvent")
+
+--this is about the user resetting themself. screwed up, definitely.
 resetBindable.Event:Connect(function()
 	local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 	local fireEvent = avatarEventFiring.FireEvent

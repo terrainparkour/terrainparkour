@@ -14,7 +14,7 @@ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local module = {}
 
 module.GetPopular = function(player: Player, userIds: { number }): { PopularResponseTypes.popularRaceResult }
-	local userIdsInServer: { number } = { 261, tostring(enums.objects.TerrainParkour), -1, -2 }
+	local userIdsInServer: { number } = { 261, tostring(enums.objects.TerrainParkourUserId), -1, -2 }
 	userIdsInServer = {}
 	for _, userId in ipairs(userIds) do
 		table.insert(userIdsInServer, tostring(userId))

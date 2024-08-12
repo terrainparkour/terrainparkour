@@ -1,6 +1,6 @@
 --!strict
 
---very simple
+-- BV very simple
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
@@ -12,7 +12,7 @@ local signInfo = require(game.ReplicatedStorage.signInfo)
 local rdb = require(game.ServerScriptService.rdb)
 local banning = require(game.ServerScriptService.banning)
 local raceCompleteData = require(game.ServerScriptService.raceCompleteData)
-local lbupdater = require(game.ServerScriptService.lbupdater)
+local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 
@@ -83,13 +83,13 @@ local function receiveClientMessageAboutRunEnding(
 			top10s = userFinishedRunResponse.userTotalTop10Count,
 			races = userFinishedRunResponse.userTotalRaceCount,
 			runs = userFinishedRunResponse.userTotalRunCount,
-			userCompetitiveWRCount = userFinishedRunResponse.userCompetitiveWRCount,
-			userTotalWRCount = userFinishedRunResponse.userTotalWRCount,
+			cwrs = userFinishedRunResponse.cwrs,
+			wrCount = userFinishedRunResponse.wrCount,
 			awardCount = userFinishedRunResponse.awardCount,
 		}
 
 		for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
-			lbupdater.updateLeaderboardForRun(otherPlayer, lbRunUpdate)
+			lbUpdaterServer.updateLeaderboardForRun(otherPlayer, lbRunUpdate)
 		end
 	end)
 

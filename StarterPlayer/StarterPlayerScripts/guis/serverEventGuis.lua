@@ -1,8 +1,11 @@
 --!strict
 
---drawers for serverEvent rows of LB
+--serverEventGuis.lua static in StarterPlayer
+--drawers for serverEvent rows
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
+
+local module = {}
 
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
@@ -16,19 +19,16 @@ local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
 
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 
-local module = {}
-
-module.replServerEvent = function(serverEvent: tt.runningServerEvent): string
+local replServerEvent = function(serverEvent: tt.runningServerEvent): string
 	local from = tpUtil.signId2signName(serverEvent.startSignId)
 	local to = tpUtil.signId2signName(serverEvent.endSignId)
 	return from .. " - " .. to .. " with " .. tostring(#serverEvent.userBests) .. " runners"
 end
 
---just re-get the outer lbframe by name.
-local function getLbServerEventFrame(initial: boolean?): Frame | nil
-	_annotate("getLbServerEventFrame")
-	-- wait(1) --TODO remove and fix.
-	--TODO 2024 commented out the wait.
+-- the only thing called in Init?
+local function getServerEventContentsFrame(initial: boolean?): Frame | nil
+	_annotate("getServerEventFrame")
+
 	local playerGui = localPlayer:WaitForChild("PlayerGui")
 	local serverEventContents: Frame = playerGui:FindFirstChild("content_serverEvents", true)
 	if serverEventContents == nil then
@@ -45,11 +45,6 @@ local function getLbServerEventFrame(initial: boolean?): Frame | nil
 	local height = serverEventEnums.serverEventRowHeight * #runningEventFrames
 	_annotate("set size to: " .. tostring(height))
 
-	-- if #runningEventFrames == 0 then
-	-- 	serverEventContents.Parent.Visible = false
-	-- else
-	-- 	serverEventContents.Parent.Visible = true
-	-- end
 	if #runningEvents > 0 then
 		local targetSize = 1 / #runningEventFrames
 		for _, event: Frame in pairs(runningEventFrames) do
@@ -292,54 +287,54 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 end
 
 module.updateEventVisually = function(serverEvent: tt.runningServerEvent, userId: number)
-	local lbServerEventFrame = getLbServerEventFrame()
+	local serverEventContentsFrame = getServerEventContentsFrame()
 
-	while lbServerEventFrame == nil do
+	while serverEventContentsFrame == nil do
 		wait(1)
 		_annotate("waited on SEF.")
 	end
 	while true do
-		lbServerEventFrame = getLbServerEventFrame()
-		if lbServerEventFrame ~= nil then
+		serverEventContentsFrame = getServerEventContentsFrame()
+		if serverEventContentsFrame ~= nil then
 			break
 		end
 		_annotate("wait. in update event visually")
 		task.wait(0.1)
 	end
-	_annotate("update" .. module.replServerEvent(serverEvent))
-	if lbServerEventFrame == nil then
+	_annotate("update" .. replServerEvent(serverEvent))
+	if serverEventContentsFrame == nil then
 		error("zx")
 	end
-	local lbServerEventRowName = determineServerEventRowName(serverEvent)
+	local serverEventRowName = determineServerEventRowName(serverEvent)
 
-	local exi: Frame = lbServerEventFrame:FindFirstChild(lbServerEventRowName, true)
+	local exi: Frame = serverEventContentsFrame:FindFirstChild(serverEventRowName, true)
 	if exi then
 		exi:Destroy()
 	end
 
 	exi = makeNewServerEventRow(serverEvent, userId)
-	exi.Parent = lbServerEventFrame
-	getLbServerEventFrame()
+	exi.Parent = serverEventContentsFrame
+	getServerEventContentsFrame()
 end
 
 module.endEventVisually = function(serverEvent: tt.runningServerEvent)
-	_annotate("ending" .. module.replServerEvent(serverEvent))
-	local lb = getLbServerEventFrame()
-	local lbServerEventRowName = determineServerEventRowName(serverEvent)
-	local exi = lb:FindFirstChild(lbServerEventRowName)
+	_annotate("ending" .. replServerEvent(serverEvent))
+	local serverEventContentsFrame = getServerEventContentsFrame()
+	local serverEventRowName = determineServerEventRowName(serverEvent)
+	local exi = serverEventContentsFrame:FindFirstChild(serverEventRowName)
 	if exi then
 		exi:Destroy()
 	else
 		-- warn("no serverEvent to descroy. hmm.")
 	end
-	getLbServerEventFrame()
+	getServerEventContentsFrame()
 end
 
 -- remotes.getBindableEvent("ServerEventLocalClientWarpBindableEvent")
 _annotate("end")
 
 module.Init = function()
-	getLbServerEventFrame(true)
+	getServerEventContentsFrame(true)
 end
 
 return module

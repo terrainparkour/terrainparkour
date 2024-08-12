@@ -5,7 +5,7 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local lbupdater = require(game.ServerScriptService.lbupdater)
+local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local PlayerService = game:GetService("Players")
@@ -19,7 +19,7 @@ module.updateBadgeLb = function(player: Player, userIdToInformThemAbout: number,
 		local bstats: tt.badgeUpdate =
 			{ kind = "badge update", userId = userIdToInformThemAbout, badgeCount = badgecount }
 		_annotate("Updating " .. player.UserId .. " about badges from: " .. userIdToInformThemAbout)
-		lbupdater.updateLeaderboardBadgeStats(player, bstats)
+		lbUpdaterServer.updateLeaderboardBadgeStats(player, bstats)
 	end)
 end
 

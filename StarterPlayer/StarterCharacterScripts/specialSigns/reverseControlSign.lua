@@ -11,7 +11,7 @@ local module = {}
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
-local runProgressSgui = require(game.ReplicatedStorage.gui.runProgressSgui)
+local activeRunSGui = require(game.ReplicatedStorage.gui.activeRunSGui)
 local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer

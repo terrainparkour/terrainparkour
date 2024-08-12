@@ -106,7 +106,7 @@ module.wrs = function(speaker: Player, channel): boolean
 	end
 	local function getter(userId: number): any
 		local data2 = playerdata.getPlayerStatsByUserId(userId, "wrs_command")
-		return { rank = data.wrRank, count = data2.userTotalWRCount }
+		return { rank = data.wrRank, count = data2.wrCount }
 	end
 	local res = text.generateTextForRankedList(data.res, playersInServer, speaker.UserId, getter)
 	for _, el in ipairs(res) do
@@ -715,7 +715,7 @@ end
 module.popular = function(speaker: Player, channel): boolean
 	--for testing, fake it like these people are also in the server.
 
-	local userIdsInServer = { -2, enums.objects.TerrainParkour }
+	local userIdsInServer = { -2, enums.objects.TerrainParkourUserId }
 	userIdsInServer = {}
 	for _, player in ipairs(PlayersService:GetPlayers()) do
 		table.insert(userIdsInServer, player.UserId)
@@ -766,7 +766,7 @@ module.finders = function(speaker: Player, channel): boolean
 	end
 	local function getter(userId: number): any
 		local data: tt.afterData_getStatsByUser = playerdata.getPlayerStatsByUserId(userId, "finders_command")
-		return { rank = data.findRank, count = data.userTotalFindCount }
+		return { rank = data.findRank, count = data.findCount }
 	end
 	local res = text.generateTextForRankedList(data.res, playersInServer, speaker.UserId, getter)
 	for _, el in ipairs(res) do

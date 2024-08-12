@@ -219,7 +219,7 @@ local function handleAvatarEvent(event: mt.avatarEvent)
 		event.eventType == mt.avatarEventTypes.AVATAR_DIED
 		or event.eventType == mt.avatarEventTypes.GET_READY_FOR_WARP
 		or event.eventType == mt.avatarEventTypes.RUN_COMPLETE
-		or event.eventType == mt.avatarEventTypes.RUN_KILL
+		or event.eventType == mt.avatarEventTypes.RUN_CANCEL
 	then
 		module.KillAllExistingHighlights()
 	end

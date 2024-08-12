@@ -18,18 +18,24 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local module = {}
-local tt = require(game.ReplicatedStorage.types.gametypes)
-local settings = require(game.ReplicatedStorage.settings)
-local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
-local leaderboardButtons = require(game.StarterPlayer.StarterPlayerScripts.buttons.leaderboardButtons)
-local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 
+--TYPE
+local tt = require(game.ReplicatedStorage.types.gametypes)
+
+--UTIL
+local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+
+local settings = require(game.ReplicatedStorage.settings)
 local enums = require(game.ReplicatedStorage.util.enums)
+
 local colors = require(game.ReplicatedStorage.util.colors)
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 
 local remotes = require(game.ReplicatedStorage.util.remotes)
+
+local leaderboardButtons = require(game.StarterPlayer.StarterPlayerScripts.buttons.leaderboardButtons)
 
 local marathonClient = require(game.StarterPlayer.StarterCharacterScripts.client.marathonClient)
 local localRdb = require(game.ReplicatedStorage.localRdb)
@@ -41,7 +47,7 @@ local TweenService = game:GetService("TweenService")
 
 -------------------EVENTS ---------------------
 -- we setup the event, but what if upstream playerjoinfunc is called first?
-local leaderboardUpdateEvent = remotes.getRemoteEvent("LeaderboardUpdateEvent")
+local LeaderboardUpdateEvent = remotes.getRemoteEvent("LeaderboardUpdateEvent")
 
 ----------------- TYPES ---------------------
 
@@ -52,7 +58,7 @@ type LeaderboardUserData = { [number]: genericLeaderboardUpdateDataType }
 
 local lbUserData: LeaderboardUserData = {}
 
-export type lbUserCell = {
+export type lbUserCellDescriptor = {
 	name: string,
 	num: number,
 	widthScaleImportance: number,
@@ -60,7 +66,7 @@ export type lbUserCell = {
 	tooltip: string,
 }
 
-local lbUserCellDescriptors: { [string]: lbUserCell } = {
+local lbUserCellDescriptors: { [string]: lbUserCellDescriptor } = {
 	portrait = { name = "portrait", num = 1, widthScaleImportance = 14, userFacingName = "portrait", tooltip = "" },
 	username = { name = "username", num = 3, widthScaleImportance = 25, userFacingName = "username", tooltip = "" },
 	awardCount = {
@@ -77,8 +83,8 @@ local lbUserCellDescriptors: { [string]: lbUserCell } = {
 		userFacingName = "tix",
 		tooltip = "",
 	},
-	userTotalFindCount = {
-		name = "userTotalFindCount",
+	findCount = {
+		name = "findCount",
 		num = 9,
 		widthScaleImportance = 10,
 		userFacingName = "finds",
@@ -88,21 +94,35 @@ local lbUserCellDescriptors: { [string]: lbUserCell } = {
 		name = "findRank",
 		num = 11,
 		widthScaleImportance = 8,
-		userFacingName = "rank",
+		userFacingName = "find rank",
 		tooltip = "",
 	},
-	userCompetitiveWRCount = {
-		name = "userCompetitiveWRCount",
+	cwrs = {
+		name = "cwrs",
 		num = 13,
 		widthScaleImportance = 12,
 		userFacingName = "cwrs",
 		tooltip = "",
 	},
-	userTotalWRCount = {
-		name = "userTotalWRCount",
+	cwrtop10s = {
+		name = "cwrtop10s",
+		num = 14,
+		widthScaleImportance = 11,
+		userFacingName = "cwr top10s",
+		tooltip = "",
+	},
+	wrCount = {
+		name = "wrCount",
 		num = 15,
 		widthScaleImportance = 10,
 		userFacingName = "wrs",
+		tooltip = "",
+	},
+	wrRank = {
+		name = "wrRank",
+		num = 16,
+		widthScaleImportance = 8,
+		userFacingName = "wr rank",
 		tooltip = "",
 	},
 	top10s = {
@@ -151,24 +171,31 @@ local lbUserRowFrame: Frame? = nil
 local lbIsEnabled: boolean = true
 
 -- the initial width and height scales.
-local initialWidthScale = 0.45
-local initialHeightScale = 0.11
+local initialWidthScale = 0.40
+local initialHeightScale = 0.08
 local headerRowYOffsetFixed = 24
 -- local headerRowShrinkFactor = 0.6
+
+local enabledDescriptors: { [string]: boolean } = {}
+
+-- this will block things like adding rows.
+local loadedSettings = false
 
 ------------------FUNCTIONS--------------
 local function calculateCellWidths(): { [string]: number }
 	local totalWidthWeightScale = 0
-	for _, lbUserCellDescriptor in pairs(lbUserCellDescriptors) do
-		totalWidthWeightScale += lbUserCellDescriptor.widthScaleImportance
-	end
-
 	local cellWidths: { [string]: number } = {}
 	for _, lbUserCellDescriptor in pairs(lbUserCellDescriptors) do
-		local widthYScale = lbUserCellDescriptor.widthScaleImportance / totalWidthWeightScale
-		cellWidths[lbUserCellDescriptor.name] = widthYScale
+		if enabledDescriptors[lbUserCellDescriptor.name] then
+			totalWidthWeightScale += lbUserCellDescriptor.widthScaleImportance
+		end
 	end
-
+	for _, lbUserCellDescriptor in pairs(lbUserCellDescriptors) do
+		if enabledDescriptors[lbUserCellDescriptor.name] then
+			cellWidths[lbUserCellDescriptor.name] = lbUserCellDescriptor.widthScaleImportance / totalWidthWeightScale
+		end
+	end
+	_annotate(cellWidths)
 	return cellWidths
 end
 
@@ -188,7 +215,10 @@ local function makeLeaderboardHeaderRow(): Frame
 
 	local cellWidths = calculateCellWidths()
 
-	for _, lbUserCellDescriptor: lbUserCell in pairs(lbUserCellDescriptors) do
+	for _, lbUserCellDescriptor: lbUserCellDescriptor in pairs(lbUserCellDescriptors) do
+		if not enabledDescriptors[lbUserCellDescriptor.name] then
+			continue
+		end
 		local myWidthScale = cellWidths[lbUserCellDescriptor.name]
 
 		local el = guiUtil.getTl(
@@ -227,6 +257,10 @@ end
 --important to use all lbUserCellParams here to make the row complete
 --even if an update comes before the loading of full stats.
 
+local function getNameForDescriptor(descriptor: lbUserCellDescriptor): string
+	return string.format("%02d.cell.%s", descriptor.num, descriptor.name)
+end
+
 local deb = false
 local function createRowForUser(userId: number, username: string): Frame?
 	if deb then
@@ -250,7 +284,7 @@ local function createRowForUser(userId: number, username: string): Frame?
 	end
 
 	local userTixCount: number = userDataFromCache.userTix :: number
-	local rowName = string.format("%s_A_PlayerRow_%s", tostring(bignum - userTixCount), username)
+	local rowName = string.format("%s_PlayerRow_%s", tostring(bignum - userTixCount), username)
 	userRowFrame.Name = rowName
 	-- local rowYScale = 1 / (playerRowCount + 2) -- +1 for header, +1 for new row
 	-- rowFrame.Size = UDim2.fromScale(1, rowYScale)
@@ -270,14 +304,19 @@ local function createRowForUser(userId: number, username: string): Frame?
 
 	local cellWidths = calculateCellWidths()
 
-	for _, lbUserCellDescriptor: lbUserCell in pairs(lbUserCellDescriptors) do
+	for _, lbUserCellDescriptor: lbUserCellDescriptor in pairs(lbUserCellDescriptors) do
+		if not enabledDescriptors[lbUserCellDescriptor.name] then
+			_annotate('skipping adding col: "' .. lbUserCellDescriptor.name .. '"')
+			continue
+		end
+		_annotate("adding col: " .. lbUserCellDescriptor.name)
 		local widthYScale = cellWidths[lbUserCellDescriptor.name]
 
 		if lbUserCellDescriptor.name == "portrait" then
 			local portraitCell = Instance.new("Frame")
 			portraitCell.Size = UDim2.fromScale(widthYScale, 1)
 			portraitCell.BackgroundTransparency = 1
-			portraitCell.Name = string.format("%02d.%s", lbUserCellDescriptor.num, lbUserCellDescriptor.name)
+			portraitCell.Name = getNameForDescriptor(lbUserCellDescriptor)
 			portraitCell.Parent = userRowFrame
 
 			local img = Instance.new("ImageLabel")
@@ -326,21 +365,20 @@ local function createRowForUser(userId: number, username: string): Frame?
 				avatarImages.Visible = false
 			end)
 		else --it's a textlabel whatever we're generating anyway.
-			local tl = guiUtil.getTl(
-				string.format("%02d.value", lbUserCellDescriptor.num),
-				UDim2.fromScale(widthYScale, 1),
-				2,
-				userRowFrame,
-				bgcolor,
-				1,
-				0
-			)
+			local cellName = getNameForDescriptor(lbUserCellDescriptor)
+			local tl: TextLabel =
+				guiUtil.getTl(cellName, UDim2.fromScale(widthYScale, 1), 2, userRowFrame, bgcolor, 1, 0)
 
 			--find text for value.
 			if lbUserCellDescriptor.name == "findRank" then
 				local foundRank = userDataFromCache.findRank
 				if foundRank ~= nil then
 					tl.Text = tpUtil.getCardinalEmoji(foundRank)
+				end
+			elseif lbUserCellDescriptor.name == "wrRank" then
+				local wrRank = userDataFromCache.wrRank
+				if wrRank ~= nil then
+					tl.Text = tpUtil.getCardinalEmoji(wrRank)
 				end
 			elseif lbUserCellDescriptor.name == "username" then
 				tl.Text = username
@@ -360,17 +398,24 @@ local function createRowForUser(userId: number, username: string): Frame?
 end
 
 local comdeb = false
-local function completelyResetUserLB()
+local function completelyResetUserLB(forceResize: boolean)
 	if comdeb then
 		return
 	end
 	comdeb = true
-	_annotate("completely reset? lb")
+	_annotate(string.format("completely reset? lb, forceResize: %s", tostring(forceResize)))
 	--make initial row only. then as things happen (people join, or updates come in, apply them in-place)
 	local pgui: PlayerGui = localPlayer:WaitForChild("PlayerGui")
 
-	local oldLbSgui: ScreenGui? = pgui:FindFirstChild("LeaderboardScreenGui") :: ScreenGui?
+	local oldLbSgui: ScreenGui = pgui:FindFirstChild("LeaderboardScreenGui") :: ScreenGui?
+	local oldSize
+	local oldPosition
 	if oldLbSgui ~= nil then
+		local old: Frame = oldLbSgui:FindFirstChild("outer_lb")
+		if old then
+			oldSize = old.Size
+			oldPosition = old.Position
+		end
 		oldLbSgui:Destroy()
 	end
 
@@ -395,8 +440,21 @@ local function completelyResetUserLB()
 	local lbOuterFrame = lbSystemFrames.outerFrame
 	local lbContentFrame = lbSystemFrames.contentFrame
 
-	lbOuterFrame.Position = UDim2.fromScale(1 - initialWidthScale, 0)
-	lbOuterFrame.Size = UDim2.new(initialWidthScale, 0, initialHeightScale, 0)
+	if forceResize then
+		_annotate("forced resize of LB.")
+		lbOuterFrame.Size = UDim2.new(initialWidthScale, 0, initialHeightScale, 0)
+		lbOuterFrame.Position = UDim2.fromScale(1 - initialWidthScale, 0)
+	else
+		if oldSize then
+			_annotate("using old size: " .. tostring(oldSize))
+			lbOuterFrame.Size = oldSize
+			lbOuterFrame.Position = oldPosition
+		else
+			_annotate("tried to not erset size but there was no old size loaded?")
+			lbOuterFrame.Size = UDim2.new(initialWidthScale, 0, initialHeightScale, 0)
+			lbOuterFrame.Position = UDim2.fromScale(1 - initialWidthScale, 0)
+		end
+	end
 	lbOuterFrame.Parent = lbSgui
 
 	local headerRow = makeLeaderboardHeaderRow()
@@ -419,43 +477,6 @@ local function completelyResetUserLB()
 	leaderboardNameSorter.Parent = lbUserRowFrame
 	leaderboardButtons.initActionButtons(lbOuterFrame)
 	playerRowCount = 0
-
-	local serverEventsSystemFrames = windows.SetupFrame("serverEvents", true, true, true)
-	local serverEventsOuterFrame = serverEventsSystemFrames.outerFrame
-	local serverEventsContentFrame = serverEventsSystemFrames.contentFrame
-	local serverEventTitle = Instance.new("TextLabel")
-	serverEventTitle.Text = "Server Events"
-	serverEventTitle.Parent = serverEventsContentFrame
-	serverEventTitle.Size = UDim2.new(1, 0, 0, 12)
-	serverEventTitle.TextScaled = true
-	serverEventTitle.Name = "0ServerEventTitle"
-	serverEventTitle.Font = Enum.Font.Gotham
-
-	serverEventTitle.Position = UDim2.new(0, 0, 0, 0)
-	serverEventTitle.BackgroundColor3 = colors.defaultGrey
-	serverEventsOuterFrame.Parent = lbSgui
-	serverEventsOuterFrame.Size = UDim2.new(0.15, 0, 0.08, 0)
-	serverEventsOuterFrame.Position = UDim2.new(0.8, 0, 0.2, 0)
-
-	serverEventsContentFrame.BorderMode = Enum.BorderMode.Inset
-
-	local vv = Instance.new("UIListLayout")
-	vv.Name = "serverEventContents-vv"
-	vv.Parent = serverEventsContentFrame
-	vv.FillDirection = Enum.FillDirection.Vertical
-
-	local marathonFrames = windows.SetupFrame("marathons", true, true, true)
-	local marathonOuterFrame = marathonFrames.outerFrame
-	local marathonContentFrame = marathonFrames.contentFrame
-	marathonOuterFrame.Parent = lbSgui
-	marathonOuterFrame.Size = UDim2.new(0.4, 0, 0.1, 0)
-	marathonOuterFrame.Position = UDim2.new(0.6, 0, 0.35, 0)
-
-	local hh = Instance.new("UIListLayout")
-	hh.Name = "marathons-hh"
-	hh.Parent = marathonContentFrame
-	hh.FillDirection = Enum.FillDirection.Vertical
-	hh.SortOrder = Enum.SortOrder.Name
 
 	if #userId2rowframe > 0 then
 		_annotate("resetting but userId2rowframe not empty?")
@@ -517,6 +538,10 @@ end
 -- store the data in-memory.
 local debounceUpdateUserLeaderboardRow = {}
 local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataType): ()
+	while not loadedSettings do
+		wait(0.1)
+		_annotate("waiting for settings to load for updateUserLeaderboardRow")
+	end
 	while debounceUpdateUserLeaderboardRow[userData.userId] do
 		_annotate(string.format("waiting for user %s to finish receiving their lb update", userData.userId))
 		wait(0.1)
@@ -527,10 +552,10 @@ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataTy
 		return
 	end
 	local subjectUserId = userData.userId
-	local receivedUserData = ""
-	for a, b in pairs(userData) do
-		receivedUserData = receivedUserData .. string.format("\t%s=%s ", tostring(a), tostring(b))
-	end
+	-- local receivedUserData = ""
+	-- for a, b in pairs(userData) do
+	-- 	receivedUserData = receivedUserData .. string.format("\t%s=%s ", tostring(a), tostring(b))
+	-- end
 	-- 2_annotate(string.format("got info about: %s: %s", tostring(subjectUserId), receivedUserData))
 
 	--check if this client's user has any lbframe.
@@ -542,7 +567,7 @@ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataTy
 
 	if lbUserRowFrame == nil then
 		--2_annotate("compoletely reset them cause no lbframe.")
-		completelyResetUserLB()
+		completelyResetUserLB(false)
 	end
 
 	--first check if there is anything worthwhile to draw - anything changed.
@@ -591,13 +616,36 @@ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataTy
 
 	for _, change: tt.leaderboardUserDataChange in pairs(userDataChanges) do
 		-- find the userCellDescriptor corresponding to it.
+		-- we just hide these always.
+		if change.key == "kind" or change.key == "userId" or change.key == "totalSignCount" then
+			continue
+		end
 
-		local descriptor = nil
-		for _, lbUserCellDescriptor in pairs(lbUserCellDescriptors) do
-			if lbUserCellDescriptor.name == change.key then
-				descriptor = lbUserCellDescriptor
-				break
-			end
+		local ovt = change.oldValue and tostring(change.oldValue) or ""
+		_annotate(
+			string.format(
+				"trying to update lb for change %s %s=>%s",
+				tostring(change.key),
+				tostring(ovt),
+				tostring(change.newValue)
+			)
+		)
+		if enabledDescriptors[change.key] == nil then
+			_annotate("missing descriptor status at all for received change for: " .. tostring(change.key))
+			return
+		end
+
+		if not enabledDescriptors[change.key] then
+			_annotate("showing this is not enabled for this user.")
+			break
+		end
+
+		local descriptor = lbUserCellDescriptors[change.key]
+		if not descriptor then
+			-- this can be okay. for example, we also return values such as "kind" of the update, and "userId" in the row value.
+			-- those don't all need to be shown.
+			_annotate("werror, this descriptor should not be missing. " .. change.key)
+			continue
 		end
 
 		--if we receive a tix update, update rowframe. This is because we order by tix count.
@@ -608,16 +656,14 @@ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataTy
 			userRowFrame.Name = newName
 		end
 
-		--if no descriptor, quit. effectively the same as name doesn't appear in: updateUserLbRowKeys
-		--note: this can happen because lbupdates have full BE stats in them, not all of which we render into LB
-		if descriptor == nil then
-			--2_annotate("we don't have a descriptor for: " .. change.key)
-			continue
-		end
-		--2_annotate("applying data about: " .. change.key)
-		local targetName = string.format("%02d.value", descriptor.num)
+		local targetName = getNameForDescriptor(descriptor)
 		--it's important this targetname matches via interpolatino
 		local oldTextLabelParent: TextLabel = userRowFrame:FindFirstChild(targetName) :: TextLabel
+		if oldTextLabelParent == nil then
+			-- this user isn't displaying that data.
+			-- still, we have stored it so if they re-enable it we are good.
+			continue
+		end
 		local oldTextLabel: TextLabel = oldTextLabelParent:FindFirstChild("Inner")
 
 		if oldTextLabel == nil then
@@ -737,6 +783,10 @@ end
 --First keyed to receive data about a userId. But later overloading data to just be blobs  of things of specific types to display in leaderboard.
 local receiveDataDebouncer = false
 module.ClientReceiveNewLeaderboardData = function(lbUpdateData: genericLeaderboardUpdateDataType)
+	while not loadedSettings do
+		_annotate("waiting for user's leaderboard settings to load.")
+		wait(0.1)
+	end
 	if receiveDataDebouncer then
 		wait(0.1)
 	end
@@ -770,21 +820,65 @@ end
 --note there is an init call here so user settings _will_ show up here and we should
 --be careful not to mistakenly reinit LB needlessly.
 local function handleUserSettingChanged(setting: tt.userSettingValue, initial: boolean)
+	while not initial and not loadedSettings do
+		wait(0.1)
+		_annotate("waiting for settings to load for updateUserLeaderboardRow")
+	end
 	if setting.name == settingEnums.settingNames.HIDE_LEADERBOARD and not initial then
 		if setting.value then
 			lbIsEnabled = false
 			marathonClient.CloseAllMarathons()
-			completelyResetUserLB()
+			completelyResetUserLB(true)
 		else
 			lbIsEnabled = true
-			completelyResetUserLB()
+			completelyResetUserLB(true)
 			marathonClient.Init()
 		end
+	end
+
+	if setting.domain == settingEnums.settingDomains.LEADERBOARD then
+		if setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_PORTRAIT then
+			enabledDescriptors["portrait"] = setting.value
+		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_USERNAME then
+			enabledDescriptors["username"] = setting.value
+		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_AWARDS then
+			enabledDescriptors["awardCount"] = setting.value
+		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_TIX then
+			enabledDescriptors["userTix"] = setting.value
+		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_FINDS then
+			enabledDescriptors["findCount"] = setting.value
+		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_FINDRANK then
+			enabledDescriptors["findRank"] = setting.value
+		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_WRRANK then
+			enabledDescriptors["wrRank"] = setting.value
+		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_WRS then
+			enabledDescriptors["wrCount"] = setting.value
+		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_CWRS then
+			enabledDescriptors["cwrs"] = setting.value
+		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_CWRTOP10S then
+			enabledDescriptors["cwrtop10s"] = setting.value
+		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_TOP10S then
+			enabledDescriptors["top10s"] = setting.value
+		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_RACES then
+			enabledDescriptors["races"] = setting.value
+		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_RUNS then
+			enabledDescriptors["runs"] = setting.value
+		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_BADGES then
+			enabledDescriptors["badgeCount"] = setting.value
+		else
+			warn("unknown leaderboard setting: " .. tostring(setting.name))
+		end
+	end
+	_annotate(string.format("accepted setting: %s=%s", tostring(setting.name), tostring(setting.value)))
+	if not initial then
+		_annotate("completely resetting userLB cause setting changed")
+		completelyResetUserLB(false)
 	end
 end
 
 module.Init = function()
-	localPlayer = Players.LocalPlayer
+	loadedSettings = false
+	enabledDescriptors = {}
 	playerRowCount = 0
 	--the user-focused rowFrames go here.
 	userId2rowframe = {}
@@ -792,13 +886,34 @@ module.Init = function()
 	lbUserRowFrame = nil
 	lbIsEnabled = true
 
+	localPlayer = Players.LocalPlayer
+
+	-- load initial default userSetting values.
+
+	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingNames.HIDE_LEADERBOARD), true)
+
+	for _, userSetting in pairs(settings.getSettingByDomain(settingEnums.settingDomains.LEADERBOARD)) do
+		handleUserSettingChanged(userSetting, true)
+	end
+
+	-- all column settings are loaded so we can draw the LB.
+
+	--initial load at game start.
+	completelyResetUserLB(true)
+	loadedSettings = true
+	-- now we hook up to listen to user data events
+	LeaderboardUpdateEvent.OnClientEvent:Connect(function(data)
+		module.ClientReceiveNewLeaderboardData(data)
+	end)
+
+	-- now we listen for subsequent setting changes.
 	settings.RegisterFunctionToListenForSettingName(function(item: tt.userSettingValue): any
 		return handleUserSettingChanged(item, false)
 	end, settingEnums.settingNames.HIDE_LEADERBOARD)
-	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingNames.HIDE_LEADERBOARD), true)
-	leaderboardUpdateEvent.OnClientEvent:Connect(function(data)
-		module.ClientReceiveNewLeaderboardData(data)
-	end)
+
+	settings.RegisterFunctionToListenForDomain(function(item: tt.userSettingValue): any
+		return handleUserSettingChanged(item, false)
+	end, settingEnums.settingDomains.LEADERBOARD)
 end
 
 _annotate("end")

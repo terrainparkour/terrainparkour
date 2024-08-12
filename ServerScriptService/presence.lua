@@ -4,7 +4,7 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local leaderboardEvents = require(game.ServerScriptService.leaderboardEvents)
+local leaderboardServer = require(game.ServerScriptService.leaderboardServer)
 local leaderboardBadgeEvents = require(game.ServerScriptService.leaderboardBadgeEvents)
 local playerMonitoring = require(game.ServerScriptService.playerStateMonitoringFuncs)
 local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
@@ -47,15 +47,15 @@ module.Init = function()
 	table.insert(playerAddFuncs, { func = playerMonitoring.LogLocationOnDeath, name = "logLocationOnDeath" })
 	table.insert(
 		playerAddFuncs,
-		{ func = leaderboardEvents.UpdateOthersAboutJoinerLb, name = "UpdateOthersAboutJoinerLb" }
+		{ func = leaderboardServer.UpdateOthersAboutJoinerLb, name = "UpdateOthersAboutJoinerLb" }
 	)
-	table.insert(playerAddFuncs, { func = leaderboardEvents.SetPlayerToReceiveUpdates, name = "UpdateOwnLeaderboard" })
+	table.insert(playerAddFuncs, { func = leaderboardServer.SetPlayerToReceiveUpdates, name = "UpdateOwnLeaderboard" })
 	table.insert(
 		playerAddFuncs,
 		{ func = leaderboardBadgeEvents.TellPlayerAboutAllOthersBadges, name = "TellAllAboutMeBadges" }
 	)
 	table.insert(playerAddFuncs, { func = leaderboardBadgeEvents.TellMeAboutOBadges, name = "TellMeAboutOBadges" })
-	table.insert(playerAddFuncs, { func = leaderboardEvents.PostJoinToRacersImmediate, name = "PostJoinToRacers" })
+	table.insert(playerAddFuncs, { func = leaderboardServer.PostJoinToRacersImmediate, name = "PostJoinToRacers" })
 
 	PlayersService.PlayerAdded:Connect(applyPlayerAddFuncs)
 
@@ -69,11 +69,11 @@ module.Init = function()
 	table.insert(playerRemovingFuncs, { func = playerMonitoring.LogPlayerLeft, name = "LogPlayerLeft" })
 	table.insert(
 		playerRemovingFuncs,
-		{ func = leaderboardEvents.RemoveFromLeaderboardImmediate, name = "RemoveFromLeaderboard" }
+		{ func = leaderboardServer.RemoveFromLeaderboardImmediate, name = "RemoveFromLeaderboard" }
 	)
 	table.insert(
 		playerRemovingFuncs,
-		{ func = leaderboardEvents.PostLeaveToRacersImmediate, name = "PostLeaveToRacers" }
+		{ func = leaderboardServer.PostLeaveToRacersImmediate, name = "PostLeaveToRacers" }
 	)
 
 	PlayersService.PlayerRemoving:Connect(applyPlayerRemovingFuncs)

@@ -6,7 +6,7 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local notify = require(game.ReplicatedStorage.notify)
-local lbupdater = require(game.ServerScriptService.lbupdater)
+local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local mt = require(game.ServerScriptService.EphemeralMarathons.ephemeralMarathonTypes)
 local PlayerService = game:GetService("Players")
 
@@ -80,7 +80,7 @@ local serverInvokeEphemeralMarathonComplete = function(player: Player, marathonI
 
 	--TODO fix this to update their marathon display.
 	for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
-		lbupdater.updateLeaderboardForEphemeralMarathon(otherPlayer, run)
+		lbUpdaterServer.updateLeaderboardForEphemeralMarathon(otherPlayer, run)
 	end
 end
 

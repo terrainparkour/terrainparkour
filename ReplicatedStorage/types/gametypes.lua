@@ -13,7 +13,7 @@ export type signFindOptions = {
 	lastFinderUsername: string,
 	signName: string,
 	totalSignsInGame: number,
-	userTotalFindCount: number,
+	findCount: number,
 	signTotalFinds: number,
 	findRank: number,
 }
@@ -27,7 +27,7 @@ export type pyUserFoundSign = {
 	success: string,
 	created: boolean,
 	actionResults: { actionResult },
-	userTotalFindCount: number,
+	findCount: number,
 	findRank: number,
 	signTotalFinds: number,
 	totalSignsInGame: number,
@@ -76,8 +76,8 @@ export type pyUserFinishedRunResponse = {
 	userTotalRaceCount: number,
 	userTotalRunCount: number,
 	userMarathonRunCount: number,
-	userCompetitiveWRCount: number,
-	userTotalWRCount: number,
+	cwrs: number,
+	wrCount: number,
 	totalRunsOfThisRaceCount: number,
 	userTix: number,
 	userTotalTop10Count: number,
@@ -86,7 +86,7 @@ export type pyUserFinishedRunResponse = {
 	totalRacersOfThisRaceCount: number,
 
 	userRaceRunCount: number,
-	userTotalFindCount: number,
+	findCount: number,
 
 	--for display options
 	raceName: string,
@@ -155,13 +155,14 @@ export type afterData_getStatsByUser = {
 	kind: string,
 	userId: number,
 	runs: number,
-	userTotalFindCount: number,
+	findCount: number,
 	findRank: number,
 	top10s: number,
+	cwrtop10s: number,
 	races: number,
 	userTix: number,
-	userCompetitiveWRCount: number,
-	userTotalWRCount: number,
+	cwrs: number,
+	wrCount: number,
 	wrRank: number,
 	totalSignCount: number,
 	awardCount: number,
@@ -176,8 +177,8 @@ export type lbUpdateFromRun = {
 	top10s: number,
 	races: number,
 	runs: number,
-	userCompetitiveWRCount: number,
-	userTotalWRCount: number,
+	cwrs: number,
+	wrCount: number,
 	awardCount: number,
 }
 
@@ -188,15 +189,15 @@ export type lbUserStats = {
 	top10s: number,
 	races: number,
 	runs: number,
-	userCompetitiveWRCount: number,
-	userTotalWRCount: number,
+	cwrs: number,
+	wrCount: number,
 	awardCount: number,
 }
 
 export type lbUpdateFromFind = {
 	kind: string,
 	userId: number,
-	userTotalFindCount: number,
+	findCount: number,
 	userTix: number,
 	findRank: number,
 }
@@ -223,7 +224,11 @@ export type badgeOptions = {
 	userId: number,
 }
 
+-- note that these don't have the user on them.
+-- thats' because we are typically in a situaiton where we both know the user,
+-- this also enables us to have userSettings.lua on the server which just stores them all plus defaults
 export type userSettingValue = { name: string, domain: string, value: boolean? }
+
 export type userSettingValuesWithDistributions = { name: string, domain: string, value: boolean?, percentage: number }
 
 --for the left side of a sign popup.
@@ -348,6 +353,39 @@ export type serverWarpRequest = {
 	signId: number?,
 	highlightSignId: number?,
 	position: Vector3?,
+}
+
+--------------- PARTICLES -------------
+-- each one has a specific use case, and the other particle aspects to it.
+export type particleDescriptor = {
+	acceleration: Vector3,
+	brightness: number,
+	color: ColorSequence | Color3,
+	direction: Enum.NormalId,
+	drag: number,
+	durationMETA: number,
+	emissionDirection: Enum.NormalId,
+	-- duration: number,
+	-- falloff: number,
+	lifetime: NumberRange,
+	name: string,
+	orientation: Enum.ParticleOrientation,
+	rate: number,
+	rotation: NumberRange,
+	rotSpeed: NumberRange,
+	shape: Enum.ParticleEmitterShape?,
+	-- shapeColor: Color3?,
+	shapeInOut: Enum.ParticleEmitterShapeInOut?,
+	shapeStyle: Enum.ParticleEmitterShapeStyle?,
+	size: NumberSequence,
+	speed: NumberRange,
+	spreadAngle: Vector2,
+	squash: NumberSequence?,
+	texture: string?,
+	transparency: NumberSequence,
+	velocityInheritance: number,
+	zOffset: number,
+	lightEmission: number,
 }
 
 _annotate("end")

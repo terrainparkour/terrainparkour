@@ -40,7 +40,7 @@ end
 
 --if hardcoded admin user, allow the command.
 local function CheckInternalAdminCmd(speaker, message)
-	if speaker.UserId == enums.objects.TerrainParkour or speaker.UserId == -1 or speaker.UserId == -2 then
+	if speaker.UserId == enums.objects.TerrainParkourUserId or speaker.UserId == -1 or speaker.UserId == -2 then
 		local parts = textUtil.stringSplit(message, " ")
 
 		local cmd: string = parts[1]

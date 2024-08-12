@@ -114,11 +114,14 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 		elseif inputObject.KeyCode == Enum.KeyCode.X then
 			KillPopups()
 		elseif inputObject.KeyCode == Enum.KeyCode.Z then
-			fireEvent(mt.avatarEventTypes.RUN_KILL, { reason = "hit c on keyboard" })
+			-- strangely, this key used to do a lot, even when you weren't running.
+			-- because basically it kills the movementHistory store in movement, which can have effects on the player
+			-- even when not running!
+			fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "hit z on keyboard" })
 		elseif inputObject.KeyCode == Enum.KeyCode.K then
 			keyboardShortcutButton.CreateShortcutGui()
-		elseif inputObject.KeyCode == Enum.KeyCode.P then
-			particleExplanationGui.CreateParticleGui()
+			-- elseif inputObject.KeyCode == Enum.KeyCode.P then
+			-- 	particleExplanationGui.CreateParticleGui()
 		end
 	end
 end

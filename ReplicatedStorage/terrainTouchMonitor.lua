@@ -10,7 +10,7 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
-local runProgressSgui = require(game.ReplicatedStorage.gui.runProgressSgui)
+local activeRunSGui = require(game.ReplicatedStorage.gui.activeRunSGui)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 
 local PlayersService = game:GetService("Players")
@@ -59,7 +59,7 @@ module.initTracking = function(signName: string)
 	_annotate(string.format("initTracking: %s", signName))
 end
 
-module.GetSeenTerrainTypesThisRun = function(): number
+module.GetSeenTerrainTypesCountThisRun = function(): number
 	return seenFloorCount
 end
 
@@ -110,7 +110,7 @@ module.CountNewFloorMaterial = function(fm: Enum.Material?)
 
 		local listOfSeenTerrains = textUtil.stringJoin(", ", t)
 
-		runProgressSgui.UpdateMovementDetails(listOfSeenTerrains)
+		activeRunSGui.UpdateMovementDetails(listOfSeenTerrains)
 	elseif currentRunSignName == "cOld mOld on a sLate pLate" then
 		local t: { string } = {}
 		for a, b in pairs(movementEnums.AllTerrainNames) do
@@ -122,28 +122,28 @@ module.CountNewFloorMaterial = function(fm: Enum.Material?)
 		table.sort(t)
 		local remainingTouchables = textUtil.stringJoin(", ", t)
 		local remainingTouchableTerrains = string.format("Remaining: %s", remainingTouchables)
-		runProgressSgui.UpdateMovementDetails(remainingTouchableTerrains)
+		activeRunSGui.UpdateMovementDetails(remainingTouchableTerrains)
 	end
 
 	-------- KILLING RUN IF NECESSARY--------------
 	if currentRunSignName == "cOld mOld on a sLate pLate" then
 		for k, num in pairs(timesSeenTerrainFloorTypeCounts) do
 			if num > 1 then
-				fireEvent(mt.avatarEventTypes.RUN_KILL, { reason = "cold violation" })
+				fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "cold violation" })
 				break
 			end
 		end
 	elseif currentRunSignName == "Keep Off the Grass" then
 		if fm == Enum.Material.LeafyGrass or fm == Enum.Material.Grass then
-			fireEvent(mt.avatarEventTypes.RUN_KILL, { reason = "Keep off the grass terrainTouch" })
+			fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "Keep off the grass terrainTouch" })
 		end
 	elseif currentRunSignName == "Triple" then
 		if seenFloorCount > 3 then
-			fireEvent(mt.avatarEventTypes.RUN_KILL, { reason = "triple terrainTouch" })
+			fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "triple terrainTouch" })
 		end
 	elseif currentRunSignName == "Quadruple" then
 		if seenFloorCount > 4 then
-			fireEvent(mt.avatarEventTypes.RUN_KILL, { reason = "quadruple terrainTouch" })
+			fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "quadruple terrainTouch" })
 		end
 	end
 end

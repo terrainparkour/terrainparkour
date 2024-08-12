@@ -91,7 +91,7 @@ module.FireEvent = function(avatarEventType: number, details: mt.avatarEventDeta
 	elseif actualEv.eventType == mt.avatarEventTypes.MARATHON_RESTARTED then
 		local duration = actualEv.timestamp - lastWarpStart
 		lastWarpStart = nil
-		warn(string.format("warp delay duration in this situation: %0.5f", duration))
+		_annotate(string.format("warp delay duration in this situation: %0.5f", duration))
 	end
 
 	_annotate(string.format("Firing: %s", module.DescribeEvent(avatarEventType, details)))

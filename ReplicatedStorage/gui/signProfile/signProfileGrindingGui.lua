@@ -1,6 +1,7 @@
 --!strict
 
--- signProfileSticky Grinding menu creation.
+-- signProfileGrindingGui
+-- Grinding menu creation.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
@@ -20,14 +21,10 @@ local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 
 --------------- FUNCTIONS -------------------------
 
-local function getMouseoverableButtonToFaceAndHighlightSign(
-	startSignId: number,
-	num: number,
-	rr: tt.relatedRace
-): TextButton | nil
+local function getIndividualGrindButton(startSignId: number, num: number, rr: tt.relatedRace): TextButton | nil
 	local name = string.format("%d GrindUIButtonTo %s", num, rr.signName)
 	local button = guiUtil.getTb(name, UDim2.new(0, 95, 0, 30), 1, nil, colors.lightBlue, 1)
-	-- button.Size = UDim2.new(0, 95, 0, 30)
+
 	button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
 	button.BorderSizePixel = 1
 	button.BorderColor3 = Color3.fromRGB(100, 100, 100)
@@ -58,26 +55,24 @@ local function getMouseoverableButtonToFaceAndHighlightSign(
 end
 
 -- make the permanent popup. for now just show tiles.
-module.MakeSignProfileStickyGui = function(startSignId: number, sourceName: string, guys: { tt.relatedRace }): Frame
-	local d = windows.SetupFrame("signProfileSticky", true, true, true)
+module.MakeSignProfileGrindingGui = function(startSignId: number, sourceName: string, guys: { tt.relatedRace }): Frame
+	local d = windows.SetupFrame("signProfileGrinding", true, true, true)
 	local outerFrame = d.outerFrame
 	local contentFrame = d.contentFrame
 
-	outerFrame.Size = UDim2.new(0, 120, 0.4, 0)
+	outerFrame.Size = UDim2.new(0, 103, 0.4, 0)
 	outerFrame.BackgroundColor3 = colors.defaultGrey
-	outerFrame.Position = UDim2.new(0.1, 0, 0.1, 0)
+	outerFrame.Position = UDim2.new(0, 0, 0.1, 0)
 	outerFrame.BackgroundTransparency = 0
 
-	local hh = Instance.new("UIListLayout")
-	hh.Wraps = true
-	hh.Parent = contentFrame
-	hh.FillDirection = Enum.FillDirection.Horizontal
-	hh.HorizontalAlignment = Enum.HorizontalAlignment.Left
-	hh.SortOrder = Enum.SortOrder.LayoutOrder
-	hh.Parent = contentFrame
-	hh.VerticalAlignment = Enum.VerticalAlignment.Top
-	hh.Padding = UDim.new(0, 5)
-	hh.Wraps = true
+	local vv = Instance.new("UIListLayout")
+	vv.Parent = contentFrame
+	vv.FillDirection = Enum.FillDirection.Vertical
+	vv.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	vv.VerticalAlignment = Enum.VerticalAlignment.Top
+	vv.Padding = UDim.new(0, 0)
+	vv.Wraps = false
+	vv.Name = "vv"
 
 	local titleRow = Instance.new("Frame")
 	titleRow.Name = "01_GrindUITitleRowFrame"
@@ -93,44 +88,71 @@ module.MakeSignProfileStickyGui = function(startSignId: number, sourceName: stri
 	titleTextLabel.Parent = titleRow
 	titleTextLabel.TextScaled = true
 
-	local count = 0
-	-- local rrcount = #guys
-	-- local heightPerYScale = 1 / rrcount
-	local innerContentFrame = Instance.new("Frame")
-	innerContentFrame.Size = UDim2.new(1, 0, 1, -48)
-	innerContentFrame.BackgroundColor3 = colors.defaultGrey
-	innerContentFrame.Parent = contentFrame
-	innerContentFrame.Name = "02_GrindUIInnerContentFrame"
+	local scrollFrame = Instance.new("ScrollingFrame")
+	scrollFrame.Name = "03_ScrollingFrame"
+	scrollFrame.Size = UDim2.new(1, 0, 1, -78)
+	scrollFrame.Position = UDim2.new(0, 0, 0, 0)
+	scrollFrame.BackgroundTransparency = 1
+	scrollFrame.BorderSizePixel = 0
+	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- Set initial canvas size to 0
+	scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y -- Automatically size canvas vertically
+	scrollFrame.ScrollBarThickness = 2
+	scrollFrame.Parent = contentFrame
 
-	local vv = Instance.new("UIListLayout")
-	vv.Parent = innerContentFrame
-	vv.FillDirection = Enum.FillDirection.Vertical
-	vv.HorizontalAlignment = Enum.HorizontalAlignment.Left
-	vv.VerticalAlignment = Enum.VerticalAlignment.Top
-	vv.Padding = UDim.new(0, 5)
-	vv.Wraps = true
-	vv.Name = "02_GrindUIInnerContentFrame_UIListLayout"
+	-- Add close button at the bottom
+	local closeButton = Instance.new("TextButton")
+	closeButton.Name = "04_CloseButton"
+	closeButton.Size = UDim2.new(1, 0, 0, 30)
+	closeButton.Position = UDim2.new(0, 0, 1, -30)
+	closeButton.BackgroundColor3 = Color3.new(0.87, 0.3, 0.3)
+	closeButton.BorderSizePixel = 0
+	closeButton.Text = "Close"
+	closeButton.TextColor3 = Color3.new(1, 1, 1)
+	closeButton.TextScaled = true
+	closeButton.Parent = contentFrame
+
+	closeButton.Activated:Connect(function()
+		outerFrame:Destroy()
+	end)
+
+	local scrollFrameContent = Instance.new("Frame")
+	scrollFrameContent.Size = UDim2.new(1, 0, 1, 0)
+	scrollFrameContent.BackgroundColor3 = colors.defaultGrey
+	scrollFrameContent.Parent = scrollFrame
+	scrollFrameContent.Name = "02_GrindUIInnerContentFrame"
+	local vv2 = Instance.new("UIListLayout")
+	vv2.Parent = scrollFrameContent
+	vv2.FillDirection = Enum.FillDirection.Vertical
+	vv2.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	vv2.VerticalAlignment = Enum.VerticalAlignment.Top
+	vv2.Padding = UDim.new(0, 3)
+	vv2.SortOrder = Enum.SortOrder.LayoutOrder
+	vv2.Wraps = true
+	vv2.Name = "vv2"
 
 	local ii = 0
+	local buttons = {}
 	for _, rr in ipairs(guys) do
 		local sign = tpUtil.signId2Sign(rr.signId)
 		if not sign then
 			continue
 		end
 
-		local button = getMouseoverableButtonToFaceAndHighlightSign(startSignId, ii, rr)
+		local button = getIndividualGrindButton(startSignId, ii, rr)
 		if button then
-			button.Parent = innerContentFrame
-			count += 1
+			table.insert(buttons, button)
+			button.Parent = scrollFrameContent
+			ii += 1
 		end
-		ii += 1
 	end
 
-	local tb = guiUtil.getTb("ZZZCloseButton", UDim2.new(0, 95, 0, 30), 2, innerContentFrame, colors.redStop, 1, 0)
-	tb.Text = "Close"
-	tb.Activated:Connect(function()
-		outerFrame:Destroy()
-	end)
+	local sz = math.min((ii * 30), 300)
+	outerFrame.Size = UDim2.new(0, 101, 0, sz + 84)
+	scrollFrame.Size = UDim2.new(1, 0, 1, -78)
+	scrollFrame.CanvasSize = UDim2.new(1, 0, 0, sz) -- Adjust canvas size based on number of items
+	-- scrollFrame.ScrollingEnabled = true
+	scrollFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+
 	return outerFrame
 end
 

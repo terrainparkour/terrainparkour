@@ -7,7 +7,7 @@ local rdb = require(game.ServerScriptService.rdb)
 local notify = require(game.ReplicatedStorage.notify)
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local lbupdater = require(game.ServerScriptService.lbupdater)
+local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local PlayerService = game:GetService("Players")
 
 local grantBadge = require(game.ServerScriptService.grantBadge)
@@ -44,7 +44,7 @@ local serverInvokeMarathonComplete = function(
 	notify.notifyPlayerAboutMarathonResults(player, pyUserFinishedRunResponse)
 
 	for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
-		lbupdater.updateLeaderboardForMarathon(otherPlayer, pyUserFinishedRunResponse)
+		lbUpdaterServer.updateLeaderboardForMarathon(otherPlayer, pyUserFinishedRunResponse)
 	end
 end
 

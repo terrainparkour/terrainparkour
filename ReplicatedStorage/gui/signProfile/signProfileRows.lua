@@ -10,7 +10,7 @@ local module = {}
 local emojis = require(game.ReplicatedStorage.enums.emojis)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local signProfileStickyGui = require(game.ReplicatedStorage.gui.signProfile.signProfileStickyGui)
+local signProfileGrindingGui = require(game.ReplicatedStorage.gui.signProfile.signProfileGrindingGui)
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
 
@@ -38,9 +38,7 @@ export type signProfileChipType = {
     ]]
 --
 local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
-local signGrindUIScreenGui: ScreenGui = Instance.new("ScreenGui")
-signGrindUIScreenGui.Name = "AsignGrindUIScreenGui"
-signGrindUIScreenGui.Parent = playerGui
+local signGrindUIScreenGui: ScreenGui = nil
 
 -- for a list of relationships, creates a nice row.
 local createPlacementRowForSetOfRaces = function(
@@ -105,8 +103,17 @@ local createPlacementRowForSetOfRaces = function(
 					table.insert(fakeRrs, tehFake)
 				end
 				local subwindowTitle = string.format("Grinding %s %s from %s", term, sourceContext, sourceSignName)
-				local s = signProfileStickyGui.MakeSignProfileStickyGui(startSignId, subwindowTitle, fakeRrs)
-				signGrindUIScreenGui.IgnoreGuiInset = true
+				local s = signProfileGrindingGui.MakeSignProfileGrindingGui(startSignId, subwindowTitle, fakeRrs)
+				signGrindUIScreenGui = playerGui:FindFirstChild("SignGrindUIScreenGui")
+
+				if not signGrindUIScreenGui then
+					signGrindUIScreenGui = Instance.new("ScreenGui")
+					signGrindUIScreenGui.Name = "SignGrindUIScreenGui"
+					signGrindUIScreenGui.Parent = playerGui
+					signGrindUIScreenGui.IgnoreGuiInset = true
+				end
+				signGrindUIScreenGui.Enabled = true
+
 				s.Parent = signGrindUIScreenGui
 			end)
 		end
@@ -131,8 +138,16 @@ local createPlacementRowForSetOfRaces = function(
 	if unruns and #unruns > 0 then
 		clicker.Activated:Connect(function()
 			local subwindowTitle = string.format("Grinding Unrun %s from %s", sourceContext, sourceSignName)
-			local s = signProfileStickyGui.MakeSignProfileStickyGui(startSignId, subwindowTitle, unruns)
-			signGrindUIScreenGui.IgnoreGuiInset = true
+			local s = signProfileGrindingGui.MakeSignProfileGrindingGui(startSignId, subwindowTitle, unruns)
+			signGrindUIScreenGui = playerGui:FindFirstChild("SignGrindUIScreenGui")
+
+			if not signGrindUIScreenGui then
+				signGrindUIScreenGui = Instance.new("ScreenGui")
+				signGrindUIScreenGui.Name = "SignGrindUIScreenGui"
+				signGrindUIScreenGui.Parent = playerGui
+				signGrindUIScreenGui.IgnoreGuiInset = true
+			end
+			signGrindUIScreenGui.Enabled = true
 			s.Parent = signGrindUIScreenGui
 		end)
 	end
@@ -179,8 +194,8 @@ local signProfileCRWRowMaker = function(data: tt.playerSignProfileData): { tt.si
 	return placementChips
 end
 
-local dist = 0
 local signProfileDistanceRowMaker = function(data: tt.playerSignProfileData): { tt.signProfileChipType }
+	local dist = 0
 	local res: { tt.signProfileChipType } = {}
 	for _, rel in ipairs(data.relationships) do
 		dist += rel.runCount * rel.dist

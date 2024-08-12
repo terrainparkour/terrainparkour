@@ -78,24 +78,20 @@ end
 local function getProgressForStatsKindAndNumber(el: tt.badgeDescriptor, stats: tt.afterData_getStatsByUser): number
 	if el.badgeClass == "top10s" then
 		return math.min(stats.top10s, el.baseNumber)
-	end
-	if el.badgeClass == "tix" then
+	elseif el.badgeClass == "tix" then
 		return math.min(stats.userTix, el.baseNumber)
-	end
-	if el.badgeClass == "finds" then
-		return math.min(stats.userTotalFindCount, el.baseNumber)
-	end
-	if el.badgeClass == "wrs" then
-		return math.min(stats.userTotalWRCount, el.baseNumber)
-	end
-	if el.badgeClass == "cwrs" then
-		return math.min(stats.userCompetitiveWRCount, el.baseNumber)
-	end
-	if el.badgeClass == "races" then
+	elseif el.badgeClass == "finds" then
+		return math.min(stats.findCount, el.baseNumber)
+	elseif el.badgeClass == "wrs" then
+		return math.min(stats.wrCount, el.baseNumber)
+	elseif el.badgeClass == "cwrs" then
+		return math.min(stats.cwrs, el.baseNumber)
+	elseif el.badgeClass == "races" then
 		return math.min(stats.races, el.baseNumber)
-	end
-	if el.badgeClass == "runs" then
+	elseif el.badgeClass == "runs" then
 		return math.min(stats.runs, el.baseNumber)
+	elseif el.badgeClass == "cwrtop10s" then
+		return math.min(stats.cwrtop10s, el.baseNumber)
 	end
 	warn("fail badgeClass progress lookup.")
 	return 0

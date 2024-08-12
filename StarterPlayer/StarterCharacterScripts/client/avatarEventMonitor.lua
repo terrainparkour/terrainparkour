@@ -42,7 +42,7 @@ local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
 local nextTouchLegalityMustBeGreaterThan = 0
 local bufferTimeAfterRunUntilYouCanTouchASignAgain = 0.8
 local lastMaterial = humanoid.FloorMaterial
-local oldMoveDirection = Vector3.new(0, 0, 0)
+local lastEvaluatedMoveDirection = Vector3.new(1.2324532, -29034, 24390)
 
 ------------------- EVENTS --------------------------
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
@@ -117,7 +117,7 @@ module.Init = function()
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
-	oldMoveDirection = Vector3.new(0, 0, 0)
+	lastEvaluatedMoveDirection = Vector3.new(1.2324532, -29034, 24390)
 	nextTouchLegalityMustBeGreaterThan = 0
 	bufferTimeAfterRunUntilYouCanTouchASignAgain = 0.8
 	lastMaterial = humanoid.FloorMaterial
@@ -264,32 +264,46 @@ module.Init = function()
 	-- even if the user intended to move forward. This property is useful for detecting changes in the character's movement, such as starting or stopping,
 	-- as well as changes in direction, which can be used to trigger events or animations in the game.
 
-	local verySmallNubmer = 1 / 10000000
+	local verySmallNumber = 0.00001
 
 	-- so we allow you to move arouind quite a bit without aactually sending a start/stop. cause even the most
 	-- minute bump can trigger a change.
 	humanoid:GetPropertyChangedSignal("MoveDirection"):Connect(function()
 		local currentMoveDirection = humanoid.MoveDirection
-		if currentMoveDirection ~= oldMoveDirection then
-			local gap = currentMoveDirection - oldMoveDirection
-			print(gap.Magnitude)
-			print(gap)
-			if
-				math.abs(gap.X) < verySmallNubmer
-				and math.abs(gap.Y) < verySmallNubmer
-				and math.abs(gap.Z) < verySmallNubmer
-			then
+		if currentMoveDirection ~= lastEvaluatedMoveDirection then
+			--if they have fully stopped, take that seriously.
+			if currentMoveDirection == Vector3.new(0, 0, 0) then
+				fireEvent(mt.avatarEventTypes.AVATAR_STOPPED_MOVING, {})
+				lastEvaluatedMoveDirection = currentMoveDirection
 				return
 			end
 
-			if currentMoveDirection == Vector3.new(0, 0, 0) then
-				fireEvent(mt.avatarEventTypes.AVATAR_STOPPED_MOVING, {})
-			elseif oldMoveDirection == Vector3.new(0, 0, 0) then
+			local gap = currentMoveDirection - lastEvaluatedMoveDirection
+			if gap.Magnitude < verySmallNumber then
+				_annotate("not evaluating this movement direction change.")
+				-- note we do NOT update lastEvaluatedMoveDirection here, because we
+				-- want to let it accumulate changes, such that if they never tip the threshold,
+				-- we never trigger, and so then also never lose them.
+				return
+			end
+
+			-- _annotate(string.format("accepted this divergence since the mag was: %0.9f", gap.Magnitude))
+			-- print(currentMoveDirection)
+			-- print(lastEvaluatedMoveDirection)
+			-- print(gap)
+			-- okay the change was big enough.
+			-- now we just check:
+			lastEvaluatedMoveDirection = currentMoveDirection
+
+			-- okay so even if the player stops, the last considered move direction will apparently never get to zero.
+			-- even when if you print it out you get 0,0,0.
+			if gap.Magnitude > 0.9999 then
+				_annotate("so firing START")
 				fireEvent(mt.avatarEventTypes.AVATAR_STARTED_MOVING, {})
 			else
-				fireEvent(mt.avatarEventTypes.AVATAR_CHANGED_DIRECTION, {})
+				-- _annotate("so firing CHANGED")
+				-- fireEvent(mt.avatarEventTypes.AVATAR_CHANGED_DIRECTION, {})
 			end
-			oldMoveDirection = currentMoveDirection
 		end
 	end)
 
