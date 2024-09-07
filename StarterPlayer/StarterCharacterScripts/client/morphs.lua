@@ -100,8 +100,6 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 
 		--note: among many other places, the fact that the user can arbitrarily send RUN_CANCEL by hitting z at any time makes this confusing!
 		avatarManipulation.ResetPhysicalAvatarMorphs(humanoid, character)
-		avatarManipulation.ResetMomentum(humanoid, character)
-		_annotate("reset momentum1")
 		activeRunSignModule = nil
 	elseif ev.eventType == mt.avatarEventTypes.RUN_START then
 		if activeRunSignModule then
@@ -112,8 +110,6 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 			activeRunSignModule.InformRunEnded()
 		end
 		activeRunSignModule = nil
-		avatarManipulation.ResetMomentum(humanoid, character)
-		_annotate("reset momentum")
 		if ev.details.relatedSignName == "Pulse" then
 			activeRunSignModule = pulseSign
 		elseif ev.details.relatedSignName == "Big" then
@@ -138,6 +134,15 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 			_annotate("Telling acitve module about floor.")
 			activeRunSignModule.InformSawFloorDuringRunFrom(ev.details.floorMaterial)
 		end
+	end
+
+	if 
+		ev.eventType == mt.avatarEventTypes.RUN_START
+		or ev.eventType == mt.avatarEventTypes.RUN_CANCEL
+		or ev.eventType == mt.avatarEventTypes.RUN_COMPLETE
+		or ev.eventType == mt.avatarEventTypes.RETOUCH_SIGN
+	then
+		avatarManipulation.ResetAbnormalMomentum(humanoid, character)
 	end
 	debouncHandleAvatarEvent = false
 end
