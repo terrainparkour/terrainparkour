@@ -140,7 +140,7 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 		ev.eventType == mt.avatarEventTypes.RUN_START
 		or ev.eventType == mt.avatarEventTypes.RUN_CANCEL
 		or ev.eventType == mt.avatarEventTypes.RUN_COMPLETE
-		or ev.eventType == mt.avatarEventTypes.RETOUCH_SIGN then
+		or ev.eventType == mt.avatarEventTypes.RETOUCH_SIGN
 	then
 		avatarManipulation.ResetAbnormalMomentum(humanoid, character)
 	end
