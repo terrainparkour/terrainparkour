@@ -133,7 +133,7 @@ module.generateTextForRankedList = function(
 	local shownUserIds: { [number]: boolean } = {}
 	for _, obj in pairs(results) do
 		if obj.userId < 0 then
-			continue
+			obj.username = "TestUser_" .. obj.userId
 		else
 			obj.username = rdb.getUsernameByUserId(obj.userId)
 		end
@@ -161,7 +161,7 @@ module.generateTextForRankedList = function(
 		if shownUserIds[userIdInServer] then
 			continue
 		end
-		-- print("showing" .. userIdInServer)
+		-- _annotate("showing" .. userIdInServer)
 		local username = rdb.getUsernameByUserId(userIdInServer)
 		local stats = getStats(userIdInServer)
 		local res = tpUtil.getCardinalEmoji(stats.rank) .. ":\t" .. stats.count .. " - " .. username

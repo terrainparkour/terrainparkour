@@ -1,8 +1,12 @@
 --!strict
 
+-- playerdata.lua on the server.
 --generic getters for player information for use by commands or UIs or LBs
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
+
+local module = {}
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
@@ -14,8 +18,6 @@ local rdb = require(game.ServerScriptService.rdb)
 
 local PlayersService = game:GetService("Players")
 local tt = require(game.ReplicatedStorage.types.gametypes)
-
-local module = {}
 
 module.getGameStats = function()
 	local todayRuns = remoteDbInternal.remoteGet("getTotalRunCountByDay", {})["count"]
@@ -40,73 +42,99 @@ end
 
 --kind is just a description for debugging.
 module.getPlayerStatsByUserId = function(userId: number, kind: string): tt.afterData_getStatsByUser
-	local stats: tt.afterData_getStatsByUser = remoteDbInternal.remoteGet("getStatsByUser", { userId = userId })
+	local stats: tt.afterData_getStatsByUser = remoteDbInternal.remoteGet("getStatsByUserId", { userId = userId })
 	stats.kind = kind
-	local totalSignCount = rdb.getGameSignCount()
-	stats.totalSignCount = totalSignCount
+	local serverPatchedInTotalSignCount = rdb.getServerPatchedInTotalSignCountGameSignCount()
+	stats.serverPatchedInTotalSignCount = serverPatchedInTotalSignCount
 	return stats
 end
 
-module.convertStatsToDescriptionLine = function(data: tt.afterData_getStatsByUser)
-	local text = data.findCount .. " signs found "
-
-	if data.races > 0 then
-		text = text .. " / " .. data.races .. " races"
-	end
-	if data.runs > 0 then
-		text = text .. " / " .. data.runs .. " runs"
-	end
-	if data.top10s > 0 then
-		text = text .. " / " .. data.top10s .. " top10s"
-	end
-	if data.wrCount > 0 then
-		text = text .. " / " .. data.wrCount .. " World Records"
-	end
-	if data.cwrs > 0 then
-		text = text .. " / " .. data.cwrs .. " Competitive WRs."
-	end
-	if data.userTix > 0 then
-		text = text .. " / " .. data.userTix .. " Tix!"
-	end
-	if data.awardCount > 0 then
-		text = text .. " / " .. data.awardCount .. " awards"
-	end
-
-	if data.cwrtop10s > 0 then
-		text = text .. " / " .. data.cwrtop10s .. " CWR Top 10s"
-	end
-
-	if data.findCount > 0 then
-		text = text .. " / " .. data.findCount .. " signs found"
-	end
-	if data.wrRank > 0 then
-		text = text .. " / " .. data.wrRank .. " WR Rank"
-	end
-
-	return text
+module.getPlayerStatsByUsername = function(username: string, kind: string): tt.afterData_getStatsByUser
+	local stats: tt.afterData_getStatsByUser = remoteDbInternal.remoteGet("getStatsByUsername", { username = username })
+	stats.kind = kind
+	local serverPatchedInTotalSignCount = rdb.getServerPatchedInTotalSignCountGameSignCount()
+	stats.serverPatchedInTotalSignCount = serverPatchedInTotalSignCount
+	return stats
 end
 
 module.getPlayerDescriptionLine = function(userId: number)
 	local data: tt.afterData_getStatsByUser = module.getPlayerStatsByUserId(userId, "desc line")
-	return module.convertStatsToDescriptionLine(data)
+	local text = data.findCount .. " signs found "
+	if data.findRank > 0 then
+		text = text .. " / Find Rank: " .. tpUtil.getCardinal(data.findRank)
+	end
+	if data.userTix > 0 then
+		text = text .. " / " .. data.userTix .. " Tix!"
+	end
+	if data.cwrs > 0 then
+		text = text .. " / " .. data.cwrs .. " Competitive WRs."
+	end
+	if data.cwrRank > 0 then
+		text = text .. " / CWR Rank: " .. tpUtil.getCardinal(data.cwrRank)
+	end
+	if data.cwrTop10s > 0 then
+		text = text .. " / " .. data.cwrTop10s .. " CWR Top 10s"
+	end
+	if data.wrCount > 0 then
+		text = text .. " / " .. data.wrCount .. " World Records"
+	end
+	if data.wrRank > 0 then
+		text = text .. " / WR Rank: " .. tpUtil.getCardinal(data.wrRank)
+	end
+	if data.top10s > 0 then
+		text = text .. " / " .. data.top10s .. " top10s"
+	end
+
+	if data.userTotalRaceCount > 0 then
+		text = text .. " / " .. data.userTotalRaceCount .. " user total races"
+	end
+	if data.userTotalRunCount > 0 then
+		text = text .. " / " .. data.userTotalRunCount .. " user total runs"
+	end
+
+	if data.awardCount > 0 then
+		text = text .. " / " .. data.awardCount .. " awards"
+	end
+
+	return text
 end
 
-module.getPlayerDescriptionMultiline = function(userId: number)
-	local data: tt.afterData_getStatsByUser = module.getPlayerStatsByUserId(userId, "desc multiline")
-	local text: string = "\n"
-		.. data.findCount
-		.. " signs found\n"
-		.. data.runs
-		.. " runs\n"
-		.. data.races
-		.. " races\n"
-		.. data.top10s
-		.. " top10s\n"
+module.formatMultilineText = function(data: tt.afterData_getStatsByUser)
+	local text: string = data.findCount
+		.. " signs found - "
+		.. data.cwrs
+		.. " cwrs - "
+		.. data.cwrTop10s
+		.. " cwrTop10s - "
+		.. tpUtil.getCardinal(data.cwrRank)
+		.. " cwrrank - "
 		.. data.wrCount
-		.. " World Records\n"
+		.. " wrs - "
+		.. tpUtil.getCardinal(data.wrRank)
+		.. " wrrank - "
+		.. data.top10s
+		.. " top10s - "
 		.. data.userTix
-		.. " Tix!"
+		.. " tix - "
+		.. data.userTotalRunCount
+		.. " runs - "
+		.. data.userTotalRaceCount
+		.. " races - "
+		.. data.daysInGame
+		.. " days in game - "
+		.. data.awardCount
+		.. " awards. "
 	return text
+end
+
+module.getPlayerDescriptionMultilineByUserId = function(userId: number)
+	local data: tt.afterData_getStatsByUser = module.getPlayerStatsByUserId(userId, "desc multiline")
+	return module.formatMultilineText(data)
+end
+
+module.getPlayerDescriptionMultilineByUsername = function(username: string)
+	local data: tt.afterData_getStatsByUser = module.getPlayerStatsByUsername(username, "desc multiline")
+	return module.formatMultilineText(data)
 end
 
 module.getSignWRLeader = function(signId: number)
@@ -155,7 +183,7 @@ local function serverInvokeClickSignRemote(player: Player, signId: number)
 	end
 
 	local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
-	badgeCheckers.checkBadgeGrantingFromSignWrLeaderData(signWRLeaderData, player.UserId)
+	badgeCheckers.CheckBadgeGrantingFromSignWrLeaderData(signWRLeaderData, player.UserId)
 
 	while true do
 		if got == 2 then

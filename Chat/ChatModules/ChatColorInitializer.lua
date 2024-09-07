@@ -35,7 +35,7 @@ local function MakeIsInGroup(groupId, requiredRank)
 				end
 			end)
 			if not success and err then
-				print("Error checking in group: " .. err)
+				_annotate("Error checking in group: " .. err)
 			end
 
 			return inGroup

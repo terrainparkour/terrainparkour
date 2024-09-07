@@ -37,16 +37,15 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 	local has = badges.UserHasBadge(userId, badge)
 	if has == true then
 		if config.isInStudio() then
-			-- print("in studio, user alread has: " .. badge.name)
+			-- _annotate("in studio, user alread has: " .. badge.name)
 		end
 		return false
-	end
+	end	
 
 	if has == nil then
 		if config.isInStudio() then
-			print("in studio, has is nil, why are we bailing" .. badge.name)
-		end
-		if not config.isInStudio() then
+			_annotate("in studio, has is nil, why are we bailing" .. badge.name)
+		else
 			warn("failed to grant badge " .. tostring(userId) .. "  " .. badge.name)
 		end
 		return false
@@ -68,7 +67,7 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 		end
 	end
 
-	local saveBadgeGrantRes = rdb.saveUserBadgeGrant(userId, badge.assetId, badge.name)
+	local saveBadgeGrantRes = rdb.SaveUserBadgeGrant(userId, badge.assetId, badge.name)
 	task.spawn(function()
 		if saveBadgeGrantRes.priorAwardCount == 0 and badge.assetId ~= badgeEnums.badges.FirstBadgeWinner.assetId then
 			module.GrantBadge(userId, badgeEnums.badges.FirstBadgeWinner)

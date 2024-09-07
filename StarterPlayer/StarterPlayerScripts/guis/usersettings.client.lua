@@ -25,3 +25,5 @@ end)
 if success then
 	local id = translator.LocaleId
 end
+
+_annotate("end")

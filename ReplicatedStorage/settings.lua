@@ -1,5 +1,6 @@
 --!strict
 
+-- settings.lua in replicated storage.
 -- settings used for local script communication about settings changes.
 -- if you care, register to listen
 -- and the settings ui will spam you
@@ -69,8 +70,8 @@ module.RegisterFunctionToListenForSettingName = function(func: (tt.userSettingVa
 	-- let's make sure we're registering a setting which exists in the enums and things.
 	_annotate(string.format("handle local setting change receivere: %s %s", name, tostring(func)))
 	local exi = false
-	for _, settingName in pairs(settingEnums.settingNames) do
-		if settingName == name then
+	for _,setting in pairs(settingEnums.settingDefinitions) do
+		if setting.name == name then
 			exi = true
 			break
 		end
@@ -92,7 +93,7 @@ end
 
 --also just tell registered scripts this change happened
 local function LocalNotifySettingChange(setting: tt.userSettingValue)
-	_annotate("LocalNotifySettingChange: " .. setting.name .. " " .. tostring(setting.value))
+	_annotate("LocalNotifySettingChange: " .. setting.name .. " " .. tostring(setting.booleanValue))
 	for name: string, funcWhichCaresAboutThisSettingChange: (tt.userSettingValue) -> nil in
 		pairs(settingChangeMonitoringFunctions)
 	do
@@ -112,12 +113,12 @@ end
 --2024 is this safe to globally just use? like, in the chat toggler can I hit this and get some kind of useful or at least
 -- not super slow/not missing data way to get the current value?
 module.getSettingByName = function(settingName: string): tt.userSettingValue
-	local req: settingEnums.settingRequest = { settingName = settingName, includeDistributions = false }
+	local req: settingEnums.settingRequest = { settingName = settingName }
 	return GetUserSettingsFunction:InvokeServer(req)
 end
 
 module.getSettingByDomain = function(domain: string): { [string]: tt.userSettingValue }
-	local req: settingEnums.settingRequest = { domain = domain, includeDistributions = false }
+	local req: settingEnums.settingRequest = { domain = domain }
 	return GetUserSettingsFunction:InvokeServer(req)
 end
 

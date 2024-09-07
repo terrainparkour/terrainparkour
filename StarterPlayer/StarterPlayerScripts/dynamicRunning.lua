@@ -403,13 +403,13 @@ local function setupRenderStepped()
 end
 
 local function handleUserSettingChanged(setting: tt.userSettingValue)
-	if setting.name == settingEnums.settingNames.ENABLE_DYNAMIC_RUNNING then
-		if setting.value then
+	if setting.name == settingEnums.settingDefinitions.ENABLE_DYNAMIC_RUNNING.name then
+		if setting.booleanValue then
 			if not dynamicRunningEnabled then
 				dynamicRunningEnabled = true
 				setupRenderStepped()
 			end
-		elseif setting.value == false then
+		elseif setting.booleanValue == false then
 			if dynamicRunningEnabled then
 				--also destroy them all.
 				dynamicRunningEnabled = false
@@ -437,9 +437,9 @@ module.Init = function()
 	--in addition to this, needs to get the original setting to set it locally too.
 	settings.RegisterFunctionToListenForSettingName(function(item)
 		return handleUserSettingChanged(item)
-	end, settingEnums.settingNames.ENABLE_DYNAMIC_RUNNING)
+	end, settingEnums.settingDefinitions.ENABLE_DYNAMIC_RUNNING.name)
 
-	local dynset = settings.getSettingByName(settingEnums.settingNames.ENABLE_DYNAMIC_RUNNING)
+	local dynset = settings.getSettingByName(settingEnums.settingDefinitions.ENABLE_DYNAMIC_RUNNING.name)
 	handleUserSettingChanged(dynset)
 end
 

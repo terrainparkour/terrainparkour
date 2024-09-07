@@ -28,7 +28,7 @@ local currentRunStartTick: number = 0
 local currentRunSignName: string = ""
 
 -- this is okay because a user is only running from one at a time.
-local activeRunSGui: ScreenGui = nil
+local globalActiveRunSgui: ScreenGui = nil
 local activeRunFrame: Frame = nil
 
 local optionalRaceDescription = ""
@@ -45,12 +45,12 @@ local detailsLabel: TextButton
 --receive updates to these items. otherwise I am independent
 module.UpdateExtraRaceDescription = function(outerRaceDescription: string): boolean
 	optionalRaceDescription = outerRaceDescription
-	return activeRunSGui ~= nil
+	return globalActiveRunSgui ~= nil
 end
 
 module.UpdateMovementDetails = function(outerMovementDetails: string): boolean
 	movementDetails = outerMovementDetails
-	return activeRunSGui ~= nil
+	return globalActiveRunSgui ~= nil
 end
 
 -- when a user retouches a sign, we update the UI here.
@@ -96,7 +96,7 @@ updateRunProgress = function()
 	timeSourceLabel.Text = string.format("%s\nFrom: %s%s", formattedRuntime, currentRunSignName, optionalSignAliasText)
 
 	local secondText = ""
-	-- print(
+	-- _annotate(
 	-- 	string.format("optionalRaceDescription: '%s', movementDetails: '%s'", optionalRaceDescription, movementDetails)
 	-- )
 	if optionalRaceDescription ~= "" and movementDetails ~= "" then
@@ -123,12 +123,16 @@ end
 local debounceCreateRunProgressSgui = false
 module.StartActiveRunGui = function(startTimeTick, signName, pos)
 	playerGui = localPlayer:WaitForChild("PlayerGui")
+	local ex = playerGui:FindFirstChild("ActiveRunGui")
+	if ex then
+		ex:Destroy()
+	end
 	activeRunSgui = Instance.new("ScreenGui") :: ScreenGui
 	activeRunSgui.IgnoreGuiInset = true
 	activeRunSgui.Parent = playerGui
-	activeRunSgui.Name = "ActiveRunSGui"
+	activeRunSgui.Name = "ActiveRunGui"
 	activeRunSgui.Enabled = true
-	activeRunSGui = activeRunSgui
+	globalActiveRunSgui = activeRunSgui
 	if debounceCreateRunProgressSgui then
 		_annotate("debounceCreateRunProgressSgui.")
 		return
@@ -177,7 +181,10 @@ module.StartActiveRunGui = function(startTimeTick, signName, pos)
 	timeSourceLabel.TextYAlignment = Enum.TextYAlignment.Top
 	timeSourceLabel.Parent = activeRunFrame
 	timeSourceLabel.Activated:Connect(function()
-		fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "clicked on timeSourceLabel in active run SGui" })
+		local details: mt.avatarEventDetails = {
+			reason = "clicked on timeSourceLabel in active run SGui",
+		}
+		fireEvent(mt.avatarEventTypes.RUN_CANCEL, details)
 	end)
 
 	detailsLabel = Instance.new("TextButton")
@@ -195,7 +202,10 @@ module.StartActiveRunGui = function(startTimeTick, signName, pos)
 	detailsLabel.TextYAlignment = Enum.TextYAlignment.Top
 	detailsLabel.Parent = activeRunFrame
 	detailsLabel.Activated:Connect(function()
-		fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "clicked on detailsLabel in active run SGui" })
+		local details: mt.avatarEventDetails = {
+			reason = "clicked on detailsLabel in active run SGui",
+		}
+		fireEvent(mt.avatarEventTypes.RUN_CANCEL, details)
 	end)
 
 	local function onActiveRunSGuiDestroyed()
@@ -206,7 +216,7 @@ module.StartActiveRunGui = function(startTimeTick, signName, pos)
 	end
 
 	-- Connect the onActiveRunSGuiDestroyed function to the Destroying event of activeRunSGui
-	activeRunSGui.Destroying:Connect(onActiveRunSGuiDestroyed)
+	globalActiveRunSgui.Destroying:Connect(onActiveRunSGuiDestroyed)
 
 	debounceCreateRunProgressSgui = false
 	if renderSteppedConnection then

@@ -16,20 +16,30 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 export type avatarEventDetails = {
-	relatedSignId: number?,
-	relatedSignName: string?,
+	touchedSignId: number?,
+	touchedSignName: string?,
+	startSignId: number?,
+	startSignName: string?,
+	endSignId: number?,
+	endSignName: string?,
+	-- relatedSignId: number?,
+	-- relatedSignName: string?,
 	floorMaterial: Enum.Material?, --this is either a terrain or a non-terrain, you need to check.
 	newMoveDirection: Vector3?,
 	oldMoveDirection: Vector3?,
 	newState: Enum.HumanoidStateType?,
 	oldState: Enum.HumanoidStateType?,
-	warpSourceSignName: string?,
-	warpDestinationSignName: string?,
+	-- warpSourceSignName: string?,
+	-- warpDestinationSignName: string?,
 	oldSpeed: number?,
 	newSpeed: number?,
 	oldJumpPower: number?,
 	newJumpPower: number?,
 	reason: string?,
+	exactPositionOfHit: Vector3?, --only for touch, retouch, and complete race.
+	position: Vector3?, -- of the avatar. These are ALWAYS provided by avatarEventFiring.
+	lookVector: Vector3?, -- of the avatar. These are ALWAYS provided by avatarEventFiring.
+	walkSpeed: number?,
 }
 
 export type avatarEvent = {

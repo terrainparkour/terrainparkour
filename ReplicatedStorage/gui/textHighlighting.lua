@@ -18,6 +18,7 @@ local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer
 
 local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
 
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
 
@@ -144,7 +145,6 @@ module.PointHumanoidAtSignId = function(signId: number)
 	_annotate(string.format("pointing player at sign: %s", sign.Name))
 	local humanoidRootPart: Part? = nil
 	if localPlayer and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
-		local character = localPlayer.Character
 		humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
 		if humanoidRootPart then
 			local direction = (sign.Position - humanoidRootPart.Position).Unit
@@ -185,7 +185,7 @@ module.RotateCameraToFaceSignId = function(signId: number?)
 	end
 end
 
-module.DoHighlightSingleSignId = function(signId: number)
+module.DoHighlightSingleSignId = function(signId: number, context: string)
 	if not doHighlightAtAll then
 		return
 	end
@@ -193,7 +193,7 @@ module.DoHighlightSingleSignId = function(signId: number)
 
 	if not sign then
 		if not config.isTestGame() then
-			warn("trying to highlight an unseen sign? id=" .. tostring(signId))
+			warn(string.format("trying to highlight an unseen sign? signId=%s context=%s", tostring(signId), context))
 		end
 		return
 	end
@@ -226,8 +226,8 @@ local function handleAvatarEvent(event: mt.avatarEvent)
 end
 
 local function handleUserSettingChanged(userSetting: tt.userSettingValue)
-	if userSetting.name == settingEnums.settingNames.HIGHLIGHT_AT_ALL then
-		doHighlightAtAll = userSetting.value
+	if userSetting.name == settingEnums.settingDefinitions.HIGHLIGHT_AT_ALL.name then
+		doHighlightAtAll = userSetting.booleanValue
 	end
 end
 
@@ -237,18 +237,18 @@ module.Init = function()
 
 	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 
-	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingNames.HIGHLIGHT_AT_ALL))
+	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingDefinitions.HIGHLIGHT_AT_ALL.name))
 	-- handleUserSettingChanged(
-	-- 	settings.getSettingByName(settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION)
+	-- 	settings.getSettinedsgByName(settingeEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION)
 	-- )
 
 	settings.RegisterFunctionToListenForSettingName(
 		handleUserSettingChanged,
-		settingEnums.settingNames.HIGHLIGHT_AT_ALL
+		settingEnums.settingDefinitions.HIGHLIGHT_AT_ALL.name
 	)
 	-- settings.RegisterLocalSettingChangeReceiver(
 	-- 	handleUserSettingChanged,
-	-- 	settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION
+	-- 	settingEnums.setteingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION
 	-- )
 end
 

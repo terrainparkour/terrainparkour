@@ -25,6 +25,9 @@ local localPlayer = PlayersService.LocalPlayer
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
 local keyboardShortcutButton = require(game.StarterPlayer.StarterPlayerScripts.buttons.keyboardShortcutGui)
 local particleExplanationGui = require(game.StarterPlayer.StarterPlayerScripts.buttons.particleExplanationGui)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local tpUtil = require(ReplicatedStorage.util.tpUtil)
+local RunService = game:GetService("RunService")
 
 local UserInputService = game:GetService("UserInputService")
 
@@ -35,8 +38,9 @@ local ignoreChatWhenHittingX = false
 local showLB: boolean = true
 
 --------------- "remember" the last runs they've worked on for '1'
-local lastRunStart = nil
-local lastRunEnd = nil
+local lastRunStartSignId = nil
+local lastCompleteRunStart = nil
+local lastCompleteRunEnd = nil
 
 local function ToggleChat(intendedState: boolean)
 	local ChatMain =
@@ -44,8 +48,45 @@ local function ToggleChat(intendedState: boolean)
 	ChatMain:SetVisible(intendedState)
 end
 
+local function ToggleServerEventScreenGui(intendedState: boolean)
+	local items = { localPlayer:WaitForChild("PlayerGui"):FindFirstChild("ServerEventScreenGui") }
+	if not items then
+		_annotate("no server event screen gui found.")
+		return
+	end
+	for _, el in ipairs(items) do
+		el.Enabled = intendedState
+	end
+end
+
+local function ToggleMarathonScreenGui(intendedState: boolean)
+	local items = { localPlayer:WaitForChild("PlayerGui"):FindFirstChild("MarathonScreenGui") }
+	if not items then
+		_annotate("no marathon screen gui found.")
+		return
+	end
+	for _, el in ipairs(items) do
+		el.Enabled = intendedState
+	end
+end
+
 local function ToggleLB(intendedState: boolean)
 	local items = { localPlayer:WaitForChild("PlayerGui"):FindFirstChild("LeaderboardScreenGui") }
+	if not items then
+		_annotate("no leaderboard screen gui found.")
+		return
+	end
+	for _, el in ipairs(items) do
+		if el == nil then
+			_annotate("bad item.")
+			continue
+		end
+		el.Enabled = intendedState
+	end
+end
+
+local function ToggleSettingsButton(intendedState: boolean)
+	local items = { localPlayer:WaitForChild("PlayerGui"):FindFirstChild("HamburgerMenu") }
 	if not items then
 		_annotate("no leaderboard screen gui found.")
 		return
@@ -80,6 +121,9 @@ local function KillPopups()
 		if el.Name == "EphemeralTooltip" then
 			el:Destroy()
 		end
+		-- 	if el.Name == "SignGrindUIScreenGui" then
+		-- 		el:Destroy()
+		-- 	end
 	end
 	if not ignoreChatWhenHittingX then
 		ToggleChat(false)
@@ -100,17 +144,25 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 		if inputObject.KeyCode == Enum.KeyCode.One then
 			local useLastRunEnd = nil
 			if userWantsHighlightingWhenWarpingWithKeyboard then
-				useLastRunEnd = lastRunEnd
+				useLastRunEnd = lastCompleteRunEnd
 			end
-			if lastRunStart ~= nil and lastRunEnd ~= nil then
-				warper.WarpToSignId(lastRunStart, useLastRunEnd)
+			if lastCompleteRunStart ~= nil and lastCompleteRunEnd ~= nil then
+				warper.WarpToSignId(lastCompleteRunStart, useLastRunEnd)
+			end
+		elseif inputObject.KeyCode == Enum.KeyCode.Two then
+			if lastRunStartSignId ~= nil then
+				warper.WarpToSignId(lastRunStartSignId)
 			end
 		elseif inputObject.KeyCode == Enum.KeyCode.H then
 			textHighlighting.KillAllExistingHighlights()
-			-- print("kill all highlights.")
+			_annotate("kill all highlights.")
 		elseif inputObject.KeyCode == Enum.KeyCode.Tab then
 			showLB = not showLB
 			ToggleLB(showLB)
+			ToggleSettingsButton(showLB)
+			ToggleChat(showLB)
+			ToggleServerEventScreenGui(showLB)
+			ToggleMarathonScreenGui(showLB)
 		elseif inputObject.KeyCode == Enum.KeyCode.X then
 			KillPopups()
 		elseif inputObject.KeyCode == Enum.KeyCode.Z then
@@ -127,10 +179,10 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 end
 
 local function handleUserSettingChanged(item: tt.userSettingValue): any
-	if item.name == settingEnums.settingNames.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP then
-		userWantsHighlightingWhenWarpingWithKeyboard = item.value
-	elseif item.name == settingEnums.settingNames.X_BUTTON_IGNORES_CHAT then
-		ignoreChatWhenHittingX = item.value
+	if item.name == settingEnums.settingDefinitions.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP.name then
+		userWantsHighlightingWhenWarpingWithKeyboard = item.booleanValue
+	elseif item.name == settingEnums.settingDefinitions.X_BUTTON_IGNORES_CHAT.name then
+		ignoreChatWhenHittingX = item.booleanValue
 	end
 end
 
@@ -144,11 +196,21 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 	end
 	debHandleAvatarEvent = true
 	if ev.eventType == mt.avatarEventTypes.RUN_START then
-		_annotate(string.format("run start, setting lastRunStart to %d", ev.details.relatedSignId))
-		lastRunStart = ev.details.relatedSignId
+		_annotate(
+			string.format("run start, setting lastRunStartSignId=%s", tpUtil.signId2signName(ev.details.startSignId))
+		)
+		lastRunStartSignId = ev.details.startSignId
 	elseif ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
-		_annotate(string.format("run complete, setting lastRunEnd to %d", ev.details.relatedSignId))
-		lastRunEnd = ev.details.relatedSignId
+		_annotate(
+			string.format(
+				"run complete, storing the last completed start and end: %s => %s",
+				ev.details.startSignName,
+				ev.details.endSignName
+			)
+		)
+
+		lastCompleteRunStart = ev.details.startSignId
+		lastCompleteRunEnd = ev.details.endSignId
 	end
 	debHandleAvatarEvent = false
 end
@@ -160,16 +222,18 @@ module.Init = function()
 
 	settings.RegisterFunctionToListenForSettingName(
 		handleUserSettingChanged,
-		settingEnums.settingNames.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP
+		settingEnums.settingDefinitions.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP.name
 	)
 
 	settings.RegisterFunctionToListenForSettingName(
 		handleUserSettingChanged,
-		settingEnums.settingNames.X_BUTTON_IGNORES_CHAT
+		settingEnums.settingDefinitions.X_BUTTON_IGNORES_CHAT.name
 	)
 
-	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingNames.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP))
-	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingNames.X_BUTTON_IGNORES_CHAT))
+	handleUserSettingChanged(
+		settings.getSettingByName(settingEnums.settingDefinitions.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP.name)
+	)
+	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingDefinitions.X_BUTTON_IGNORES_CHAT.name))
 end
 
 _annotate("end")

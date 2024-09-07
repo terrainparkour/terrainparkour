@@ -1,2 +1,7 @@
-**/*Secret.lua
+i*/*Secret.lua
 **/*secret.lua
+**userData**
+userData.lua
+userDataEnums.lua
+userDataServer.lua
+userDataClient.lua

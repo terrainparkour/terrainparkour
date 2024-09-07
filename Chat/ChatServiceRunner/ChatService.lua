@@ -74,7 +74,7 @@ function methods:AddChannel(channelName, autoJoin)
 		self.eChannelAdded:Fire(channelName)
 	end)
 	if not success and err then
-		print("Error addding channel: " .. err)
+		_annotate("Error addding channel: " .. err)
 	end
 
 	if autoJoin ~= nil then
@@ -100,7 +100,7 @@ function methods:RemoveChannel(channelName)
 			self.eChannelRemoved:Fire(n)
 		end)
 		if not success and err then
-			print("Error removing channel: " .. err)
+			_annotate("Error removing channel: " .. err)
 		end
 	else
 		warn(string.format("Channel %q does not exist.", channelName))
@@ -123,7 +123,7 @@ function methods:AddSpeaker(speakerName)
 		self.eSpeakerAdded:Fire(speakerName)
 	end)
 	if not success and err then
-		print("Error adding speaker: " .. err)
+		_annotate("Error adding speaker: " .. err)
 	end
 
 	return speaker
@@ -149,7 +149,7 @@ function methods:RemoveSpeaker(speakerName)
 			self.eSpeakerRemoved:Fire(n)
 		end)
 		if not success and err then
-			print("Error removing speaker: " .. err)
+			_annotate("Error removing speaker: " .. err)
 		end
 	else
 		warn('Speaker "' .. speakerName .. '" does not exist!')
@@ -369,7 +369,7 @@ function methods:InternalAddSpeakerWithPlayerObject(speakerName, playerObj, fire
 			self.eSpeakerAdded:Fire(speakerName)
 		end)
 		if not success and err then
-			print("Error adding speaker: " .. err)
+			_annotate("Error adding speaker: " .. err)
 		end
 	end
 
@@ -381,7 +381,7 @@ function methods:InternalFireSpeakerAdded(speakerName)
 		self.eSpeakerAdded:Fire(speakerName)
 	end)
 	if not success and err then
-		print("Error firing speaker added: " .. err)
+		_annotate("Error firing speaker added: " .. err)
 	end
 end
 

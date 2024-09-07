@@ -36,55 +36,6 @@ module.CreateShortcutGui = function()
 	outerKeyboardFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	outerKeyboardFrame.Parent = screenGui
 
-	local innerKeyboardFrame = Instance.new("Frame")
-	innerKeyboardFrame.Size = UDim2.new(1, 0, 1, 0)
-	innerKeyboardFrame.Position = UDim2.new(0, 0, 0, 0)
-	innerKeyboardFrame.BackgroundColor3 = Color3.fromRGB(197, 204, 211) -- Soft gray
-	innerKeyboardFrame.BorderSizePixel = 0
-	innerKeyboardFrame.Parent = outerKeyboardFrame
-
-	local UserInputService = game:GetService("UserInputService")
-	local dragging
-	local dragStart
-	local startPos
-
-	local function updateDrag(input)
-		local delta = input.Position - dragStart
-		innerKeyboardFrame.Position =
-			UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-	end
-
-	innerKeyboardFrame.InputBegan:Connect(function(input)
-		if
-			input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch
-		then
-			dragging = true
-			dragStart = input.Position
-			startPos = innerKeyboardFrame.Position
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					dragging = false
-				end
-			end)
-		end
-	end)
-
-	UserInputService.InputChanged:Connect(function(input)
-		if
-			input.UserInputType == Enum.UserInputType.MouseMovement
-			or input.UserInputType == Enum.UserInputType.Touch
-		then
-			if dragging then
-				updateDrag(input)
-			end
-		end
-	end)
-
-	local cornerRadius = Instance.new("UICorner")
-	cornerRadius.CornerRadius = UDim.new(0.05, 0) -- Gentler corners
-	cornerRadius.Parent = innerKeyboardFrame
-
 	local title = Instance.new("TextLabel")
 	title.Size = UDim2.new(1, 0, 0.15, 0)
 	title.Position = UDim2.new(0, 0, 0, 0)
@@ -93,44 +44,55 @@ module.CreateShortcutGui = function()
 	title.TextColor3 = Color3.fromRGB(70, 70, 70) -- Dark gray text
 	title.TextScaled = true
 	title.Text = "Keyboard Shortcuts"
-	title.Parent = innerKeyboardFrame
+	title.Parent = outerKeyboardFrame
+	title.Name = "1_KeyboardTitle"
 
-	local titleCorner = Instance.new("UICorner")
-	titleCorner.CornerRadius = UDim.new(0.2, 0)
-	titleCorner.Parent = title
-
-	local shortcutsList = Instance.new("ScrollingFrame")
-	shortcutsList.Size = UDim2.new(0.9, 0, 0.75, 0)
-	shortcutsList.Position = UDim2.new(0.05, 0, 0.2, 0)
-	shortcutsList.BackgroundTransparency = 1
-	shortcutsList.BorderSizePixel = 0
-	shortcutsList.ScrollBarThickness = 4
-	shortcutsList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	shortcutsList.CanvasSize = UDim2.new(0, 0, 0, 0)
-	shortcutsList.Parent = innerKeyboardFrame
-
-	local listLayout = Instance.new("UIListLayout")
-	listLayout.Padding = UDim.new(0, 8)
-	listLayout.Parent = shortcutsList
+	-- local titleCorner = Instance.new("UICorner")
+	-- titleCorner.CornerRadius = UDim.new(0.2, 0)
+	-- titleCorner.Parent = title
+	local listLayout2 = Instance.new("UIListLayout")
+	listLayout2.Padding = UDim.new(0, 0)
+	listLayout2.Parent = outerKeyboardFrame
+	listLayout2.SortOrder = Enum.SortOrder.Name
+	listLayout2.FillDirection = Enum.FillDirection.Vertical
+	listLayout2.Name = "KeyboardHH"
 
 	local shortcuts = {
 		{ key = "1", desc = "Warp to last completed run", icon = "🏃" },
+		{ key = "2", desc = "Warp to last sign you started a race from", icon = "🏃" },
 		{ key = "h", desc = "Remove sign highlights", icon = "🚫" },
 		{ key = "z", desc = "Cancel current race", icon = "🚫" },
 		{ key = "x", desc = "Remove popped up UIs and notifications", icon = "🗑️" },
 		{ key = "Tab", desc = "Toggle leaderboard", icon = "📊" },
 	}
 
+	local shortcutList = Instance.new("ScrollingFrame")
+	shortcutList.Size = UDim2.new(1, 0, 0.7, 0)
+	shortcutList.BackgroundTransparency = 0
+	shortcutList.BorderSizePixel = 0
+	shortcutList.ScrollBarThickness = 10
+	shortcutList.VerticalScrollBarInset = Enum.ScrollBarInset.Always
+	shortcutList.Parent = outerKeyboardFrame
+	-- shortcutList.AutomaticSize = Enum.AutomaticSize.Y
+	shortcutList.CanvasSize = UDim2.new(0, 0, 0, 40 * #shortcuts)
+	shortcutList.Name = "2_KeyboardShortcutsList"
+
+	local listLayout = Instance.new("UIListLayout")
+	listLayout.Padding = UDim.new(0, 0)
+	listLayout.Parent = shortcutList
+	listLayout.Name = "KeyboardHH"
+
 	for _, shortcut in ipairs(shortcuts) do
 		local shortcutFrame = Instance.new("Frame")
 		shortcutFrame.Size = UDim2.new(1, 0, 0, 40)
 		shortcutFrame.BackgroundColor3 = Color3.fromRGB(184, 216, 186) -- Soft green
 		shortcutFrame.BorderSizePixel = 0
-		shortcutFrame.Parent = shortcutsList
+		shortcutFrame.Parent = shortcutList
+		shortcutFrame.Name = "KeyboardShortcutFrame_" .. shortcut.key
 
-		local shortcutCorner = Instance.new("UICorner")
-		shortcutCorner.CornerRadius = UDim.new(0.2, 0)
-		shortcutCorner.Parent = shortcutFrame
+		-- local shortcutCorner = Instance.new("UICorner")
+		-- shortcutCorner.CornerRadius = UDim.new(0.2, 0)
+		-- shortcutCorner.Parent = shortcutFrame
 
 		local keyLabel = Instance.new("TextLabel")
 		keyLabel.Size = UDim2.new(0.15, 0, 0.8, 0)
@@ -142,9 +104,9 @@ module.CreateShortcutGui = function()
 		keyLabel.Text = shortcut.key
 		keyLabel.Parent = shortcutFrame
 
-		local keyCorner = Instance.new("UICorner")
-		keyCorner.CornerRadius = UDim.new(0.3, 0)
-		keyCorner.Parent = keyLabel
+		-- local keyCorner = Instance.new("UICorner")
+		-- keyCorner.CornerRadius = UDim.new(0.3, 0)
+		-- keyCorner.Parent = keyLabel
 
 		local descLabel = Instance.new("TextLabel")
 		descLabel.Size = UDim2.new(0.68, 0, 0.8, 0)
@@ -168,32 +130,22 @@ module.CreateShortcutGui = function()
 		iconLabel.Parent = shortcutFrame
 	end
 
-	-- Adjust the ScrollingFrame's size
-	local function updateScrollingFrameSize()
-		local contentSize = listLayout.AbsoluteContentSize
-		shortcutsList.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y)
-		shortcutsList.Size = UDim2.new(0.9, 0, math.min(0.75, contentSize.Y / innerKeyboardFrame.AbsoluteSize.Y), 0)
-	end
-
-	listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateScrollingFrameSize)
-	updateScrollingFrameSize()
-
 	local closeButton = Instance.new("TextButton")
-	closeButton.Size = UDim2.new(0.3, 0, 0.08, 0)
-	closeButton.Position = UDim2.new(0.35, 0, 0.9, 0)
+	closeButton.Size = UDim2.new(1, 0, 0.15, 0)
 	closeButton.BackgroundColor3 = Color3.fromRGB(241, 167, 167) -- Soft red
 	closeButton.Text = "Close"
 	closeButton.TextColor3 = Color3.fromRGB(70, 70, 70)
 	closeButton.Font = Enum.Font.Gotham
 	closeButton.TextSize = 14
-	closeButton.Parent = innerKeyboardFrame
+	closeButton.Name = "3keyboardClose"
+	closeButton.Parent = outerKeyboardFrame
 
-	local closeCorner = Instance.new("UICorner")
-	closeCorner.CornerRadius = UDim.new(0.3, 0)
-	closeCorner.Parent = closeButton
+	-- local closeCorner = Instance.new("UICorner")
+	-- closeCorner.CornerRadius = UDim.new(0.3, 0)
+	-- closeCorner.Parent = closeButton
 
 	closeButton.MouseButton1Click:Connect(function()
-		screenGui.Enabled = false
+		screenGui:Destroy()
 	end)
 
 	-- windows.SetupDraggability(outerKeyboardFrame)

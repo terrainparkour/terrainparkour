@@ -17,7 +17,7 @@ local innerSendMsg = function(channel, msg: string, options: any)
 	if not options.Font then
 		options.Font = Enum.Font.Gotham
 	end
-	-- print(options)
+	-- _annotate(options)
 	channel:SendSystemMessage(msg, options)
 end
 
@@ -48,8 +48,9 @@ module.usageCommandDesc = [[Admin Command examples:
 /tix [username] - Find out the TIX balance for any user!
 /uptime - server uptime
 /[username] - Details on user (this works on anyone in game).
+/player [username] like the above but they can be in the server, or not. or /p
 /version - show server version
-/wrs - List top world record holders.
+/[c]wrs - List top [competitive] world record holders.
 /chomik - find the Chomik!
 k to show keyboard shortcuts
 (click S in lower right for more options, including your settings.)

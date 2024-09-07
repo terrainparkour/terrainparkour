@@ -1,9 +1,12 @@
 --!strict
 
--- BV very simple
+-- runEnding.server.lua listens for race end events sent from the client and just trusts them.
+-- I have total control on the db side anyway
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
+
+local module = {}
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local enums = require(game.ReplicatedStorage.util.enums)
@@ -16,10 +19,7 @@ local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 
-local module = {}
-
 local PlayerService = game:GetService("Players")
-
 local TellServerRunEndedRemoteEvent = remotes.getRemoteEvent("TellServerRunEndedRemoteEvent")
 local ServerEventBindableEvent = remotes.getBindableEvent("ServerEventBindableEvent")
 
@@ -33,6 +33,9 @@ local function receiveClientMessageAboutRunEnding(
 	floorSeenCount: number
 )
 	if banning.getBanLevel(player.UserId) > 0 then
+		_annotate(
+			string.format("ban level > 0, not saving run for userName=%s, userId: %d", player.Name, player.UserId)
+		)
 		return
 	end
 
@@ -42,21 +45,19 @@ local function receiveClientMessageAboutRunEnding(
 	local startSignPosition: Vector3 = signInfo.getSignPosition(startSignId)
 	local endSignPosition: Vector3 = signInfo.getSignPosition(endSignId)
 	local distance: number = (startSignPosition - endSignPosition).Magnitude
-	local speed: number = distance / runMilliseconds
-
 	local raceName: string = startSignName .. " to " .. endSignName
-	local spd: number = math.ceil(speed * 100) / 100
+	local speed: number = math.ceil(distance / runMilliseconds * 100) / 100
 
-	local rawUserIds: { number } = tpUtil.GetUserIdsInServer()
+	local rawUserIdsInServer: { number } = tpUtil.GetUserIdsInServer()
 
-	local userIds: string = table.concat(rawUserIds, ",")
+	local userIds: string = table.concat(rawUserIdsInServer, ",")
 
 	--this is where we save the time to db, and then continue to display runresults.
 	task.spawn(function()
 		local userFinishedRunOptions: tt.userFinishedRunOptions = {
 			userId = userId,
-			startId = startSignId,
-			endId = endSignId,
+			startSignId = startSignId,
+			endSignId = endSignId,
 			runMilliseconds = runMilliseconds,
 			allPlayerUserIds = userIds,
 			remoteActionName = "userFinishedRun",
@@ -64,7 +65,7 @@ local function receiveClientMessageAboutRunEnding(
 		local userFinishedRunResponse: tt.pyUserFinishedRunResponse = rdb.userFinishedRun(userFinishedRunOptions)
 
 		task.spawn(function()
-			badgeCheckers.checkBadgeGrantingAfterRun(
+			badgeCheckers.CheckBadgeGrantingAfterRun(
 				userId,
 				userFinishedRunResponse,
 				startSignId,
@@ -73,26 +74,34 @@ local function receiveClientMessageAboutRunEnding(
 			)
 		end)
 
-		_annotate("spawn - showbesttimes for: " .. tostring(userId))
-		raceCompleteData.showBestTimes(player, raceName, startSignId, endSignId, spd, false, userFinishedRunResponse)
-		_annotate("spawn - preparing datatosend to otherPlayer LB.")
+		_annotate("showbesttimes for: " .. tostring(userId))
+		raceCompleteData.showBestTimes(player, raceName, startSignId, endSignId, speed, false, userFinishedRunResponse)
+
+		_annotate("preparing data to send to update everyone's LBs")
+
+		-- okay, we simplify the full run response data into just the stuff the LB needs and send that on.
+		-- name juggling here has definitely caused problems.
 		local lbRunUpdate: tt.lbUpdateFromRun = {
 			kind = "lbUpdate from run",
 			userId = userId,
 			userTix = userFinishedRunResponse.userTix,
-			top10s = userFinishedRunResponse.userTotalTop10Count,
-			races = userFinishedRunResponse.userTotalRaceCount,
-			runs = userFinishedRunResponse.userTotalRunCount,
 			cwrs = userFinishedRunResponse.cwrs,
+			cwrTop10s = userFinishedRunResponse.cwrTop10s,
+			top10s = userFinishedRunResponse.top10s,
+			userTotalRaceCount = userFinishedRunResponse.userTotalRaceCount,
+			userTotalRunCount = userFinishedRunResponse.userTotalRunCount,
 			wrCount = userFinishedRunResponse.wrCount,
+			wrRank = userFinishedRunResponse.wrRank,
+			daysInGame = userFinishedRunResponse.daysInGame,
 			awardCount = userFinishedRunResponse.awardCount,
 		}
 
-		for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
-			lbUpdaterServer.updateLeaderboardForRun(otherPlayer, lbRunUpdate)
+		for _, anyPlayer in ipairs(PlayerService:GetPlayers()) do
+			lbUpdaterServer.updateLeaderboardForRun(anyPlayer, lbRunUpdate)
 		end
 	end)
 
+	-- this is for tracking server event scores too. weird we do it here.
 	local data: tt.serverFinishRunNotifierType = {
 		startSignId = startSignId,
 		endSignId = endSignId,

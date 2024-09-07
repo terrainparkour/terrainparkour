@@ -21,8 +21,8 @@ local remotes = require(game.ReplicatedStorage.util.remotes)
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
-local getContestsFunction = remotes.getRemoteFunction("GetContestsFunction")
-local getSingleContestFunction = remotes.getRemoteFunction("GetSingleContestFunction")
+local GetContestsFunction = remotes.getRemoteFunction("GetContestsFunction")
+local GetSingleContestFunction = remotes.getRemoteFunction("GetSingleContestFunction")
 local emojis = require(game.ReplicatedStorage.enums.emojis)
 
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
@@ -457,50 +457,65 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	return screenGui
 end
 
-local function makeGetter(contest: ContestResponseTypes.Contest, userIds: { number }): (Player) -> ScreenGui
+local function makeGetter(contest: ContestResponseTypes.Contest): (Player) -> ScreenGui
 	local function f(localPlayer: Player): ScreenGui
-		local newcontest = getSingleContestFunction:InvokeServer(userIds, contest.contestid)
+		local newcontest = GetSingleContestFunction:InvokeServer(contest.contestid)
 		return getContest(newcontest)
 	end
 	return f
 end
 
-module.getContestButtons = function(userIds: { number }): { gt.actionButton }
-	local contests: { ContestResponseTypes.Contest } = getContestsFunction:InvokeServer(userIds)
-	local res = {}
-	for _, contest in ipairs(contests) do
-		local contestButton: gt.actionButton = {
-			name = "Contest Button" .. contest.name,
-			contentsGetter = makeGetter(contest, userIds),
-			hoverHint = "Show Contests Ranks",
-			shortName = contest.name .. " (" .. tostring(#contest.races) .. ")",
-			getActive = function()
-				return contest.contestremaining > 0
-			end,
-			widthXScale = 0.20,
-		}
-		table.insert(res, contestButton)
-	end
+local contests: { ContestResponseTypes.Contest } = GetContestsFunction:InvokeServer({})
 
-	return res
+-- local function GetContent(player: Player, userIds: { number }):ScreenGui
+--  end
+
+local ct: gt.actionButton = nil
+for _, contest in ipairs(contests) do
+	local cb: gt.actionButton = {
+		name = "Contest Button" .. contest.name,
+		contentsGetter = makeGetter(contest),
+		hoverHint = "Show Contests Ranks",
+		shortName = contest.name .. " (" .. tostring(#contest.races) .. ")",
+		getActive = function()
+			return true
+		end,
+		widthXScale = 0.20,
+	}
+	ct = ct
+	break
+	--just the first one for now?
+	--table.insert(res, contestButton)
 end
 
+-- local contestButton: gt.actionButton = {
+-- 	name = "COntest Button",
+-- 	contentsGetter = GetContent,
+-- 	hoverHint = "Show new first place runs",
+-- 	shortName = "New",
+-- 	getActive = function()
+-- 		return true
+-- 	end,
+-- 	widthXScale = 0.25,
+-- }
+
+module.contestButton = ct
+
 local function handleUserSettingChanged(setting: tt.userSettingValue)
-	shortenContestDigitDisplay = setting.value
+	if setting.name == settingEnums.settingDefinitions.SHORTEN_CONTEST_DIGIT_DISPLAY.name then
+		shortenContestDigitDisplay = setting.booleanValue
+	end
 end
 
 local function init()
-	-- common pattern - what is this?
-	-- first, set up listening so if another ui changes a setting value, we notice.
-	-- second, get the initial value.
-	-- TODO obviously this still duplicates a lot of logic.
-
 	settings.RegisterFunctionToListenForSettingName(
 		handleUserSettingChanged,
-		settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY
+		settingEnums.settingDefinitions.SHORTEN_CONTEST_DIGIT_DISPLAY.name
 	)
 
-	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY))
+	handleUserSettingChanged(
+		settings.getSettingByName(settingEnums.settingDefinitions.SHORTEN_CONTEST_DIGIT_DISPLAY.name)
+	)
 end
 
 init()

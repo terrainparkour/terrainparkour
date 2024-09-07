@@ -36,7 +36,7 @@ function methods:SendSystemMessage(message, extraData)
 		self.eMessagePosted:Fire(messageObj)
 	end)
 	if not success and err then
-		print("Error posting message: " .. err)
+		_annotate("Error posting message: " .. err)
 	end
 
 	self:InternalAddMessageToHistoryLog(messageObj)
@@ -179,7 +179,7 @@ function methods:MuteSpeaker(speakerName, reason, length)
 		self.eSpeakerMuted:Fire(speakerName, reason, length)
 	end)
 	if not success and err then
-		print("Error mutting speaker: " .. err)
+		_annotate("Error mutting speaker: " .. err)
 	end
 
 	local spkr = self.ChatService:GetSpeaker(speakerName)
@@ -188,7 +188,7 @@ function methods:MuteSpeaker(speakerName, reason, length)
 			spkr.eMuted:Fire(self.Name, reason, length)
 		end)
 		if not success and err then
-			print("Error mutting speaker: " .. err)
+			_annotate("Error mutting speaker: " .. err)
 		end
 	end
 end
@@ -205,7 +205,7 @@ function methods:UnmuteSpeaker(speakerName)
 		self.eSpeakerUnmuted:Fire(speakerName)
 	end)
 	if not success and err then
-		print("Error unmuting speaker: " .. err)
+		_annotate("Error unmuting speaker: " .. err)
 	end
 
 	local spkr = self.ChatService:GetSpeaker(speakerName)
@@ -214,7 +214,7 @@ function methods:UnmuteSpeaker(speakerName)
 			spkr.eUnmuted:Fire(self.Name)
 		end)
 		if not success and err then
-			print("Error unmuting speaker: " .. err)
+			_annotate("Error unmuting speaker: " .. err)
 		end
 	end
 end
@@ -390,7 +390,7 @@ function methods:InternalPostMessage(fromSpeaker, message, extraData)
 		self.eMessagePosted:Fire(messageObj)
 	end)
 	if not success and err then
-		print("Error posting message: " .. err)
+		_annotate("Error posting message: " .. err)
 	end
 
 	local filteredMessages = {}
@@ -479,7 +479,7 @@ function methods:InternalAddSpeaker(speaker)
 		self.eSpeakerJoined:Fire(speaker.Name)
 	end)
 	if not success and err then
-		print("Error removing channel: " .. err)
+		_annotate("Error removing channel: " .. err)
 	end
 end
 
@@ -494,7 +494,7 @@ function methods:InternalRemoveSpeaker(speaker)
 		self.eSpeakerLeft:Fire(speaker.Name)
 	end)
 	if not success and err then
-		print("Error removing speaker: " .. err)
+		_annotate("Error removing speaker: " .. err)
 	end
 end
 
@@ -570,7 +570,9 @@ function methods:SetChannelNameColor(color)
 end
 
 function methods:GetWelcomeMessageForSpeaker(speaker)
+	_annotate("GetWelcomeMessageForSpeaker" .. speaker.Name)
 	if self.GetWelcomeMessageFunction then
+		_annotate("GetWelcomeMessageFunction exists." .. speaker.Name)
 		local welcomeMessage = self.GetWelcomeMessageFunction(speaker)
 		if welcomeMessage then
 			return welcomeMessage
@@ -611,7 +613,7 @@ function module.new(vChatService, name, welcomeMessage, channelNameColor)
 	obj.Speakers = {}
 	obj.Mutes = {}
 
-	obj.MaxHistory = 200
+	obj.MaxHistory = 500
 	obj.HistoryIndex = 0
 	obj.ChatHistory = {}
 

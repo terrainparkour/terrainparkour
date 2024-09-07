@@ -55,7 +55,7 @@ module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor): boole
 			if res then --these will fill it in, and later it'll be re-fed upstream.
 				task.spawn(function()
 					_annotate("saving to remote " .. badge.name)
-					rdb.saveUserBadgeGrant(userId, badge.assetId, badge.name)
+					rdb.SaveUserBadgeGrant(userId, badge.assetId, badge.name)
 				end)
 			end
 			grantedBadges[userId][badge.assetId] = res
@@ -87,11 +87,11 @@ local function getProgressForStatsKindAndNumber(el: tt.badgeDescriptor, stats: t
 	elseif el.badgeClass == "cwrs" then
 		return math.min(stats.cwrs, el.baseNumber)
 	elseif el.badgeClass == "races" then
-		return math.min(stats.races, el.baseNumber)
+		return math.min(stats.userTotalRaceCount, el.baseNumber)
 	elseif el.badgeClass == "runs" then
-		return math.min(stats.runs, el.baseNumber)
-	elseif el.badgeClass == "cwrtop10s" then
-		return math.min(stats.cwrtop10s, el.baseNumber)
+		return math.min(stats.userTotalRunCount, el.baseNumber)
+	elseif el.badgeClass == "cwrTop10s" then
+		return math.min(stats.cwrTop10s, el.baseNumber)
 	end
 	warn("fail badgeClass progress lookup.")
 	return 0
@@ -119,7 +119,7 @@ module.getBadgeAttainmentForUserId = function(userId: number, rationale: string)
 
 	--list of "attainments"
 	if positiveBadgeAttainments[userId] == nil then
-		local pos: { tt.pyUserBadgeGrant } = rdb.getBadgesByUser(userId)
+		local pos: { tt.pyUserBadgeGrant } = rdb.GetBadgesByUser(userId)
 		local map: { [number]: boolean } = {}
 		for _, el in ipairs(pos) do
 			-- globalBadgeGrantCountsByAssetId[el.badgeAssetId] = el.badgeTotalGrantCount

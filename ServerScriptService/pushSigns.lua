@@ -11,7 +11,7 @@ local module = {}
 
 --set them according to their positiong in generated.
 module.checkSignsNeedingPushing = function()
-	local knownSignIds: { [number]: boolean } = rdb.getKnownSignIds()
+	local knownSignIds: { [number]: boolean } = rdb.GetKnownSignIds()
 	-- note that the server will not fully register new signs in its cache until its been restarted.
 	-- This leads to spurious local reposting of signs on server startup occasionally
 	local knownSignCount = 0
@@ -40,7 +40,7 @@ module.checkSignsNeedingPushing = function()
 				z = tpUtil.noe(pos.Z),
 				name = signname,
 			}
-			rdb.setSignPosition(data)
+			rdb.SetSignPosition(data)
 		end
 	end
 end

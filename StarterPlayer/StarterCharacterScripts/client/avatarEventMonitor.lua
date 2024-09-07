@@ -72,7 +72,8 @@ local artificiallyCheckForSwimming = function(character)
 			if not rootPart or not rootPart.Position or not rootPart:IsA("BasePart") then
 			else
 				while ii < 4.8 do
-					result = workspace:Raycast(rootPart.Position, Vector3.new(0, -1 * ii, 0), raycastParams)
+					result =
+						workspace:Raycast(rootPart.Position, Vector3.new(0, -1 * ii, 0), raycastParams) :: RaycastResult | nil
 					if result and result.Material == Enum.Material.Water then
 						_annotate("faking swimming changestate.")
 						foundSwim = true
@@ -83,11 +84,11 @@ local artificiallyCheckForSwimming = function(character)
 			end
 		end
 		if foundSwim then
-			local det = {
+			local details = {
 				oldState = oldState,
 				newState = Enum.HumanoidStateType.Swimming,
 			}
-			fireEvent(mt.avatarEventTypes.STATE_CHANGED, det)
+			fireEvent(mt.avatarEventTypes.STATE_CHANGED, details)
 			-- YES this will resent swim events with both old and new state being swimming.
 		end
 	end)
@@ -102,10 +103,10 @@ local InputChanged = function(input: InputObject, gameProcessedEvent: boolean, k
 		return
 	end
 
-	if input.KeyCode == Enum.KeyCode.LeftShift then
+	if input.KeyCode == Enum.KeyCode.LeftControl then
 		local theType = input.UserInputState == Enum.UserInputState.Begin and mt.avatarEventTypes.KEYBOARD_WALK
 			or mt.avatarEventTypes.KEYBOARD_RUN
-		fireEvent(theType, {})
+		fireEvent(theType)
 	end
 end
 
@@ -152,10 +153,25 @@ module.Init = function()
 	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 
 	------- FIRE TOUCH SIGN ------------------
-	humanoid.Touched:Connect(function(hit)
+	humanoid.Touched:Connect(function(hit: BasePart, limb: BasePart)
 		if tick() < nextTouchLegalityMustBeGreaterThan then
 			return
 		end
+		-- Create a transparent bluish sphere at the hit point
+		-- local sphere = Instance.new("Part")
+		-- sphere.Shape = Enum.PartType.Ball
+		-- sphere.Size = Vector3.new(1, 1, 1)
+		-- sphere.Position = limb.Position
+		-- sphere.Anchored = true
+		-- sphere.CanCollide = false
+		-- sphere.Transparency = 0.5
+		-- sphere.Color = Color3.new(0, 0.5, 1) -- Bluish color
+		-- sphere.Parent = workspace
+
+		-- -- Remove the sphere after 2 seconds
+		-- task.delay(2, function()
+		-- 	sphere:Destroy()
+		-- end)
 		if hit.ClassName == "Terrain" then
 			return
 		elseif hit.ClassName == "SpawnLocation" then
@@ -178,8 +194,9 @@ module.Init = function()
 				return
 			end
 			local details: mt.avatarEventDetails = {
-				relatedSignId = signId,
-				relatedSignName = hit.Name,
+				touchedSignId = signId,
+				touchedSignName = hit.Name,
+				exactPositionOfHit = limb.Position,
 			}
 			fireEvent(mt.avatarEventTypes.TOUCH_SIGN, details)
 		end
@@ -247,11 +264,11 @@ module.Init = function()
 				)
 			)
 		end
-
-		fireEvent(mt.avatarEventTypes.STATE_CHANGED, {
+		local details = {
 			oldState = old,
 			newState = new,
-		})
+		}
+		fireEvent(mt.avatarEventTypes.STATE_CHANGED, details)
 	end)
 
 	-- The Roblox property `MoveDirection` of the `Humanoid` class represents the direction the character is moving in the world.
@@ -288,9 +305,9 @@ module.Init = function()
 			end
 
 			-- _annotate(string.format("accepted this divergence since the mag was: %0.9f", gap.Magnitude))
-			-- print(currentMoveDirection)
-			-- print(lastEvaluatedMoveDirection)
-			-- print(gap)
+			-- _annotate(currentMoveDirection)
+			-- _annotate(lastEvaluatedMoveDirection)
+			-- _annotate(gap)
 			-- okay the change was big enough.
 			-- now we just check:
 			lastEvaluatedMoveDirection = currentMoveDirection

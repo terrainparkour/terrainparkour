@@ -56,9 +56,9 @@ local a: tt.particleDescriptor = {
     zOffset = random:NextNumber(-10, 10),
 }]]
 
-local LIGHTEMISSION = 0
+local LIGHTEMISSION = 10
 local ACCELERATION = Vector3.new(0, 0, 0)
-local TRANSPARENCY = NumberSequence.new(0)
+local TRANSPARENCY = NumberSequence.new(0.2)
 local VELOCITYINHERITANCE = 0.03
 local LIGHTINFLUENCE = 0
 local ORIENTATION = Enum.ParticleOrientation.FacingCamera
@@ -66,10 +66,7 @@ local ZOFFSET = 0
 local EMISSIONDIRECTION = Enum.NormalId.Back
 local LIFETIME = NumberRange.new(0.1, 1.2)
 local RATE = 1500
-local SIZE = NumberSequence.new({
-	NumberSequenceKeypoint.new(0, 0.25),
-	NumberSequenceKeypoint.new(1, 0.25),
-})
+local SIZE = NumberSequence.new(0.5)
 local SPEED = NumberRange.new(0, 5)
 local DRAG = 1
 local DURATIONMETA = 0.1
@@ -77,6 +74,8 @@ local TEXTURE = "rbxasset://textures/particles/sparkles_main.dds"
 local SHAPE = Enum.ParticleEmitterShape.Sphere
 local SHAPEINOUT = Enum.ParticleEmitterShapeInOut.Outward
 local SHAPESTYLE = Enum.ParticleEmitterShapeStyle.Surface
+
+local OTHERTEXTURE = "rbxassetid://138530670729336"
 
 local function AddDefaults(input: table): tt.particleDescriptor
 	if input.shape == nil then
@@ -137,62 +136,74 @@ local function AddDefaults(input: table): tt.particleDescriptor
 end
 
 local speedup: tt.particleDescriptor = AddDefaults({
-	brightness = 1.5,
+	brightness = 1.6,
 	color = Color3.new(0.4, 1, 0.4), -- Light green
 	name = "speedup",
-	rotation = NumberRange.new(0, 360),
-	rotSpeed = NumberRange.new(0, 50),
-	spreadAngle = Vector2.new(-5, 5),
+	rotation = NumberRange.new(0, 0),
+	rotSpeed = NumberRange.new(0, 0),
+	spreadAngle = Vector2.new(0, 0),
+	size = NumberSequence.new(0.6),
+	transparency = NumberSequence.new(0, 1),
+	durationMETA = 0.08,
+	rate = 0,
+	drag = 0.25,
+	velocityInheritance = 0.1,
+	speed = NumberRange.new(0),
+	-- texture = OTHERTEXTURE,
 })
 
 -- local csp = ColorSequenceKeypoint.new(0, Color3.new(1, 0.4, 0.4))
 local slowdown: tt.particleDescriptor = AddDefaults({
-	brightness = 1,
+	brightness = 1.6,
 	color = Color3.new(1, 0.4, 0.4),
 	name = "slowdown",
-	rotation = NumberRange.new(0, 360),
-	rotSpeed = NumberRange.new(-20, -20),
-	spreadAngle = Vector2.new(30, 30),
+	rotation = NumberRange.new(0, 0),
+	rotSpeed = NumberRange.new(0.0),
+	spreadAngle = Vector2.new(0, 0),
+	size = NumberSequence.new(0.9),
+	transparency = NumberSequence.new(0, 1),
+	durationMETA = 0.08,
+	rate = 0,
+	drag = 0.5,
+	velocityInheritance = 0.1,
+	speed = NumberRange.new(0),
 })
 
 local runstart: tt.particleDescriptor = AddDefaults({
 	name = "runstart",
-	brightness = 1,
-	rate = 1000,
-	velocityInheritance = 0,
-	durationMETA = 0.3,
-	transparency = NumberSequence.new(0.5, 0.5),
-	lifetime = NumberRange.new(0.1, 0.2),
-	size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1.2),
-		NumberSequenceKeypoint.new(1, 1),
-	}),
-	color = Color3.new(0.152941, 0.670588, 0.152941),
-	rotation = NumberRange.new(10, 20),
-	rotSpeed = NumberRange.new(45, 45),
-	spreadAngle = Vector2.new(10, 10),
-	speed = NumberRange.new(0, 0),
+	brightness = 1.2,
+	rate = 10,
+	velocityInheritance = -0.3,
+	durationMETA = 0.2,
+	texture = "rbxassetid://1266170131",
+	transparency = NumberSequence.new(0, 1),
+	lifetime = NumberRange.new(1.5),
+	color = Color3.new(1, 1, 0.7),
+	size = NumberSequence.new(1.8),
+	zOffset = 10,
+	rotation = NumberRange.new(-20, -10),
+	rotSpeed = NumberRange.new(10, 90),
+	spreadAngle = Vector2.new(2, 5),
+	speed = NumberRange.new(0, 0.1),
+	acceleration = Vector3.new(0, 0, 0),
 })
 
 local retouch: tt.particleDescriptor = AddDefaults({
 	name = "retouch",
-	brightness = 1,
-	rate = 1000,
+	brightness = 1.2,
+	rate = 10,
 	velocityInheritance = -0.3,
-	durationMETA = 0.4,
+	durationMETA = 0.2,
 	texture = "rbxassetid://1266170131",
-	transparency = NumberSequence.new(0, 0.25),
-	lifetime = NumberRange.new(0.1, 0.2),
+	transparency = NumberSequence.new(0, 1),
+	lifetime = NumberRange.new(1.5),
 	color = Color3.new(1, 1, 0.7),
-	size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.15),
-		NumberSequenceKeypoint.new(1, 0.1),
-	}),
+	size = NumberSequence.new(1.8),
 	zOffset = 10,
 	rotation = NumberRange.new(-20, -10),
-	rotSpeed = NumberRange.new(90, 90),
-	spreadAngle = Vector2.new(5, 5),
-	speed = NumberRange.new(1, 1),
+	rotSpeed = NumberRange.new(10, 90),
+	spreadAngle = Vector2.new(2, 5),
+	speed = NumberRange.new(0, 0.1),
 	acceleration = Vector3.new(0, 0, 0),
 })
 
@@ -241,18 +252,15 @@ local stoppedmoving: tt.particleDescriptor = AddDefaults({
 local runcomplete: tt.particleDescriptor = AddDefaults({
 	name = "runcomplete",
 	color = Color3.new(0.4, 0.7, 1),
-	brightness = 5,
-	rate = 10,
+	brightness = 2,
+	rate = 100,
 	velocityInheritance = 0,
-	durationMETA = 0.1,
+	durationMETA = 3,
 	texture = "rbxassetid://1266170131",
-	transparency = NumberSequence.new(0.2, 1.0),
+	transparency = NumberSequence.new(0, 1.0),
 	speed = NumberRange.new(0, 9),
-	lifetime = NumberRange.new(0.1, 4),
-	size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.2),
-		NumberSequenceKeypoint.new(1, 0),
-	}),
+	lifetime = NumberRange.new(0.5),
+	size = NumberSequence.new(3),
 	rotation = NumberRange.new(0, 0),
 	acceleration = Vector3.new(0, 10, 0),
 	rotSpeed = NumberRange.new(0, 10),
@@ -263,7 +271,7 @@ local particleDescriptors: { [string]: tt.particleDescriptor } = {}
 particleDescriptors["speedup"] = speedup
 particleDescriptors["slowdown"] = slowdown
 particleDescriptors["runstart"] = runstart
--- particleDescriptors["runcomplete"] = runcomplete
+particleDescriptors["runcomplete"] = runcomplete
 -- particleDescriptors["runkill"] = runkill
 particleDescriptors["retouch"] = retouch
 -- particleDescriptors["stoppedmoving"] = stoppedmoving
@@ -362,4 +370,6 @@ module.getRandomParticleDescriptor = getRandomParticleDescriptor
 module.ParticleDescriptors = particleDescriptors
 
 _annotate("end")
+
+
 return module

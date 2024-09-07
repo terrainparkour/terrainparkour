@@ -1,6 +1,6 @@
 --!strict
 
--- userSettings.lua settings storage on server
+-- userSettings.lua settings
 
 -- TODO product goals 2022.10
 -- get all settings for user
@@ -34,216 +34,39 @@ local module = {}
 
 local userSettingsCache: { [number]: { [string]: tt.userSettingValue } } = {}
 
---2022.10
---note these are filled in and returned to users when the user has no stored value.
---note "value" means default here.
--- this is also a lot like just a list of all the general BooleanSettings
-local defaultSettingsValues: { tt.userSettingValue } = {
-	--a real impactful user setting
-	{
-		name = settingEnums.settingNames.HIDE_LEADERBOARD,
-		domain = settingEnums.settingDomains.USERSETTINGS,
-		value = false,
-	},
-	{
-		name = settingEnums.settingNames.SHOW_PARTICLES,
-		domain = settingEnums.settingDomains.USERSETTINGS,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION,
-		domain = settingEnums.settingDomains.USERSETTINGS,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.SHORTEN_CONTEST_DIGIT_DISPLAY,
-		domain = settingEnums.settingDomains.USERSETTINGS,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.ENABLE_DYNAMIC_RUNNING,
-		domain = settingEnums.settingDomains.USERSETTINGS,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.X_BUTTON_IGNORES_CHAT,
-		domain = settingEnums.settingDomains.USERSETTINGS,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.HIGHLIGHT_ON_RUN_COMPLETE_WARP,
-		domain = settingEnums.settingDomains.USERSETTINGS,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP,
-		domain = settingEnums.settingDomains.USERSETTINGS,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.HIGHLIGHT_AT_ALL,
-		domain = settingEnums.settingDomains.USERSETTINGS,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.LEADERBOARD_ENABLE_PORTRAIT,
-		domain = settingEnums.settingDomains.LEADERBOARD,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.LEADERBOARD_ENABLE_USERNAME,
-		domain = settingEnums.settingDomains.LEADERBOARD,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.LEADERBOARD_ENABLE_AWARDS,
-		domain = settingEnums.settingDomains.LEADERBOARD,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.LEADERBOARD_ENABLE_TIX,
-		domain = settingEnums.settingDomains.LEADERBOARD,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.LEADERBOARD_ENABLE_FINDS,
-		domain = settingEnums.settingDomains.LEADERBOARD,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.LEADERBOARD_ENABLE_FINDRANK,
-		domain = settingEnums.settingDomains.LEADERBOARD,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.LEADERBOARD_ENABLE_WRRANK,
-		domain = settingEnums.settingDomains.LEADERBOARD,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.LEADERBOARD_ENABLE_CWRS,
-		domain = settingEnums.settingDomains.LEADERBOARD,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.LEADERBOARD_ENABLE_WRS,
-		domain = settingEnums.settingDomains.LEADERBOARD,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.LEADERBOARD_ENABLE_CWRTOP10S,
-		domain = settingEnums.settingDomains.LEADERBOARD,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.LEADERBOARD_ENABLE_TOP10S,
-		domain = settingEnums.settingDomains.LEADERBOARD,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.LEADERBOARD_ENABLE_RACES,
-		domain = settingEnums.settingDomains.LEADERBOARD,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.LEADERBOARD_ENABLE_RUNS,
-		domain = settingEnums.settingDomains.LEADERBOARD,
-		value = true,
-	},
-	{
-		name = settingEnums.settingNames.LEADERBOARD_ENABLE_BADGES,
-		domain = settingEnums.settingDomains.LEADERBOARD,
-		value = true,
-	},
-	-- MARATHON SETTINGS
-
-	{ name = "enable alphafree", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable alphaordered", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable alphareverse", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable alphabeticalallletters", domain = settingEnums.settingDomains.MARATHONS },
-
-	{ name = "enable find4", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable find10", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable find20", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable find40", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable find100", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable find200", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable find300", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable find380", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable find500", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable find10s", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable find10t", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable exactly40letters", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable exactly100letters", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable exactly200letters", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable exactly500letters", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable exactly1000letters", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable signsofeverylength", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable findsetevolution", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable findsetsingleletter", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable findsetfirstcontest", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable findsetlegacy", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable findsetcave", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable findsetaofb", domain = settingEnums.settingDomains.MARATHONS },
-	{ name = "enable findsetthreeletter", domain = settingEnums.settingDomains.MARATHONS },
-
-	{ name = "have you played trackmania", domain = settingEnums.settingDomains.SURVEYS },
-	{
-		name = "have you played roblox for more than 5 years",
-		domain = settingEnums.settingDomains.SURVEYS,
-	},
-	{ name = "should the game have more badges", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "have you found the chomik", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "should the game have more signs", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "should the game have more ice", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "should the game have fewer signs", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "should the game have more new areas", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "should the game have more marathons", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "should the game have more water areas", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "should the game have more surveys", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "should the game have more settings", domain = settingEnums.settingDomains.SURVEYS },
-	{
-		name = "should the game disable popups of other user activity",
-		domain = settingEnums.settingDomains.SURVEYS,
-	},
-	{ name = "do you play find the chomiks", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "do you play jtoh", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "do you know who shedletsky is", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "blame john", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "birb", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "cold mold on a slate plate", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "have you played for more than a year", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "have you played among us", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "have you played factorio", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "have you beaten factorio", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "have you played slay the spire", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "have you beaten slay the spire ascension 20", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "more special signs", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "more limited signs", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "moveable signs", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "more lava", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "more ice", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "more players", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "more advertisements", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "more sounds", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "more music", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "more configuration options", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "more UIs", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "more commands", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "more user generated content", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "Verv will get better", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "you like ai", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "you have tried midjourney", domain = settingEnums.settingDomains.SURVEYS },
-	{ name = "you have used chatGPT", domain = settingEnums.settingDomains.SURVEYS },
-}
-
 --copy a setting based on template default.
 local function copySetting(setting: tt.userSettingValue): tt.userSettingValue
-	local res: tt.userSettingValue = { name = setting.name, domain = setting.domain, value = setting.value }
-	return res
+	if setting.kind == "boolean" then
+		local res: tt.userSettingValue = {
+			name = setting.name,
+			domain = setting.domain,
+			kind = setting.kind,
+			booleanValue = setting.defaultBooleanValue,
+		}
+		return res
+	elseif setting.kind == "string" then
+		local res: tt.userSettingValue = {
+			name = setting.name,
+			domain = setting.domain,
+			kind = setting.kind,
+			stringValue = setting.defaultStringValue,
+		}
+		return res
+	else
+		error("unknown kind " .. setting.kind)
+	end
 end
 
 local debounceInnerSetup = false
+
+local function isSettingDefined(setting: tt.userSettingValue): boolean
+	for a, b in pairs(settingEnums.settingDefinitions) do
+		if b.name == setting.name then
+			return true
+		end
+	end
+	return false
+end
 
 --just call this to get settings and it will handle caching.
 --src is just for debugging.
@@ -257,28 +80,73 @@ local function innerSetupSettings(player: Player, src: string): { [string]: tt.u
 
 	-- if missing, one-time get.
 	if userSettingsCache[userId] == nil then
+		_annotate("innerSetupSettings there was no cache for this user., userId=" .. userId)
 		userSettingsCache[userId] = {}
-		local got = rdb.getSettingsForUser(userId)
+		local got = rdb.GetSettingsForUser(userId) :: { [string]: tt.userSettingValue }
 
+		local actuallyDefinedSettings: { [string]: tt.userSettingValue } = {}
+		for _, returnedSettingFromRemoteDb in pairs(got.res) do
+			if isSettingDefined(returnedSettingFromRemoteDb) then
+				actuallyDefinedSettings[returnedSettingFromRemoteDb.name] = returnedSettingFromRemoteDb
+			else
+				_annotate(
+					"innerSetupSettings got setting that isn't actually defined? " .. returnedSettingFromRemoteDb.name
+				)
+				continue
+			end
+		end
+
+		_annotate(string.format("innerSetupSettings got %d settings for user from db. userId=%d", #got.res, userId))
 		-- note this allows settings from db which no longer exist in code. hmm.
-		for _, setting in pairs(got.res) do
+		for _, setting in pairs(actuallyDefinedSettings) do
+			_annotate(
+				string.format(
+					"innerSetupSettings got setting: %s %s. kind=%s bool=%s str=%s",
+					setting.name,
+					setting.domain,
+					tostring(setting.kind),
+					tostring(setting.booleanValue),
+					tostring(setting.stringValue)
+				)
+			)
 			userSettingsCache[userId][setting.name] = setting
 		end
-		for _, defaultSetting in ipairs(defaultSettingsValues) do
+		for _, defaultSetting in pairs(settingEnums.settingDefinitions) do
 			--if user has no value from db, fill one in in cache at least so callers see it.
 			if userSettingsCache[userId][defaultSetting.name] == nil then
+				_annotate(
+					string.format(
+						"innerSetupSettings creating default setting: %s %s",
+						defaultSetting.name,
+						defaultSetting.domain
+					)
+				)
 				userSettingsCache[userId][defaultSetting.name] = copySetting(defaultSetting)
 			end
 		end
 	end
 
 	debounceInnerSetup = false
+	_annotate(
+		string.format("Returning settings combined real & filled-in from defaults: %d", #userSettingsCache[userId])
+	)
 	return userSettingsCache[userId]
 end
 
 local getUserSettingByName = function(player: Player, settingName: string): tt.userSettingValue
 	local userSettings = innerSetupSettings(player, "getUserSettingByName " .. settingName)
+	_annotate("trying to find a setting by name: " .. settingName)
 	for _, s in userSettings do
+		_annotate(
+			string.format(
+				"evaluating setting: %s %s. kind=%s bool=%s str=%s",
+				s.name,
+				s.domain,
+				tostring(s.kind),
+				tostring(s.booleanValue),
+				tostring(s.stringValue)
+			)
+		)
 		if s.name == settingName then
 			return s
 		end
@@ -289,9 +157,25 @@ end
 -- if you get a missing setting for a user, we just store it in server memory. if they CHANGE it, we actually store to dbserver. otherwise
 -- it only exists on the game server. and that's okay?
 local getUserSettingsByDomain = function(player: Player, domain: string): { [string]: tt.userSettingValue }
-	local userSettings = innerSetupSettings(player, "getUserSettingsByDomain " .. domain)
+	_annotate("getUserSettingsByDomain " .. domain)
+	local userSettings: { [string]: tt.userSettingValue } =
+		innerSetupSettings(player, "getUserSettingsByDomain " .. domain)
 	local res = {}
+
+	-- note that these are loaded directly from the db, without any attempt currently to coerce them into the list of actually
+	-- currently valid settinsg wtihing settingEnums. This is a mistake since during development or change, it would result
+	-- in returning settings to user / server code which no longer exist.
 	for _, s in pairs(userSettings) do
+		_annotate(
+			string.format(
+				"evaluating setting for domain inclusion:: %s %s. kind=%s bool=%s str=%s",
+				s.name,
+				s.domain,
+				tostring(s.kind),
+				tostring(s.booleanValue),
+				tostring(s.stringValue)
+			)
+		)
 		if s.domain == domain then
 			res[s.name] = s
 		end
@@ -299,16 +183,9 @@ local getUserSettingsByDomain = function(player: Player, domain: string): { [str
 	return res
 end
 
-module.getUserSettingsRouter = function(player: Player, data: settingEnums.settingRequest): any
-	if data.includeDistributions then
-		if data.domain == settingEnums.settingDomains.SURVEYS then
-			local got = rdb.getSurveyResults(player.UserId)
-
-			return got
-		else
-			error("cant get distributions for other settings.")
-		end
-	end
+module.GetUserSettingsRouter = function(player: Player, data: settingEnums.settingRequest): any
+	local msg = string.format("GetUserSettingsRouter, request=%s %s", tostring(data.domain), tostring(data.settingName))
+	_annotate(msg)
 	if data.domain ~= nil and data.domain ~= "" then
 		return getUserSettingsByDomain(player, data.domain)
 	end
@@ -326,19 +203,16 @@ local function userChangedSettingFromUI(userId: number, setting: tt.userSettingV
 		error("empty should not happen")
 	end
 
-	--todo ADD CUSTOMIZER BADGE
-	-- ERROR("ADD BADGE HERE.")
-
-	local res = rdb.updateSettingForUser(userId, setting.value, setting.name, setting.domain)
+	local res =
+		rdb.UpdateSettingForUser(userId, setting.name, setting.domain, setting.booleanValue, setting.stringValue)
 	userSettingsCache[userId][setting.name] = setting
-
 	grantBadge.GrantBadge(userId, badgeEnums.badges.TakeSurvey)
 	local ct = 0
 	for _, item: tt.userSettingValue in userSettingsCache[userId] do
 		if item.domain ~= settingEnums.settingDomains.SURVEYS then
 			continue
 		end
-		if item.value ~= nil then
+		if item.booleanValue ~= nil then
 			ct += 1
 		end
 		if ct > 20 then
@@ -350,19 +224,24 @@ local function userChangedSettingFromUI(userId: number, setting: tt.userSettingV
 end
 
 module.Init = function()
-	GetUserSettingsFunction.OnServerInvoke = module.getUserSettingsRouter
+	GetUserSettingsFunction.OnServerInvoke = module.GetUserSettingsRouter
 
 	userSettingsChangedFunction.OnServerInvoke = function(player: Player, setting: tt.userSettingValue)
 		return userChangedSettingFromUI(player.UserId, setting)
 	end
 
+	-- TODO this is overkill right now.
 	-- on startup I should hit the server for each of these that are new at least.
-	for _, setting: tt.userSettingValue in pairs(defaultSettingsValues) do
+	for _, setting: tt.userSettingValue in pairs(settingEnums.settingDefinitions) do
 		-- hit server for some of them.
 		-- MAGIC this just hits the server, creating all missing settings, if needed.
 		if setting.domain == settingEnums.settingDomains.LEADERBOARD then
 			local data = { domain = setting.domain, name = setting.name }
-			rdb.getOrCreateBooleanSetting(data)
+			if setting.kind == "boolean" then
+				rdb.GetOrCreateBooleanSetting(data)
+			elseif setting.kind == "string" then
+				rdb.GetOrCreateStringSetting(data)
+			end
 		end
 	end
 end

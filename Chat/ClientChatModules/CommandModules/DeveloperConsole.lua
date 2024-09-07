@@ -11,7 +11,7 @@ function ProcessMessage(message, ChatWindow, ChatSettings)
 		if success then
 			local success, err = pcall(function() StarterGui:SetCore("DeveloperConsoleVisible", not developerConsoleVisible) end)
 			if not success and err then
-				print("Error making developer console visible: " ..err)
+				_annotate("Error making developer console visible: " ..err)
 			end
 		end
 		return true

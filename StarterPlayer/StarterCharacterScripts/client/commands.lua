@@ -1,6 +1,6 @@
 --!strict
 
--- stuff where client listens to things from server and replies to commands.
+-- commands.lua? ah, for named eventsa/ seems overkill shouldn't this be just one sender/receiver? whatever.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)

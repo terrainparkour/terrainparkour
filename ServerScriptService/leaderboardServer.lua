@@ -76,7 +76,6 @@ end
 local function updateOthersAboutPlayerImmediate(player: Player)
 	local stats: tt.afterData_getStatsByUser =
 		playerdata.getPlayerStatsByUserId(player.UserId, "update other about joiner")
-	local character = player.Character or player.CharacterAdded:Wait()
 	for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
 		if otherPlayer.UserId == player.UserId then
 			continue

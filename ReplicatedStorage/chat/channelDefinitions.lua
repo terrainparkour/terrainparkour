@@ -1,6 +1,6 @@
 --!strict
 
--- channeldefinitions
+-- channeldefinitions. I believe sometimes required on server or client.
 -- we enabled some old multitabbing code.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
@@ -12,21 +12,20 @@ local commandParsing = require(game.ReplicatedStorage.chat.commandParsing)
 
 local module = {}
 
---looks like this is a way to shuffle around pointers to actual channel objects.
-local channelsFromExternal = nil
-module.sendChannels = function(channels)
-	_annotate(string.format("received #channels", #channels))
-	channelsFromExternal = channels
-end
-
 export type channelDefinition = {
 	Name: string,
 	AutoJoin: boolean,
 	WelcomeMessage: string,
 	adminFunc: any,
 	noTalkingInChannel: boolean,
-	BackupChats: boolean,
 }
+
+--looks like this is a way to shuffle around pointers to actual channel objects.
+local channelsFromExternal = nil
+module.sendChannels = function(channels)
+	_annotate(string.format("received #channels", #channels))
+	channelsFromExternal = channels
+end
 
 local joinMessages = {
 	"Speedrunning scavenger hunt",
@@ -82,20 +81,15 @@ module.getChannelDefinitions = function(): { channelDefinition }
 	end
 
 	local serverTime = os.date("Server Time: %H:%M %d-%m-%Y", tick())
+	local welcomeMessage =
+		string.format("Welcome to Terrain Parkour!\nVersion: %s\n%s\n%s", enums.gameVersion, serverTime, joinMessage)
 
 	table.insert(res, {
 		Name = "All",
 		AutoJoin = true,
-		WelcomeMessage = "Welcome to Terrain Parkour!"
-			.. "\nVersion: "
-			.. enums.gameVersion
-			.. "\n"
-			.. serverTime
-			.. "\n"
-			.. joinMessage,
+		WelcomeMessage = welcomeMessage,
 		adminFunc = commandParsing.DataAdminFunc,
 		noTalkingInChannel = false,
-		BackupChats = true,
 	})
 
 	table.insert(res, {
@@ -104,16 +98,14 @@ module.getChannelDefinitions = function(): { channelDefinition }
 		WelcomeMessage = sendMessageModule.usageCommandDesc,
 		adminFunc = commandParsing.DataAdminFunc,
 		noTalkingInChannel = true,
-		BackupChats = true,
 	})
 
 	table.insert(res, {
 		Name = "Racers",
 		AutoJoin = true,
 		WelcomeMessage = "This channel shows joins and leaves!",
-		adminFunc = commandParsing.DataAdminFunc,
+		-- adminFunc = commandParsing.DataAdminFunc,
 		noTalkingInChannel = true,
-		BackupChats = false,
 	})
 	return res
 end
@@ -123,10 +115,12 @@ module.getChannel = function(name)
 		if channelsFromExternal ~= nil then
 			break
 		end
+		_annotate("waiting for channelsFromExternal")
 		wait(1)
 	end
 	for k, v in pairs(channelsFromExternal) do
 		if v.Name == name then
+			_annotate("returning channel " .. name)
 			return v
 		end
 	end

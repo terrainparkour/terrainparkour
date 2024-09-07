@@ -59,10 +59,8 @@ export type pyUserFinishedRunResponse = {
 	speed: number,
 	raceName: string,
 	raceIsCompetitive: boolean,
-
-	--relations
-	runEntries: { runEntry },
-	actionResults: { actionResult },
+	yourText: string,
+	raceTotalHistoryText: string,
 
 	--metadata
 	kind: string,
@@ -72,26 +70,33 @@ export type pyUserFinishedRunResponse = {
 	createdRace: boolean,
 	createdMarathon: boolean,
 
-	--stats
-	userTotalRaceCount: number,
-	userTotalRunCount: number,
-	userMarathonRunCount: number,
-	cwrs: number,
-	wrCount: number,
-	totalRunsOfThisRaceCount: number,
+	--user stats
 	userTix: number,
-	userTotalTop10Count: number,
-	awardCount: number,
-
-	totalRacersOfThisRaceCount: number,
+	cwrs: number,
+	cwrTop10s: number,
+	cwrRank: number,
+	wrCount: number,
+	wrRank: number,
+	top10s: number,
 
 	userRaceRunCount: number,
-	findCount: number,
+	userTotalRaceCount: number,
+	userTotalRunCount: number,
 
-	--for display options
-	raceName: string,
-	yourText: string,
-	raceTotalHistoryText: string,
+	daysInGame: number,
+	awardCount: number,
+
+	findCount: number,
+	findRank: number,
+
+	-- info on the race or run.
+	userMarathonRunCount: number,
+	totalRunsOfThisRaceCount: number,
+	totalRacersOfThisRaceCount: number,
+
+	--relations, must be last to avoid dumb python typing
+	runEntries: { runEntry },
+	actionResults: { actionResult },
 }
 
 export type ephemeralNotificationOptions = {
@@ -104,8 +109,8 @@ export type ephemeralNotificationOptions = {
 
 export type userFinishedRunOptions = {
 	userId: number,
-	startId: number,
-	endId: number,
+	startSignId: number,
+	endSignId: number,
 	runMilliseconds: number,
 	allPlayerUserIds: string,
 	remoteActionName: string,
@@ -154,19 +159,21 @@ export type getNonTop10RacesByUser = {
 export type afterData_getStatsByUser = {
 	kind: string,
 	userId: number,
-	runs: number,
 	findCount: number,
 	findRank: number,
-	top10s: number,
-	cwrtop10s: number,
-	races: number,
-	userTix: number,
 	cwrs: number,
+	cwrRank: number,
+	cwrTop10s: number,
 	wrCount: number,
 	wrRank: number,
-	totalSignCount: number,
+	top10s: number,
+	userTotalRunCount: number,
+	userTotalRaceCount: number,
+	userTix: number,
+	serverPatchedInTotalSignCount: number, --this is patched in from the server. do NOT get it from the remote DB and do NOT get it from the client (becaues of replication stuff)
 	awardCount: number,
 	--I believe badges come later, via another async process
+	daysInGame: number,
 }
 
 --every time a run happens, update everyone about this user's changed scoreboard.
@@ -174,11 +181,14 @@ export type lbUpdateFromRun = {
 	kind: string,
 	userId: number,
 	userTix: number,
-	top10s: number,
-	races: number,
-	runs: number,
 	cwrs: number,
+	cwrTop10s: number,
+	top10s: number,
+	userTotalRaceCount: number,
+	userTotalRunCount: number,
 	wrCount: number,
+	wrRank: number,
+	daysInGame: number,
 	awardCount: number,
 }
 
@@ -227,7 +237,18 @@ export type badgeOptions = {
 -- note that these don't have the user on them.
 -- thats' because we are typically in a situaiton where we both know the user,
 -- this also enables us to have userSettings.lua on the server which just stores them all plus defaults
-export type userSettingValue = { name: string, domain: string, value: boolean? }
+-- note that this is currently generic on the lua side but on thep ython side it's either a boolean or a string. (maybe more in future?)
+
+export type userSettingValue = {
+	codeName: string?,
+	name: string,
+	domain: string,
+	kind: string,
+	defaultBooleanValue: boolean?,
+	defaultStringValue: string?,
+	booleanValue: boolean?,
+	stringValue: string?,
+}
 
 export type userSettingValuesWithDistributions = { name: string, domain: string, value: boolean?, percentage: number }
 

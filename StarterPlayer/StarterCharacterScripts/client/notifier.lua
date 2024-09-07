@@ -1,5 +1,6 @@
 --!strict
 
+-- notifier.lua
 --runs on playerside for notifications
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)

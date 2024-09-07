@@ -129,21 +129,33 @@ module.CountNewFloorMaterial = function(fm: Enum.Material?)
 	if currentRunSignName == "cOld mOld on a sLate pLate" then
 		for k, num in pairs(timesSeenTerrainFloorTypeCounts) do
 			if num > 1 then
-				fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "cold violation" })
+				local details = {
+					reason = "cold violation",
+				}
+				fireEvent(mt.avatarEventTypes.RUN_CANCEL, details)
 				break
 			end
 		end
 	elseif currentRunSignName == "Keep Off the Grass" then
 		if fm == Enum.Material.LeafyGrass or fm == Enum.Material.Grass then
-			fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "Keep off the grass terrainTouch" })
+			local details = {
+				reason = "Keep off the grass terrainTouch",
+			}
+			fireEvent(mt.avatarEventTypes.RUN_CANCEL, details)
 		end
 	elseif currentRunSignName == "Triple" then
 		if seenFloorCount > 3 then
-			fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "triple terrainTouch" })
+			local details = {
+				reason = "triple terrainTouch",
+			}
+			fireEvent(mt.avatarEventTypes.RUN_CANCEL, details)
 		end
 	elseif currentRunSignName == "Quadruple" then
 		if seenFloorCount > 4 then
-			fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "quadruple terrainTouch" })
+			local details = {
+				reason = "quadruple terrainTouch",
+			}
+			fireEvent(mt.avatarEventTypes.RUN_CANCEL, details)
 		end
 	end
 end

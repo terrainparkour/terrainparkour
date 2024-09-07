@@ -1,6 +1,10 @@
 --!strict
 
+-- CustomChat.lua
 --according to channel setup definitions do the thing.
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
 
 local channeldefinitions = require(game.ReplicatedStorage.chat.channeldefinitions)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
@@ -28,13 +32,16 @@ local function Run(ChatService)
 
 	for _, channelDef in pairs(defs) do
 		local channel = ChatService:GetChannel(channelDef.Name)
-		if not channel then
+		if channel then
+			_annotate("channel found: " .. channelDef.Name)
+		else
+			_annotate("channel not found, creating: " .. channelDef.Name)
 			channel = ChatService:AddChannel(channelDef.Name)
 		end
 
 		channel.WelcomeMessage = channelDef.WelcomeMessage
-
 		channel.AutoJoin = channelDef.AutoJoin
+
 		channels[channelDef.Name] = channel
 	end
 
@@ -45,16 +52,19 @@ local function Run(ChatService)
 	ChatService:RegisterProcessCommandsFunction("GeneralMessageChecker", function(speakerName, message, channelName)
 		local def = getDef(channelName)
 		if not def then
-			warn("no matching channel")
+			warn("no matching channel for channel name: " .. channelName)
 			return true
 		end
 
 		if string.sub(message, 1, 1) == "/" then
 			if def.adminFunc ~= nil then
-				local res = def.adminFunc(speakerName, message, channelName, channels)
+				local res, err = pcall(def.adminFunc, speakerName, message, channelName, channels)
+				if not res then
+					warn(err)
+					return true
+				end
 				return res
 			end
-			--admin cmd in nonadmin channel
 			return true
 		end
 
@@ -64,16 +74,17 @@ local function Run(ChatService)
 		return false
 	end)
 
+	_annotate("sending channels to channeldefinitions")
 	channeldefinitions.sendChannels(channels)
 
-	local validNames = {}
+	local validChannelNames = {}
 	for _, def in ipairs(defs) do
-		validNames[def.Name] = true
+		validChannelNames[def.Name] = true
 	end
 
 	ChatService:RegisterProcessCommandsFunction("bannedUsersCantChat", function(speakerName, message, channelName)
-		--DDD don't backup from exact channel names.
-		if not validNames[channelName] then
+		if not validChannelNames[channelName] then
+			_annotate("invalid channel name: " .. channelName .. "so not setting up banned user can't chat.")
 			return false
 		end
 

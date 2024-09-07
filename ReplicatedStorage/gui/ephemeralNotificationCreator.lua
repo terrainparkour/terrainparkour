@@ -21,7 +21,7 @@ local GuiService = game:GetService("GuiService")
 
 local module = {}
 
-local isMobile = false
+local isTouch = false
 if
 	UIS.TouchEnabled
 	and not UIS.KeyboardEnabled
@@ -29,19 +29,19 @@ if
 	and not UIS.GamepadEnabled
 	and not GuiService:IsTenFootInterface()
 then
-	isMobile = true
+	isTouch = true
 	-- mobile device, busted
 end
 
 module.notify = function(options: tt.ephemeralNotificationOptions)
 	--no mobile player-side notifications
-	if isMobile then
+	if isTouch then
 		return
 	end
 
 	if config.isInStudio() then --already updated upstream
-		print("legacy notifier: " .. options.kind)
-		print(options)
+		_annotate("legacy notifier: " .. options.kind)
+		_annotate(options)
 	end
 
 	local screenGui = Instance.new("ScreenGui")

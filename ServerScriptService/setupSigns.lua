@@ -36,7 +36,7 @@ if false then
 			end
 			local tick = tick()
 			local pos = player.Character.HumanoidRootPart.Position
-			print(string.format("%0.10f %0.4f-%0.4f-%0.4f", tick - t, pp.X - pos.X, pp.Y - pos.Y, pp.Z - pos.Z))
+			_annotate(string.format("%0.10f %0.4f-%0.4f-%0.4f", tick - t, pp.X - pos.X, pp.Y - pos.Y, pp.Z - pos.Z))
 			pp = pos
 			t = tick
 		end
@@ -111,7 +111,7 @@ local function checkMissingSigns()
 		local exiSign = signFolder:FindFirstChild(signName)
 		if not exiSign then
 			badct += 1
-			if badct > 2 then
+			if badct > 1 then
 				break
 			end
 			if not config.isTestGame() then

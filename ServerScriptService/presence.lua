@@ -41,9 +41,7 @@ module.Init = function()
 	table.insert(playerAddFuncs, { func = playerMonitoring.LogJoin, name = "logJoin" })
 	table.insert(playerAddFuncs, { func = playerMonitoring.BackfillBadges, name = "BackfillBadges" })
 	table.insert(playerAddFuncs, { func = nomesh.StandardizeCharacter, name = "NoMesh" })
-	table.insert(playerAddFuncs, { func = badgeCheckers.MetCreatorChecker, name = "setupMetCreatorChecker" })
-	table.insert(playerAddFuncs, { func = badgeCheckers.BumpedCreatorChecker, name = "setupBumpedCreatorChecker" })
-	table.insert(playerAddFuncs, { func = badgeCheckers.CrowdedHouseChecker, name = "setupCrowdedHouseChecker" })
+	table.insert(playerAddFuncs, { func = badgeCheckers.JoinerCheckers, name = "badgeChecksWhileJoining" })
 	table.insert(playerAddFuncs, { func = playerMonitoring.LogLocationOnDeath, name = "logLocationOnDeath" })
 	table.insert(
 		playerAddFuncs,
@@ -82,7 +80,7 @@ module.Init = function()
 	game:BindToClose(function()
 		for _, player in pairs(game.Players:GetPlayers()) do
 			for _, func in ipairs(playerRemovingFuncs) do
-				print("calling final server close: " .. func.name .. " on " .. player.Name)
+				_annotate("calling final server close: " .. func.name .. " on " .. player.Name)
 				func.func(player)
 			end
 		end

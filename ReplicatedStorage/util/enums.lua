@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "1.272"
+module.gameVersion = "0.282"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -544,7 +544,7 @@ local name2signId: { [string]: number } = {
 	["Prompt"] = 532,
 	["Chadiesson"] = 533,
 	["Enum"] = 534,
-	-- ["Talladega"] = 535,
+	["Talladega"] = 535,
 	-- ["Talladega2"] = 536,
 	["👻"] = 537,
 	["Big"] = 538,
@@ -564,12 +564,27 @@ local name2signId: { [string]: number } = {
 	["🗯"] = 552,
 	["Gemelo"] = 553,
 	["Cow"] = 554,
+	["Claude"] = 555,
+	["Molière"] = 556,
+	["Éliante"] = 557,
+	["Erewhon"] = 558,
+	["Polytropon"] = 559,
+	["DNA"] = 560,
+	["Prefontaine"] = 561,
+	["Whippoorwill"] = 562,
+	["Nighthawks"] = 563,
+	["Papua"] = 564,
+	["Chert"] = 565,
+	["Gradus"] = 566,
+	["Cryotheque"] = 567,
 }
 
 --aliases of symbolic signs to their english alias.
 --for example: [🔥:"flame"]
 module.signName2Alias = {}
 module.signName2Alias["💀"] = "skull"
+module.signName2Alias["Molière"] = "Moliere"
+module.signName2Alias["Éliante"] = "Eliante"
 module.signName2Alias["人"] = "person"
 module.signName2Alias["დიუნი"] = "dune"
 module.signName2Alias["الكثيب"] = "arabic"
@@ -599,6 +614,8 @@ module.signName2Alias["🗯"] = "anger"
 -- exclusion list.
 module.aliasesWhichAreVeryCloseSoDontNeedToBeShown = {}
 module.aliasesWhichAreVeryCloseSoDontNeedToBeShown["Jökulhlaup"] = true
+module.aliasesWhichAreVeryCloseSoDontNeedToBeShown["Éliante"] = true
+module.aliasesWhichAreVeryCloseSoDontNeedToBeShown["Molière"] = true
 
 local useLeftFaceSignNames = { ["cOld mOld on a sLate pLate"] = 1, ["Tetromino"] = 2 }
 local unanchoredSignNames = { ["Freedom"] = 1 }
@@ -647,6 +664,7 @@ module.ExcludeSignNamesFromStartingAt = {
 	"Ø",
 	"Chirality",
 	"Why",
+	"Chomik",
 	"Troll Bridge", -- the above should likely never be warpable.
 
 	-- "Obelisk",
@@ -681,22 +699,22 @@ module.ExcludeSignNamesFromStartingAt = {
 	-- "Tapochki",
 	-- "Cinchona",
 	-- "Sciocchi",
-	"Erg",
-	"Sakura",
-	"Slig",
-	"Asana",
+	-- "Erg",
+	-- "Sakura",
+	-- "Slig",
+	-- "Asana",
 	"Kew",
 	-- "Guru",
 	-- "Darwin",
-	"Aphid",
-	"Ararat",
-	"Petrichor",
-	"Kudzu",
-	"Soylent",
+	-- "Aphid",
+	-- "Ararat",
+	-- "Petrichor",
+	-- "Kudzu",
+	-- "Soylent",
 	"IPO",
-	"Mitchell",
-	"Rosen",
-	"Roygbiv",
+	-- "Mitchell",
+	-- "Rosen",
+	-- "Roygbiv",
 	"Yang",
 	-- "Swiss",
 	"Slig",
@@ -706,8 +724,7 @@ module.ExcludeSignNamesFromStartingAt = {
 	"Mogwai",
 	"Verne",
 	"Coagulate",
-	"Floor",
-	"Chomik",
+	-- "Floor",
 	-- "Neandertal",
 }
 
@@ -881,9 +898,10 @@ local SpecialSignDescriptions = {
 	["Quadruple"] = "Limited to 4 terrain types:",
 	["cOld mOld on a sLate pLate"] = "Touch each terrain type only once.",
 	["Fosbury"] = "High Jump",
-	["Bolt"] = "faast",
-	["Salekhard"] = "slip",
-	["Hypergravity"] = "so heavy",
+	["Bolt"] = "Fast",
+	["Prefontaine"] = "Faaast",
+	["Salekhard"] = "Slip",
+	["Hypergravity"] = "So Heavy",
 	["👻"] = "ghost",
 }
 module.SpecialSignDescriptions = SpecialSignDescriptions

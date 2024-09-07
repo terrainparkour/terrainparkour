@@ -1,6 +1,9 @@
 --!strict
 
---this is about server-wide events particularly FIND and RUNs
+-- serverEvents.lua server-side listening for the random races feature.
+-- they're stored in memory of the game server.
+-- this is about server-wide events particularly FIND and RUNs
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 

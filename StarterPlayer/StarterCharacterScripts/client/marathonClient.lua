@@ -451,7 +451,7 @@ local function HandleMarathonSettingsChanged(setting: tt.userSettingValue)
 		warn("bad setting probably legacy bad naming, shouldn't be many and no effect." .. key)
 		return
 	end
-	if setting.value then
+	if setting.booleanValue then
 		initMarathon(targetMarathon)
 	else
 		disableMarathon(targetMarathon)

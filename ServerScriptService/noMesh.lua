@@ -31,7 +31,7 @@ local function handle(character)
 		humanoid:ApplyDescription(desc)
 		for _, el in ipairs(character:GetChildren()) do
 			if el.Name == "CharacterMesh" then
-				print("destroy: " .. el.Name)
+				_annotate("destroy: " .. el.Name)
 				el:Destroy()
 			else
 				if el.ClassName == "MeshPart" then
@@ -48,7 +48,7 @@ local function handle(character)
 					end
 				end
 			end
-			-- print("char children: " .. el.Name)
+			-- _annotate("char children: " .. el.Name)
 		end
 	end)
 end

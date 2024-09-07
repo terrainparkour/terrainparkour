@@ -64,6 +64,7 @@ module.CreateParticleGui = function()
 	listLayout.Parent = particleColorList
 
 	for _, descriptor in ipairs(particleEnums.ParticleDescriptors) do
+		local shortcut = ""
 		local shortcutFrame = Instance.new("Frame")
 		shortcutFrame.Size = UDim2.new(1, 0, 0, 40)
 		shortcutFrame.BackgroundColor3 = Color3.fromRGB(184, 216, 186) -- Soft green
@@ -77,7 +78,7 @@ module.CreateParticleGui = function()
 		keyLabel.Font = Enum.Font.GothamBold
 		keyLabel.TextColor3 = Color3.fromRGB(70, 70, 70)
 		keyLabel.TextScaled = true
-		keyLabel.Text = shortcut.key
+		keyLabel.Text = descriptor.name --TODO not right.
 		keyLabel.Parent = shortcutFrame
 
 		local keyCorner = Instance.new("UICorner")
@@ -91,7 +92,7 @@ module.CreateParticleGui = function()
 		descLabel.Font = Enum.Font.Gotham
 		descLabel.TextColor3 = Color3.fromRGB(70, 70, 70)
 		descLabel.TextScaled = true
-		descLabel.Text = shortcut.desc
+		descLabel.Text = descriptor.name --TODO not right.
 		descLabel.TextXAlignment = Enum.TextXAlignment.Left
 		descLabel.Parent = shortcutFrame
 
@@ -102,7 +103,7 @@ module.CreateParticleGui = function()
 		iconLabel.Font = Enum.Font.Gotham
 		iconLabel.TextColor3 = Color3.fromRGB(70, 70, 70)
 		iconLabel.TextScaled = true
-		iconLabel.Text = shortcut.icon
+		iconLabel.Text = "" --TODO not right.
 		iconLabel.Parent = shortcutFrame
 	end
 

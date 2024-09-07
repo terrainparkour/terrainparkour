@@ -1,15 +1,24 @@
 --!strict
 
+-- some terms:
+-- "client" / player is the roblox client
+-- server usually is either the roblox game server (where serverscripts can run)
+-- but also might be my external, db server which runs python + mysql.
+-- the roblox one will
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 annotater.Init()
 
-local nocol = require(game.ServerScriptService.nocollide)
-nocol.Init()
-
 --IMPORTANT  this go first because it's where signs and everything are set up
 local workspaceSetup = require(game.ServerScriptService.workspaceSetup)
 workspaceSetup.createEvents()
+
+local nocol = require(game.ServerScriptService.nocollide)
+nocol.Init()
+
+local userDataServer = require(game.ServerScriptService.userDataServer)
+userDataServer.Init()
 
 local setupSigns = require(game.ServerScriptService.setupSigns)
 setupSigns.Init()
@@ -60,8 +69,8 @@ serverEvents.Init()
 local serverWarping = require(game.ServerScriptService.serverWarping)
 serverWarping.Init()
 
-local raceEnding = require(game.ServerScriptService.raceEnding)
-raceEnding.Init()
+local runEnding = require(game.ServerScriptService.runEnding)
+runEnding.Init()
 
 local setupSpecialSigns = require(game.ServerScriptService.setupSpecialSigns)
 setupSpecialSigns.Init()

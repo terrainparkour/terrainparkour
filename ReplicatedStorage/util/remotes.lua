@@ -19,10 +19,10 @@ local function getDebounce(name: string)
 	if debounce then
 		while debounce do
 			wait(0.1)
-			-- print("remote debounce " .. name .. " holder: " .. holder)
+			-- _annotate("remote debounce " .. name .. " holder: " .. holder)
 		end
 	else
-		-- print("no debounce for " .. name)
+		-- _annotate("no debounce for " .. name)
 	end
 	-- holder = name
 	debounce = true
@@ -31,7 +31,7 @@ end
 local done = function(name: string)
 	-- holder = ""
 	debounce = false
-	-- print("done. " .. name)
+	-- _annotate("done. " .. name)
 end
 
 local registerRemoteEvent = function(name: string): RemoteEvent

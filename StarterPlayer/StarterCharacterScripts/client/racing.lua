@@ -31,9 +31,8 @@ local terrainTouchMonitor = require(game.ReplicatedStorage.terrainTouchMonitor)
 
 ---------- CHARACTER -------------
 local localPlayer: Player = game.Players.LocalPlayer
-local playerGui = localPlayer:WaitForChild("PlayerGui")
+-- local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 ----------- EVENTS -------------------
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
@@ -44,16 +43,16 @@ local isRacingBlockedByWarp = false
 
 ----------- RUNSTATE MONITORING ----------------
 local currentRunStartTick: number = 0
+
+local currentRunSignId: number = 0
 local currentRunSignName: string = ""
+
 -- the start position of the initial sign in a race - used for distance
 local lastRunCompleteTime = 0
 
 ---------- DEBOUNCERS ------------
 -- so we don't repeatedly call this function in overlapping ways. -----------------------
 local clientTouchDebounce: { [string]: boolean } = {}
-
----------------- LEGALITY STATE MONITORING ---------------------------
-local isAvatarLegalToTouchSigns = true
 
 ----------- this is for the special runs which have limitations on how many terrains you can see as you run and things like that.----------
 ---------- we probably should just monitor them ourselves ?--------------
@@ -62,26 +61,46 @@ local isAvatarLegalToTouchSigns = true
 -- this happens when any kind of illegal avatar things happens mostly like dying or leaving.
 -- this modifes local state so further touches won't count as ending the run etc.
 -- it also calls the singleton for managing the run UI and tells it to stop.
-local function endClientRun(context: string)
+local function endClientRun(context: string, endTick: number)
 	_annotate("endClientRun, reason:" .. context)
 	currentRunStartTick = 0
 	currentRunSignName = ""
+	currentRunSignId = 0
 	dynamicRunning.endDynamic()
 	activeRunSGui.KillActiveRun()
 	clientTouchDebounce[localPlayer.Name] = false
+	lastRunCompleteTime = endTick
 end
 
 --- no interpretation yet - just that they touched.
-local function TouchedSign(signId: number, touchTimeTick: number)
+local function TouchedSign(signId: number, signName: string, touchTimeTick: number, exactPositionOfHit: Vector3)
+	if not signName then
+		error("signName is nil")
+	end
+	if not signId then
+		error("signId is nil")
+	end
+
+	if isRacingBlockedByWarp then
+		return
+	end
 	if clientTouchDebounce[localPlayer.Name] then
 		_annotate("blocked by sign touch debouner.")
 		return
 	end
+
 	if isRacingBlockedByWarp then
-		_annotate("isRacingBlockedByWarp inside touchsign.")
-		clientTouchDebounce[localPlayer.Name] = false
+		_annotate("isRacingBlockedByWarp")
 		return
 	end
+
+	local sign = tpUtil.signId2Sign(signId)
+	if not sign then
+		warn("NO sign.")
+		return
+	end
+
+	------------------LOCK--------
 	clientTouchDebounce[localPlayer.Name] = true
 
 	local gapSinceLastRun = touchTimeTick - lastRunCompleteTime
@@ -91,37 +110,20 @@ local function TouchedSign(signId: number, touchTimeTick: number)
 	if gapSinceLastRun < 0.1 then
 		--debounce so they can try this method again.
 		clientTouchDebounce[localPlayer.Name] = false
+		warn("this should never happen. If you see it, please report.")
 		return false
 	end
-	--hit is valid.
-	local signName: string = tpUtil.signId2signName(signId)
-	local sign: Part? = tpUtil.signId2Sign(signId)
-	if sign == nil then
-		warn("no sign.")
-	end
-	if not isAvatarLegalToTouchSigns then
-		_annotate("ignoring touch while not free to touch signs.")
-		clientTouchDebounce[localPlayer.Name] = false
-		return
-	end
+
+	-----------------NEW RACE or RESTART CURRENT RACE BY TOUCHING SIGN AGAIN-----------------------------
 
 	-- notify marathon ui
 	marathonClient.receiveHit(signName, touchTimeTick)
 
-	-------- okay so depending what's happening, different things may occur here. ----------------
-
-	-----------------NEW RACE or RESTART CURRENT RACE BY TOUCHING SIGN AGAIN-----------------------------
-	--NOTE we do not FIND signs from the client.-------
-	if isRacingBlockedByWarp then
-		_annotate("isRacingBlockedByWarp")
-		clientTouchDebounce[localPlayer.Name] = false
-		return
-	end
-
+	------- START RUN ------------
 	if currentRunSignName == "" then
-		------- START RUN ------------
 		_annotate(string.format("started run START" .. signName))
 		currentRunSignName = signName
+		currentRunSignId = signId
 		activeRunSGui.StartActiveRunGui(touchTimeTick, signName, sign.Position)
 		local signOverallTextDescription = enums.SpecialSignDescriptions[currentRunSignName]
 		if signOverallTextDescription then
@@ -129,51 +131,59 @@ local function TouchedSign(signId: number, touchTimeTick: number)
 		end
 
 		dynamicRunning.startDynamic(localPlayer, signName, touchTimeTick)
-		fireEvent(mt.avatarEventTypes.RUN_START, { relatedSignId = signId, relatedSignName = signName })
+		fireEvent(
+			mt.avatarEventTypes.RUN_START,
+			{ startSignId = signId, startSignName = signName, exactPositionOfHit = exactPositionOfHit }
+		)
 		currentRunStartTick = touchTimeTick
 		terrainTouchMonitor.initTracking(signName)
 		_annotate(string.format("started run from" .. currentRunSignName))
+
+	--------- RETOUCH----------------------------
 	elseif currentRunSignName == signName then
-		--------- RETOUCH----------------------------
 		_annotate(string.format("retouch start." .. signName))
 		local gap = touchTimeTick - currentRunStartTick
 		if gap > 0.0 then
 			currentRunStartTick = touchTimeTick
 			_annotate(string.format("updated start of run by: %0.4f", gap))
 			dynamicRunning.resetDynamicTiming(touchTimeTick)
-			fireEvent(mt.avatarEventTypes.RETOUCH_SIGN, { relatedSignId = signId, relatedSignName = signName })
+			local details: mt.avatarEventDetails = {
+				startSignId = signId,
+				startSignName = signName,
+				exactPositionOfHit = exactPositionOfHit,
+			}
+			fireEvent(mt.avatarEventTypes.RETOUCH_SIGN, details)
 			activeRunSGui.UpdateStartTime(currentRunStartTick)
 		end
 		_annotate(string.format("touched sign again: %s", signName))
+
+	--------END RACE-------------
 	else
-		--------END RACE-------------
-		_annotate(string.format("run END init.." .. signName))
-		--locally calculated actual racing time.
-		local runMilliseconds: number = math.floor(1000 * (touchTimeTick - currentRunStartTick))
-		local details: mt.avatarEventDetails = {
-			relatedSignId = tpUtil.signName2SignId(signName),
-			relatedSignName = signName,
-		}
-		fireEvent(mt.avatarEventTypes.RUN_COMPLETE, details)
-		local floorSeen: number = terrainTouchMonitor.GetSeenTerrainTypesCountThisRun()
 		if not currentRunSignName then
 			error("currentRunSignName is nil")
 		end
-		if not signName then
-			error("signName is nil")
-		end
-		_annotate(
-			string.format(
-				"end run from %s to %s in %dms, %d floors",
-				currentRunSignName,
-				signName,
-				runMilliseconds,
-				floorSeen
-			)
-		)
+
+		_annotate(string.format("run END init.." .. signName))
+
+		--locally calculated actual racing time.
+		local runMilliseconds: number = math.floor(1000 * (touchTimeTick - currentRunStartTick))
+		local details: mt.avatarEventDetails = {
+			endSignId = signId,
+			endSignName = signName,
+			startSignId = currentRunSignId,
+			startSignName = currentRunSignName,
+			exactPositionOfHit = exactPositionOfHit,
+		}
+
+		local floorSeen: number = terrainTouchMonitor.GetSeenTerrainTypesCountThisRun()
+
+		--tell the game server it ended so we can relay to store in db server.
 		TellServerRunEndedRemoteEvent:FireServer(currentRunSignName, signName, runMilliseconds, floorSeen)
-		endClientRun("normal end run.")
-		lastRunCompleteTime = tick()
+
+		-- various local scripts will respond - non-exhaustively: particles will show, morphs will reset, movement reset(?) etc.
+		fireEvent(mt.avatarEventTypes.RUN_COMPLETE, details)
+
+		endClientRun("normal end run.", touchTimeTick)
 	end
 	clientTouchDebounce[localPlayer.Name] = false
 end
@@ -184,11 +194,8 @@ end
 -- basic policy: if they touch a floor, change the movementt rules to that type.
 -- also store the event if it's important to us, so we can recalc speed.
 local eventsWeCareAbout: { number } = {
-
 	mt.avatarEventTypes.AVATAR_RESET,
-	-- mt.avatarEventTypes.RUN_COMPLETE, ---we send this to other people so we don't care about it.
 	mt.avatarEventTypes.RUN_CANCEL, ------ other people killing our runs.
-	-- mt.avatarEventTypes.RETOUCH_SIGN,
 	mt.avatarEventTypes.TOUCH_SIGN,
 	mt.avatarEventTypes.AVATAR_DIED,
 	mt.avatarEventTypes.CHARACTER_REMOVING,
@@ -198,36 +205,22 @@ local eventsWeCareAbout: { number } = {
 	mt.avatarEventTypes.WARP_DONE_RESTART_RACING,
 }
 
-local eventIsATypeWeCareAbout = function(ev: mt.avatarEvent): boolean
-	for _, value in pairs(eventsWeCareAbout) do
-		if value == ev.eventType then
-			return true
-		end
-	end
-	return false
-end
-
-local function adjustPlayerFreedomToDoRuns(val: boolean, reason: string)
-	isAvatarLegalToTouchSigns = val
-	_annotate("Set clientIsFreeToTouchSigns to " .. tostring(val) .. " because " .. reason)
-end
-
 local function handleAvatarEvent(ev: mt.avatarEvent)
-	if not eventIsATypeWeCareAbout(ev) then
+	if not avatarEventFiring.EventIsATypeWeCareAbout(ev, eventsWeCareAbout) then
 		return
 	end
 	_annotate(string.format("handleAvatarEvent: %s", avatarEventFiring.DescribeEvent(ev.eventType, ev.details)))
 	if ev.eventType == mt.avatarEventTypes.GET_READY_FOR_WARP then
 		_annotate("GET_READY_FOR_WARP")
 		isRacingBlockedByWarp = true
-		endClientRun("warping.")
+		endClientRun("warping.", ev.timestamp)
 		fireEvent(mt.avatarEventTypes.RACING_WARPER_READY, {})
 		_annotate("GET_READY_FOR_WARP DONE")
 		return
 	elseif ev.eventType == mt.avatarEventTypes.WARP_DONE_RESTART_RACING then
 		_annotate("WARP_DONE_RESTART_RACING")
 		-- perhaps at this point there are still floating touch events?
-		endClientRun("warping DONE.")
+		endClientRun("warping DONE.", ev.timestamp)
 		isRacingBlockedByWarp = false
 		fireEvent(mt.avatarEventTypes.RACING_RESTARTED, {})
 		_annotate("WARP_DONE_RESTART_RACING DONE")
@@ -239,23 +232,20 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 		return
 	end
 	if ev.eventType == mt.avatarEventTypes.CHARACTER_ADDED then
-		--ideally we'd have some sync of everyone being done loading, then this would send.
-		adjustPlayerFreedomToDoRuns(true, "character added")
 	elseif
 		ev.eventType == mt.avatarEventTypes.AVATAR_DIED
 		or ev.eventType == mt.avatarEventTypes.AVATAR_RESET
 		or ev.eventType == mt.avatarEventTypes.CHARACTER_REMOVING
 		or ev.eventType == mt.avatarEventTypes.RUN_CANCEL
 	then
-		endClientRun(string.format("player %s so end run.", mt.avatarEventTypesReverse[ev.eventType]))
-		adjustPlayerFreedomToDoRuns(true, mt.avatarEventTypesReverse[ev.eventType])
+		endClientRun(string.format("player %s so end run.", mt.avatarEventTypesReverse[ev.eventType]), ev.timestamp)
 	elseif ev.eventType == mt.avatarEventTypes.FLOOR_CHANGED then
 		terrainTouchMonitor.CountNewFloorMaterial(ev.details.floorMaterial)
 	elseif ev.eventType == mt.avatarEventTypes.TOUCH_SIGN then
-		if ev.details == nil or not ev.details.relatedSignId then
+		if ev.details == nil or not ev.details.touchedSignId then
 			error("x")
 		end
-		TouchedSign(ev.details.relatedSignId, ev.timestamp)
+		TouchedSign(ev.details.touchedSignId, ev.details.touchedSignName, ev.timestamp, ev.details.exactPositionOfHit)
 	else
 		_annotate("Unhandled event: " .. avatarEventFiring.DescribeEvent(ev.eventType, ev.details))
 	end
@@ -263,7 +253,7 @@ end
 
 module.Init = function()
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-	humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	-- humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	currentRunStartTick = 0
 	currentRunSignName = ""
 	-- the start position of the initial sign in a race - used for distance
@@ -271,7 +261,6 @@ module.Init = function()
 
 	isRacingBlockedByWarp = false
 	clientTouchDebounce = {}
-	isAvatarLegalToTouchSigns = true
 	terrainTouchMonitor.Init()
 	dynamicRunning.Init()
 end

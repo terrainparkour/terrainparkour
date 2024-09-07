@@ -213,7 +213,7 @@ module.showBestTimes = function(
 	if pyUserFinishedRunResponse.mode == WORSE then
 		if (thisRun.place < 11 and thisRun.place > 1) or (thisRun.virtualPlace > 0) then
 			if thisRun.virtualPlace == nil then
-				print("weirdly nil virtualrun.")
+				_annotate("weirdly nil virtualrun.")
 			else
 				if thisRun.virtualPlace == pastRun.place then --same place, slight improvement
 					local yt = "You got another "
@@ -315,9 +315,9 @@ module.showBestTimes = function(
 	pyUserFinishedRunResponse.yourText = yourText
 	-- pyUserFinishedRunResponse.raceTotalHistoryText = raceTotalHistoryText
 
-	-- print("handoff optitons and future")
-	-- print(options)
-	-- print(userFinishedRunResponse)
+	-- _annotate("handoff optitons and future")
+	-- _annotate(options)
+	-- _annotate(userFinishedRunResponse)
 
 	notify.notifyPlayerOfRunResults(player, pyUserFinishedRunResponse)
 end

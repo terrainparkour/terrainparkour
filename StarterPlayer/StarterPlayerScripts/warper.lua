@@ -1,3 +1,4 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 --!strict
 
 -- new structure:
@@ -17,6 +18,7 @@ local textHighlighting = require(game.ReplicatedStorage.gui.textHighlighting)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local mt = require(game.ReplicatedStorage.avatarEventTypes)
+local tpUtil = require(ReplicatedStorage.util.tpUtil)
 
 ---------- CHARACTER -------------
 local localPlayer: Player = game.Players.LocalPlayer
@@ -44,8 +46,6 @@ local currentWarpRequest: tt.serverWarpRequest | nil = nil
 local debounceHandleAvatarEvent = false
 
 -------------- FUNCTIONS ------------------
-
---
 local function TeardownWarpSetup()
 	_annotate("teardown warp setup")
 	movementIsReady = false
@@ -64,17 +64,32 @@ end
 -- then we do the warp.
 
 module.WarpToSignId = function(warpToSignId: number, highlightSignId: number?)
-	_annotate("warp to sign" .. tostring(warpToSignId) .. " highlight " .. tostring(highlightSignId))
+	-- _annotate("warp to sign" .. tostring(warpToSignId) .. " highlight " .. tostring(highlightSignId))
 	if doingAWarp then
 		warn("already doing a warp")
 		return
 	end
-	doingAWarp = true
 	if currentWarpRequest ~= nil then
-		warn("set new warp request when one was alread set.")
+		warn("WarpToSignId: set new warp request when one was alread set.")
 		return
 	end
+	doingAWarp = true
 	currentWarpRequest = { kind = "sign", signId = warpToSignId, highlightSignId = highlightSignId }
+	-- local sourceName = tpUtil.signId2signName(currentWarpRequest.signId)
+	-- local destName = ""
+	-- if currentWarpRequest.highlightSignId then
+	-- 	destName = tpUtil.signId2signName(currentWarpRequest.highlightSignId)
+	-- end
+	-- _annotate(
+	-- 	string.format(
+	-- 		"set new currentWarpRequest to: %s, id: %s, name: %s, highlightId: %s, highlightName: %s",
+	-- 		tostring(currentWarpRequest.kind),
+	-- 		tostring(currentWarpRequest.signId),
+	-- 		sourceName,
+	-- 		tostring(currentWarpRequest.highlightSignId),
+	-- 		destName
+	-- 	)
+	-- )
 
 	-- sometimes these get mixed up and you warp to the wrong location.
 	_annotate("locking everyone for warp")
@@ -82,9 +97,24 @@ module.WarpToSignId = function(warpToSignId: number, highlightSignId: number?)
 	--listener will eventually hear everyone get ready and be locked, do the warp, reset the status.
 end
 
+--
+local eventsWeCareAbout = {
+	mt.avatarEventTypes.MOVEMENT_WARPER_READY,
+	mt.avatarEventTypes.RACING_WARPER_READY,
+	mt.avatarEventTypes.MORPHING_WARPER_READY,
+	mt.avatarEventTypes.MARATHON_WARPER_READY,
+	mt.avatarEventTypes.MORPHING_RESTARTED,
+	mt.avatarEventTypes.MOVEMENT_RESTARTED,
+	mt.avatarEventTypes.RACING_RESTARTED,
+	mt.avatarEventTypes.MARATHON_RESTARTED,
+}
+
 -- when asked to warp we get everybody ready.
 -- when the last ready person tells me they are good to go, we do the warp and clear everything.
 local function handleAvatarEvent(ev: mt.avatarEvent)
+	if not avatarEventFiring.EventIsATypeWeCareAbout(ev, eventsWeCareAbout) then
+		return
+	end
 	while debounceHandleAvatarEvent do
 		_annotate("waiting in handleAvatarEvent.")
 		task.wait(0.1)
@@ -116,7 +146,6 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 	elseif ev.eventType == mt.avatarEventTypes.RACING_RESTARTED then
 		_annotate("received racing restarted")
 		fireEvent(mt.avatarEventTypes.WARP_DONE_RESTART_MARATHONS, {})
-
 		debounceHandleAvatarEvent = false
 		return
 	elseif ev.eventType == mt.avatarEventTypes.MARATHON_RESTARTED then
@@ -172,9 +201,9 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 		local res = ClientRequestsWarpToRequestFunction:InvokeServer(currentWarpRequest)
 		_annotate("warp request done")
 		if currentWarpRequest.highlightSignId then
-			_annotate("highlighting " .. tostring(currentWarpRequest.highlightSignId))
+			-- _annotate("highlighting " .. tostring(currentWarpRequest.highlightSignId))
 			textHighlighting.KillAllExistingHighlights()
-			textHighlighting.DoHighlightSingleSignId(currentWarpRequest.highlightSignId)
+			textHighlighting.DoHighlightSingleSignId(currentWarpRequest.highlightSignId, "warper.")
 			textHighlighting.RotateCameraToFaceSignId(currentWarpRequest.highlightSignId)
 		else
 			_annotate("not highlighting")
@@ -202,19 +231,37 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 	debounceHandleAvatarEvent = false
 end
 
-local function handleServerRequestWarpLockEvent(request: tt.serverWarpRequest)
-	_annotate(
-		string.format(
-			"handleServerRequestWarpLockEvent received. kind: %s signId: %s highlightSignId: %s position: %s",
-			tostring(request.kind),
-			tostring(request.signId),
-			tostring(request.highlightSignId),
-			tostring(request.position)
-		)
+local function describeWarpRequest(request: tt.serverWarpRequest)
+	local sourceName = ""
+	if request.kind == "sign" then
+		if currentWarpRequest and currentWarpRequest.signId then
+			sourceName = tpUtil.signId2signName(currentWarpRequest.signId)
+		end
+	end
+	local destName = ""
+	if currentWarpRequest.highlightSignId then
+		destName = tpUtil.signId2signName(currentWarpRequest.highlightSignId)
+	end
+	local usePos = ""
+	if request.position then
+		usePos = string.format("(%s, %s, %s)", request.position.x, request.position.y, request.position.z)
+	end
+	local res = string.format(
+		"kind: %s sign = %s (%s) highlightSignId: %s (%s) position: %s",
+		request.kind,
+		sourceName,
+		tostring(request.signId),
+		destName,
+		tostring(request.highlightSignId),
+		usePos
 	)
+	_annotate(res)
+end
 
+local function handleServerRequestWarpLockEvent(request: tt.serverWarpRequest)
+	describeWarpRequest(request)
 	if currentWarpRequest ~= nil then
-		warn("set new warp request when one was alread set.")
+		warn("handleServerRequestWarpLockEvent:set new warp request when one was alread set.")
 		return
 	end
 	currentWarpRequest = request

@@ -20,12 +20,28 @@ local AvatarEventBindableEvent = remotes.getBindableEvent("AvatarEventBindableEv
 
 local mt = require(game.ReplicatedStorage.avatarEventTypes)
 
+local lastWarpStart = nil
+
+--HUMANOID
+
 local module = {}
+
+module.EventIsATypeWeCareAbout = function(ev: mt.avatarEvent, eventsWeCareAbout: { number }): boolean
+	for _, value in pairs(eventsWeCareAbout) do
+		if value == ev.eventType then
+			return true
+		end
+	end
+	return false
+end
 
 module.DescribeEvent = function(avatarEventType: number, details: mt.avatarEventDetails?): string
 	local usingText = ""
-	if details.relatedSignId then
-		usingText = usingText .. " relatedSignId=" .. tostring(details.relatedSignId) .. " "
+	if details.startSignName then
+		usingText = usingText .. " startSignName=" .. tostring(details.startSignName) .. " "
+	end
+	if details.endSignName then
+		usingText = usingText .. " endSignName=" .. tostring(details.endSignName) .. " "
 	end
 	if details.floorMaterial then
 		usingText = usingText .. " floorMaterial=" .. tostring(details.floorMaterial) .. " "
@@ -42,12 +58,12 @@ module.DescribeEvent = function(avatarEventType: number, details: mt.avatarEvent
 	if details.oldState then
 		usingText = usingText .. " oldState=" .. tostring(details.oldState) .. " "
 	end
-	if details.warpSourceSignName then
-		usingText = usingText .. " warpSourceSignName=" .. tostring(details.warpSourceSignName) .. " "
-	end
-	if details.warpDestinationSignName then
-		usingText = usingText .. " warpDestinationSignName=" .. tostring(details.warpDestinationSignName) .. " "
-	end
+	-- if details.warpSourceSignName then
+	-- 	usingText = usingText .. " warpSourceSignName=" .. tostring(details.warpSourceSignName) .. " "
+	-- end
+	-- if details.warpDestinationSignName then
+	-- 	usingText = usingText .. " warpDestinationSignName=" .. tostring(details.warpDestinationSignName) .. " "
+	-- end
 	if details.oldSpeed then
 		usingText = usingText .. " oldSpeed=" .. tostring(details.oldSpeed) .. " "
 	end
@@ -68,16 +84,39 @@ module.DescribeEvent = function(avatarEventType: number, details: mt.avatarEvent
 	return res
 end
 
-local lastWarpStart = nil
+module.GetPlayerPosition = function(): (Vector3, Vector3, number)
+	local character = game.Players.LocalPlayer.Character
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	local lookVector = rootPart.CFrame.LookVector
+	return rootPart.Position, lookVector, character:FindFirstChild("Humanoid").WalkSpeed
+end
 
-module.FireEvent = function(avatarEventType: number, details: mt.avatarEventDetails?)
+module.FireEvent = function(avatarEventType: number, details: mt.avatarEventDetails | nil)
+	if not avatarEventType then
+		warn("bad event.", avatarEventType, details)
+		return
+	end
+
 	if not details then
 		details = {}
 	end
 
-	if not avatarEventType then
-		warn("bad event.", avatarEventType, details)
-		return
+	if details.position ~= nil or details.lookVector ~= nil then
+		warn("why did you already have this?", details.position, details.lookVector)
+	end
+
+	local character = game.Players.LocalPlayer.Character
+
+	local s, e = pcall(function()
+		local pos, lv, s = module.GetPlayerPosition()
+		details.position = pos
+		details.lookVector = lv
+		details.walkSpeed = character:FindFirstChild("Humanoid").WalkSpeed
+	end)
+	if not s then
+		warn("error getting player position", e)
+		details.position = Vector3.new(999, 0, 0)
+		details.lookVector = Vector3.new(0, 0, 951)
 	end
 
 	local actualEv: mt.avatarEvent = {

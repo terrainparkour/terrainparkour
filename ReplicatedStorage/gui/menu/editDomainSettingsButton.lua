@@ -37,13 +37,13 @@ local function makeSettingRowFrame(setting: tt.userSettingValue, player: Player,
 	tl.Text = setting.name
 	tl.TextXAlignment = Enum.TextXAlignment.Left
 	local usecolor: Color3
-	if setting.value then
+	if setting.booleanValue then
 		usecolor = colors.greenGo
 	else
 		usecolor = colors.redStop
 	end
 	local toggleButton = guiUtil.getTb("SettingToggle" .. setting.name, UDim2.new(0.25, 0, 1, 0), 0, fr, usecolor)
-	if setting.value then
+	if setting.booleanValue then
 		toggleButton.Text = "Yes"
 	else
 		toggleButton.Text = "No"
@@ -55,14 +55,14 @@ local function makeSettingRowFrame(setting: tt.userSettingValue, player: Player,
 			toggleButton.BackgroundColor3 = colors.greenGo
 			local par = toggleButton.Parent :: TextLabel
 			par.BackgroundColor3 = colors.greenGo
-			setting.value = true
+			setting.booleanValue = true
 			settings.setSetting(setting)
 		else
 			toggleButton.Text = "No"
 			toggleButton.BackgroundColor3 = colors.redStop
 			local par = toggleButton.Parent :: TextLabel
 			par.BackgroundColor3 = colors.redStop
-			setting.value = false
+			setting.booleanValue = false
 			settings.setSetting(setting)
 		end
 	end)

@@ -43,7 +43,7 @@ local createParticleEmitter = function(player: Player, desc: tt.particleDescript
 	while true do
 		particleEmitter:Emit(100)
 		wait(1)
-		print("emitting")
+		_annotate("emitting")
 	end
 end
 -------------------TEMP-------------------------

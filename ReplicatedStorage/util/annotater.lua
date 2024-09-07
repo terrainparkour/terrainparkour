@@ -10,18 +10,26 @@ local startTick = tick()
 local aliases = { LocalScript = "local", Script = "script", ModuleScript = "module" }
 
 -- this controls which annotate calls are actually shown. Enter the minimal script name here regardless of client/module/script etc.
-local goodScripts = { "movement", "avatarEventMonitor", "avatarEventFiring", "serverWarping" }
-goodScripts = { "warper", "dynamicRunning", "main", "movement" }
-
-goodScripts = { "warper", "serverWarping", "ghostSign", "morphs", "avatarEventFiring", "avatarManipulation" }
+local goodScripts = { "warper", "serverWarping", "ghostSign", "morphs", "avatarEventFiring", "avatarManipulation" }
 goodScripts = { "windows", "marathonClient", "marathonStatic", "marathon" }
 goodScripts = { "textHighlighting" }
 goodScripts = { "dynamicServer", "dynamicRunning" }
 goodScripts = { "movement", "avatarEventMonitor", "avatarEventFiring", "avatarManipulation", "particleEnums" }
 goodScripts = { "particleEnums", "avatarEventFiring" }
 goodScripts = { "particleEnums", "movement", "avatarEventMonitor" }
-goodScripts = { "particles", "settings" }
-goodScripts = { "" }
+goodScripts = { "leaderboard" }
+goodScripts = { "*Chat*", "*channel*", "*ShiftGUI*" }
+goodScripts = { "serverWarping", "warper" }
+goodScripts = { "*keyboard*", "serverWarping" }
+goodScripts = { "userDataClient" }
+-- goodScripts = {}
+
+-- for tracking the time gap from the initial loading of the thing - from getAnnotator to calling .annotate('end')
+local totalDone: { [string]: boolean } = {}
+
+-- also exclude these guys.
+local badScripts = {}
+-- badScripts = { "*movement*" }
 
 local showAllRegardless = false
 -- showAllRegardless = true
@@ -88,40 +96,67 @@ local register = function(s: Script | ModuleScript | LocalScript): string
 	return sname
 end
 
-local totalDone: { [string]: boolean } = {}
+local function matchWildcard(pattern, str)
+	-- Convert wildcard pattern to Lua pattern
+	pattern = "^" .. string.gsub(pattern, "%*", ".*") .. "$"
+	return string.match(string.lower(str), string.lower(pattern)) ~= nil
+end
+
+local function ScriptShouldBeAnnotated(s: Script | ModuleScript | LocalScript)
+	-- Check against badScripts first
+	for _, pattern in ipairs(badScripts) do
+		if matchWildcard(pattern, s.Name) then
+			-- Exclude scripts matching badScripts patterns
+			return false
+		end
+	end
+
+	-- Then check against goodScripts
+	for _, pattern in ipairs(goodScripts) do
+		if matchWildcard(pattern, s.Name) then
+			return true
+		end
+	end
+	return false
+end
 
 module.getAnnotater = function(s: Script | ModuleScript | LocalScript)
 	local myname: string = register(s)
-	local doAnnotation = false
+	local doAnnotation = ScriptShouldBeAnnotated(s)
 
-	if table.find(goodScripts, s.Name) then
-		doAnnotation = true
-	end
 	if showAllRegardless then
 		doAnnotation = true
+	end
+	if not doAnnotation then
+		local s = 3
 	end
 
 	local label = s.Name
 	local theLabel = label
 	totalDone[myname] = false
-	local function annotate(input: string | any)
-		if input == "end" and false then
-			local gap = tick() - startTick
-			if gap > 0.1 then
-				print(string.format("%s (%s) done in %0.2fs", myname, s.ClassName, gap))
+
+	local curry = function(myCopyOfDoAnnotation: boolean): (string | any) -> ()
+		local x = function(input: string | any)
+			if input == "end" then
+				local gap = tick() - startTick
+				-- if gap > 1 then
+				-- 	print(string.format("%s (%s) done in %0.2fs", myname, s.ClassName, gap))
+				-- end
+				totalDone[myname] = true
+				return
 			end
-			totalDone[myname] = true
-			return
-		end
-		if doAnnotation then
-			if typeof(input) == "string" then
-				print(string.format("%0.3f %s --- %s", tick() - startTick, theLabel, input))
-			else
-				print(string.format("  %0.3f %s   - ", tick() - startTick, theLabel))
+			if myCopyOfDoAnnotation then
+				if typeof(input) == "string" then
+					print(string.format("%0.3f %s --- %s", tick() - startTick, theLabel, input))
+				else
+					print(string.format("  %0.3f %s   - ", tick() - startTick, theLabel))
+				end
 			end
 		end
+		return x
 	end
-	return annotate
+
+	return curry(doAnnotation)
 end
 
 module.Init = function()

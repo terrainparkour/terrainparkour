@@ -11,7 +11,7 @@ game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
 game.Workspace.CurrentCamera.FieldOfView = (70 + (5 * 2))
 local localPlayer: Player = game.Players.LocalPlayer
 
-localPlayer.CameraMaxZoomDistance = 8999
+localPlayer.CameraMaxZoomDistance = 11999
 
 local movement = require(game.StarterPlayer.StarterCharacterScripts.client.movement)
 local morphs = require(game.StarterPlayer.StarterCharacterScripts.client.morphs)
@@ -20,6 +20,7 @@ local particles = require(game.StarterPlayer.StarterCharacterScripts.client.part
 local notifier = require(game.StarterPlayer.StarterCharacterScripts.client.notifier)
 local serverEvents = require(game.StarterPlayer.StarterCharacterScripts.client.serverEvents)
 
+local userDataClient = require(game.StarterPlayer.StarterPlayerScripts.userDataClient)
 local leaderboard = require(game.StarterPlayer.StarterCharacterScripts.client.leaderboard)
 local marathonClient = require(game.StarterPlayer.StarterCharacterScripts.client.marathonClient)
 local avatarEventMonitor = require(game.StarterPlayer.StarterCharacterScripts.client.avatarEventMonitor)
@@ -37,8 +38,10 @@ local mt = require(game.ReplicatedStorage.avatarEventTypes)
 ---------- CALL INIT ON ALL THOSE THINGS SINCE THEY'RE STILL LOADED ONLY ONE TIME even if the user resets or dies etc. -----------
 local setup = function()
 	settings.Reset()
+
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	userDataClient.Init()
 	movement.Init()
 	morphs.Init()
 	particles.Init()
@@ -51,11 +54,10 @@ local setup = function()
 	commands.Init()
 	textHighlighting.Init()
 	keyboard.Init()
-	serverEvents.Init()
 
 	-- you can't race til everything is set up.
 	racing.Init()
-	print("client main setup done.")
+	_annotate("client main setup done.")
 end
 
 setup()
@@ -69,7 +71,7 @@ resetBindable.Event:Connect(function()
 	fireEvent(mt.avatarEventTypes.AVATAR_RESET, {})
 	-- _annotate("the player reset now.")
 	if character and humanoid then
-		-- print("killin player")
+		_annotate("killin player")
 		humanoid.Health = 0
 	else
 		warn("failed killin player")

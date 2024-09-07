@@ -26,8 +26,8 @@ module.constants.DefaultPhysicalProperties = DefaultPhysicalProperties
 
 local GlacierProps = PhysicalProperties.new(defaultDensity, 0.001, defaulElasticity, 100, 1)
 local GrassProps = PhysicalProperties.new(defaultDensity, defaultFriction + 0.1, defaulElasticity, 100, 1)
-local WaterProps = PhysicalProperties.new(defaultDensity, 0.9, 1.0, 100, 100)
-local MudProps = PhysicalProperties.new(defaultDensity, 0.9, 1.0, 100, 100)
+local WaterProps = PhysicalProperties.new(defaultDensity, 1, 1.0, 100, 100)
+local MudProps = PhysicalProperties.new(defaultDensity, defaultFriction, defaulElasticity, 100, 100)
 
 local defaultJumpPowerMultiplier = 1.0
 
@@ -71,7 +71,9 @@ module.GetJumpPowerByFloorMultipler = function(activeFloor): number
 		return 1
 	elseif activeFloor == Enum.Material.Rock then
 		return 1
-	elseif activeFloor == Enum.Material.Glacier or activeFloor == Enum.Material.Ice then
+	elseif activeFloor == Enum.Material.Glacier then
+		return 1
+	elseif activeFloor == Enum.Material.Ice then
 		return 1
 	elseif activeFloor == Enum.Material.Sand then
 		return 0.96
@@ -137,7 +139,7 @@ local EnumIsTerrain = function(mat: Enum.Material?): boolean
 	if terrainEnumSet[mat.Value] ~= nil then
 		return true
 	end
-	-- print("material was not terrain: " .. mat.Name)
+	-- _annotate("material was not terrain: " .. mat.Name)
 	return false
 end
 module.EnumIsTerrain = EnumIsTerrain
@@ -148,6 +150,31 @@ nonMaterialEnumTypes[Enum.Material.Granite] = true --signs
 nonMaterialEnumTypes[Enum.Material.Plastic] = true --spawn
 
 module.nonMaterialEnumTypes = nonMaterialEnumTypes
+
+local allTerrain = {
+	Enum.Material.WoodPlanks,
+	Enum.Material.Slate,
+	Enum.Material.Concrete,
+	Enum.Material.Brick,
+	Enum.Material.Cobblestone,
+	Enum.Material.Rock,
+	Enum.Material.Sandstone,
+	Enum.Material.Basalt,
+	Enum.Material.CrackedLava,
+	Enum.Material.Limestone,
+	Enum.Material.Pavement,
+	Enum.Material.CorrodedMetal,
+	Enum.Material.Grass,
+	Enum.Material.LeafyGrass,
+	Enum.Material.Sand,
+	Enum.Material.Snow,
+	Enum.Material.Mud,
+	Enum.Material.Ground,
+	Enum.Material.Asphalt,
+	Enum.Material.Salt,
+	Enum.Material.Ice,
+	Enum.Material.Glacier,
+}
 
 _annotate("end")
 return module

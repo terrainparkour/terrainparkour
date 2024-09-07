@@ -4,6 +4,9 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
+
+local textUtil = require(game.ReplicatedStorage.util.textUtil)
+
 local module = {}
 local enums = require(game.ReplicatedStorage.util.enums)
 local emojis = require(game.ReplicatedStorage.enums.emojis)
@@ -306,6 +309,23 @@ end
 module.IsSignPartValidRightNow = function(sign: Part): boolean
 	local res = sign.CanCollide and sign.CanTouch and sign.CanQuery
 	return res
+end
+
+module.AttemptToParseRaceFromInput = function(message: string): (number?, number?)	
+	--lookup a race (NAMEPREFIX-NAMEPREFIX) sign names
+	local signParts = textUtil.stringSplit(message:lower(), "-")
+	if #signParts == 2 then
+		local s1 = signParts[1]
+		local s2 = signParts[2]
+
+		local signId1 = module.looseSignName2SignId(s1)
+		local signId2 = module.looseSignName2SignId(s2)
+
+		if not signId1 or not signId1 then 
+			return nil, nil 
+		end
+		return signId1, signId2
+	end
 end
 
 _annotate("end")

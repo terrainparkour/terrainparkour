@@ -74,7 +74,7 @@ module.hint = function(speaker: Player, channel, parts: { string }): boolean
 		return true
 	end
 
-	print("fallthrough.")
+	_annotate("fallthrough.")
 	return false
 end
 
@@ -99,14 +99,42 @@ end
 
 module.wrs = function(speaker: Player, channel): boolean
 	local data = remoteDbInternal.remoteGet("getWRLeaders", {})
-	sendMessage(channel, "Top World Record Holders:")
+	sendMessage(channel, "Top World Record Holders (including CWRs):")
 	local playersInServer = {}
 	for _, player in ipairs(PlayersService:GetPlayers()) do
 		playersInServer[player.UserId] = true
 	end
 	local function getter(userId: number): any
-		local data2 = playerdata.getPlayerStatsByUserId(userId, "wrs_command")
-		return { rank = data.wrRank, count = data2.wrCount }
+		local data2: tt.afterData_getStatsByUser = playerdata.getPlayerStatsByUserId(userId, "wrs_command")
+		return { rank = data2.wrRank, count = data2.wrCount }
+	end
+	local res = text.generateTextForRankedList(data.res, playersInServer, speaker.UserId, getter)
+	for _, el in ipairs(res) do
+		sendMessage(channel, el.message, el.options)
+	end
+
+	GrandCmdlineBadge(speaker.UserId)
+	return true
+end
+
+module.pinRace = function(speaker: Player, channel, text: string)
+	local signId1, signId2 = tpUtil.AttemptToParseRaceFromInput(text)
+	if not signId1 or not signId2 then
+		sendMessage(channel, "Invalid race format. Please use two sign names separated by a dash (e.g. A-B).")
+		return true
+	end
+end
+
+module.cwrs = function(speaker: Player, channel): boolean
+	local data = remoteDbInternal.remoteGet("getCWRLeaders", {})
+	sendMessage(channel, "Top Competitive World Record Holders:")
+	local playersInServer = {}
+	for _, player in ipairs(PlayersService:GetPlayers()) do
+		playersInServer[player.UserId] = true
+	end
+	local function getter(userId: number): any
+		local data2 = playerdata.getPlayerStatsByUserId(userId, "cwrs_command")
+		return { rank = data2.cwrRank, count = data2.cwrs }
 	end
 	local res = text.generateTextForRankedList(data.res, playersInServer, speaker.UserId, getter)
 	for _, el in ipairs(res) do
@@ -153,7 +181,7 @@ module.describeSingleSign = function(speaker: Player, signId: number, channel)
 	for _, leader in ipairs(fromleaders.res) do
 		local username: string
 		if leader.userId < 0 then
-			username = "player" .. leader.userId
+			username = "TestUser" .. leader.userId
 		else
 			username = rdb.getUsernameByUserId(leader.userId)
 		end
@@ -171,7 +199,7 @@ module.describeSingleSign = function(speaker: Player, signId: number, channel)
 		local username: string
 
 		if leader.userId < 0 then
-			username = "player" .. leader.userId
+			username = "TestUser" .. leader.userId
 		else
 			username = rdb.getUsernameByUserId(leader.userId)
 		end
@@ -580,10 +608,11 @@ local lastRandomTicks: number
 
 -------- CONSTANTS ---------------
 local runTimeInSecondsWithoutBump = 50 --todo lengthen  this
+-- runTimeInSecondsWithoutBump = 0.1
 
 module.randomRace = function(speaker: Player, channel): boolean
 	if config.isInStudio() then
-		runTimeInSecondsWithoutBump = 5
+		runTimeInSecondsWithoutBump = 1
 	end
 	local candidateSignId1: number
 	local candidateSignId2: number

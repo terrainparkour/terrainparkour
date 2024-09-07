@@ -12,7 +12,7 @@ local module = {}
 module.ShowSignCommand = function(player: Player, targetUserId: number?): boolean
 	_annotate(string.format("SeenSignCommand for player %s, targetUserId: %s", player.Name, tostring(targetUserId)))
 	local usingTarget = targetUserId
-	local actualSignIds = {}
+	local signIdsToShow = {}
 	local extraText = ""
 	if usingTarget then
 		local hisSignIds: { [number]: boolean } = rdb.getUserSignFinds(usingTarget)
@@ -20,12 +20,14 @@ module.ShowSignCommand = function(player: Player, targetUserId: number?): boolea
 		local heHasThatYouDontHave = {}
 		local youHaveThatHeDoesntHave = {}
 		for signId, val in pairs(hisSignIds) do
-			if not playerSignIds[signId] then
+			if playerSignIds[signId] then
+				table.insert(signIdsToShow, signId)
+			else
 				table.insert(heHasThatYouDontHave, signId)
 			end
 		end
 		for signId, val in pairs(playerSignIds) do
-			actualSignIds[signId] = val
+			signIdsToShow[signId] = val
 			if not hisSignIds[signId] then
 				table.insert(youHaveThatHeDoesntHave, signId)
 			end
@@ -38,17 +40,13 @@ module.ShowSignCommand = function(player: Player, targetUserId: number?): boolea
 	else
 		local signIds: { [number]: boolean } = rdb.getUserSignFinds(player.UserId)
 		for signId, val in pairs(signIds) do
-			actualSignIds[signId] = val
+			if val then
+				table.insert(signIdsToShow, signId)
+			end
 		end
 	end
 
-	for signId, val in pairs(actualSignIds) do
-		if val then
-			table.insert(actualSignIds, signId)
-		end
-	end
-
-	ShowSignsEvent:FireClient(player, actualSignIds, extraText)
+	ShowSignsEvent:FireClient(player, signIdsToShow, extraText)
 	return true
 end
 

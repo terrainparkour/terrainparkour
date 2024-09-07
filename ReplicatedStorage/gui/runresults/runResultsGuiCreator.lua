@@ -360,15 +360,17 @@ module.createNewRunResultSgui = function(options: tt.pyUserFinishedRunResponse):
 end
 
 local function handleUserSettingChanged(item: tt.userSettingValue): any
-	userWantsHighlightingWhenWarpingFromRunResults = item.value
+	if item.name == settingEnums.settingDefinitions.HIGHLIGHT_ON_RUN_COMPLETE_WARP.name then
+		userWantsHighlightingWhenWarpingFromRunResults = item.booleanValue
+	end
 end
 
 settings.RegisterFunctionToListenForSettingName(
 	handleUserSettingChanged,
-	settingEnums.settingNames.HIGHLIGHT_ON_RUN_COMPLETE_WARP
+	settingEnums.settingDefinitions.HIGHLIGHT_ON_RUN_COMPLETE_WARP.name
 )
 
-local userSettingValue = settings.getSettingByName(settingEnums.settingNames.HIGHLIGHT_ON_RUN_COMPLETE_WARP)
+local userSettingValue = settings.getSettingByName(settingEnums.settingDefinitions.HIGHLIGHT_ON_RUN_COMPLETE_WARP.name)
 handleUserSettingChanged(userSettingValue)
 
 _annotate("end")

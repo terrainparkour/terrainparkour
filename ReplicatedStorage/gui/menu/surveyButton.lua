@@ -43,10 +43,10 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 	yesButton.Text = "Yes"
 	local nowValue = nil
 
-	if setting.value == false then
+	if setting.booleanValue == false then
 		noButton.BackgroundColor3 = colors.redStop
 		nowValue = false
-	elseif setting.value == true then
+	elseif setting.booleanValue == true then
 		yesButton.BackgroundColor3 = colors.greenGo
 		nowValue = true
 	else
@@ -63,7 +63,7 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 			noButton.BackgroundColor3 = colors.redStop
 			yesButton.BackgroundColor3 = colors.defaultGrey
 		end
-		setting.value = nowValue
+		setting.booleanValue = nowValue
 		settings.setSetting(setting)
 	end)
 
@@ -72,7 +72,7 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 			nowValue = nil
 			noButton.BackgroundColor3 = colors.defaultGrey
 			yesButton.BackgroundColor3 = colors.defaultGrey
-			setting.value = nowValue
+			setting.booleanValue = nowValue
 			settings.setSetting(setting)
 		end
 	end)
@@ -87,7 +87,7 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 			noButton.BackgroundColor3 = colors.defaultGrey
 			yesButton.BackgroundColor3 = colors.defaultGrey
 		end
-		setting.value = nowValue
+		setting.booleanValue = nowValue
 		settings.setSetting(setting)
 	end)
 

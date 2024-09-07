@@ -18,7 +18,7 @@ module.getUsernameByUserId = function(userId: number)
 	if not playerUsernames[userId] then
 		--just shortcut this to save time on async lookup.
 		if userId < 0 then
-			playerUsernames[userId] = "test user " .. userId
+			playerUsernames[userId] = "TestUser " .. userId
 			return playerUsernames[userId]
 		end
 		if userId == 0 then

@@ -10,25 +10,8 @@ local ContestResponseTypes = require(game.ReplicatedStorage.types.ContestRespons
 local grantBadge = require(game.ServerScriptService.grantBadge)
 local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
 
+local Players = game:GetService("Players")
 local module = {}
-
-local function GetSingleContest(
-	player: Player,
-	userIds: { number },
-	contestId: number
-): { ContestResponseTypes.Contest }
-	local userIdsInServer = {}
-	for _, userId in ipairs(userIds) do
-		table.insert(userIdsInServer, tostring(userId))
-	end
-	local joined = textUtil.stringJoin(",", userIdsInServer)
-	local contest: { ContestResponseTypes.Contest } = remoteDbInternal.remoteGet(
-		"getSingleContest",
-		{ userId = player.UserId, otherUserIdsInServer = joined, contestId = contestId }
-	)["res"]
-
-	return contest
-end
 
 local function checkContestBadgeGranting(player: Player, contest)
 	--if user has joined all races, award badge
@@ -65,16 +48,31 @@ local function checkLeadContestBadgeGranting(player: Player, contest)
 	end
 end
 
-local function GetContests(player: Player, userIds: { number }): { ContestResponseTypes.Contest }
+local function GetSingleContest(player: Player, contestId: number): { ContestResponseTypes.Contest }
 	local userIdsInServer = {}
-	for _, userId in ipairs(userIds) do
-		table.insert(userIdsInServer, tostring(userId))
+	for _, otherPlayer in ipairs(Players:GetPlayers()) do
+		table.insert(userIdsInServer, tostring(otherPlayer.UserId))
+	end
+	local joined = textUtil.stringJoin(",", userIdsInServer)
+	local contest: { ContestResponseTypes.Contest } = remoteDbInternal.remoteGet(
+		"getSingleContest",
+		{ userId = player.UserId, otherUserIdsInServer = joined, contestId = contestId }
+	)["res"]
+
+	return contest
+end
+
+local function GetContests(player: Player): { ContestResponseTypes.Contest }
+	local userIdsInServer = {}
+	for _, otherPlayer in ipairs(Players:GetPlayers()) do
+		table.insert(userIdsInServer, tostring(otherPlayer.UserId))
 	end
 	local joined = textUtil.stringJoin(",", userIdsInServer)
 	local contests: { ContestResponseTypes.Contest } =
 		remoteDbInternal.remoteGet("getContests", { userId = player.UserId, otherUserIdsInServer = joined })["res"]
 
 	--award badge if in first place
+	--TODO
 	for _, contest in pairs(contests) do
 		checkLeadContestBadgeGranting(player, contest)
 		checkContestBadgeGranting(player, contest)
@@ -85,13 +83,13 @@ end
 
 module.Init = function()
 	local func = remotes.getRemoteFunction("GetContestsFunction") :: RemoteFunction
-	func.OnServerInvoke = function(player: Player, userIds: { number }): any
-		return GetContests(player, userIds)
+	func.OnServerInvoke = function(player: Player): any
+		return GetContests(player)
 	end
 
 	local func2 = remotes.getRemoteFunction("GetSingleContestFunction") :: RemoteFunction
-	func2.OnServerInvoke = function(player: Player, userIds: { number }, contestId: number): any
-		return GetSingleContest(player, userIds, contestId)
+	func2.OnServerInvoke = function(player: Player, contestId: number): any
+		return GetSingleContest(player, contestId)
 	end
 end
 

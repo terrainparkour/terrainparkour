@@ -49,7 +49,7 @@ local pose = "Standing"
 
 local function setupStateChange()
 	humanoid.StateChanged:Connect(function(old, new)
-		-- print(new)
+		-- _annotate(new)
 	end)
 end
 setupStateChange()
@@ -279,7 +279,7 @@ function configureAnimationSet(name, fileList)
 	for i, animType in pairs(animTable) do
 		for idx = 1, animType.count, 1 do
 			if PreloadedAnims[animType[idx].anim.AnimationId] == nil then
-				-- print(animType[idx])
+				-- _annotate(animType[idx])
 				humanoid:LoadAnimation(animType[idx].anim)
 				PreloadedAnims[animType[idx].anim.AnimationId] = true
 			end
@@ -324,10 +324,10 @@ if false then
 			if exi[1] == last then
 				continue
 			end
-			-- print(exi[1])
-			print(" anim tracks: " .. tostring(exi))
-			print(exi)
-			print(exi[1])
+			-- _annotate(exi[1])
+			_annotate(" anim tracks: " .. tostring(exi))
+			_annotate(exi)
+			_annotate(exi[1])
 			last = exi[1]
 		end
 	end)
@@ -518,7 +518,7 @@ local function switchToAnim(anim, animName, transitionTime: number, humanoid)
 		or animName == "swimidle"
 	then
 	else
-		print("skipping: " .. animName)
+		_annotate("skipping: " .. animName)
 		return
 	end
 
@@ -670,14 +670,14 @@ function onDied()
 end
 
 function onJumping()
-	-- print("onJumping")
+	-- _annotate("onJumping")
 	playAnimation("jump", 0.1, humanoid)
 	jumpAnimTimeRemaining = jumpAnimDuration
 	pose = "Jumping"
 end
 
 function onClimbing(speed)
-	-- print("onClimbing")
+	-- _annotate("onClimbing")
 	-- local scale = 5.0
 	-- playAnimation("climb", 0.1, Humanoid)
 	-- setAnimationSpeed(speed / scale)
@@ -685,12 +685,12 @@ function onClimbing(speed)
 end
 
 function onGettingUp()
-	-- print("onGettingUp")
+	-- _annotate("onGettingUp")
 	pose = "GettingUp"
 end
 
 function onFreeFall()
-	-- print("onFreeFall")
+	-- _annotate("onFreeFall")
 	if jumpAnimTimeRemaining <= 0 then
 		playAnimation("fall", fallTransitionTime, humanoid)
 	end
@@ -698,7 +698,7 @@ function onFreeFall()
 end
 
 function onFallingDown()
-	-- print("onFallingDown")
+	-- _annotate("onFallingDown")
 	pose = "FallingDown"
 end
 
@@ -707,7 +707,7 @@ function onSeated()
 end
 
 function onPlatformStanding()
-	-- print("onPlatformStanding")
+	-- _annotate("onPlatformStanding")
 	pose = "PlatformStanding"
 end
 
@@ -715,7 +715,7 @@ end
 -------------------------------------------------------------------------------------------
 
 function onLanding(speed)
-	-- print("landed " .. tostring(speed))
+	-- _annotate("landed " .. tostring(speed))
 	stopAllAnimations()
 end
 
@@ -766,7 +766,7 @@ function stepAnimate(currentTime)
 	local dodoprint = false
 	local doprint = true
 	if pose ~= lastPose then
-		-- print("StepAnimate pose: " .. tostring(pose))
+		-- _annotate("StepAnimate pose: " .. tostring(pose))
 		lastPose = pose
 		doprint = true
 	end
@@ -785,7 +785,7 @@ function stepAnimate(currentTime)
 		return
 	elseif pose == "Running" then
 		if doprint then
-			print("\trunning.")
+			_annotate("\trunning.")
 		end
 		playAnimation("walk", 0.0, humanoid)
 	elseif
@@ -797,12 +797,12 @@ function stepAnimate(currentTime)
 		-- or pose == "Standing" --added this 7.7.22. it
 	then
 		if doprint then
-			print("\tstop all" .. pose)
+			_annotate("\tstop all" .. pose)
 		end
 		stopAllAnimations()
 	else
 		if doprint then
-			print("\tdoing nothing")
+			_annotate("\tdoing nothing")
 		end
 	end
 

@@ -31,6 +31,10 @@ module.createEvents = function()
 	--
 	remotes.getRemoteFunction("ClientRequestsWarpToRequestFunction")
 
+	-- for sending events about user metadata etc back and forth between client and server
+	-- eventually, if it even matters, it could be made generic.
+	remotes.getRemoteFunction("UserDataMessageFunction")
+
 	remotes.getRemoteEvent("ShowClientSignProfileEvent")
 	remotes.getRemoteEvent("MarathonCompleteEvent")
 	remotes.getRemoteEvent("EphemeralMarathonCompleteEvent")
@@ -53,7 +57,7 @@ module.createEvents = function()
 	-- sent from server-side code which wants to do a warp, which the client receives, does a full warp lock, and replies TRUE when it's done.
 	remotes.getRemoteEvent("ServerRequestClientToWarpLockEvent")
 
-	-- when a user finishes a race in raceEnding on server, we need to tell every player's local script about server events UI about it.
+	-- when a user finishes a race in runEnding on server, we need to tell every player's local script about server events UI about it.
 	remotes.getBindableEvent("ServerEventBindableEvent")
 
 	remotes.getRemoteFunction("EphemeralMarathonCreateFunction")

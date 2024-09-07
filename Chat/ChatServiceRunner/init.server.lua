@@ -333,14 +333,14 @@ local modules = game:GetService("Chat"):WaitForChild("ChatModules")
 modules.ChildAdded:connect(function(child)
 	local success, returnval = pcall(TryRunModule, child)
 	if not success and returnval then
-		print("Error running module " .. child.Name .. ": " .. returnval)
+		_annotate("Error running module " .. child.Name .. ": " .. returnval)
 	end
 end)
 
 for i, module in pairs(modules:GetChildren()) do
 	local success, returnval = pcall(TryRunModule, module)
 	if not success and returnval then
-		print("Error running module " .. module.Name .. ": " .. returnval)
+		_annotate("Error running module " .. module.Name .. ": " .. returnval)
 	end
 end
 

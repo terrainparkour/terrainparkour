@@ -46,6 +46,13 @@ local DoLaunchForPulse = function()
 	pulseLaunchDebounce = false
 end
 
+module.InformRetouch = function()
+	if pulseLaunchDebounce then
+		return
+	end
+	DoLaunchForPulse()
+end
+
 module.InformRunStarting = function()
 	pulseLaunchDebounce = false
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model

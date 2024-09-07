@@ -21,6 +21,7 @@ local badgeClasses: { [string]: string } = {
 	LONG_RUN = "long run",
 	ELITE = "elite",
 	CWRS = "cwrs",
+	CWRTOP10S = "cwrTop10s",
 	TIX = "tix",
 	SIGN_WRS = "sign wrs",
 	MARATHON = "marathon",
@@ -217,6 +218,11 @@ local badges: { [string]: tt.badgeDescriptor } = {
 	Hieroglyph = {
 		name = "Hieroglyph",
 		assetId = 2126491233,
+		badgeClass = badgeClasses.WEIRD,
+	},
+	Arrow = {
+		name = "Arrow",
+		assetId = 1078508107638959,
 		badgeClass = badgeClasses.WEIRD,
 	},
 	ScottishNoah = {
@@ -427,6 +433,7 @@ local badges: { [string]: tt.badgeDescriptor } = {
 		hint = "Hacker!",
 	},
 	MetCreator = { name = "Met the Creator", assetId = 872951054, badgeClass = badgeClasses.META },
+	Friendship = { name = "Friendship", assetId = 179125274571469, badgeClass = badgeClasses.META },
 	BadgeFor100Badges = { name = "Got 100 Badges", assetId = 2126075986, badgeClass = badgeClasses.META },
 	BumpedCreator = {
 		name = "Bumped into the Creator!",

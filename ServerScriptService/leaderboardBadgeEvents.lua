@@ -11,9 +11,9 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local PlayerService = game:GetService("Players")
 local module = {}
 
-matches = {}
 
---utility function for others to call in
+-- utility function for others to call in
+-- that is, tell player about this other guy's badge count.
 module.updateBadgeLb = function(player: Player, userIdToInformThemAbout: number, badgecount: number)
 	task.spawn(function()
 		local bstats: tt.badgeUpdate =

@@ -26,7 +26,7 @@ local function doNewFind(player: Player, signId: number, sign: Part)
 		--handle finding a new sign and also accumulate a bunch of stats on the json response
 
 		local res: tt.pyUserFoundSign = rdb.userFoundSign(userId, signId)
-		badgeCheckers.checkBadgeGrantingAfterFind(userId, signId, res)
+		badgeCheckers.CheckBadgeGrantingAfterFind(userId, signId, res)
 		--this is kind of weird.  regenerating another partial stat block?
 		local options: tt.signFindOptions = {
 			kind = "userFoundSign",

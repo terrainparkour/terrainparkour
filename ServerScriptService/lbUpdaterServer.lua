@@ -17,6 +17,23 @@ local module = {}
 local LeaderboardUpdateEvent: RemoteEvent = ReplicatedStorage:WaitForChild("RemoteEvents")
 	:WaitForChild("LeaderboardUpdateEvent")
 
+
+
+-- -- that is, tell player about other guy's extended/rarely changing data.
+-- module.updateRarelyChangingDataLb = function(player: Player, userIdToInformThemAbout: number, data: tt.lb_rareData)
+-- 	task.spawn(function()
+-- 		LeaderboardUpdateEvent:FireClient(player, data)
+-- 	end)
+-- end
+
+
+module.sendUpdateToPlayer = function(player: Player, data: tt.afterData_getStatsByUser)
+	task.spawn(function()
+		LeaderboardUpdateEvent:FireClient(player, data)
+	end)
+end
+
+
 module.updateLeaderboardForRun = function(player: Player, data: tt.lbUpdateFromRun)
 	task.spawn(function()
 		LeaderboardUpdateEvent:FireClient(player, data)
@@ -45,12 +62,6 @@ end
 module.sendLeaveInfoToSomeone = function(player: Player, userId: number)
 	task.spawn(function()
 		local data: tt.leaveOptions = { userId = userId, kind = "leave" }
-		LeaderboardUpdateEvent:FireClient(player, data)
-	end)
-end
-
-module.sendUpdateToPlayer = function(player: Player, data: tt.afterData_getStatsByUser)
-	task.spawn(function()
 		LeaderboardUpdateEvent:FireClient(player, data)
 	end)
 end

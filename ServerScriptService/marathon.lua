@@ -31,7 +31,7 @@ local serverInvokeMarathonComplete = function(
 
 	local descTry = mds[marathonKind]
 	if descTry == nil then
-		print("bad mk" .. marathonKind)
+		_annotate("bad mk" .. marathonKind)
 	end
 	if descTry ~= nil then
 		if descTry.awardBadge ~= nil then

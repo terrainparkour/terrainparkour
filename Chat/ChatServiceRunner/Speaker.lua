@@ -33,7 +33,7 @@ function methods:SayMessage(message, channelName, extraData)
 			self.eSaidMessage:Fire(messageObj, channelName)
 		end)
 		if not success and err then
-			print("Error saying message: " .. err)
+			_annotate("Error saying message: " .. err)
 		end
 	end
 
@@ -57,7 +57,7 @@ function methods:JoinChannel(channelName)
 		self.eChannelJoined:Fire(channel.Name, channel:GetWelcomeMessageForSpeaker(self))
 	end)
 	if not success and err then
-		print("Error joining channel: " .. err)
+		_annotate("Error joining channel: " .. err)
 	end
 end
 
@@ -75,7 +75,7 @@ function methods:LeaveChannel(channelName)
 		self.eChannelLeft:Fire(channel.Name)
 	end)
 	if not success and err then
-		print("Error leaving channel: " .. err)
+		_annotate("Error leaving channel: " .. err)
 	end
 end
 
@@ -139,7 +139,7 @@ function methods:SetMainChannel(channelName)
 		self.eMainChannelSet:Fire(channelName)
 	end)
 	if not success and err then
-		print("Error setting main channel: " .. err)
+		_annotate("Error setting main channel: " .. err)
 	end
 end
 
@@ -189,7 +189,7 @@ function methods:InternalSendMessage(messageObj, channelName)
 		self.eReceivedUnfilteredMessage:Fire(messageObj, channelName)
 	end)
 	if not success and err then
-		print("Error sending internal message: " .. err)
+		_annotate("Error sending internal message: " .. err)
 	end
 end
 
@@ -199,7 +199,7 @@ function methods:InternalSendFilteredMessage(messageObj, channelName)
 		self.eMessageDoneFiltering:Fire(messageObj, channelName)
 	end)
 	if not success and err then
-		print("Error sending internal filtered message: " .. err)
+		_annotate("Error sending internal filtered message: " .. err)
 	end
 end
 
@@ -208,7 +208,7 @@ function methods:InternalSendSystemMessage(messageObj, channelName)
 		self.eReceivedSystemMessage:Fire(messageObj, channelName)
 	end)
 	if not success and err then
-		print("Error sending internal system message: " .. err)
+		_annotate("Error sending internal system message: " .. err)
 	end
 end
 

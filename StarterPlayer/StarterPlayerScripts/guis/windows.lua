@@ -204,8 +204,8 @@ local function updateDrag(
 	local cappedX: number
 	local cappedY: number
 	if frame.Visible then
-		cappedX = math.clamp(absoluteX, 0, maxX)
-		cappedY = math.clamp(absoluteY, 0, maxY)
+		cappedX = math.clamp(math.max(absoluteX, 0), 0, math.max(maxX, 0))
+		cappedY = math.clamp(math.max(absoluteY, 0), 0, math.max(maxY, 0))
 	else
 		cappedX = absoluteX
 		cappedY = absoluteY
@@ -231,7 +231,7 @@ local SetupDraggability = function(frame: Frame)
 			dragging = true
 			mouseDragStartPosition = Vector2.new(input.Position.X, input.Position.Y)
 			framePositionAtStartOfDrag = frame.Position
-			-- print("for this entire drag, startPOS is: " .. tostring(framePositionAtStartOfDrag))
+			-- _annotate("for this entire drag, startPOS is: " .. tostring(framePositionAtStartOfDrag))
 
 			-- Create a new connection for InputChanged while dragging
 			local dragConnection

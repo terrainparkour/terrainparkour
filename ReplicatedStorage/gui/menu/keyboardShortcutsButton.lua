@@ -220,7 +220,7 @@ getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	end
 
 	for ii, userId in ipairs(orderedUserIdsInServer) do
-		-- print(userId)
+		-- _annotate(userId)
 		local username = "usernameFor:" .. tostring(userId)
 
 		local s, e = pcall(function()

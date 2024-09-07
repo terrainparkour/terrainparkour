@@ -22,11 +22,11 @@ local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 --------------- FUNCTIONS -------------------------
 
 local function getIndividualGrindButton(startSignId: number, num: number, rr: tt.relatedRace): TextButton | nil
-	local name = string.format("%d GrindUIButtonTo %s", num, rr.signName)
+	local name = string.format("%03d_GrindUIButtonTo %s", num, rr.signName)
 	local button = guiUtil.getTb(name, UDim2.new(0, 95, 0, 30), 1, nil, colors.lightBlue, 1)
 
 	button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-	button.BorderSizePixel = 1
+	button.BorderSizePixel = 0
 	button.BorderColor3 = Color3.fromRGB(100, 100, 100)
 	button.TextScaled = true
 	button.Text = string.format("%s (%d)", rr.signName, rr.totalRunnerCount)
@@ -42,7 +42,7 @@ local function getIndividualGrindButton(startSignId: number, num: number, rr: tt
 
 		textHighlighting.KillAllExistingHighlights()
 
-		textHighlighting.DoHighlightSingleSignId(rr.signId)
+		textHighlighting.DoHighlightSingleSignId(rr.signId, "getGrindButton.")
 		textHighlighting.RotateCameraToFaceSignId(rr.signId)
 		-- textHighlighting.PointHumanoidAtSignId(rr.signId)
 	end)
@@ -72,7 +72,7 @@ module.MakeSignProfileGrindingGui = function(startSignId: number, sourceName: st
 	vv.VerticalAlignment = Enum.VerticalAlignment.Top
 	vv.Padding = UDim.new(0, 0)
 	vv.Wraps = false
-	vv.Name = "vv"
+	vv.Name = "vvGrinding"
 
 	local titleRow = Instance.new("Frame")
 	titleRow.Name = "01_GrindUITitleRowFrame"
@@ -89,14 +89,18 @@ module.MakeSignProfileGrindingGui = function(startSignId: number, sourceName: st
 	titleTextLabel.TextScaled = true
 
 	local scrollFrame = Instance.new("ScrollingFrame")
-	scrollFrame.Name = "03_ScrollingFrame"
+	scrollFrame.Name = "03_GrindUI_ScrollingFrame"
 	scrollFrame.Size = UDim2.new(1, 0, 1, -78)
 	scrollFrame.Position = UDim2.new(0, 0, 0, 0)
-	scrollFrame.BackgroundTransparency = 1
-	scrollFrame.BorderSizePixel = 0
+	scrollFrame.BackgroundTransparency = 0
+	scrollFrame.BorderSizePixel = 1
 	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- Set initial canvas size to 0
-	scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y -- Automatically size canvas vertically
-	scrollFrame.ScrollBarThickness = 2
+	scrollFrame.AutomaticSize = Enum.AutomaticSize.None
+	-- scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.XY -- Automatically size canvas vertically
+	scrollFrame.ScrollBarThickness = 10
+	scrollFrame.HorizontalScrollBarInset = Enum.ScrollBarInset.None
+	scrollFrame.Size = UDim2.new(1, 0, 1, -78)
+	scrollFrame.ScrollingDirection = Enum.ScrollingDirection.Y
 	scrollFrame.Parent = contentFrame
 
 	-- Add close button at the bottom
@@ -115,20 +119,15 @@ module.MakeSignProfileGrindingGui = function(startSignId: number, sourceName: st
 		outerFrame:Destroy()
 	end)
 
-	local scrollFrameContent = Instance.new("Frame")
-	scrollFrameContent.Size = UDim2.new(1, 0, 1, 0)
-	scrollFrameContent.BackgroundColor3 = colors.defaultGrey
-	scrollFrameContent.Parent = scrollFrame
-	scrollFrameContent.Name = "02_GrindUIInnerContentFrame"
 	local vv2 = Instance.new("UIListLayout")
-	vv2.Parent = scrollFrameContent
-	vv2.FillDirection = Enum.FillDirection.Vertical
+	vv2.Parent = scrollFrame
+	vv2.FillDirection = Enum.FillDirection.Horizontal
 	vv2.HorizontalAlignment = Enum.HorizontalAlignment.Left
 	vv2.VerticalAlignment = Enum.VerticalAlignment.Top
-	vv2.Padding = UDim.new(0, 3)
-	vv2.SortOrder = Enum.SortOrder.LayoutOrder
+	vv2.Padding = UDim.new(0, 0)
+	vv2.SortOrder = Enum.SortOrder.Name
 	vv2.Wraps = true
-	vv2.Name = "vv2"
+	vv2.Name = "GrindScrollframe_vv2"
 
 	local ii = 0
 	local buttons = {}
@@ -141,17 +140,14 @@ module.MakeSignProfileGrindingGui = function(startSignId: number, sourceName: st
 		local button = getIndividualGrindButton(startSignId, ii, rr)
 		if button then
 			table.insert(buttons, button)
-			button.Parent = scrollFrameContent
+			button.Parent = scrollFrame
 			ii += 1
 		end
 	end
 
-	local sz = math.min((ii * 30), 300)
-	outerFrame.Size = UDim2.new(0, 101, 0, sz + 84)
-	scrollFrame.Size = UDim2.new(1, 0, 1, -78)
-	scrollFrame.CanvasSize = UDim2.new(1, 0, 0, sz) -- Adjust canvas size based on number of items
-	-- scrollFrame.ScrollingEnabled = true
-	scrollFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+	local sz = #buttons * 30 / 2
+	outerFrame.Size = UDim2.new(0, 101 * 2, 0, math.max(120, sz + 78))
+	scrollFrame.CanvasSize = UDim2.new(1, 0, 0, math.max(420, sz)) -- Adjust canvas size based on number of items
 
 	return outerFrame
 end

@@ -10,7 +10,7 @@ local HttpService = game:GetService("HttpService")
 local module = {}
 
 --configurations
-local httpremaining = 10
+local httpremaining = 20
 local httpPerMinMax = 480
 local httpaddPerTime = math.floor(httpPerMinMax / 60)
 local waitTime = 0.3
@@ -73,7 +73,7 @@ task.spawn(function()
 		postWaitCounter = 0
 
 		urlCounts = {}
-		wait(5)
+		task.wait(5)
 	end
 end)
 
@@ -104,7 +104,7 @@ module.httpThrottledJsonGet = function(url: string): any
 					local cleanUrl: string = string.split(url, "?")[1]
 					_annotate("Error doing httpGet. " .. err .. "clean url: " .. cleanUrl)
 				end
-				wait(waitTime)
+				task.wait(waitTime)
 				continue
 			end
 			local ret
@@ -113,19 +113,60 @@ module.httpThrottledJsonGet = function(url: string): any
 			end)
 			if not success2 then
 				_annotate("Error doing decode. " .. err2 .. res)
-				wait(waitTime)
+				task.wait(waitTime)
 				continue
 			end
 
 			return ret
 		end
 		getWaitCounter = getWaitCounter + 1
-		wait(waitTime)
+		task.wait(waitTime)
+	end
+end
+
+local function preprocessData(data: any): any
+	if typeof(data) == "table" then
+		local newData = {}
+		for k, v in pairs(data) do
+			newData[k] = preprocessData(v)
+		end
+		return newData
+	elseif typeof(data) == "Vector3" then
+		return {
+			type = "Vector3",
+			x = data.X,
+			y = data.Y,
+			z = data.Z,
+		}
+	elseif typeof(data) == "Enum" then
+		return {
+			type = "Enum",
+			enumType = tostring(data.EnumType),
+			value = tostring(data),
+		}
+	elseif typeof(data) == "string" then
+		return data
+	elseif typeof(data) == "number" then
+		return data
+	elseif typeof(data) == "boolean" then
+		return data
+	elseif typeof(data) == "EnumItem" then
+		return {
+			type = "EnumItem",
+			enumType = tostring(data.EnumType),
+			value = tostring(data),
+		}
+	else
+		warn("unhandled this data:	" .. tostring(data))
+		warn("type=" .. typeof(data))
+		warn(data)
+		return data
 	end
 end
 
 module.httpThrottledJsonPost = function(url: string, data: any): any
-	local post = HttpService:JSONEncode(data)
+	local processedData = preprocessData(data)
+	local post = HttpService:JSONEncode(processedData)
 	post = post .. "&retry=false"
 	local mytries = 3
 	while true do
@@ -174,7 +215,7 @@ module.httpThrottledJsonPost = function(url: string, data: any): any
 			if not success2 then
 				postDecodeFailCount += 1
 				_annotate("Error doing decode. " .. err2 .. res)
-				wait(waitTime)
+				task.wait(waitTime)
 				continue
 			end
 
@@ -182,7 +223,7 @@ module.httpThrottledJsonPost = function(url: string, data: any): any
 		end
 		warn("http.post.wait.")
 		postWaitCounter += 1
-		wait(waitTime)
+		task.wait(waitTime)
 	end
 end
 

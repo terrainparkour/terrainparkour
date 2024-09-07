@@ -114,22 +114,33 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 		activeRunSignModule = nil
 		avatarManipulation.ResetMomentum(humanoid, character)
 		_annotate("reset momentum")
-		if ev.details.relatedSignName == "Pulse" then
+		if ev.details.startSignName == "Pulse" then
 			activeRunSignModule = pulseSign
-		elseif ev.details.relatedSignName == "Big" then
+		elseif ev.details.startSignName == "Big" then
 			activeRunSignModule = bigSign
-		elseif ev.details.relatedSignName == "Small" then
+		elseif ev.details.startSignName == "Small" then
 			activeRunSignModule = smallSign
-		elseif ev.details.relatedSignName == "👻" then
+		elseif ev.details.startSignName == "👻" then
 			activeRunSignModule = ghostSign
-		elseif ev.details.relatedSignName == "🗯" then
+		elseif ev.details.startSignName == "🗯" then
 			activeRunSignModule = angerSign
-		elseif ev.details.relatedSignName == "Cow" then
+		elseif ev.details.startSignName == "Cow" then
 			activeRunSignModule = cowSign
 		end
 		if activeRunSignModule then
 			_annotate("initting active module.")
 			activeRunSignModule.InformRunStarting()
+		end
+		debouncHandleAvatarEvent = false
+		return
+	elseif ev.eventType == mt.avatarEventTypes.RETOUCH_SIGN then
+		--not all of them have this defined.
+		local s, e = pcall(function()
+			activeRunSignModule.InformRetouch()
+			_annotate("did retouch.")
+		end)
+		if not s then
+			_annotate(string.format("retouch informing sign failed: %s", e))
 		end
 		debouncHandleAvatarEvent = false
 		return

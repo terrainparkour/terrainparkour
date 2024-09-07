@@ -28,7 +28,7 @@ local editDomainSettingsButton = require(game.ReplicatedStorage.gui.menu.editDom
 local serverEventButton = require(game.ReplicatedStorage.gui.menu.serverEventButton)
 
 local localPlayer = PlayersService.LocalPlayer
-local contestButtons = contestButtonGetter.getContestButtons({ localPlayer.UserId })
+-- local contestButtons = contestButtonGetter.getContestButtons({ localPlayer.UserId })
 
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
@@ -41,13 +41,14 @@ local actionButtons: { gt.actionButton } = {
 	popularButton.popularButton,
 	newButton.newButton,
 	serverEventButton.serverEventButton,
+	-- contestButtonGetter.contestButtonGetter,
 }
 
 -- if any contests are enabled, add them as action buttons.
 
-for _, contestButton in ipairs(contestButtons) do
-	table.insert(actionButtons, contestButton)
-end
+-- for _, contestButton in ipairs(contestButtonGetter.getContestButtons()) do
+-- 	table.insert(actionButtons, contestButton)
+-- end
 
 module.initActionButtons = function(lbOuterFrame: Frame)
 	local actionButtonFrame = Instance.new("Frame")

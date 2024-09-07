@@ -9,7 +9,7 @@ local module = {}
 module.isInStudio = function()
 	local forceProd = false
 	if forceProd then
-		print("FORCE PROD....")
+		_annotate("FORCE PROD....")
 		return false
 	end
 

@@ -13,10 +13,12 @@ local colors = require(game.ReplicatedStorage.util.colors)
 local settings = require(game.ReplicatedStorage.settings)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local particleEnums = require(game.StarterPlayer.StarterPlayerScripts.particleEnums)
+local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local localPlayer: Player = Players.LocalPlayer
 
 --- GLOBALS
@@ -86,31 +88,80 @@ local createParticleEmitter = function(desc: tt.particleDescriptor)
 	emitters[desc.name] = particleEmitter
 end
 
-local function doEmit(desc: tt.particleDescriptor, particleEmitter: ParticleEmitter)
-	particleEmitter.Enabled = true
-	particleEmitter.Parent = localPlayer.Character.Humanoid.RootPart
-	particleEmitter.Rate = desc.rate
+local function doEmit(desc: tt.particleDescriptor, emitter: ParticleEmitter, ev: mt.avatarEvent)
+	emitter.Enabled = true
+	emitter.Parent = localPlayer.Character.Humanoid.RootPart
+	if ev.eventType == mt.avatarEventTypes.DO_SPEED_CHANGE then
+		local speedChange = math.abs(ev.details.newSpeed - ev.details.oldSpeed)
+		local mult = 650
+		local usingNewRate = speedChange * mult
+		emitter.Rate = usingNewRate
 
-	task.spawn(function()
-		local startTime = tick()
-		local duration = desc.durationMETA
-		local initialRate = particleEmitter.Rate
-		-- if true then
-		-- 	return
-		-- end
-		task.wait(duration)
-		-- while tick() - startTime < duration do
-		-- 	local elapsedTime = tick() - startTime
-		-- 	local t = elapsedTime / duration
-		-- 	local newRate = initialRate * (1 - t)
-		-- 	particleEmitter.Rate = newRate
-		-- 	task.wait(0.1) -- Update rate every 0.1 seconds
-		-- 	-- linearly decrease rate to 0 until the duration is reached.
-		-- end
+		-- _annotate(
+		-- 	string.format(
+		-- 		"%s+ (%0.5f=>%0.5f) rate is now: %0.2f)",
+		-- 		desc.name,
+		-- 		ev.details.oldSpeed,
+		-- 		ev.details.newSpeed,
+		-- 		emitter.Rate
+		-- 	)
+		-- )
+		task.spawn(function()
+			task.wait(desc.durationMETA)
+			local oldRate = emitter.Rate
+			emitter.Rate = 0
+			-- emitter.Rate = math.max(0, emitter.Rate)
+			-- _annotate(string.format("\t%s- (%0.2f=>%0.2f)", desc.name, oldRate, emitter.Rate))
+		end)
+	elseif desc.name == "retouch" or desc.name == "runstart" or desc.name == "runcomplete" then
+		local sign = nil
+		if desc.name == "retouch" or desc.name == "runstart" then
+			sign = tpUtil.signId2Sign(ev.details.startSignId)
+		elseif desc.name == "runcomplete" then
+			sign = tpUtil.signId2Sign(ev.details.endSignId)
+		end
 
-		particleEmitter.Rate = 0
-		particleEmitter.Enabled = false
-	end)
+		local attachmentName = "attachmentEmitter_" .. desc.name .. "_" .. sign.Name
+		local attachment = sign:FindFirstChild(attachmentName)
+
+		if not attachment then
+			attachment = Instance.new("Attachment")
+			-- Convert global position to position relative to the sign
+			attachment.Parent = sign
+			attachment.Visible = false
+			attachment.Name = attachmentName
+		end
+
+		_annotate(
+			string.format(
+				"assigned emitter %s to sign for %s at %s",
+				attachmentName,
+				sign.Name,
+				tostring(attachment.Position)
+			)
+		)
+		attachment.Position = sign.CFrame:PointToObjectSpace(ev.details.exactPositionOfHit)
+		emitter.Parent = attachment
+		emitter.Shape = Enum.ParticleEmitterShape.Box
+		emitter.Rate = desc.rate
+		emitter.Enabled = true
+
+		task.spawn(function()
+			task.wait(desc.durationMETA)
+			emitter.Rate -= desc.rate
+			-- _annotate(string.format("\t%s descreased rate by %0.2f=>%0.2f", desc.name, usingNewRate, emitter.Rate))
+			emitter.Rate = math.max(0, emitter.Rate)
+		end)
+	else
+		local usingNewRate2 = desc.rate
+		emitter.Rate += usingNewRate2
+		task.spawn(function()
+			task.wait(desc.durationMETA)
+			emitter.Rate -= usingNewRate2
+			-- _annotate("Other kind, descreased rate by: " .. usingNewRate2 .. " new rate: " .. emitter.Rate)
+			emitter.Rate = math.max(0, emitter.Rate)
+		end)
+	end
 end
 
 local getOrCreateDescriptor = function(key: string): tt.particleDescriptor
@@ -118,34 +169,6 @@ local getOrCreateDescriptor = function(key: string): tt.particleDescriptor
 		myDescriptors[key] = particleEnums.getRandomParticleDescriptor(localPlayer.UserId, key)
 	end
 	return myDescriptors[key]
-end
-
-local eventsWeCareAbout = {
-	mt.avatarEventTypes.DO_SPEED_CHANGE,
-
-	mt.avatarEventTypes.RUN_START,
-	mt.avatarEventTypes.RETOUCH_SIGN,
-
-	-- mt.avatarEventTypes.RUN_COMPLETE,
-	-- mt.avatarEventTypes.RUN_CANCEL,
-
-	-- mt.avatarEventTypes.TOUCH_SIGN,
-	-- mt.avatarEventTypes.RESET_CHARACTER,
-	-- mt.avatarEventTypes.CHARACTER_ADDED,
-	-- mt.avatarEventTypes.FLOOR_CHANGED,
-	-- mt.avatarEventTypes.STATE_CHANGED,
-	-- mt.avatarEventTypes.AVATAR_CHANGED_DIRECTION, --this happens too much, it will be a LOT.
-	-- mt.avatarEventTypes.AVATAR_STARTED_MOVING,
-	-- mt.avatarEventTypes.AVATAR_STOPPED_MOVING,
-}
-
-local eventIsATypeWeCareAbout = function(ev: mt.avatarEvent): boolean
-	for _, value in pairs(eventsWeCareAbout) do
-		if value == ev.eventType then
-			return true
-		end
-	end
-	return false
 end
 
 -- okay, so this guy monitors all character avatar events.
@@ -254,25 +277,41 @@ local emitParticleForEvent = function(ev: mt.avatarEvent)
 			_annotate("got normal emitter from descriptor.")
 		end
 	else
-		--we fall through to random.
-		if true then
-			myDescriptor = getOrCreateDescriptor(key)
+		myDescriptor = getOrCreateDescriptor(key)
+		emitter = emitters[myDescriptor.name]
+		if not emitter then
+			createParticleEmitter(myDescriptor)
 			emitter = emitters[myDescriptor.name]
-			if not emitter then
-				createParticleEmitter(myDescriptor)
-				emitter = emitters[myDescriptor.name]
-				_annotate("using random emitter.")
-			end
+			_annotate("using random emitter.")
 		end
 	end
 	if emitter ~= nil then
-		doEmit(myDescriptor, emitter)
+		doEmit(myDescriptor, emitter, ev)
 	end
 end
 
+local eventsWeCareAbout = {
+	mt.avatarEventTypes.DO_SPEED_CHANGE,
+
+	mt.avatarEventTypes.RUN_START,
+	mt.avatarEventTypes.RETOUCH_SIGN,
+
+	mt.avatarEventTypes.RUN_COMPLETE,
+	-- mt.avatarEventTypes.RUN_CANCEL,
+
+	-- mt.avatarEventTypes.TOUCH_SIGN,
+	-- mt.avatarEventTypes.RESET_CHARACTER,
+	-- mt.avatarEventTypes.CHARACTER_ADDED,
+	-- mt.avatarEventTypes.FLOOR_CHANGED,
+	-- mt.avatarEventTypes.STATE_CHANGED,
+	-- mt.avatarEventTypes.AVATAR_CHANGED_DIRECTION, --this happens too much, it will be a LOT.
+	-- mt.avatarEventTypes.AVATAR_STARTED_MOVING,
+	-- mt.avatarEventTypes.AVATAR_STOPPED_MOVING,
+}
+
 -- 2024: we monitor all incoming events and for ones which we care about, emit a particle.
 local handleAvatarEvent = function(ev: mt.avatarEvent)
-	if not eventIsATypeWeCareAbout(ev) then
+	if not avatarEventFiring.EventIsATypeWeCareAbout(ev, eventsWeCareAbout) then
 		return
 	end
 	_annotate("handling:  " .. avatarEventFiring.DescribeEvent(ev.eventType, ev.details))
@@ -280,10 +319,10 @@ local handleAvatarEvent = function(ev: mt.avatarEvent)
 end
 
 local function handleShowParticleSettingChange(setting: tt.userSettingValue)
-	_annotate("handleShowParticleSettingChange: " .. setting.name .. " " .. tostring(setting.value))
+	_annotate("handleShowParticleSettingChange: " .. setting.name .. " " .. tostring(setting.booleanValue))
 
-	if setting.name == settingEnums.settingNames.SHOW_PARTICLES then
-		particlesEnabledAtAll = setting.value
+	if setting.name == settingEnums.settingDefinitions.SHOW_PARTICLES.name then
+		particlesEnabledAtAll = setting.booleanValue
 
 		if particlesEnabledAtAll then
 			_annotate("enabled, connecting")
@@ -306,10 +345,10 @@ module.Init = function()
 	_annotate("init")
 	settings.RegisterFunctionToListenForSettingName(
 		handleShowParticleSettingChange,
-		settingEnums.settingNames.SHOW_PARTICLES
+		settingEnums.settingDefinitions.SHOW_PARTICLES.name
 	)
 
-	handleShowParticleSettingChange(settings.getSettingByName(settingEnums.settingNames.SHOW_PARTICLES))
+	handleShowParticleSettingChange(settings.getSettingByName(settingEnums.settingDefinitions.SHOW_PARTICLES.name))
 	_annotate("init done")
 end
 

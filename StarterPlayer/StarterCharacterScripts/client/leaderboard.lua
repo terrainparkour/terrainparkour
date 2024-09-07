@@ -104,8 +104,8 @@ local lbUserCellDescriptors: { [string]: lbUserCellDescriptor } = {
 		userFacingName = "cwrs",
 		tooltip = "",
 	},
-	cwrtop10s = {
-		name = "cwrtop10s",
+	cwrTop10s = {
+		name = "cwrTop10s",
 		num = 14,
 		widthScaleImportance = 11,
 		userFacingName = "cwr top10s",
@@ -132,15 +132,16 @@ local lbUserCellDescriptors: { [string]: lbUserCellDescriptor } = {
 		userFacingName = "top10s",
 		tooltip = "",
 	},
+
 	races = {
-		name = "races",
+		name = "userTotalRaceCount",
 		num = 23,
 		widthScaleImportance = 9,
 		userFacingName = "races",
 		tooltip = "",
 	},
 	runs = {
-		name = "runs",
+		name = "userTotalRunCount",
 		num = 26,
 		widthScaleImportance = 6,
 		userFacingName = "runs",
@@ -151,6 +152,27 @@ local lbUserCellDescriptors: { [string]: lbUserCellDescriptor } = {
 		num = 31,
 		widthScaleImportance = 10,
 		userFacingName = "badges",
+		tooltip = "",
+	},
+	-- warpTo = {
+	-- 	name = "warpTo",
+	-- 	num = 35,
+	-- 	widthScaleImportance = 10,
+	-- 	userFacingName = "warp to",
+	-- 	tooltip = "",
+	-- },
+	-- lastRace = {
+	-- 	name = "lastRace",
+	-- 	num = 38,
+	-- 	widthScaleImportance = 10,
+	-- 	userFacingName = "last race",
+	-- 	tooltip = "",
+	-- },
+	timeInTP = {
+		name = "daysInGame",
+		num = 41,
+		widthScaleImportance = 10,
+		userFacingName = "game days",
 		tooltip = "",
 	},
 }
@@ -380,6 +402,11 @@ local function createRowForUser(userId: number, username: string): Frame?
 				if wrRank ~= nil then
 					tl.Text = tpUtil.getCardinalEmoji(wrRank)
 				end
+			elseif lbUserCellDescriptor.name == "cwrRank" then
+				local cwrRank = userDataFromCache.cwrRank
+				if cwrRank ~= nil then
+					tl.Text = tpUtil.getCardinalEmoji(cwrRank)
+				end
 			elseif lbUserCellDescriptor.name == "username" then
 				tl.Text = username
 			elseif lbUserCellDescriptor.name == "badges" then
@@ -552,11 +579,6 @@ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataTy
 		return
 	end
 	local subjectUserId = userData.userId
-	-- local receivedUserData = ""
-	-- for a, b in pairs(userData) do
-	-- 	receivedUserData = receivedUserData .. string.format("\t%s=%s ", tostring(a), tostring(b))
-	-- end
-	-- 2_annotate(string.format("got info about: %s: %s", tostring(subjectUserId), receivedUserData))
 
 	--check if this client's user has any lbframe.
 	if subjectUserId == nil then
@@ -574,12 +596,6 @@ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataTy
 
 	local userDataChanges: { tt.leaderboardUserDataChange } = StoreUserData(subjectUserId, userData)
 	if userDataChanges == nil or #userDataChanges == 0 then
-		--2_annotate(
-		-- 	string.format(
-		-- 		"looks like we received information again which we already had, so the storeOperation returned nothing. Here is the data: %s",
-		-- 		receivedUserData
-		-- 	)
-		-- )
 		debounceUpdateUserLeaderboardRow[userData.userId] = nil
 		return
 	end
@@ -617,7 +633,7 @@ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataTy
 	for _, change: tt.leaderboardUserDataChange in pairs(userDataChanges) do
 		-- find the userCellDescriptor corresponding to it.
 		-- we just hide these always.
-		if change.key == "kind" or change.key == "userId" or change.key == "totalSignCount" then
+		if change.key == "kind" or change.key == "userId" or change.key == "serverPatchedInTotalSignCount" then
 			continue
 		end
 
@@ -632,12 +648,12 @@ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataTy
 		)
 		if enabledDescriptors[change.key] == nil then
 			_annotate("missing descriptor status at all for received change for: " .. tostring(change.key))
-			return
+			continue
 		end
 
 		if not enabledDescriptors[change.key] then
-			_annotate("showing this is not enabled for this user.")
-			break
+			_annotate(string.format("showing %s is not enabled for this user.", change.key))
+			continue
 		end
 
 		local descriptor = lbUserCellDescriptors[change.key]
@@ -654,6 +670,7 @@ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataTy
 			local newName = string.format("%s_PlayerRow_%s", tostring(bignum - change.newValue), username)
 			userRowFrame.Name = newName
 			userRowFrame.Name = newName
+			_annotate(string.format("updated TIX.userRowFrame name to: %s", newName))
 		end
 
 		local targetName = getNameForDescriptor(descriptor)
@@ -662,12 +679,14 @@ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataTy
 		if oldTextLabelParent == nil then
 			-- this user isn't displaying that data.
 			-- still, we have stored it so if they re-enable it we are good.
+			_annotate(string.format("missing oldTextLabelParent for %s", targetName))
 			continue
 		end
 		local oldTextLabel: TextLabel = oldTextLabelParent:FindFirstChild("Inner")
 
 		if oldTextLabel == nil then
 			warn("Missing old label to put in - this should not happen " .. descriptor.num)
+			debounceUpdateUserLeaderboardRow[userData.userId] = nil
 			error(descriptor)
 		end
 
@@ -701,6 +720,7 @@ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataTy
 			if gap ~= 0 then
 				newIntermediateText = string.format("%s\n(%s%s)", newFinalText, sign, gap)
 			end
+			_annotate(string.format("newIntermediateText: %s", newIntermediateText))
 		end
 
 		--phase to new color if needed
@@ -741,6 +761,7 @@ local function updateUserLeaderboardRow(userData: genericLeaderboardUpdateDataTy
 
 			--we had more tweens before.
 		end
+		_annotate("done with updateUserLeaderboardRow")
 	end
 
 	setSize()
@@ -824,8 +845,8 @@ local function handleUserSettingChanged(setting: tt.userSettingValue, initial: b
 		wait(0.1)
 		_annotate("waiting for settings to load for updateUserLeaderboardRow")
 	end
-	if setting.name == settingEnums.settingNames.HIDE_LEADERBOARD and not initial then
-		if setting.value then
+	if setting.name == settingEnums.settingDefinitions.HIDE_LEADERBOARD.name and not initial then
+		if setting.booleanValue then
 			lbIsEnabled = false
 			marathonClient.CloseAllMarathons()
 			completelyResetUserLB(true)
@@ -837,39 +858,53 @@ local function handleUserSettingChanged(setting: tt.userSettingValue, initial: b
 	end
 
 	if setting.domain == settingEnums.settingDomains.LEADERBOARD then
-		if setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_PORTRAIT then
-			enabledDescriptors["portrait"] = setting.value
-		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_USERNAME then
-			enabledDescriptors["username"] = setting.value
-		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_AWARDS then
-			enabledDescriptors["awardCount"] = setting.value
-		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_TIX then
-			enabledDescriptors["userTix"] = setting.value
-		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_FINDS then
-			enabledDescriptors["findCount"] = setting.value
-		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_FINDRANK then
-			enabledDescriptors["findRank"] = setting.value
-		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_WRRANK then
-			enabledDescriptors["wrRank"] = setting.value
-		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_WRS then
-			enabledDescriptors["wrCount"] = setting.value
-		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_CWRS then
-			enabledDescriptors["cwrs"] = setting.value
-		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_CWRTOP10S then
-			enabledDescriptors["cwrtop10s"] = setting.value
-		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_TOP10S then
-			enabledDescriptors["top10s"] = setting.value
-		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_RACES then
-			enabledDescriptors["races"] = setting.value
-		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_RUNS then
-			enabledDescriptors["runs"] = setting.value
-		elseif setting.name == settingEnums.settingNames.LEADERBOARD_ENABLE_BADGES then
-			enabledDescriptors["badgeCount"] = setting.value
+		if setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_PORTRAIT.name then
+			enabledDescriptors["portrait"] = setting.booleanValue
+		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_USERNAME.name then
+			enabledDescriptors["username"] = setting.booleanValue
+		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_AWARDS.name then
+			enabledDescriptors["awardCount"] = setting.booleanValue
+		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_TIX.name then
+			enabledDescriptors["userTix"] = setting.booleanValue
+		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_FINDS.name then
+			enabledDescriptors["findCount"] = setting.booleanValue
+		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_FINDRANK.name then
+			enabledDescriptors["findRank"] = setting.booleanValue
+		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_WRRANK.name then
+			enabledDescriptors["wrRank"] = setting.booleanValue
+		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_WRS.name then
+			enabledDescriptors["wrCount"] = setting.booleanValue
+		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_CWRS.name then
+			enabledDescriptors["cwrs"] = setting.booleanValue
+		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_CWRTOP10S.name then
+			enabledDescriptors["cwrTop10s"] = setting.booleanValue
+		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_TOP10S.name then
+			enabledDescriptors["top10s"] = setting.booleanValue
+		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_CWRANK.name then
+			enabledDescriptors["cwrRank"] = setting.booleanValue
+		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_RACES.name then
+			enabledDescriptors["races"] = setting.booleanValue
+		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_RUNS.name then
+			enabledDescriptors["runs"] = setting.booleanValue
+		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_BADGES.name then
+			enabledDescriptors["badgeCount"] = setting.booleanValue
+		-- elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_WARPTO_COLUMN.name then
+		-- 	enabledDescriptors["warpTo"] = setting.value
+		-- elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_LASTRACE_COLUMN.name then
+		-- 	enabledDescriptors["lastRace"] = setting.value
+		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_DAYSINGAME_COLUMN.name then
+			enabledDescriptors["daysInGame"] = setting.booleanValue
 		else
 			warn("unknown leaderboard setting: " .. tostring(setting.name))
 		end
 	end
-	_annotate(string.format("accepted setting: %s=%s", tostring(setting.name), tostring(setting.value)))
+	_annotate(
+		string.format(
+			"leaderboard setup: loaded setting: %s=%s",
+			tostring(setting.name),
+			tostring(setting.booleanValue)
+		)
+	)
 	if not initial then
 		_annotate("completely resetting userLB cause setting changed")
 		completelyResetUserLB(false)
@@ -890,7 +925,7 @@ module.Init = function()
 
 	-- load initial default userSetting values.
 
-	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingNames.HIDE_LEADERBOARD), true)
+	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingDefinitions.HIDE_LEADERBOARD.name), true)
 
 	for _, userSetting in pairs(settings.getSettingByDomain(settingEnums.settingDomains.LEADERBOARD)) do
 		handleUserSettingChanged(userSetting, true)
@@ -909,7 +944,7 @@ module.Init = function()
 	-- now we listen for subsequent setting changes.
 	settings.RegisterFunctionToListenForSettingName(function(item: tt.userSettingValue): any
 		return handleUserSettingChanged(item, false)
-	end, settingEnums.settingNames.HIDE_LEADERBOARD)
+	end, settingEnums.settingDefinitions.HIDE_LEADERBOARD.name)
 
 	settings.RegisterFunctionToListenForDomain(function(item: tt.userSettingValue): any
 		return handleUserSettingChanged(item, false)
