@@ -72,6 +72,32 @@ module.ResetMomentum = function(humanoid: Humanoid, character: Model)
 	resetMomentumDebounce = false
 end
 
+module.ResetAbnormalMomentum(humanoid: Humanoid, character: Model)
+	local rootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
+	local state = humanoid:GetState()
+	
+	-- Cancel fling-like states
+	if
+		state == Enum.HumanoidStateType.FallingDown
+		or state == Enum.HumanoidStateType.Seated
+		or state == Enum.HumanoidStateType.PlatformStanding
+	then
+		humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+	end
+	
+	-- Cap horizontal velocity
+	local horizontalVelocity = rootPart.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
+	
+	if horizontalVelocity.Magnitude > humanoid.WalkSpeed then
+		rootPart.AssemblyLinearVelocity = horizontalVelocity.Unit * humanoid.WalkSpeed + Vector3.new(0, rootPart.AssemblyLinearVelocity.Y, 0)
+	end
+	
+	-- Cap vertical velocity
+	if math.abs(rootPart.AssemblyLinearVelocity.Y) > 100 then
+		rootPart.AssemblyLinearVelocity = horizontalVelocity + Vector3.new(0, math.sign(rootPart.AssemblyLinearVelocity.Y) * 100, 0)
+	end
+end
+
 module.SetCharacterTransparency = function(player: Player, target: number)
 	_annotate("Player made transparent: " .. tostring(target))
 	local targetCharacter = player.Character
