@@ -23,7 +23,7 @@ local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 
 local function getIndividualGrindButton(startSignId: number, num: number, rr: tt.relatedRace): TextButton | nil
 	local name = string.format("%03d_GrindUIButtonTo %s", num, rr.signName)
-	local button = guiUtil.getTb(name, UDim2.new(0, 95, 0, 30), 1, nil, colors.lightBlue, 1)
+	local button = guiUtil.getTb(name, UDim2.new(0, 90, 0, 30), 1, nil, colors.lightBlue, 1)
 
 	button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
 	button.BorderSizePixel = 0
@@ -39,15 +39,12 @@ local function getIndividualGrindButton(startSignId: number, num: number, rr: tt
 				theBadFrame.Visible = false
 			end
 		end
-
-		textHighlighting.KillAllExistingHighlights()
-
-		textHighlighting.DoHighlightSingleSignId(rr.signId, "getGrindButton.")
-		textHighlighting.RotateCameraToFaceSignId(rr.signId)
-		-- textHighlighting.PointHumanoidAtSignId(rr.signId)
 	end)
 
 	button.Activated:Connect(function()
+		textHighlighting.KillAllExistingHighlights()
+		textHighlighting.DoHighlightSingleSignId(rr.signId, "getGrindButton.")
+		textHighlighting.RotateCameraToFaceSignId(rr.signId)
 		warper.WarpToSignId(startSignId, rr.signId)
 	end)
 
@@ -60,9 +57,27 @@ module.MakeSignProfileGrindingGui = function(startSignId: number, sourceName: st
 	local outerFrame = d.outerFrame
 	local contentFrame = d.contentFrame
 
-	outerFrame.Size = UDim2.new(0, 103, 0.4, 0)
+	local realGuyCount = 0
+	local buttons = {}
+	for _, rr in ipairs(guys) do
+		local sign = tpUtil.signId2Sign(rr.signId)
+		if not sign then
+			continue
+		end
+
+		local button = getIndividualGrindButton(startSignId, realGuyCount, rr)
+		if button then
+			table.insert(buttons, button)
+			realGuyCount += 1
+		end
+	end
+
+	-- one button for a sign is 30 pixels tall and 95 pixels wide.
+	local pixYHeight = math.min(240, realGuyCount * 30 / 2 + 5)
+
+	outerFrame.Size = UDim2.new(0, 2 * 95, 0, pixYHeight + 93)
 	outerFrame.BackgroundColor3 = colors.defaultGrey
-	outerFrame.Position = UDim2.new(0, 0, 0.1, 0)
+	outerFrame.Position = UDim2.new(0, 10, 0.1, 5)
 	outerFrame.BackgroundTransparency = 0
 
 	local vv = Instance.new("UIListLayout")
@@ -87,21 +102,36 @@ module.MakeSignProfileGrindingGui = function(startSignId: number, sourceName: st
 	titleTextLabel.TextColor3 = colors.black
 	titleTextLabel.Parent = titleRow
 	titleTextLabel.TextScaled = true
+	titleTextLabel.Name = "GrindUI Title"
+
+	local scrollFrameHolder = Instance.new("Frame")
+	scrollFrameHolder.Size = UDim2.new(1, 0, 1, -78)
+	scrollFrameHolder.Position = UDim2.new(0, 0, 0, 0)
+	scrollFrameHolder.BackgroundTransparency = 1
+	scrollFrameHolder.Parent = contentFrame
+	scrollFrameHolder.Name = "02_scrollFrameHolder"
+	scrollFrameHolder.ClipsDescendants = true
+	-- scrollFrameHolder.Position = UDim2.new(0, 0, 0, 0)
 
 	local scrollFrame = Instance.new("ScrollingFrame")
-	scrollFrame.Name = "03_GrindUI_ScrollingFrame"
-	scrollFrame.Size = UDim2.new(1, 0, 1, -78)
-	scrollFrame.Position = UDim2.new(0, 0, 0, 0)
+	scrollFrame.Name = "GrindUI_Internal_ScrollingFrame"
+	scrollFrame.BorderMode = Enum.BorderMode.Inset
+	scrollFrame.ScrollBarThickness = 16
+	scrollFrame.HorizontalScrollBarInset = Enum.ScrollBarInset.None
+	scrollFrame.VerticalScrollBarInset = Enum.ScrollBarInset.Always
 	scrollFrame.BackgroundTransparency = 0
 	scrollFrame.BorderSizePixel = 1
-	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- Set initial canvas size to 0
+
 	scrollFrame.AutomaticSize = Enum.AutomaticSize.None
-	-- scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.XY -- Automatically size canvas vertically
-	scrollFrame.ScrollBarThickness = 10
-	scrollFrame.HorizontalScrollBarInset = Enum.ScrollBarInset.None
-	scrollFrame.Size = UDim2.new(1, 0, 1, -78)
 	scrollFrame.ScrollingDirection = Enum.ScrollingDirection.Y
-	scrollFrame.Parent = contentFrame
+	scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+	scrollFrame.Size = UDim2.new(1, 0, 1, 0) -- Keep full width
+
+	scrollFrame.Parent = scrollFrameHolder
+
+	-- (in the test game, some guys won't be real. )
+	scrollFrame.CanvasSize = UDim2.new(1, 0, 0, 10 * realGuyCount / 2) -- Set initial canvas size to 0
 
 	-- Add close button at the bottom
 	local closeButton = Instance.new("TextButton")
@@ -124,30 +154,22 @@ module.MakeSignProfileGrindingGui = function(startSignId: number, sourceName: st
 	vv2.FillDirection = Enum.FillDirection.Horizontal
 	vv2.HorizontalAlignment = Enum.HorizontalAlignment.Left
 	vv2.VerticalAlignment = Enum.VerticalAlignment.Top
+	-- vv2.VerticalFlex = Enum.UIFlexAlignment.Fill
+	vv2.HorizontalFlex = Enum.UIFlexAlignment.Fill -- Changed from Fill
 	vv2.Padding = UDim.new(0, 0)
 	vv2.SortOrder = Enum.SortOrder.Name
 	vv2.Wraps = true
 	vv2.Name = "GrindScrollframe_vv2"
 
-	local ii = 0
-	local buttons = {}
-	for _, rr in ipairs(guys) do
-		local sign = tpUtil.signId2Sign(rr.signId)
-		if not sign then
-			continue
-		end
+	-- Add right padding to the content
+	local uiPadding = Instance.new("UIPadding")
+	uiPadding.PaddingRight = UDim.new(0, 16) -- Width of scrollbar
+	uiPadding.Parent = scrollFrame
 
-		local button = getIndividualGrindButton(startSignId, ii, rr)
-		if button then
-			table.insert(buttons, button)
-			button.Parent = scrollFrame
-			ii += 1
-		end
+	for _, button in ipairs(buttons) do
+		button.Parent = scrollFrame
+		button.Size = UDim2.new(0, 90, 0, 30) -- Ensure consistent size
 	end
-
-	local sz = #buttons * 30 / 2
-	outerFrame.Size = UDim2.new(0, 101 * 2, 0, math.max(120, sz + 78))
-	scrollFrame.CanvasSize = UDim2.new(1, 0, 0, math.max(420, sz)) -- Adjust canvas size based on number of items
 
 	return outerFrame
 end

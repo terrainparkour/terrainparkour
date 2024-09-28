@@ -19,7 +19,6 @@ local states: { [boolean]: string } = {
 }
 local ContextActionService = game:GetService("ContextActionService")
 
-
 local LocalPlayer = Players.LocalPlayer
 local button = script.Parent
 
@@ -77,7 +76,7 @@ end
 
 local function setupShiftLock()
 	updateCharacterReferences()
-	
+
 	if UserInputService.TouchEnabled then
 		button.Visible = true
 		button.MouseButton1Click:Connect(onShiftLockToggled)
@@ -97,3 +96,4 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 setupShiftLock()
+_annotate("end")

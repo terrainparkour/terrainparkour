@@ -7,7 +7,6 @@ local _annotate = annotater.getAnnotater(script)
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
-local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
@@ -23,7 +22,6 @@ local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
 local GetContestsFunction = remotes.getRemoteFunction("GetContestsFunction")
 local GetSingleContestFunction = remotes.getRemoteFunction("GetSingleContestFunction")
-local emojis = require(game.ReplicatedStorage.enums.emojis)
 
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 
@@ -507,18 +505,19 @@ local function handleUserSettingChanged(setting: tt.userSettingValue)
 	end
 end
 
-local function init()
+module.Init = function()
+	_annotate("init")
 	settings.RegisterFunctionToListenForSettingName(
 		handleUserSettingChanged,
 		settingEnums.settingDefinitions.SHORTEN_CONTEST_DIGIT_DISPLAY.name
 	)
 
 	handleUserSettingChanged(
-		settings.getSettingByName(settingEnums.settingDefinitions.SHORTEN_CONTEST_DIGIT_DISPLAY.name)
+		settings.GetSettingByName(settingEnums.settingDefinitions.SHORTEN_CONTEST_DIGIT_DISPLAY.name)
 	)
-end
 
-init()
+	_annotate("init done")
+end
 
 _annotate("end")
 return module

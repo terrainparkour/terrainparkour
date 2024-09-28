@@ -4,7 +4,8 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local rdb = require(game.ServerScriptService.rdb)
-local remoteDbInternal = require(game.ServerScriptService.remoteDbInternal)
+local tt = require(game.ReplicatedStorage.types.gametypes)
+
 local remotes = require(game.ReplicatedStorage.util.remotes)
 
 local module = {}
@@ -23,7 +24,11 @@ module.getBanLevel = function(userId: number): number
 
 	if banCache[userId] == nil then
 		banDebounce[userId] = true
-		local res = remoteDbInternal.remoteGet("getUserBanLevel", { userId = userId })
+		local request: tt.postRequest = {
+			remoteActionName = "getUserBanLevel",
+			data = { userId = userId },
+		}
+		local res = rdb.MakePostRequest(request)
 		banCache[userId] = tonumber(res.banLevel)
 		banDebounce[userId] = false
 	end
@@ -32,7 +37,12 @@ end
 
 local function saveBan(userId: number, banLevel)
 	banCache[userId] = banLevel
-	remoteDbInternal.remoteGet("setUserBanLevel", { userId = userId, banLevel = banLevel })
+	local request: tt.postRequest = {
+		remoteActionName = "setUserBanLevel",
+		data = { userId = userId, banLevel = banLevel },
+	}
+	local res = rdb.MakePostRequest(request)
+	return res
 end
 
 module.unBanUser = function(userId: number)

@@ -24,7 +24,7 @@ function methods:SayMessage(message, channelName, extraData)
 
 	local channel = self.Channels[channelName:lower()]
 	if not channel then
-		error('Speaker is not in channel "' .. channelName .. '"')
+		annotater.Error('Speaker is not in channel "' .. channelName .. '"')
 	end
 
 	local messageObj = channel:InternalPostMessage(self, message, extraData)
@@ -48,7 +48,7 @@ function methods:JoinChannel(channelName)
 
 	local channel = self.ChatService:GetChannel(channelName)
 	if not channel then
-		error('Channel "' .. channelName .. '" does not exist!')
+		annotater.Error('Channel "' .. channelName .. '" does not exist!')
 	end
 
 	self.Channels[channelName:lower()] = channel
@@ -106,7 +106,7 @@ function methods:SendMessage(message, channelName, fromSpeaker, extraData)
 	end
 end
 
-function methods:SendSystemMessage(message, channelName, extraData)
+function methods:SendSystemMessage(message: string, channelName: string, extraData)
 	local channel = self.Channels[channelName:lower()]
 	if channel then
 		channel:SendSystemMessageToSpeaker(message, self.Name, extraData)
@@ -134,7 +134,7 @@ function methods:GetExtraData(key)
 	return self.ExtraData[key]
 end
 
-function methods:SetMainChannel(channelName)
+function methods:SetMainChannel(channelName: string)
 	local success, err = pcall(function()
 		self.eMainChannelSet:Fire(channelName)
 	end)
@@ -148,11 +148,11 @@ function methods:AddMutedSpeaker(speakerName)
 	self.MutedSpeakers[speakerName:lower()] = true
 end
 
-function methods:RemoveMutedSpeaker(speakerName)
+function methods:RemoveMutedSpeaker(speakerName: string)
 	self.MutedSpeakers[speakerName:lower()] = false
 end
 
-function methods:IsSpeakerMuted(speakerName)
+function methods:IsSpeakerMuted(speakerName: string)
 	return self.MutedSpeakers[speakerName:lower()]
 end
 
@@ -180,11 +180,11 @@ function methods:InternalDestroy()
 	self.eChannelNameColorUpdated:Destroy()
 end
 
-function methods:InternalAssignPlayerObject(playerObj)
+function methods:InternalAssignPlayerObject(playerObj: Player)
 	self.PlayerObj = playerObj
 end
 
-function methods:InternalSendMessage(messageObj, channelName)
+function methods:InternalSendMessage(messageObj: Message, channelName: string)
 	local success, err = pcall(function()
 		self.eReceivedUnfilteredMessage:Fire(messageObj, channelName)
 	end)
@@ -193,7 +193,7 @@ function methods:InternalSendMessage(messageObj, channelName)
 	end
 end
 
-function methods:InternalSendFilteredMessage(messageObj, channelName)
+function methods:InternalSendFilteredMessage(messageObj: Message, channelName: string)
 	local success, err = pcall(function()
 		self.eReceivedMessage:Fire(messageObj, channelName)
 		self.eMessageDoneFiltering:Fire(messageObj, channelName)
@@ -203,7 +203,7 @@ function methods:InternalSendFilteredMessage(messageObj, channelName)
 	end
 end
 
-function methods:InternalSendSystemMessage(messageObj, channelName)
+function methods:InternalSendSystemMessage(messageObj: Message, channelName: string)
 	local success, err = pcall(function()
 		self.eReceivedSystemMessage:Fire(messageObj, channelName)
 	end)
@@ -212,14 +212,14 @@ function methods:InternalSendSystemMessage(messageObj, channelName)
 	end
 end
 
-function methods:UpdateChannelNameColor(channelName, channelNameColor)
+function methods:UpdateChannelNameColor(channelName: string, channelNameColor: Color3)
 	self.eChannelNameColorUpdated:Fire(channelName, channelNameColor)
 end
 
 --///////////////////////// Constructors
 --//////////////////////////////////////
 
-function module.new(vChatService, name)
+function module.new(vChatService, name: string)
 	local obj = setmetatable({}, methods)
 
 	obj.ChatService = vChatService

@@ -4,8 +4,8 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
+local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local module = {}
 local enums = require(game.ReplicatedStorage.util.enums)
@@ -13,6 +13,7 @@ local emojis = require(game.ReplicatedStorage.enums.emojis)
 
 local PlayersService = game:GetService("Players")
 
+-- either because it's not a valid sign or it's in the exclusion lists
 module.SignNameCanBeHighlighted = function(signName: string): boolean
 	if not signName or signName == "" then
 		return false
@@ -87,7 +88,24 @@ module.signName2SignId = function(signName: string): number
 end
 
 --stemming from the front, first match
---return nil if no match
+--return nil if no match. Prefers shorter matches (i.e. exact matches first)
+
+local allSignNamesAndAliasesShortToLong = {}
+for signId, signName in pairs(enums.signId2name) do
+	table.insert(allSignNamesAndAliasesShortToLong, { signName = signName, signId = signId })
+end
+
+for signName, signAlias in pairs(enums.signName2Alias) do
+	table.insert(allSignNamesAndAliasesShortToLong, { signName = signAlias, signId = module.signName2SignId(signName) })
+end
+
+table.sort(allSignNamesAndAliasesShortToLong, function(a, b)
+	if #a.signName == #b.signName then
+		return a.signName < b.signName
+	end
+	return #a.signName < #b.signName
+end)
+
 module.looseSignName2SignId = function(signSearchText: string): number?
 	--return exact if matches.
 	if enums.namelower2signId[signSearchText:lower()] ~= nil then
@@ -95,20 +113,16 @@ module.looseSignName2SignId = function(signSearchText: string): number?
 	end
 
 	local len = #signSearchText
-	--this probably works for utf anyway.
-	for signId, signName in ipairs(enums.signId2name) do
-		if string.sub(signName, 1, len):lower() == signSearchText:lower() then
-			return signId
+
+	-- if it's an incomplete match, match the shorter one first (at least for predictability.)
+	-- e.g. calling this on "spira" will hit "spiral" before "spiral jump"
+	for _, el in ipairs(allSignNamesAndAliasesShortToLong) do
+		local item1 = string.sub(el.signName, 1, len):lower()
+		if item1 == signSearchText:lower() then
+			return el.signId
 		end
 	end
 
-	for signName, signAlias in pairs(enums.signName2Alias) do
-		if string.sub(signAlias, 1, len):lower() == signSearchText:lower() then
-			--we found the sign name.
-			local signId = enums.namelower2signId[signName:lower()]
-			return signId
-		end
-	end
 	return nil
 end
 
@@ -239,7 +253,7 @@ local function digit2emoji(digit: number): string
 	if digit == 9 then
 		return emojis.emojis.DIGIT_NINE
 	end
-	error("no")
+	annotater.Error("no")
 end
 
 module.getNumberEmojis = function(number: number): string
@@ -311,20 +325,59 @@ module.IsSignPartValidRightNow = function(sign: Part): boolean
 	return res
 end
 
-module.AttemptToParseRaceFromInput = function(message: string): (number?, number?)	
+module.AttemptToParseRaceFromInput = function(message: string): tt.RaceParseResult
 	--lookup a race (NAMEPREFIX-NAMEPREFIX) sign names
 	local signParts = textUtil.stringSplit(message:lower(), "-")
 	if #signParts == 2 then
-		local s1 = signParts[1]
-		local s2 = signParts[2]
+		local s1prefix = signParts[1]
+		local s2prefix = signParts[2]
 
-		local signId1 = module.looseSignName2SignId(s1)
-		local signId2 = module.looseSignName2SignId(s2)
+		local signId1 = module.looseSignName2SignId(s1prefix)
+		local signId2 = module.looseSignName2SignId(s2prefix)
+		local sign1name = module.signId2signName(signId1)
+		local sign2name = module.signId2signName(signId2)
 
-		if not signId1 or not signId1 then 
-			return nil, nil 
+		local error = false
+		if not module.SignNameCanBeHighlighted(sign1name) then
+			error = string.format("No highlighting of: %s", tostring(sign1name))
 		end
-		return signId1, signId2
+		if not module.SignNameCanBeHighlighted(sign2name) then
+			error = string.format("No highlighting of: %s", tostring(sign2name))
+		end
+
+		if signId1 == signId2 then
+			error = "Trol"
+		end
+		if not signId1 or not signId2 then
+			error = "Enter race name like A-B (where A and B are signs, and you can just enter the prefix too.)"
+		end
+		if error then
+			local ret: tt.RaceParseResult = {
+				signId1 = 0,
+				signId2 = 0,
+				signname1 = "",
+				signname2 = "",
+				error = error,
+			}
+
+			return ret
+		end
+
+		return {
+			signId1 = signId1,
+			signId2 = signId2,
+			signname1 = sign1name,
+			signname2 = sign2name,
+			error = "",
+		}
+	else
+		return {
+			signId1 = 0,
+			signId2 = 0,
+			signname1 = "",
+			signname2 = "",
+			error = "Enter race name like A-B (where A and B are signs, and you can just enter the prefix too.)",
+		}
 	end
 end
 

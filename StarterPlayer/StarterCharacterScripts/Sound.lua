@@ -79,7 +79,7 @@ end
 
 local head = script.Parent:FindFirstChild("Head")
 if not head then
-	error("Sound script parent has no child Head.")
+	annotater.Error("Sound script parent has no child Head.")
 	return
 end
 

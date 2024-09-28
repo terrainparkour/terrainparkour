@@ -11,21 +11,20 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local PlayerService = game:GetService("Players")
 local module = {}
 
-
 -- utility function for others to call in
 -- that is, tell player about this other guy's badge count.
 module.updateBadgeLb = function(player: Player, userIdToInformThemAbout: number, badgecount: number)
 	task.spawn(function()
-		local bstats: tt.badgeUpdate =
+		local lbUserStats: tt.lbUserStats =
 			{ kind = "badge update", userId = userIdToInformThemAbout, badgeCount = badgecount }
 		_annotate("Updating " .. player.UserId .. " about badges from: " .. userIdToInformThemAbout)
-		lbUpdaterServer.updateLeaderboardBadgeStats(player, bstats)
+		lbUpdaterServer.SendUpdateToPlayer(player, lbUserStats)
 	end)
 end
 
 module.TellPlayerAboutAllOthersBadges = function(player: Player)
 	local badges = require(game.ServerScriptService.badges)
-	local badgecount: number = badges.getBadgeCountByUser(player.UserId)
+	local badgecount: number = badges.getBadgeCountByUser(player.UserId, "tellPlayerAboutAllOthers")
 	for _, otherPlayer: Player in ipairs(PlayerService:GetPlayers()) do
 		module.updateBadgeLb(otherPlayer, player.UserId, badgecount)
 		_annotate("Updating " .. otherPlayer.UserId .. " about all badges from: " .. player.Name)
@@ -35,7 +34,8 @@ end
 local function updateSomeoneAboutAllBadgesImmediate(player: Player)
 	local badges = require(game.ServerScriptService.badges)
 	for _, otherPlayer: Player in ipairs(PlayerService:GetPlayers()) do
-		local badgecount: number = badges.getBadgeCountByUser(otherPlayer.UserId)
+		local badgecount: number =
+			badges.getBadgeCountByUser(otherPlayer.UserId, "updateSomeoneAboutAllBadgesImmediate")
 		module.updateBadgeLb(player, otherPlayer.UserId, badgecount)
 		_annotate("Updating " .. player.UserId .. " about all badges fr: " .. otherPlayer.Name)
 	end

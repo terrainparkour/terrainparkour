@@ -128,20 +128,21 @@ local EnumIsTerrain = function(mat: Enum.Material?): boolean
 		warn("weirdly checkikng nonterrain.")
 		return false
 	end
+
 	if not mat then
 		return false
 	end
 	--skip air
-	if mat.Name == "Air" then
+	if mat == Enum.Material.Air then
 		return false
 	end
 
 	if terrainEnumSet[mat.Value] ~= nil then
 		return true
 	end
-	-- _annotate("material was not terrain: " .. mat.Name)
 	return false
 end
+
 module.EnumIsTerrain = EnumIsTerrain
 
 --excluded materials from counting as terrain.

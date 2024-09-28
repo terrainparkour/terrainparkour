@@ -21,7 +21,7 @@ local remotes = require(game.ReplicatedStorage.util.remotes)
 
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 
-local getPopularRunsFunction = remotes.getRemoteFunction("GetPopularRunsFunction")
+local GetPopularRacesFunction = remotes.getRemoteFunction("GetPopularRacesFunction")
 
 local module = {}
 
@@ -197,7 +197,7 @@ local function makePopRowFrame(
 end
 
 local function getPopularContents(player: Player, userIds: { number })
-	local popResults: { PopularResponseTypes.popularRaceResult } = getPopularRunsFunction:InvokeServer(userIds)
+	local popResults: { PopularResponseTypes.popularRaceResult } = GetPopularRacesFunction:InvokeServer(userIds)
 
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "PopularSG"

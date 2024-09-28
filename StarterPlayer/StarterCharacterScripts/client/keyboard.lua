@@ -15,7 +15,7 @@ local settings = require(game.ReplicatedStorage.settings)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
-local mt = require(game.ReplicatedStorage.avatarEventTypes)
+local aet = require(game.ReplicatedStorage.avatarEventTypes)
 
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
@@ -26,7 +26,7 @@ local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("Avatar
 local keyboardShortcutButton = require(game.StarterPlayer.StarterPlayerScripts.buttons.keyboardShortcutGui)
 local particleExplanationGui = require(game.StarterPlayer.StarterPlayerScripts.buttons.particleExplanationGui)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local tpUtil = require(ReplicatedStorage.util.tpUtil)
+local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local RunService = game:GetService("RunService")
 
 local UserInputService = game:GetService("UserInputService")
@@ -121,9 +121,9 @@ local function KillPopups()
 		if el.Name == "EphemeralTooltip" then
 			el:Destroy()
 		end
-		-- 	if el.Name == "SignGrindUIScreenGui" then
-		-- 		el:Destroy()
-		-- 	end
+		if el.Name == "SignGrindUIScreenGui" then
+			el:Destroy()
+		end
 	end
 	if not ignoreChatWhenHittingX then
 		ToggleChat(false)
@@ -142,6 +142,7 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 
 	if inputObject.UserInputType == Enum.UserInputType.Keyboard then
 		if inputObject.KeyCode == Enum.KeyCode.One then
+			_annotate("hit 1, doing warp to last completed run start.")
 			local useLastRunEnd = nil
 			if userWantsHighlightingWhenWarpingWithKeyboard then
 				useLastRunEnd = lastCompleteRunEnd
@@ -150,13 +151,16 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 				warper.WarpToSignId(lastCompleteRunStart, useLastRunEnd)
 			end
 		elseif inputObject.KeyCode == Enum.KeyCode.Two then
+			_annotate("hit 2, doing warp to last run start.")
 			if lastRunStartSignId ~= nil then
 				warper.WarpToSignId(lastRunStartSignId)
 			end
 		elseif inputObject.KeyCode == Enum.KeyCode.H then
+			_annotate("hit h, killing highlights.")
 			textHighlighting.KillAllExistingHighlights()
 			_annotate("kill all highlights.")
 		elseif inputObject.KeyCode == Enum.KeyCode.Tab then
+			_annotate("hit tab, showing/hiding leaderboard.")
 			showLB = not showLB
 			ToggleLB(showLB)
 			ToggleSettingsButton(showLB)
@@ -164,12 +168,14 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 			ToggleServerEventScreenGui(showLB)
 			ToggleMarathonScreenGui(showLB)
 		elseif inputObject.KeyCode == Enum.KeyCode.X then
+			_annotate("kill all popups.")
 			KillPopups()
 		elseif inputObject.KeyCode == Enum.KeyCode.Z then
+			_annotate("hit z, canceling run.")
 			-- strangely, this key used to do a lot, even when you weren't running.
 			-- because basically it kills the movementHistory store in movement, which can have effects on the player
 			-- even when not running!
-			fireEvent(mt.avatarEventTypes.RUN_CANCEL, { reason = "hit z on keyboard" })
+			fireEvent(aet.avatarEventTypes.RUN_CANCEL, { reason = "hit z on keyboard", sender = "keyboard" })
 		elseif inputObject.KeyCode == Enum.KeyCode.K then
 			keyboardShortcutButton.CreateShortcutGui()
 			-- elseif inputObject.KeyCode == Enum.KeyCode.P then
@@ -188,19 +194,19 @@ end
 
 -- we track the last run start so that they can warp back there.
 local debHandleAvatarEvent = false
-local function handleAvatarEvent(ev: mt.avatarEvent)
+local function handleAvatarEvent(ev: aet.avatarEvent)
 	while debHandleAvatarEvent do
 		_annotate("was locked while trying to set keyboard.")
-		_annotate(avatarEventFiring.DescribeEvent(ev.eventType, ev.details))
+		_annotate(avatarEventFiring.DescribeEvent(ev))
 		return
 	end
 	debHandleAvatarEvent = true
-	if ev.eventType == mt.avatarEventTypes.RUN_START then
+	if ev.eventType == aet.avatarEventTypes.RUN_START then
 		_annotate(
 			string.format("run start, setting lastRunStartSignId=%s", tpUtil.signId2signName(ev.details.startSignId))
 		)
 		lastRunStartSignId = ev.details.startSignId
-	elseif ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
+	elseif ev.eventType == aet.avatarEventTypes.RUN_COMPLETE then
 		_annotate(
 			string.format(
 				"run complete, storing the last completed start and end: %s => %s",
@@ -214,10 +220,16 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 	end
 	debHandleAvatarEvent = false
 end
-
+local avatarEventConnection
 module.Init = function()
+	_annotate("init")
 	debHandleAvatarEvent = false
-	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
+
+	if avatarEventConnection then
+		avatarEventConnection:Disconnect()
+		avatarEventConnection = nil
+	end
+	avatarEventConnection = AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 	UserInputService.InputBegan:Connect(onInputBegin)
 
 	settings.RegisterFunctionToListenForSettingName(
@@ -231,9 +243,10 @@ module.Init = function()
 	)
 
 	handleUserSettingChanged(
-		settings.getSettingByName(settingEnums.settingDefinitions.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP.name)
+		settings.GetSettingByName(settingEnums.settingDefinitions.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP.name)
 	)
-	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingDefinitions.X_BUTTON_IGNORES_CHAT.name))
+	handleUserSettingChanged(settings.GetSettingByName(settingEnums.settingDefinitions.X_BUTTON_IGNORES_CHAT.name))
+	_annotate("init done")
 end
 
 _annotate("end")

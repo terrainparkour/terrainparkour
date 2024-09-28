@@ -32,7 +32,7 @@ local enums = require(game.ReplicatedStorage.util.enums)
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
 
-local mt = require(game.ReplicatedStorage.avatarEventTypes)
+local aet = require(game.ReplicatedStorage.avatarEventTypes)
 local localPlayer: Player = Players.LocalPlayer
 ------------------ SETUP ------------------
 local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
@@ -84,11 +84,12 @@ local artificiallyCheckForSwimming = function(character)
 			end
 		end
 		if foundSwim then
-			local details = {
+			local details: aet.avatarEventDetails = {
 				oldState = oldState,
 				newState = Enum.HumanoidStateType.Swimming,
+				sender = "avatarEventMonitor",
 			}
-			fireEvent(mt.avatarEventTypes.STATE_CHANGED, details)
+			fireEvent(aet.avatarEventTypes.STATE_CHANGED, details)
 			-- YES this will resent swim events with both old and new state being swimming.
 		end
 	end)
@@ -104,14 +105,18 @@ local InputChanged = function(input: InputObject, gameProcessedEvent: boolean, k
 	end
 
 	if input.KeyCode == Enum.KeyCode.LeftControl then
-		local theType = input.UserInputState == Enum.UserInputState.Begin and mt.avatarEventTypes.KEYBOARD_WALK
-			or mt.avatarEventTypes.KEYBOARD_RUN
-		fireEvent(theType)
+		local theType = input.UserInputState == Enum.UserInputState.Begin and aet.avatarEventTypes.KEYBOARD_WALK
+			or aet.avatarEventTypes.KEYBOARD_RUN
+		local details: aet.avatarEventDetails = {
+			sender = "avatarEventMonitor",
+		}
+		fireEvent(theType, details)
 	end
 end
 
 ------------------ FIRE INITIAL CHAR ADDED EVENT ------------------
 
+local avatarEventConnection = nil
 module.Init = function()
 	_annotate(string.format("Init of avatarEventMonitor for %s", localPlayer.Name))
 	localPlayer = Players.LocalPlayer
@@ -128,12 +133,13 @@ module.Init = function()
 	humanoid:GetPropertyChangedSignal("FloorMaterial"):Connect(function()
 		local currentMaterial = humanoid.FloorMaterial
 		if currentMaterial ~= lastMaterial then
-			local details: mt.avatarEventDetails = {
+			local details: aet.avatarEventDetails = {
 				floorMaterial = currentMaterial,
+				sender = "avatarEventMonitor",
 			}
 
 			_annotate(string.format("Floor material changed from %s to %s", lastMaterial.Name, currentMaterial.Name))
-			fireEvent(mt.avatarEventTypes.FLOOR_CHANGED, details)
+			fireEvent(aet.avatarEventTypes.FLOOR_CHANGED, details)
 			lastMaterial = currentMaterial
 		end
 	end)
@@ -145,33 +151,27 @@ module.Init = function()
 	-- immediately end up starting a new run from it. It's more natural to touch and "end"
 	-- and then have the choice to do that yourself.
 	-- why handle it here rather than racing? unclear. The prior system was over there.
-	local handleAvatarEvent = function(ev: mt.avatarEvent)
-		if ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
+	local handleAvatarEvent = function(ev: aet.avatarEvent)
+		if ev.eventType == aet.avatarEventTypes.RUN_COMPLETE then
 			nextTouchLegalityMustBeGreaterThan = tick() + bufferTimeAfterRunUntilYouCanTouchASignAgain
 		end
 	end
-	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
+
+	if avatarEventConnection then
+		avatarEventConnection:Disconnect()
+		avatarEventConnection = nil
+	end
+	avatarEventConnection = AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 
 	------- FIRE TOUCH SIGN ------------------
 	humanoid.Touched:Connect(function(hit: BasePart, limb: BasePart)
 		if tick() < nextTouchLegalityMustBeGreaterThan then
+			_annotate(
+				"skipped sending out a touched event since it wasn't within the interval allowed (we avoid seindging out repeated quick touch events"
+			)
 			return
 		end
-		-- Create a transparent bluish sphere at the hit point
-		-- local sphere = Instance.new("Part")
-		-- sphere.Shape = Enum.PartType.Ball
-		-- sphere.Size = Vector3.new(1, 1, 1)
-		-- sphere.Position = limb.Position
-		-- sphere.Anchored = true
-		-- sphere.CanCollide = false
-		-- sphere.Transparency = 0.5
-		-- sphere.Color = Color3.new(0, 0.5, 1) -- Bluish color
-		-- sphere.Parent = workspace
 
-		-- -- Remove the sphere after 2 seconds
-		-- task.delay(2, function()
-		-- 	sphere:Destroy()
-		-- end)
 		if hit.ClassName == "Terrain" then
 			return
 		elseif hit.ClassName == "SpawnLocation" then
@@ -193,27 +193,28 @@ module.Init = function()
 			if signId == nil then
 				return
 			end
-			local details: mt.avatarEventDetails = {
+			local details: aet.avatarEventDetails = {
 				touchedSignId = signId,
 				touchedSignName = hit.Name,
 				exactPositionOfHit = limb.Position,
+				sender = "avatarEventMonitor",
 			}
-			fireEvent(mt.avatarEventTypes.TOUCH_SIGN, details)
+			fireEvent(aet.avatarEventTypes.TOUCH_SIGN, details)
 		end
 	end)
 
 	------------------ AVATAR STATES ---------------
 
 	humanoid.Died:Connect(function()
-		fireEvent(mt.avatarEventTypes.AVATAR_DIED, {})
+		fireEvent(aet.avatarEventTypes.AVATAR_DIED, { sender = "avatarEventMonitor" })
 	end)
 
 	localPlayer.CharacterRemoving:Connect(function(a0: Model)
-		fireEvent(mt.avatarEventTypes.CHARACTER_REMOVING, {})
+		fireEvent(aet.avatarEventTypes.CHARACTER_REMOVING, { sender = "avatarEventMonitor" })
 	end)
 
 	localPlayer.CharacterAdded:Connect(function(a0: Model)
-		fireEvent(mt.avatarEventTypes.CHARACTER_ADDED, {})
+		fireEvent(aet.avatarEventTypes.CHARACTER_ADDED, { sender = "avatarEventMonitor" })
 	end)
 
 	-- this has a different sensitivity than the general changestate.
@@ -264,11 +265,12 @@ module.Init = function()
 				)
 			)
 		end
-		local details = {
+		local details: aet.avatarEventDetails = {
 			oldState = old,
 			newState = new,
+			sender = "avatarEventMonitor",
 		}
-		fireEvent(mt.avatarEventTypes.STATE_CHANGED, details)
+		fireEvent(aet.avatarEventTypes.STATE_CHANGED, details)
 	end)
 
 	-- The Roblox property `MoveDirection` of the `Humanoid` class represents the direction the character is moving in the world.
@@ -290,7 +292,7 @@ module.Init = function()
 		if currentMoveDirection ~= lastEvaluatedMoveDirection then
 			--if they have fully stopped, take that seriously.
 			if currentMoveDirection == Vector3.new(0, 0, 0) then
-				fireEvent(mt.avatarEventTypes.AVATAR_STOPPED_MOVING, {})
+				fireEvent(aet.avatarEventTypes.AVATAR_STOPPED_MOVING, { sender = "avatarEventMonitor" })
 				lastEvaluatedMoveDirection = currentMoveDirection
 				return
 			end
@@ -316,7 +318,7 @@ module.Init = function()
 			-- even when if you print it out you get 0,0,0.
 			if gap.Magnitude > 0.9999 then
 				_annotate("so firing START")
-				fireEvent(mt.avatarEventTypes.AVATAR_STARTED_MOVING, {})
+				fireEvent(aet.avatarEventTypes.AVATAR_STARTED_MOVING, { sender = "avatarEventMonitor" })
 			else
 				-- _annotate("so firing CHANGED")
 				-- fireEvent(mt.avatarEventTypes.AVATAR_CHANGED_DIRECTION, {})

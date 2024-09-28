@@ -6,6 +6,7 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 local module = {}
 
+local tt = require(game.ReplicatedStorage.types.gametypes)
 --simple method to write text to output. better than assembing a giant string all at once.
 local innerSendMsg = function(channel, msg: string, options: any)
 	if options == nil then
@@ -47,6 +48,8 @@ module.usageCommandDesc = [[Admin Command examples:
 /stats - Show today's stats.
 /tix [username] - Find out the TIX balance for any user!
 /uptime - server uptime
+/pin <a>-<b> pin the race from A-B to your profile so others can see!
+/unpin remove any pinned race from your profile.
 /[username] - Details on user (this works on anyone in game).
 /player [username] like the above but they can be in the server, or not. or /p
 /version - show server version

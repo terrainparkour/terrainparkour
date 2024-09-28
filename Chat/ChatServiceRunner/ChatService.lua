@@ -6,7 +6,6 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
-local rdb = require(game.ServerScriptService.rdb)
 
 local MAX_FILTER_RETRIES = 3
 local MAX_FILTER_DURATION = 60
@@ -44,7 +43,7 @@ methods.__index = methods
 
 function methods:AddChannel(channelName, autoJoin)
 	if self.ChatChannels[channelName:lower()] then
-		error(string.format("Channel %q alrady exists.", channelName))
+		annotater.Error(string.format("Channel %q alrady exists.", channelName))
 	end
 
 	local function DefaultChannelCommands(fromSpeaker, message)
@@ -113,7 +112,7 @@ end
 
 function methods:AddSpeaker(speakerName)
 	if self.Speakers[speakerName:lower()] then
-		error('Speaker "' .. speakerName .. '" already exists!')
+		annotater.Error('Speaker "' .. speakerName .. '" already exists!')
 	end
 
 	local speaker = Speaker.new(self, speakerName)
@@ -196,7 +195,7 @@ end
 
 function methods:RegisterFilterMessageFunction(funcId, func, priority)
 	if self.FilterMessageFunctions:HasFunction(funcId) then
-		error(string.format("FilterMessageFunction '%s' already exists", funcId))
+		annotater.Error(string.format("FilterMessageFunction '%s' already exists", funcId))
 	end
 	self.FilterMessageFunctions:AddFunction(funcId, func, priority)
 end
@@ -207,14 +206,14 @@ end
 
 function methods:UnregisterFilterMessageFunction(funcId)
 	if not self.FilterMessageFunctions:HasFunction(funcId) then
-		error(string.format("FilterMessageFunction '%s' does not exists", funcId))
+		annotater.Error(string.format("FilterMessageFunction '%s' does not exists", funcId))
 	end
 	self.FilterMessageFunctions:RemoveFunction(funcId)
 end
 
 function methods:RegisterProcessCommandsFunction(funcId, func, priority)
 	if self.ProcessCommandsFunctions:HasFunction(funcId) then
-		error(string.format("ProcessCommandsFunction '%s' already exists", funcId))
+		annotater.Error(string.format("ProcessCommandsFunction '%s' already exists", funcId))
 	end
 	self.ProcessCommandsFunctions:AddFunction(funcId, func, priority)
 end
@@ -225,7 +224,7 @@ end
 
 function methods:UnregisterProcessCommandsFunction(funcId)
 	if not self.ProcessCommandsFunctions:HasFunction(funcId) then
-		error(string.format("ProcessCommandsFunction '%s' does not exist", funcId))
+		annotater.Error(string.format("ProcessCommandsFunction '%s' does not exist", funcId))
 	end
 	self.ProcessCommandsFunctions:RemoveFunction(funcId)
 end
@@ -299,6 +298,7 @@ function methods:InternalApplyRobloxFilter(speakerName, message, toSpeakerName)
 				return nil
 			end
 			_annotate("stuck in chatservice.")
+			task.wait(0.05)
 		end
 	else
 		--// Simulate filtering latency.
@@ -334,7 +334,7 @@ function methods:InternalDoProcessCommands(speakerName, message, channel)
 		local success, returnValue = pcall(function()
 			local ret = func(speakerName, message, channel)
 			if type(ret) ~= "boolean" then
-				error("Process command functions must return a bool")
+				annotater.Error("Process command functions must return a bool")
 			end
 			return ret
 		end)
@@ -357,7 +357,7 @@ end
 
 function methods:InternalAddSpeakerWithPlayerObject(speakerName, playerObj, fireSpeakerAdded)
 	if self.Speakers[speakerName:lower()] then
-		error('Speaker "' .. speakerName .. '" already exists!')
+		annotater.Error('Speaker "' .. speakerName .. '" already exists!')
 	end
 
 	local speaker = Speaker.new(self, speakerName)

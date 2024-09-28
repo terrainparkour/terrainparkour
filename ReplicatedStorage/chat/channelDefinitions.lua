@@ -1,6 +1,6 @@
 --!strict
 
--- channeldefinitions. I believe sometimes required on server or client.
+-- channelDefinitions. I believe sometimes required on server or client.
 -- we enabled some old multitabbing code.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
@@ -9,21 +9,15 @@ local _annotate = annotater.getAnnotater(script)
 local enums = require(game.ReplicatedStorage.util.enums)
 local sendMessageModule = require(game.ReplicatedStorage.chat.sendMessage)
 local commandParsing = require(game.ReplicatedStorage.chat.commandParsing)
+local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local module = {}
 
-export type channelDefinition = {
-	Name: string,
-	AutoJoin: boolean,
-	WelcomeMessage: string,
-	adminFunc: any,
-	noTalkingInChannel: boolean,
-}
-
 --looks like this is a way to shuffle around pointers to actual channel objects.
 local channelsFromExternal = nil
+
 module.sendChannels = function(channels)
-	_annotate(string.format("received #channels", #channels))
+	_annotate(string.format("received #channels %d", #channels))
 	channelsFromExternal = channels
 end
 
@@ -72,8 +66,8 @@ local joinMessages = {
 local joinMessage = joinMessages[math.random(#joinMessages)]
 
 --define the channels for processing and metadata
-module.getChannelDefinitions = function(): { channelDefinition }
-	local res: { channelDefinition } = {}
+module.getChannelDefinitions = function(): { tt.channelDefinition }
+	local res: { tt.channelDefinition } = {}
 	local doNotCheckInGameIdentifier = require(game.ReplicatedStorage:FindFirstChild("doNotCheckInGameIdentifier"))
 	if doNotCheckInGameIdentifier.useTestDb() then
 		joinMessage =
@@ -110,13 +104,13 @@ module.getChannelDefinitions = function(): { channelDefinition }
 	return res
 end
 
-module.getChannel = function(name)
+module.GetChannel = function(name)
 	while true do
 		if channelsFromExternal ~= nil then
 			break
 		end
 		_annotate("waiting for channelsFromExternal")
-		wait(1)
+		task.wait(1)
 	end
 	for k, v in pairs(channelsFromExternal) do
 		if v.Name == name then
@@ -125,7 +119,6 @@ module.getChannel = function(name)
 		end
 	end
 	warn("no channel.")
-	return nil
 end
 
 _annotate("end")

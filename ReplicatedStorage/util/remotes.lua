@@ -1,9 +1,5 @@
 --!strict
 
-local annotater = require(game.ReplicatedStorage.util.annotater)
-local _annotate = annotater.getAnnotater(script)
-local vscdebug = require(game.ReplicatedStorage.vscdebug)
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local refolder: Folder = ReplicatedStorage:WaitForChild("RemoteEvents")
 local rffolder: RemoteFunction = ReplicatedStorage:WaitForChild("RemoteFunctions")
@@ -12,26 +8,23 @@ local befolder: Folder = ReplicatedStorage:WaitForChild("BindableEvents")
 local module = {}
 
 local debounce = false
--- local holder = ""
+local holder = ""
 
 --problem: this is not shared between client and server.
 local function getDebounce(name: string)
 	if debounce then
 		while debounce do
-			wait(0.1)
-			-- _annotate("remote debounce " .. name .. " holder: " .. holder)
+			task.wait(0.1)
 		end
 	else
-		-- _annotate("no debounce for " .. name)
 	end
-	-- holder = name
+	holder = name
 	debounce = true
 end
 
 local done = function(name: string)
-	-- holder = ""
+	holder = ""
 	debounce = false
-	-- _annotate("done. " .. name)
 end
 
 local registerRemoteEvent = function(name: string): RemoteEvent
@@ -126,5 +119,4 @@ module.getBindableEvent = function(name: string): BindableEvent
 	return exi
 end
 
-_annotate("end")
 return module

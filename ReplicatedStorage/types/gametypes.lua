@@ -3,52 +3,50 @@
 --dumping ground for general response types
 --TODO: synchronize this with python return types too!
 
-local annotater = require(game.ReplicatedStorage.util.annotater)
-local _annotate = annotater.getAnnotater(script)
-
-export type signFindOptions = {
-	kind: string,
-	userId: number, --the user this find is in relation to.
-	lastFinderUserId: number,
-	lastFinderUsername: string,
-	signName: string,
-	totalSignsInGame: number,
-	findCount: number,
-	signTotalFinds: number,
-	findRank: number,
+export type avatarMorphData = {
+	scale: number | nil,
+	transparency: number | nil,
 }
 
-export type pyUserFoundSign = {
-	kind: string,
-	userId: number,
+export type clientToServerRemoteEvent = {
+	eventKind: string,
+	data: any,
+}
+
+export type runEndingData = {
+	startSignName: string,
+	endSignName: string,
+	runMilliseconds: number,
+	floorSeenCount: number,
+}
+
+export type dcFindResponse = {
+	signName: string,
+	signId: number,
+	userId: number, --the user this find is in relation to.
+	userFindCount: number,
 	lastFinderUserId: number,
 	lastFinderUsername: string,
 	foundNew: boolean,
-	success: string,
-	created: boolean,
-	actionResults: { actionResult },
-	findCount: number,
-	findRank: number,
+	userFindRank: number,
 	signTotalFinds: number,
 	totalSignsInGame: number,
+	lastFindAgoSeconds: number,
+	kind: string, -- the only non-default one in lua side.
 }
 
-export type leaveOptions = {
-	kind: string,
-	userId: number,
-}
-
-export type pyUserBadgeGrant = {
+export type pyUserBadgeStatus = {
 	userId: number,
 	badgeAssetId: number,
 	badgeName: string,
 	badgeTotalGrantCount: number,
+	hasBadge: boolean,
 }
 
 -- equivalent to dcRunResponse:
-export type pyUserFinishedRunResponse = {
+export type dcRunResponse = {
 	thisRunPlace: number,
-	thisRunMilliseconds: number,
+	runMilliseconds: number,
 	thisRunImprovedPlace: boolean,
 	startSignId: number,
 	endSignId: number,
@@ -70,34 +68,47 @@ export type pyUserFinishedRunResponse = {
 	createdRace: boolean,
 	createdMarathon: boolean,
 
-	--user stats
-	userTix: number,
-	cwrs: number,
-	cwrTop10s: number,
-	cwrRank: number,
-	wrCount: number,
-	wrRank: number,
-	top10s: number,
-
 	userRaceRunCount: number,
-	userTotalRaceCount: number,
-	userTotalRunCount: number,
-
-	daysInGame: number,
-	awardCount: number,
-
-	findCount: number,
-	findRank: number,
 
 	-- info on the race or run.
-	userMarathonRunCount: number,
 	totalRunsOfThisRaceCount: number,
 	totalRacersOfThisRaceCount: number,
+
+	lbUserStats: lbUserStats,
 
 	--relations, must be last to avoid dumb python typing
 	runEntries: { runEntry },
 	actionResults: { actionResult },
 }
+
+-- okay, now updates are just general and cover all possible lb stats.
+-- keep doing this til the db dies.
+export type lbUserStats = {
+	kind: string,
+	userId: number,
+	username: string?,
+	userTix: number?,
+	findCount: number?,
+	findRank: number?,
+	cwrs: number?,
+	cwrRank: number?,
+	cwrTop10s: number?,
+	wrCount: number?,
+	wrRank: number?,
+	top10s: number?,
+	userTotalRunCount: number?,
+	userTotalRaceCount: number?,
+	daysInGame: number?,
+	awardCount: number?,
+	badgeCount: number?,
+	serverPatchedInTotalSignCount: number?,
+	cwrsToday: number?,
+	wrsToday: number?,
+	runsToday: number?,
+	pinnedRace: string?,
+}
+
+export type genericLeaderboardUpdateDataType = { kind: string, lbUserStats: lbUserStats, userId: number }
 
 export type ephemeralNotificationOptions = {
 	userId: number,
@@ -113,7 +124,6 @@ export type userFinishedRunOptions = {
 	endSignId: number,
 	runMilliseconds: number,
 	allPlayerUserIds: string,
-	remoteActionName: string,
 }
 
 --in runresult, describe a prior best result.  TODO: does or does not include the last run / the old prior best of subject user?
@@ -145,71 +155,13 @@ export type afterdata = {
 	firstTimeJoining: boolean, --check if this still shows up.
 	success: boolean,
 	foundNew: boolean,
-	pyUserFinishedRunResponse: pyUserFinishedRunResponse?,
+	pyUserFinishedRunResponse: dcRunResponse?,
 }
-
-export type badgeUpdate = { kind: string, userId: number, badgeCount: number }
 
 export type getNonTop10RacesByUser = {
 	kind: string,
 	userId: number,
 	raceDescriptions: { string },
-}
-
-export type afterData_getStatsByUser = {
-	kind: string,
-	userId: number,
-	findCount: number,
-	findRank: number,
-	cwrs: number,
-	cwrRank: number,
-	cwrTop10s: number,
-	wrCount: number,
-	wrRank: number,
-	top10s: number,
-	userTotalRunCount: number,
-	userTotalRaceCount: number,
-	userTix: number,
-	serverPatchedInTotalSignCount: number, --this is patched in from the server. do NOT get it from the remote DB and do NOT get it from the client (becaues of replication stuff)
-	awardCount: number,
-	--I believe badges come later, via another async process
-	daysInGame: number,
-}
-
---every time a run happens, update everyone about this user's changed scoreboard.
-export type lbUpdateFromRun = {
-	kind: string,
-	userId: number,
-	userTix: number,
-	cwrs: number,
-	cwrTop10s: number,
-	top10s: number,
-	userTotalRaceCount: number,
-	userTotalRunCount: number,
-	wrCount: number,
-	wrRank: number,
-	daysInGame: number,
-	awardCount: number,
-}
-
-export type lbUserStats = {
-	kind: string,
-	userId: number,
-	userTix: number,
-	top10s: number,
-	races: number,
-	runs: number,
-	cwrs: number,
-	wrCount: number,
-	awardCount: number,
-}
-
-export type lbUpdateFromFind = {
-	kind: string,
-	userId: number,
-	findCount: number,
-	userTix: number,
-	findRank: number,
 }
 
 export type badgeDescriptor = {
@@ -221,7 +173,7 @@ export type badgeDescriptor = {
 	order: number?,
 }
 
-export type badgeAttainment = {
+export type badgeProgress = {
 	badge: badgeDescriptor,
 	got: boolean,
 	progress: number,
@@ -243,11 +195,16 @@ export type userSettingValue = {
 	codeName: string?,
 	name: string,
 	domain: string,
-	kind: string,
+	kind: string, -- either a boolean or a string
 	defaultBooleanValue: boolean?,
-	defaultStringValue: string?,
-	booleanValue: boolean?,
-	stringValue: string?,
+	defaultStringValue: string | nil,
+	defaultLuaValue: any | nil,
+	booleanValue: boolean | nil,
+	stringValue: string | nil,
+	luaValue: any | nil, --which will be stringified and then stored remote, then unstringified (restoring lua classes, etc) before being served out again.
+	editorName: string | nil, --if this is present, do not show it in the default UI unless you opt in.
+	-- for example, pinnedRace can only store specific data types so you can't just use the default boolean editor
+	-- on it.
 }
 
 export type userSettingValuesWithDistributions = { name: string, domain: string, value: boolean?, percentage: number }
@@ -290,7 +247,7 @@ export type runningServerEventUserBest = { userId: number, username: string, tim
 export type robloxServerError = {
 	version: string,
 	code: string,
-	data: string,
+	data: table, --any table, even a lua table with complex objects.
 	message: string,
 	userId: number?,
 }
@@ -366,14 +323,14 @@ export type rowDescriptor = (playerSignProfileData) -> { signProfileChipType }
 export type movementHistoryQueueItem = { action: number, time: number }
 
 ------------------------ LEADERBOARD ------------------------
-export type leaderboardUserDataChange = { key: string, oldValue: number, newValue: number }
+export type leaderboardUserDataChange = { key: string, oldValue: number | string, newValue: number | string }
 
 -- details on a server initiated server warp request
 export type serverWarpRequest = {
 	kind: string,
 	signId: number?,
 	highlightSignId: number?,
-	position: Vector3?,
+	position: Vector3 | nil,
 }
 
 --------------- PARTICLES -------------
@@ -409,5 +366,37 @@ export type particleDescriptor = {
 	lightEmission: number,
 }
 
-_annotate("end")
+-- when parsing X-Y
+export type RaceParseResult = {
+	signId1: number,
+	signId2: number,
+	signname1: string,
+	signname2: string,
+	error: string, -- if non"" then it's an error.
+}
+
+export type setSettingResponse = { res: boolean, error: string }
+
+export type channelDefinition = {
+	Name: string,
+	AutoJoin: boolean,
+	WelcomeMessage: string,
+	adminFunc: any,
+	noTalkingInChannel: boolean,
+}
+
+-- the UI for the configuration object of a runSGui
+export type currentRunUIConfiguration = {
+	showDistance: boolean,
+	size: UDim2,
+	position: UDim2,
+	digitsInTime: number,
+	transparency: number,
+}
+
+export type postRequest = {
+	remoteActionName: string,
+	data: any,
+}
+
 return {}

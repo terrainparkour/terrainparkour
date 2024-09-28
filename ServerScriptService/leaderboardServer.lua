@@ -7,15 +7,12 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local PlayerService = game:GetService("Players")
-local colors = require(game.ReplicatedStorage.util.colors)
-local channeldefinitions = require(game.ReplicatedStorage.chat.channeldefinitions)
-local playerdata = require(game.ServerScriptService.playerdata)
-local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
+
+local playerData2 = require(game.ServerScriptService.playerData2)
 local tt = require(game.ReplicatedStorage.types.gametypes)
+local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 
 local module = {}
-
-local racersChannel = channeldefinitions.getChannel("Racers")
 
 --this whole set of functions seems highly strange.
 -- why should this be so hard?
@@ -31,35 +28,26 @@ module.RemoveFromLeaderboardImmediate = function(player: Player)
 		if otherPlayer.UserId == player.UserId then
 			continue
 		end
-		lbUpdaterServer.sendLeaveInfoToSomeone(otherPlayer, player.UserId)
+		lbUpdaterServer.SendLeaveInfoToSomeone(otherPlayer, player.UserId)
 	end
-end
-
-module.PostJoinToRacersImmediate = function(player: Player)
-	_annotate("Posting join to racers: " .. player.Name)
-	local character = player.Character or player.CharacterAdded:Wait()
-	local statTag = playerdata.getPlayerDescriptionLine(player.UserId)
-	local text = player.Name .. " joined! " .. statTag
-	local options = { ChatColor = colors.greenGo }
-	racersChannel:SendSystemMessage(text, options)
-end
-
-module.PostLeaveToRacersImmediate = function(player: Player)
-	_annotate("Posting leave to racers: " .. player.Name)
-	local statTag = playerdata.getPlayerDescriptionLine(player.UserId)
-	local text = player.Name .. " left! " .. statTag
-	local options = { ChatColor = colors.redStop }
-	racersChannel:SendSystemMessage(text, options)
 end
 
 --update joiner about current players
 local function updatePlayerLbAboutAllImmediate(player: Player)
 	local character = player.Character or player.CharacterAdded:Wait()
 	for _, otherPlayer: Player in ipairs(PlayerService:GetPlayers()) do
-		local stats: tt.afterData_getStatsByUser =
-			playerdata.getPlayerStatsByUserId(otherPlayer.UserId, "update joiner lb")
-		lbUpdaterServer.sendUpdateToPlayer(player, stats)
+		local lbUserStats: tt.lbUserStats = playerData2.GetStatsByUserId(otherPlayer.UserId, "update joiner lb")
+		lbUpdaterServer.SendUpdateToPlayer(player, lbUserStats)
 		_annotate(string.format("Updating player: %s about %s", player.Name, otherPlayer.Name))
+	end
+end
+
+module.UpdateAllAboutPlayerImmediate = function(player: Player)
+	local lbUserStats: tt.lbUserStats =
+		playerData2.GetStatsByUserId(player.UserId, "user did sth which requires telling everyone about it.")
+	for _, otherPlayer: Player in ipairs(PlayerService:GetPlayers()) do
+		lbUpdaterServer.SendUpdateToPlayer(otherPlayer, lbUserStats)
+		_annotate(string.format("Updating player: %s about %s", otherPlayer.Name, player.Name))
 	end
 end
 
@@ -73,15 +61,14 @@ module.SetPlayerToReceiveUpdates = function(player: Player)
 	updatePlayerLbAboutAllImmediate(player)
 end
 
-local function updateOthersAboutPlayerImmediate(player: Player)
-	local stats: tt.afterData_getStatsByUser =
-		playerdata.getPlayerStatsByUserId(player.UserId, "update other about joiner")
+local updateOthersAboutPlayerImmediate = function(player: Player)
+	local lbUserStats: tt.lbUserStats = playerData2.GetStatsByUserId(player.UserId, "updateOthersAboutPlayerImmediate")
 	for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
 		if otherPlayer.UserId == player.UserId then
 			continue
 		end
 		_annotate(string.format("Updating %s about player: %s", otherPlayer.Name, player.Name))
-		lbUpdaterServer.sendUpdateToPlayer(otherPlayer, stats)
+		lbUpdaterServer.SendUpdateToPlayer(otherPlayer, lbUserStats)
 	end
 end
 

@@ -14,6 +14,7 @@ function CreateUnknownMessageLabel(messageData)
 	_annotate("No message creator for message: " .. messageData.Message)
 end
 
+_annotate("end")
 return {
 	[util.KEY_MESSAGE_TYPE] = MESSAGE_TYPE,
 	[util.KEY_CREATOR_FUNCTION] = CreateUnknownMessageLabel,

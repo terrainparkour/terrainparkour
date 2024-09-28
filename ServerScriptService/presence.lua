@@ -9,8 +9,9 @@ local leaderboardBadgeEvents = require(game.ServerScriptService.leaderboardBadge
 local playerMonitoring = require(game.ServerScriptService.playerStateMonitoringFuncs)
 local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
 local nomesh = require(game.ServerScriptService.noMesh)
-
+local playerData2 = require(game.ServerScriptService.playerData2)
 local PlayersService = game:GetService("Players")
+local joiningServer = require(game.ServerScriptService.joiningServer)
 
 local module = {}
 type storedFunc = { func: (player: Player) -> nil, name: string }
@@ -36,8 +37,12 @@ local function applyPlayerRemovingFuncs(player: Player)
 	end
 end
 
+local function preloadFinds(player: Player)
+	playerData2.HasUserFoundSign(player.UserId, 1)
+end
+
 module.Init = function()
-	table.insert(playerAddFuncs, { func = playerMonitoring.PreloadFinds, name = "preloadFinds" })
+	table.insert(playerAddFuncs, { func = preloadFinds, name = "preloadFinds" })
 	table.insert(playerAddFuncs, { func = playerMonitoring.LogJoin, name = "logJoin" })
 	table.insert(playerAddFuncs, { func = playerMonitoring.BackfillBadges, name = "BackfillBadges" })
 	table.insert(playerAddFuncs, { func = nomesh.StandardizeCharacter, name = "NoMesh" })
@@ -53,7 +58,7 @@ module.Init = function()
 		{ func = leaderboardBadgeEvents.TellPlayerAboutAllOthersBadges, name = "TellAllAboutMeBadges" }
 	)
 	table.insert(playerAddFuncs, { func = leaderboardBadgeEvents.TellMeAboutOBadges, name = "TellMeAboutOBadges" })
-	table.insert(playerAddFuncs, { func = leaderboardServer.PostJoinToRacersImmediate, name = "PostJoinToRacers" })
+	table.insert(playerAddFuncs, { func = joiningServer.PostJoinToRacersImmediate, name = "PostJoinToRacers" })
 
 	PlayersService.PlayerAdded:Connect(applyPlayerAddFuncs)
 
@@ -69,10 +74,7 @@ module.Init = function()
 		playerRemovingFuncs,
 		{ func = leaderboardServer.RemoveFromLeaderboardImmediate, name = "RemoveFromLeaderboard" }
 	)
-	table.insert(
-		playerRemovingFuncs,
-		{ func = leaderboardServer.PostLeaveToRacersImmediate, name = "PostLeaveToRacers" }
-	)
+	table.insert(playerRemovingFuncs, { func = joiningServer.PostLeaveToRacersImmediate, name = "PostLeaveToRacers" })
 
 	PlayersService.PlayerRemoving:Connect(applyPlayerRemovingFuncs)
 

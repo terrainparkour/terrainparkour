@@ -11,6 +11,39 @@ local avatarEventTypes = require(game.ReplicatedStorage.avatarEventTypes)
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
+---------- HERE IS THE TYPE DEFINITION INCLUDED ABOVE FOR YOUR CONVENIENCE. DO NOT MODIFY THIS PART. ------------------
+-- each one has a specific use case, and the other particle aspects to it.
+-- export type particleDescriptor = {
+-- 	acceleration: Vector3,
+-- 	brightness: number,
+-- 	color: ColorSequence | Color3,
+-- 	direction: Enum.NormalId,
+-- 	drag: number,
+-- 	durationMETA: number,
+-- 	emissionDirection: Enum.NormalId,
+-- 	-- duration: number,
+-- 	-- falloff: number,
+-- 	lifetime: NumberRange,
+-- 	name: string,
+-- 	orientation: Enum.ParticleOrientation,
+-- 	rate: number,
+-- 	rotation: NumberRange,
+-- 	rotSpeed: NumberRange,
+-- 	shape: Enum.ParticleEmitterShape?,
+-- 	-- shapeColor: Color3?,
+-- 	shapeInOut: Enum.ParticleEmitterShapeInOut?,
+-- 	shapeStyle: Enum.ParticleEmitterShapeStyle?,
+-- 	size: NumberSequence,
+-- 	speed: NumberRange,
+-- 	spreadAngle: Vector2,
+-- 	squash: NumberSequence?,
+-- 	texture: string?,
+-- 	transparency: NumberSequence,
+-- 	velocityInheritance: number,
+-- 	zOffset: number,
+-- 	lightEmission: number,
+-- }
+
 -- local BRIGHTNESS = 1
 -- local DRAG = 0.5
 -- local DURATION = 1
@@ -77,7 +110,7 @@ local SHAPESTYLE = Enum.ParticleEmitterShapeStyle.Surface
 
 local OTHERTEXTURE = "rbxassetid://138530670729336"
 
-local function AddDefaults(input: table): tt.particleDescriptor
+local function AddDefaults(input: any): tt.particleDescriptor
 	if input.shape == nil then
 		input.shape = SHAPE
 	end
@@ -314,9 +347,7 @@ local function getPairs(minn, maxx)
 end
 
 local function getRandomParticleDescriptor(userId: number, key: string): tt.particleDescriptor
-	local s: ParticleEmitter = Instance.new("ParticleEmitter")
-	s.ZOffset = 0
-
+	local random: Random = Random.new(time())
 	local a, b = getPairs(1, 10)
 	local c, d = getPairs(0, 360)
 	local e, f = getPairs(0, 50)
@@ -343,7 +374,6 @@ local function getRandomParticleDescriptor(userId: number, key: string): tt.part
 			1,
 			#Enum.ParticleEmitterShape:GetEnumItems()
 		)],
-		shapeColor = Color3.new(random:NextNumber(0, 1), random:NextNumber(0, 1), random:NextNumber(0, 1)),
 		shapeInOut = Enum.ParticleEmitterShapeInOut:GetEnumItems()[random:NextInteger(
 			1,
 			#Enum.ParticleEmitterShapeInOut:GetEnumItems()
@@ -356,12 +386,13 @@ local function getRandomParticleDescriptor(userId: number, key: string): tt.part
 		speed = NumberRange.new(e, f),
 		spreadAngle = Vector2.new(random:NextNumber(0, 180), random:NextNumber(0, 180)),
 		squash = NumberSequence.new(random:NextNumber(0.1, 10), random:NextNumber(0.1, 10)),
-		texture = nil,
-		-- texture = "rbxassetid://" .. random:NextInteger(1, 10000000),
+		texture = "rbxassetid://" .. random:NextInteger(1, 10000000),
 		transparency = NumberSequence.new(random:NextNumber(0, 1), random:NextNumber(0, 1)),
 		velocityInheritance = random:NextNumber(0, 1),
 		zOffset = random:NextNumber(-10, 10),
+		lightEmission = random:NextNumber(0, 1),
 	}
+
 	printParticleDescriptor(randomParticleDescriptor)
 	return randomParticleDescriptor
 end
@@ -370,6 +401,5 @@ module.getRandomParticleDescriptor = getRandomParticleDescriptor
 module.ParticleDescriptors = particleDescriptors
 
 _annotate("end")
-
 
 return module

@@ -316,7 +316,6 @@ if false then
 	task.spawn(function()
 		local last = ""
 		while true do
-			task.wait()
 			local exi = animator:GetPlayingAnimationTracks()
 			if exi == nil then
 				continue
@@ -329,6 +328,7 @@ if false then
 			_annotate(exi)
 			_annotate(exi[1])
 			last = exi[1]
+			task.wait(0.1)
 		end
 	end)
 end
@@ -898,9 +898,12 @@ if character.Parent ~= nil then
 	pose = "Standing"
 end
 
--- loop to handle timed state transitions and tool animations
-while character.Parent ~= nil do
-	local _, currentGameTime = wait(0.1)
-	stepAnimate(currentGameTime)
-end
+task.spawn(function()
+	-- loop to handle timed state transitions and tool animations
+	while character.Parent ~= nil do
+		local _, currentGameTime = wait(0.1)
+		stepAnimate(currentGameTime)
+	end
+end)
+
 _annotate("end")

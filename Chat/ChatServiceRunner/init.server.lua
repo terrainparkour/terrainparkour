@@ -317,7 +317,7 @@ systemChannel.AutoJoin = false
 systemChannel.WelcomeMessage = "This channel is for system and game notifications."
 
 systemChannel.SpeakerJoined:connect(function(speakerName)
-	systemChannel:MuteSpeaker(speakerName)
+	systemChannel:MuteSpeaker(speakerName, "", 10)
 end)
 
 local function TryRunModule(module)

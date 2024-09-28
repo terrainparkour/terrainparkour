@@ -1,3 +1,8 @@
+--!strict
+
+local annotater = require(game.ReplicatedStorage.util.annotater)
+local _annotate = annotater.getAnnotater(script)
+
 --	// FileName: DeveloperConsole.lua
 --	// Written by: TheGamer101
 --	// Description: Command to open or close the developer console.
@@ -7,11 +12,15 @@ local util = require(script.Parent:WaitForChild("Util"))
 
 function ProcessMessage(message, ChatWindow, ChatSettings)
 	if string.sub(message, 1, 8):lower() == "/console" then
-		local success, developerConsoleVisible = pcall(function() return StarterGui:GetCore("DeveloperConsoleVisible") end)
+		local success, developerConsoleVisible = pcall(function()
+			return StarterGui:GetCore("DeveloperConsoleVisible")
+		end)
 		if success then
-			local success, err = pcall(function() StarterGui:SetCore("DeveloperConsoleVisible", not developerConsoleVisible) end)
+			local success, err = pcall(function()
+				StarterGui:SetCore("DeveloperConsoleVisible", not developerConsoleVisible)
+			end)
 			if not success and err then
-				_annotate("Error making developer console visible: " ..err)
+				_annotate("Error making developer console visible: " .. err)
 			end
 		end
 		return true
@@ -19,7 +28,8 @@ function ProcessMessage(message, ChatWindow, ChatSettings)
 	return false
 end
 
+_annotate("end")
 return {
 	[util.KEY_COMMAND_PROCESSOR_TYPE] = util.COMPLETED_MESSAGE_PROCESSOR,
-	[util.KEY_PROCESSOR_FUNCTION] = ProcessMessage
+	[util.KEY_PROCESSOR_FUNCTION] = ProcessMessage,
 }

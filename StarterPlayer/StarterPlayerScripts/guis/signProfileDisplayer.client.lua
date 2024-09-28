@@ -15,3 +15,4 @@ local function handle(data: tt.playerSignProfileData)
 end
 
 ShowClientSignProfileEvent.OnClientEvent:Connect(handle)
+_annotate("end")

@@ -119,10 +119,6 @@ module.startDynamic = function(player: Player, signName: string, startTick: numb
 end
 
 local function makeDynamicSignMouseoverUI(from: string, to: string): TextLabel?
-	if not tpUtil.SignNameCanBeHighlighted(to) then
-		--if a sign isn't touchable we don't route. This conveniently also hides hidden time-based signs.
-		return
-	end
 	local bbgui = Instance.new("BillboardGui")
 	local width = 15 * #from + 30
 	bbgui.Size = UDim2.new(0, width, 0, 80)
@@ -312,7 +308,8 @@ local function handleOne(dynamicRunFrame: tt.DynamicRunFrame)
 			return
 		end
 
-		local pos = localPlayer.Character.HumanoidRootPart.Position
+		local rootPart = localPlayer.Character:WaitForChild("HumanoidRootPart")
+		local pos = rootPart.Position
 		local par = bbgui.Parent :: Part
 		local dist = tpUtil.getDist(par.Position, pos)
 
@@ -422,6 +419,7 @@ local function handleUserSettingChanged(setting: tt.userSettingValue)
 end
 
 module.Init = function()
+	_annotate("init")
 	dynamicRunningEnabled = false
 	dynamicStartTick = 0
 	debounce = false
@@ -439,8 +437,9 @@ module.Init = function()
 		return handleUserSettingChanged(item)
 	end, settingEnums.settingDefinitions.ENABLE_DYNAMIC_RUNNING.name)
 
-	local dynset = settings.getSettingByName(settingEnums.settingDefinitions.ENABLE_DYNAMIC_RUNNING.name)
+	local dynset = settings.GetSettingByName(settingEnums.settingDefinitions.ENABLE_DYNAMIC_RUNNING.name)
 	handleUserSettingChanged(dynset)
+	_annotate("init done")
 end
 
 _annotate("end")

@@ -12,7 +12,7 @@ local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local badgeSorts = require(game.ReplicatedStorage.util.badgeSorts)
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 local remotes = require(game.ReplicatedStorage.util.remotes)
-local badgeAttainmentsFunction = remotes.getRemoteFunction("BadgeAttainmentsFunction") :: RemoteFunction
+local BadgeProgressFunction = remotes.getRemoteFunction("BadgeProgressFunction") :: RemoteFunction
 
 local module = {}
 
@@ -23,7 +23,7 @@ local rowHeightPixels = 60
 local function makeBadgeRowFrame(
 	localPlayer: Player,
 	badge: tt.badgeDescriptor,
-	attainments: { [number]: tt.badgeAttainment },
+	badgeProgress: { [number]: tt.badgeProgress },
 	n: number,
 	resultSections: number
 ): Frame
@@ -92,7 +92,7 @@ local function makeBadgeRowFrame(
 
 	-- for _, oUserId in ipairs(orderedUserIds) do
 	local progressCounter = 0
-	for ii, oAttainment in pairs(attainments) do
+	for ii, oAttainment in pairs(badgeProgress) do
 		progressCounter += 1
 		local progressTileName = string.format("02.%02d-progress-%d", progressCounter, ii)
 		if oAttainment.got then --full bar
@@ -107,7 +107,7 @@ local function makeBadgeRowFrame(
 			restl.Text = "got"
 		else --progress bar
 			if oAttainment.progress == -1 then
-				local progressinTL, noprogressoutTL = guiUtil.getTl(
+				local progressinTL = guiUtil.getTl(
 					progressTileName,
 					UDim2.new(resultWidthScale, resultWidthPixel, 1, 0),
 					4,
@@ -142,7 +142,7 @@ local function makeBadgeRowFrame(
 	return fr
 end
 
-getBadgeStatusModal = function(localPlayer: Player): ScreenGui
+local getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	local orderedUserIdsInServer: { number } = { localPlayer.UserId }
 
 	--fill in with other players.
@@ -153,8 +153,8 @@ getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 		end
 	end
 
-	local badgeInfo: { [number]: { tt.badgeAttainment } } =
-		badgeAttainmentsFunction:InvokeServer(orderedUserIdsInServer, "badgeButtonSetup.")
+	local badgeProgressInfo: { [number]: { tt.badgeProgress } } =
+		BadgeProgressFunction:InvokeServer(orderedUserIdsInServer, "badgeButtonSetup.")
 
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.IgnoreGuiInset = true
@@ -207,7 +207,7 @@ getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	--make labels
 	local perPlayerWidthScale = 1 / playerCount
 	local userBadgeCounts = {}
-	for userId, chunk in pairs(badgeInfo) do
+	for userId, chunk in pairs(badgeProgressInfo) do
 		userBadgeCounts[tonumber(userId)] = 0
 		for _, ba in ipairs(chunk) do
 			if ba.got then
@@ -270,7 +270,7 @@ getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 		toolTip.setupToolTip(img, localPlayer.Name, UDim2.new(0, 200, 0, 60))
 	end
 
-	--note the individual attainments ARE in teh right order here.
+	--note the individual badgeStatus ARE in teh right order here.
 
 	--------------------------SCROLLINGFRAME-------------------------
 	local badgeScrollingFrame = Instance.new("ScrollingFrame")
@@ -286,39 +286,39 @@ getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	vv.FillDirection = Enum.FillDirection.Vertical
 	vv.Parent = badgeScrollingFrame
 
-	----------PIVOT user=>attainments to badge=> {userId:status}--------
-	local badgeAttainmentMap: { [string]: { badge: tt.badgeDescriptor, attainments: { [number]: tt.badgeAttainment } } } =
+	----------PIVOT user=>badgeStatus to badge=> {userId:status}--------
+	local badgeAttainmentMap: { [string]: { badge: tt.badgeDescriptor, badgeStatus: { [number]: tt.badgeProgress } } } =
 		{}
 	local resultSections = 0
 
 	--listify and convert to match input order
-	local sortedUserBadgeAttainments: { [number]: { tt.badgeAttainment } } = {}
+	local sortedUserBadgeStatus: { [number]: { tt.badgeProgress } } = {}
 	for _, requestedUserIdInOrder in ipairs(orderedUserIdsInServer) do
-		for theUserId, item in pairs(badgeInfo) do
+		for theUserId, item in pairs(badgeProgressInfo) do
 			if requestedUserIdInOrder == tonumber(theUserId) then
-				sortedUserBadgeAttainments[tonumber(theUserId)] = item
+				sortedUserBadgeStatus[tonumber(theUserId)] = item
 				break
 			end
 		end
 	end
 
 	for _, userId in ipairs(orderedUserIdsInServer) do
-		local oUserAttainments = sortedUserBadgeAttainments[userId]
+		local oUserAttainments = sortedUserBadgeStatus[userId]
 		resultSections += 1
-		for _, oUserAttainment: tt.badgeAttainment in ipairs(oUserAttainments) do
+		for _, oUserAttainment: tt.badgeProgress in ipairs(oUserAttainments) do
 			if badgeAttainmentMap[oUserAttainment.badge.name] == nil then
-				badgeAttainmentMap[oUserAttainment.badge.name] = { badge = oUserAttainment.badge, attainments = {} }
+				badgeAttainmentMap[oUserAttainment.badge.name] = { badge = oUserAttainment.badge, badgeStatus = {} }
 			end
-			table.insert(badgeAttainmentMap[oUserAttainment.badge.name].attainments, oUserAttainment)
+			table.insert(badgeAttainmentMap[oUserAttainment.badge.name].badgeStatus, oUserAttainment)
 		end
 	end
 	local badgeResultsRowNumber = 0
 
 	--convert map to badge-ordered list.
-	local orderedBadges: { { badge: tt.badgeDescriptor, attainments: { [number]: tt.badgeAttainment } } } = {}
+	local orderedBadges: { { badge: tt.badgeDescriptor, badgeStatus: { [number]: tt.badgeProgress } } } = {}
 
 	for _: string, obj in pairs(badgeAttainmentMap) do
-		table.insert(orderedBadges, { badge = obj.badge, attainments = obj.attainments })
+		table.insert(orderedBadges, { badge = obj.badge, badgeStatus = obj.badgeStatus })
 	end
 
 	table.sort(orderedBadges, function(a, b)
@@ -327,7 +327,7 @@ getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 
 	for _, el in ipairs(orderedBadges) do
 		local theBadge = el.badge
-		local theAttainments = el.attainments
+		local theAttainments = el.badgeStatus
 		badgeResultsRowNumber += 1
 		local rowFrame = makeBadgeRowFrame(localPlayer, theBadge, theAttainments, badgeResultsRowNumber, resultSections)
 		rowFrame.Parent = badgeScrollingFrame

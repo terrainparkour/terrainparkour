@@ -171,7 +171,7 @@ end
 
 --sgui for the results of running a race OR a marathon!.
 
-module.createNewRunResultSgui = function(options: tt.pyUserFinishedRunResponse): ScreenGui
+module.createNewRunResultSgui = function(options: tt.dcRunResponse): ScreenGui
 	rowCount = 0
 	options.userId = tonumber(options.userId) :: number
 	local raceResultSgui = Instance.new("ScreenGui")
@@ -193,7 +193,7 @@ module.createNewRunResultSgui = function(options: tt.pyUserFinishedRunResponse):
 
 	addTimeRow(
 		options.yourText,
-		string.format("%0.3fs", options.thisRunMilliseconds / 1000),
+		string.format("%0.3fs", options.runMilliseconds / 1000),
 		frame,
 		heightsPixel.text,
 		"timeRelatedRow"
@@ -233,8 +233,8 @@ module.createNewRunResultSgui = function(options: tt.pyUserFinishedRunResponse):
 	local dist = string.format("%0.1fd", options.distance)
 	table.insert(otherChipTexts, dist)
 
-	if options.thisRunMilliseconds > 0 then
-		local spd = string.format("%0.1fd/s", options.distance / options.thisRunMilliseconds * 1000)
+	if options.runMilliseconds > 0 then
+		local spd = string.format("%0.1fd/s", options.distance / options.runMilliseconds * 1000)
 		table.insert(otherChipTexts, spd)
 	end
 
@@ -295,8 +295,8 @@ module.createNewRunResultSgui = function(options: tt.pyUserFinishedRunResponse):
 
 	local signName = enums.signId2name[options.startSignId]
 	local warpRow: Frame = nil
-	if options.startSignId or not options.kind == "marathon results" then -- not a marathon.
-		--we will display a button to warp back to startId
+	if options.startSignId or options.kind ~= "marathon results" then -- not a marathon.
+		--we will display a button to warp back to startSignId
 		local startSign = tpUtil.signId2Sign(options.startSignId)
 		if tpUtil.SignCanBeHighlighted(startSign) then
 			local uis = game:GetService("UserInputService")
@@ -365,13 +365,18 @@ local function handleUserSettingChanged(item: tt.userSettingValue): any
 	end
 end
 
-settings.RegisterFunctionToListenForSettingName(
-	handleUserSettingChanged,
-	settingEnums.settingDefinitions.HIGHLIGHT_ON_RUN_COMPLETE_WARP.name
-)
+module.Init = function()
+	_annotate("init")
+	settings.RegisterFunctionToListenForSettingName(
+		handleUserSettingChanged,
+		settingEnums.settingDefinitions.HIGHLIGHT_ON_RUN_COMPLETE_WARP.name
+	)
 
-local userSettingValue = settings.getSettingByName(settingEnums.settingDefinitions.HIGHLIGHT_ON_RUN_COMPLETE_WARP.name)
-handleUserSettingChanged(userSettingValue)
+	local userSettingValue =
+		settings.GetSettingByName(settingEnums.settingDefinitions.HIGHLIGHT_ON_RUN_COMPLETE_WARP.name)
+	handleUserSettingChanged(userSettingValue)
+	_annotate("init done")
+end
 
 _annotate("end")
 return module

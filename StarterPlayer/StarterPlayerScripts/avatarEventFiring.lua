@@ -14,19 +14,16 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local remotes = require(game.ReplicatedStorage.util.remotes)
+local aet = require(game.ReplicatedStorage.avatarEventTypes)
 
-local AvatarEventBindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
-
-local mt = require(game.ReplicatedStorage.avatarEventTypes)
-
-local lastWarpStart = nil
+-- hmm not sure.
+-- local lastWarpStart = tick()
 
 --HUMANOID
 
 local module = {}
 
-module.EventIsATypeWeCareAbout = function(ev: mt.avatarEvent, eventsWeCareAbout: { number }): boolean
+module.EventIsATypeWeCareAbout = function(ev: aet.avatarEvent, eventsWeCareAbout: { number }): boolean
 	for _, value in pairs(eventsWeCareAbout) do
 		if value == ev.eventType then
 			return true
@@ -35,52 +32,54 @@ module.EventIsATypeWeCareAbout = function(ev: mt.avatarEvent, eventsWeCareAbout:
 	return false
 end
 
-module.DescribeEvent = function(avatarEventType: number, details: mt.avatarEventDetails?): string
+module.DescribeEvent = function(ev: aet.avatarEvent): string
+	local details = ev.details
+
 	local usingText = ""
 	if details.startSignName then
-		usingText = usingText .. " startSignName=" .. tostring(details.startSignName) .. " "
+		usingText = string.format("%s startSignName=%s ", usingText, details.startSignName)
 	end
 	if details.endSignName then
-		usingText = usingText .. " endSignName=" .. tostring(details.endSignName) .. " "
+		usingText = string.format("%s endSignName=%s ", usingText, details.endSignName)
 	end
 	if details.floorMaterial then
-		usingText = usingText .. " floorMaterial=" .. tostring(details.floorMaterial) .. " "
+		usingText = string.format("%s floorMaterial=%s ", usingText, details.floorMaterial.Name)
 	end
 	if details.newMoveDirection then
-		usingText = usingText .. " newMoveDirection=" .. tostring(details.newMoveDirection) .. " "
+		usingText = string.format("%s newMoveDirection=%s ", usingText, tostring(details.newMoveDirection))
 	end
 	if details.oldMoveDirection then
-		usingText = usingText .. " oldMoveDirection=" .. tostring(details.oldMoveDirection) .. " "
+		usingText = string.format("%s oldMoveDirection=%s ", usingText, tostring(details.oldMoveDirection))
 	end
 	if details.newState then
-		usingText = usingText .. " newState=" .. tostring(details.newState) .. " "
+		usingText = string.format("%s newState=%s ", usingText, details.newState.Name)
 	end
 	if details.oldState then
-		usingText = usingText .. " oldState=" .. tostring(details.oldState) .. " "
+		usingText = string.format("%s oldState=%s ", usingText, details.oldState.Name)
 	end
-	-- if details.warpSourceSignName then
-	-- 	usingText = usingText .. " warpSourceSignName=" .. tostring(details.warpSourceSignName) .. " "
-	-- end
-	-- if details.warpDestinationSignName then
-	-- 	usingText = usingText .. " warpDestinationSignName=" .. tostring(details.warpDestinationSignName) .. " "
-	-- end
 	if details.oldSpeed then
-		usingText = usingText .. " oldSpeed=" .. tostring(details.oldSpeed) .. " "
+		usingText = string.format("%s oldSpeed=%.2f ", usingText, details.oldSpeed)
 	end
 	if details.newSpeed then
-		usingText = usingText .. " newSpeed=" .. tostring(details.newSpeed) .. " "
+		usingText = string.format("%s newSpeed=%.2f ", usingText, details.newSpeed)
 	end
 	if details.oldJumpPower then
-		usingText = usingText .. " oldJumpPower=" .. tostring(details.oldJumpPower) .. " "
+		usingText = string.format("%s oldJumpPower=%.2f ", usingText, details.oldJumpPower)
 	end
 	if details.newJumpPower then
-		usingText = usingText .. " newJumpPower=" .. tostring(details.newJumpPower) .. " "
+		usingText = string.format("%s newJumpPower=%.2f ", usingText, details.newJumpPower)
 	end
 	if details.reason then
-		usingText = usingText .. " reason=" .. tostring(details.reason) .. " "
+		usingText = string.format("%s reason=%s ", usingText, details.reason)
+	end
+	if details.sender then
+		usingText = string.format("%s sender=%s ", usingText, details.sender)
+	end
+	if ev.id then
+		usingText = string.format("%s id=%s ", usingText, ev.id)
 	end
 
-	local res = string.format("EventType = %s%s", mt.avatarEventTypesReverse[avatarEventType], usingText)
+	local res = string.format("%s%s", aet.avatarEventTypesReverse[ev.eventType], usingText)
 	return res
 end
 
@@ -91,14 +90,14 @@ module.GetPlayerPosition = function(): (Vector3, Vector3, number)
 	return rootPart.Position, lookVector, character:FindFirstChild("Humanoid").WalkSpeed
 end
 
-module.FireEvent = function(avatarEventType: number, details: mt.avatarEventDetails | nil)
+module.FireEvent = function(avatarEventType: number, details: aet.avatarEventDetails)
 	if not avatarEventType then
 		warn("bad event.", avatarEventType, details)
 		return
 	end
 
-	if not details then
-		details = {}
+	if not details or details == nil then
+		warn("bad details.", details)
 	end
 
 	if details.position ~= nil or details.lookVector ~= nil then
@@ -119,21 +118,18 @@ module.FireEvent = function(avatarEventType: number, details: mt.avatarEventDeta
 		details.lookVector = Vector3.new(0, 0, 951)
 	end
 
-	local actualEv: mt.avatarEvent = {
+	local actualEv: aet.avatarEvent = {
 		eventType = avatarEventType,
 		timestamp = tick(),
 		details = details,
+		id = math.random(1, 1000000), -- Generate a random number between 1 and 1,000,000
 	}
 
-	if actualEv.eventType == mt.avatarEventTypes.GET_READY_FOR_WARP then
-		lastWarpStart = actualEv.timestamp
-	elseif actualEv.eventType == mt.avatarEventTypes.MARATHON_RESTARTED then
-		local duration = actualEv.timestamp - lastWarpStart
-		lastWarpStart = nil
-		_annotate(string.format("warp delay duration in this situation: %0.5f", duration))
-	end
+	_annotate(string.format("Firing: %s", module.DescribeEvent(actualEv)))
 
-	_annotate(string.format("Firing: %s", module.DescribeEvent(avatarEventType, details)))
+	local remotes = require(game.ReplicatedStorage.util.remotes)
+	local AvatarEventBindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
+
 	AvatarEventBindableEvent:Fire(actualEv)
 end
 

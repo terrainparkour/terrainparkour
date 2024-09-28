@@ -3,8 +3,9 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
+local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
-local remoteDbInternal = require(game.ServerScriptService.remoteDbInternal)
+local rdb = require(game.ServerScriptService.rdb)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local ContestResponseTypes = require(game.ReplicatedStorage.types.ContestResponseTypes)
 local grantBadge = require(game.ServerScriptService.grantBadge)
@@ -54,10 +55,12 @@ local function GetSingleContest(player: Player, contestId: number): { ContestRes
 		table.insert(userIdsInServer, tostring(otherPlayer.UserId))
 	end
 	local joined = textUtil.stringJoin(",", userIdsInServer)
-	local contest: { ContestResponseTypes.Contest } = remoteDbInternal.remoteGet(
-		"getSingleContest",
-		{ userId = player.UserId, otherUserIdsInServer = joined, contestId = contestId }
-	)["res"]
+
+	local request: tt.postRequest = {
+		remoteActionName = "getSingleContest",
+		data = { userId = player.UserId, otherUserIdsInServer = joined, contestId = contestId },
+	}
+	local contest: { ContestResponseTypes.Contest } = rdb.MakePostRequest(request)
 
 	return contest
 end
@@ -68,8 +71,12 @@ local function GetContests(player: Player): { ContestResponseTypes.Contest }
 		table.insert(userIdsInServer, tostring(otherPlayer.UserId))
 	end
 	local joined = textUtil.stringJoin(",", userIdsInServer)
-	local contests: { ContestResponseTypes.Contest } =
-		remoteDbInternal.remoteGet("getContests", { userId = player.UserId, otherUserIdsInServer = joined })["res"]
+
+	local request: tt.postRequest = {
+		remoteActionName = "getContests",
+		data = { userId = player.UserId, otherUserIdsInServer = joined },
+	}
+	local contests: { ContestResponseTypes.Contest } = rdb.MakePostRequest(request)
 
 	--award badge if in first place
 	--TODO

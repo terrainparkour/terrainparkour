@@ -4,15 +4,13 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
---!nolint
--- stylua: ignore
---!nolint
-local doNotCheckInGameIdentifier = require(game.ReplicatedStorage.doNotCheckInGameIdentifier)
+local doNotCheckInGameIdentifier = require(game.ReplicatedStorage:FindFirstChild("doNotCheckInGameIdentifier"))
 
 local sendMessageModule = require(game.ReplicatedStorage.chat.sendMessage)
 local sendMessage = sendMessageModule.sendMessage
-local channeldefinitions = require(game.ReplicatedStorage.chat.channeldefinitions)
-local channel = channeldefinitions.getChannel("All")
+
+local tt = require(game.ReplicatedStorage.types.gametypes)
+
 local config = require(game.ReplicatedStorage.config)
 
 local module = {}
@@ -86,7 +84,7 @@ module.fadeInSign = function(sign: Part)
 	task.spawn(function()
 		while sign.Transparency > 0 do
 			sign.Transparency -= 0.01
-			wait(0.03)
+			task.wait(0.03)
 		end
 	end)
 	sign.CanCollide = true
@@ -98,7 +96,10 @@ module.fadeInSign = function(sign: Part)
 	end
 
 	surfaceGui.Enabled = true
-	sendMessage(channel, "007 has appeared")
+	local channelDefinitions = require(game.ReplicatedStorage.chat.channelDefinitions)
+	local allChannel = channelDefinitions.GetChannel("All")
+
+	sendMessage(allChannel, "007 has appeared")
 end
 
 module.fadeOutSign = function(sign: Part?, first: boolean)
@@ -123,7 +124,10 @@ module.fadeOutSign = function(sign: Part?, first: boolean)
 	sign.CanCollide = false
 	sign.CanTouch = false
 	if not first then
-		sendMessage(channel, "007 has disappeared")
+		local channelDefinitions = require(game.ReplicatedStorage.chat.channelDefinitions)
+		local allChannel: tt.channelDefinition = channelDefinitions.GetChannel("All")
+
+		sendMessage(allChannel, "007 has disappeared")
 	end
 end
 
@@ -152,7 +156,7 @@ angleMap[Enum.Material.Concrete] = Vector3.new(5, 0, 0)
 angleMap[Enum.Material.Ground] = Vector3.new(-10, 0, 0)
 angleMap[Enum.Material.Ice] = Vector3.new(15, 0, 0)
 
-module.setupGrowingDistantPinnacle = function()
+module.SetupGrowingDistantPinnacle = function()
 	local target = Vector3.new(861.401, -129.206, 6254.898)
 	local addVector = Vector3.new(3, 1, 17)
 	local ballSize = 10

@@ -19,28 +19,15 @@ local rdb = require(game.ServerScriptService.rdb)
 local Players = game:GetService("Players")
 local module = {}
 
---userid - cached value for has badge.
---do we know if this includes negativity?
--- local grantedBadges: { [number]: { [number]: boolean } } = {}
-
---return whether the user actually got the newly granted badge.
+-- return whether the user actually got the newly granted badge.
+-- public function for anyone to make a user get the badge.
 module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
-	if badge == nil then
-		error("bad badge")
-		return
-	end
-	if badge.assetId == nil then
-		error("bad badge.assetId")
-		return
-	end
-
-	local has = badges.UserHasBadge(userId, badge)
-	if has == true then
-		if config.isInStudio() then
-			-- _annotate("in studio, user alread has: " .. badge.name)
-		end
+	local has =
+		badges.UserHasBadge(userId, badge, string.format("checking during grant of %s to %s", badge.name, userId))
+	if has then
+		_annotate(string.format("GrantBadge %s but user already has badge %s", userId, badge.name))
 		return false
-	end	
+	end
 
 	if has == nil then
 		if config.isInStudio() then
@@ -51,36 +38,48 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 		return false
 	end
 
+	-- we fill in other players status on that badge, too, so we can tell like "player got it, which you had already or didn't"
 	local otherPlayerHasBadgeMap = {}
 	for _, player in ipairs(Players:GetPlayers()) do
-		if player.UserId == userId and not config.isInStudio() then
+		if player.UserId == userId then
 			continue
 		end
-		otherPlayerHasBadgeMap[player.UserId] = badges.UserHasBadge(player.UserId, badge)
+		otherPlayerHasBadgeMap[player.UserId] = badges.UserHasBadge(
+			player.UserId,
+			badge,
+			string.format("otherPlayer check during grant of %s to %s", badge.name, userId)
+		)
 	end
 
 	--first time per instance, we
-	local res = BadgeService:AwardBadge(userId, badge.assetId)
-	if not res then
-		if not config.isInStudio() then
+	local saveBadgeStatusRes
+	if config.isInStudio() then
+		badges.SetConfirmedBadgeOwnershipStatus(userId, badge.assetId, true)
+		saveBadgeStatusRes = badges.SaveUserBadgeStatusToMyDb(userId, badge.assetId, badge.name)
+	else
+		local res = BadgeService:AwardBadge(userId, badge.assetId)
+
+		if not res then
+			_annotate(
+				"failed to award badge in BadgeService on prod. so not saving to my db or telling user/others about it."
+			)
 			return false
 		end
+		badges.SetConfirmedBadgeOwnershipStatus(userId, badge.assetId, true)
+		saveBadgeStatusRes = badges.SaveUserBadgeStatusToMyDb(userId, badge.assetId, badge.name)
 	end
 
-	local saveBadgeGrantRes = rdb.SaveUserBadgeGrant(userId, badge.assetId, badge.name)
-	task.spawn(function()
-		if saveBadgeGrantRes.priorAwardCount == 0 and badge.assetId ~= badgeEnums.badges.FirstBadgeWinner.assetId then
-			module.GrantBadge(userId, badgeEnums.badges.FirstBadgeWinner)
-		end
-	end)
-
-	badges.setGrantedBadge(userId, badge.assetId)
-	if not saveBadgeGrantRes.priorAwardCount and config.isInStudio then
-		saveBadgeGrantRes.priorAwardCount = 0
+	if saveBadgeStatusRes.priorAwardCount == 0 and badge.assetId ~= badgeEnums.badges.FirstBadgeWinner.assetId then
+		module.GrantBadge(userId, badgeEnums.badges.FirstBadgeWinner)
 	end
+
+	if not saveBadgeStatusRes.priorAwardCount then
+		saveBadgeStatusRes.priorAwardCount = 0
+	end
+
 	local text: string = string.format(
 		"You were %s to get the '%s' Badge!",
-		tpUtil.getCardinalEmoji(saveBadgeGrantRes.priorAwardCount + 1),
+		tpUtil.getCardinalEmoji(saveBadgeStatusRes.priorAwardCount + 1),
 		badge.name
 	)
 	local badgeOptions: tt.badgeOptions = { userId = userId, text = text, kind = "badge received" }
@@ -88,7 +87,7 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 	local player = PlayersService:GetPlayerByUserId(userId)
 	notify.notifyPlayerAboutBadge(player, badgeOptions)
 
-	local thisUserbadgeCount = badges.getBadgeCountByUser(player.UserId)
+	local thisUserbadgeCount = badges.getBadgeCountByUser(player.UserId, "grantBadge")
 	for _, otherPlayer in ipairs(PlayersService:GetPlayers()) do
 		--tell everyone about badge get
 		local relativeDescriptor = ""
@@ -96,9 +95,9 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 			continue
 		end
 		if otherPlayerHasBadgeMap then
-			relativeDescriptor = " which you do not have!"
+			relativeDescriptor = " Which you do not have!"
 			if otherPlayerHasBadgeMap[otherPlayer.UserId] then
-				relativeDescriptor = " which you already have!"
+				relativeDescriptor = " Which you already have!"
 			end
 		end
 
@@ -110,9 +109,9 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 		end
 
 		local otherText = string.format(
-			"%s was %s to get badge %s%s%s",
+			"%s was %s to get badge: '%s'%s%s",
 			player.Name,
-			tpUtil.getCardinalEmoji(saveBadgeGrantRes.priorAwardCount + 1),
+			tpUtil.getCardinalEmoji(saveBadgeStatusRes.priorAwardCount + 1),
 			badge.name,
 			relativeDescriptor,
 			fakeStudio

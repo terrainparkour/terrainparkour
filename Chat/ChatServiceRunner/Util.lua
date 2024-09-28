@@ -62,7 +62,7 @@ do
 		end
 
 		if self.RegisteredFunctions[funcId] then
-			error(funcId .. " is already in use!")
+			annotater.Error(funcId .. " is already in use!")
 		end
 
 		self.RegisteredFunctions[funcId] = priority

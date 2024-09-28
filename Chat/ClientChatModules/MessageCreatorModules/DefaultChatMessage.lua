@@ -8,7 +8,6 @@ local ChatConstants = require(clientChatModules:WaitForChild("ChatConstants"))
 local util = require(script.Parent:WaitForChild("Util"))
 
 function CreateMessageLabel(messageData, channelName)
-
 	local fromSpeaker = messageData.FromSpeaker
 	local message = messageData.Message
 
@@ -23,15 +22,22 @@ function CreateMessageLabel(messageData, channelName)
 	local speakerNameSize = util:GetStringTextBounds(formatUseName, useFont, useTextSize)
 	local numNeededSpaces = util:GetNumberOfSpaces(formatUseName, useFont, useTextSize) + 1
 
-	local BaseFrame, BaseMessage = util:CreateBaseMessage("", useFont, useTextSize, useChatColor)
-	local NameButton = util:AddNameButtonToBaseMessage(BaseMessage, useNameColor, formatUseName, fromSpeaker)
-	local ChannelButton = nil
+	local BaseFrame: Frame, BaseMessage: TextLabel = util:CreateBaseMessage("", useFont, useTextSize, useChatColor)
+	local NameButton: TextButton =
+		util:AddNameButtonToBaseMessage(BaseMessage, useNameColor, formatUseName, fromSpeaker)
+	local ChannelButton: TextButton = nil
 
 	if channelName ~= messageData.OriginalChannel then
-			local formatChannelName = string.format("{%s}", messageData.OriginalChannel)
-			ChannelButton = util:AddChannelButtonToBaseMessage(BaseMessage, useChannelColor, formatChannelName, messageData.OriginalChannel)
-			NameButton.Position = UDim2.new(0, ChannelButton.Size.X.Offset + util:GetStringTextBounds(" ", useFont, useTextSize).X, 0, 0)
-			numNeededSpaces = numNeededSpaces + util:GetNumberOfSpaces(formatChannelName, useFont, useTextSize) + 1
+		local formatChannelName = string.format("{%s}", messageData.OriginalChannel)
+		ChannelButton = util:AddChannelButtonToBaseMessage(
+			BaseMessage,
+			useChannelColor,
+			formatChannelName,
+			messageData.OriginalChannel
+		)
+		NameButton.Position =
+			UDim2.new(0, ChannelButton.Size.X.Offset + util:GetStringTextBounds(" ", useFont, useTextSize).X, 0, 0)
+		numNeededSpaces = numNeededSpaces + util:GetNumberOfSpaces(formatChannelName, useFont, useTextSize) + 1
 	end
 
 	local function UpdateTextFunction(messageObject)
@@ -50,19 +56,19 @@ function CreateMessageLabel(messageData, channelName)
 
 	local FadeParmaters = {}
 	FadeParmaters[NameButton] = {
-		TextTransparency = {FadedIn = 0, FadedOut = 1},
-		TextStrokeTransparency = {FadedIn = 0.75, FadedOut = 1}
+		TextTransparency = { FadedIn = 0, FadedOut = 1 },
+		TextStrokeTransparency = { FadedIn = 0.75, FadedOut = 1 },
 	}
 
 	FadeParmaters[BaseMessage] = {
-		TextTransparency = {FadedIn = 0, FadedOut = 1},
-		TextStrokeTransparency = {FadedIn = 0.75, FadedOut = 1}
+		TextTransparency = { FadedIn = 0, FadedOut = 1 },
+		TextStrokeTransparency = { FadedIn = 0.75, FadedOut = 1 },
 	}
 
 	if ChannelButton then
 		FadeParmaters[ChannelButton] = {
-			TextTransparency = {FadedIn = 0, FadedOut = 1},
-			TextStrokeTransparency = {FadedIn = 0.75, FadedOut = 1}
+			TextTransparency = { FadedIn = 0, FadedOut = 1 },
+			TextStrokeTransparency = { FadedIn = 0.75, FadedOut = 1 },
 		}
 	end
 
@@ -75,11 +81,11 @@ function CreateMessageLabel(messageData, channelName)
 		[util.KEY_GET_HEIGHT] = GetHeightFunction,
 		[util.KEY_FADE_IN] = FadeInFunction,
 		[util.KEY_FADE_OUT] = FadeOutFunction,
-		[util.KEY_UPDATE_ANIMATION] = UpdateAnimFunction
+		[util.KEY_UPDATE_ANIMATION] = UpdateAnimFunction,
 	}
 end
 
 return {
 	[util.KEY_MESSAGE_TYPE] = ChatConstants.MessageTypeDefault,
-	[util.KEY_CREATOR_FUNCTION] = CreateMessageLabel
+	[util.KEY_CREATOR_FUNCTION] = CreateMessageLabel,
 }

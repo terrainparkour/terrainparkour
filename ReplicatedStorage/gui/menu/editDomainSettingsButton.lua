@@ -10,6 +10,7 @@ local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
 local settingSort = require(game.ReplicatedStorage.settingSort)
 
@@ -56,14 +57,14 @@ local function makeSettingRowFrame(setting: tt.userSettingValue, player: Player,
 			local par = toggleButton.Parent :: TextLabel
 			par.BackgroundColor3 = colors.greenGo
 			setting.booleanValue = true
-			settings.setSetting(setting)
+			settings.SetSetting(setting)
 		else
 			toggleButton.Text = "No"
 			toggleButton.BackgroundColor3 = colors.redStop
 			local par = toggleButton.Parent :: TextLabel
 			par.BackgroundColor3 = colors.redStop
 			setting.booleanValue = false
-			settings.setSetting(setting)
+			settings.SetSetting(setting)
 		end
 	end)
 
@@ -77,7 +78,8 @@ local getGenericSettingsEditor = function(domain: string, localPlayer: Player): 
 	screenGui.IgnoreGuiInset = true
 	screenGui.Name = domain .. "SettingEditorSGui"
 
-	local userSettings: { [string]: tt.userSettingValue } = settings.getSettingByDomain(domain)
+	local userSettings: { [string]: tt.userSettingValue } =
+		settings.GetSettingByDomainAndKind(domain, settingEnums.settingKinds.BOOLEAN)
 
 	local theSettingsToDisplay = {}
 	for _, setting in pairs(userSettings) do

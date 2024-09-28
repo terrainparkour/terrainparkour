@@ -20,15 +20,16 @@ task.spawn(function()
 				if banLevel == 0 and banLevel ~= lastBanLevel then
 					--
 				elseif banLevel == 1 then
-					runSpeed = 16
-					walkSpeed = 43
-					afterJumpRunSpeed = 37
-					afterSwimmingRunSpeed = 30
+					-- runSpeed = 16
+					-- walkSpeed = 43
+					-- afterJumpRunSpeed = 37
+					-- afterSwimmingRunSpeed = 30
 				elseif banLevel == 2 then
-					runSpeed = 4
-					walkSpeed = 12
-					afterJumpRunSpeed = 27
-					afterSwimmingRunSpeed = 20
+					-- runSpeed = 4
+					-- walkSpeed = 12
+					-- afterJumpRunSpeed = 27
+					-- afterSwimmingRunSpeed = 20
+					--TODO this is broken.
 				end
 			end
 			lastBanLevel = banLevel

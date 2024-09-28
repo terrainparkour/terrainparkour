@@ -18,7 +18,7 @@ local localPlayer = PlayersService.LocalPlayer
 
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
-local mt = require(game.ReplicatedStorage.avatarEventTypes)
+local aet = require(game.ReplicatedStorage.avatarEventTypes)
 local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
@@ -70,7 +70,8 @@ module.CountNewFloorMaterial = function(fm: Enum.Material?)
 	end
 
 	if fm == nil then
-		error("nil touch.")
+		annotater.Error("nil touch.")
+		return
 	end
 	if movementEnums.nonMaterialEnumTypes[fm] then
 		return
@@ -129,33 +130,37 @@ module.CountNewFloorMaterial = function(fm: Enum.Material?)
 	if currentRunSignName == "cOld mOld on a sLate pLate" then
 		for k, num in pairs(timesSeenTerrainFloorTypeCounts) do
 			if num > 1 then
-				local details = {
+				local details: aet.avatarEventDetails = {
 					reason = "cold violation",
+					sender = "terrainTouchMonitor",
 				}
-				fireEvent(mt.avatarEventTypes.RUN_CANCEL, details)
+				fireEvent(aet.avatarEventTypes.RUN_CANCEL, details)
 				break
 			end
 		end
 	elseif currentRunSignName == "Keep Off the Grass" then
 		if fm == Enum.Material.LeafyGrass or fm == Enum.Material.Grass then
-			local details = {
+			local details: aet.avatarEventDetails = {
 				reason = "Keep off the grass terrainTouch",
+				sender = "terrainTouchMonitor",
 			}
-			fireEvent(mt.avatarEventTypes.RUN_CANCEL, details)
+			fireEvent(aet.avatarEventTypes.RUN_CANCEL, details)
 		end
 	elseif currentRunSignName == "Triple" then
 		if seenFloorCount > 3 then
-			local details = {
+			local details: aet.avatarEventDetails = {
 				reason = "triple terrainTouch",
+				sender = "terrainTouchMonitor",
 			}
-			fireEvent(mt.avatarEventTypes.RUN_CANCEL, details)
+			fireEvent(aet.avatarEventTypes.RUN_CANCEL, details)
 		end
 	elseif currentRunSignName == "Quadruple" then
 		if seenFloorCount > 4 then
-			local details = {
+			local details: aet.avatarEventDetails = {
 				reason = "quadruple terrainTouch",
+				sender = "terrainTouchMonitor",
 			}
-			fireEvent(mt.avatarEventTypes.RUN_CANCEL, details)
+			fireEvent(aet.avatarEventTypes.RUN_CANCEL, details)
 		end
 	end
 end

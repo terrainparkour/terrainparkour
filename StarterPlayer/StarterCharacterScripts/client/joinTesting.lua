@@ -7,9 +7,9 @@ local module = {}
 
 local config = require(game.ReplicatedStorage.config)
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local leaderboard = require(game.StarterPlayer.StarterCharacterScripts.client.leaderboard)
+local leaderboard = require(game.StarterPlayer.StarterCharacterScripts.lb.leaderboard)
 
-test = function()
+local test = function()
 	task.spawn(function()
 		-- local fakeDataUpdateData: tt.afterData_getStatsByUser = {
 		-- 	kind = "joiner update other lb",

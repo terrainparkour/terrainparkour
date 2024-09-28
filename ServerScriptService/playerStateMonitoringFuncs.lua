@@ -5,12 +5,11 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 -- local notify = require(game.ReplicatedStorage.notify)
+local tt = require(game.ReplicatedStorage.types.gametypes)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local locationMonitor = require(game.ReplicatedStorage.locationMonitor)
-local vscdebug = require(game.ReplicatedStorage.vscdebug)
 
 local rdb = require(game.ServerScriptService.rdb)
-local remoteDbInternal = require(game.ServerScriptService.remoteDbInternal)
 
 local badgeCheckersSecret = require(game.ServerScriptService.badgeCheckersSecret)
 
@@ -18,23 +17,26 @@ local module = {}
 
 local PlayersService = game:GetService("Players")
 
-module.PreloadFinds = function(player)
-	--artificially send signId1 just to warm up cache.
-	rdb.hasUserFoundSign(player.UserId, 1)
-end
-
 module.BackfillBadges = function(player: Player): nil
+	-- we do this so that the caches for all the badgeStatus and stuff are likely already gotten.
 	badgeCheckersSecret.BackfillBadges(player)
 end
 
 module.LogJoin = function(player: Player): nil
 	local pc = #PlayersService:GetPlayers()
-	local UserInputService = game:GetService("UserInputService")
 
 	if pc == 1 then
-		remoteDbInternal.remoteGet("robloxUserJoinedFirst", { userId = player.UserId, username = player.Name })
+		local request: tt.postRequest = {
+			remoteActionName = "robloxUserJoinedFirst",
+			data = { userId = player.UserId, username = player.Name },
+		}
+		rdb.MakePostRequest(request)
 	else
-		remoteDbInternal.remoteGet("robloxUserJoined", { userId = player.UserId, username = player.Name })
+		local request2: tt.postRequest = {
+			remoteActionName = "robloxUserJoined",
+			data = { userId = player.UserId, username = player.Name },
+		}
+		rdb.MakePostRequest(request2)
 	end
 end
 
@@ -44,12 +46,17 @@ local function remoteLogDeath(character, UserId)
 	if not root or not root.Position then
 		return
 	end
-	remoteDbInternal.remoteGet("userDied", {
-		userId = UserId,
-		x = tpUtil.noe(root.Position.X),
-		y = tpUtil.noe(root.Position.Y),
-		z = tpUtil.noe(root.Position.Z),
-	})
+
+	local request: tt.postRequest = {
+		remoteActionName = "userDied",
+		data = {
+			userId = UserId,
+			x = tpUtil.noe(root.Position.X),
+			y = tpUtil.noe(root.Position.Y),
+			z = tpUtil.noe(root.Position.Z),
+		},
+	}
+	rdb.MakePostRequest(request)
 end
 
 module.LogLocationOnDeath = function(player: Player)
@@ -73,16 +80,20 @@ module.LogQuit = function(player: Player)
 		--TODO: this is a hack, just default to this location as having left so we don't have infinitely long sessions.
 		return
 	end
-	remoteDbInternal.remoteGet("userQuit", {
-		userId = player.UserId,
-		x = tpUtil.noe(loc.X),
-		y = tpUtil.noe(loc.Y),
-		z = tpUtil.noe(loc.Z),
-	})
+
+	local request: tt.postRequest = {
+		remoteActionName = "userQuit",
+		data = { userId = player.UserId, x = tpUtil.noe(loc.X), y = tpUtil.noe(loc.Y), z = tpUtil.noe(loc.Z) },
+	}
+	local response = rdb.MakePostRequest(request)
 end
 
 module.LogPlayerLeft = function(player)
-	remoteDbInternal.remoteGet("userLeft", { userId = player.UserId })
+	local request: tt.postRequest = {
+		remoteActionName = "userLeft",
+		data = { userId = player.UserId },
+	}
+	local response = rdb.MakePostRequest(request)
 end
 
 _annotate("end")

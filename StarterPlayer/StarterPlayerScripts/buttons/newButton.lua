@@ -21,7 +21,7 @@ local remotes = require(game.ReplicatedStorage.util.remotes)
 
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 
-local getNewRunsFunction = remotes.getRemoteFunction("GetNewRunsFunction")
+local GetNewRacesFunction = remotes.getRemoteFunction("GetNewRacesFunction")
 
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 
@@ -198,7 +198,7 @@ local function makePopRowFrame(
 end
 
 local function getNewContents(player: Player, userIds: { number }): ScreenGui
-	local popResults: { PopularResponseTypes.popularRaceResult } = getNewRunsFunction:InvokeServer(userIds)
+	local popResults: { PopularResponseTypes.popularRaceResult } = GetNewRacesFunction:InvokeServer(userIds)
 
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.IgnoreGuiInset = true

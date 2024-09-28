@@ -1,12 +1,13 @@
 --!strict
 
 -- CustomChat.lua
---according to channel setup definitions do the thing.
+-- according to channel setup definitions do the thing.
+-- oh, THIS IS ON THE SERVER!
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
-
-local channeldefinitions = require(game.ReplicatedStorage.chat.channeldefinitions)
+local tt = require(game.ReplicatedStorage.types.gametypes)
+local channelDefinitions = require(game.ReplicatedStorage.chat.channelDefinitions)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local banning = require(game.ServerScriptService.banning)
 
@@ -19,18 +20,19 @@ local function Run(ChatService)
 	end
 	channelsSetUp = true
 
-	local defs = channeldefinitions.getChannelDefinitions()
+	local defs: { tt.channelDefinition } = channelDefinitions.getChannelDefinitions()
 
-	local function getDef(channelName)
+	local function getDef(channelName): tt.channelDefinition | nil
 		for _, def in ipairs(defs) do
 			if def.Name == channelName then
 				return def
 			end
 		end
-		error("failed to get channelName def." .. channelName)
+		annotater.Error("failed to get channelName def." .. channelName)
+		return nil
 	end
 
-	for _, channelDef in pairs(defs) do
+	for _, channelDef: tt.channelDefinition in pairs(defs) do
 		local channel = ChatService:GetChannel(channelDef.Name)
 		if channel then
 			_annotate("channel found: " .. channelDef.Name)
@@ -74,8 +76,8 @@ local function Run(ChatService)
 		return false
 	end)
 
-	_annotate("sending channels to channeldefinitions")
-	channeldefinitions.sendChannels(channels)
+	_annotate("sending channels to channelDefinitions")
+	channelDefinitions.sendChannels(channels)
 
 	local validChannelNames = {}
 	for _, def in ipairs(defs) do

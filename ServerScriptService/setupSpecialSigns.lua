@@ -56,6 +56,7 @@ local function setupDayOfWeekSigns()
 end
 
 module.Init = function()
+	_annotate("init")
 	task.spawn(function()
 		local signFolder = game.Workspace:WaitForChild("Signs")
 		local cold_mold: Part = signFolder:WaitForChild("cOld mOld on a sLate pLate", 2)
@@ -130,6 +131,7 @@ module.Init = function()
 			end
 		end)
 	end)
+	_annotate("init done")
 end
 
 _annotate("end")

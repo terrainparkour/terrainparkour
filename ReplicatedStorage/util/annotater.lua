@@ -1,8 +1,20 @@
 --!strict
 
---include this and also call .getAnnotater for every script since this functions as a registration, too
+-- annotater.lua.
+-- a very special module.
+-- include this and also call .getAnnotater for every script since this functions as a registration, too
+
+local config = require(game.ReplicatedStorage.config)
 
 local module = {}
+
+-- the ultimate override. except it still obeys badScripts
+local showAllRegardless = false
+-- showAllRegardless = true
+
+-- also exclude these guys.
+local badScripts = {}
+badScripts = { "*movement*" }
 
 --effectively the global erver start tick.
 local startTick = tick()
@@ -21,18 +33,22 @@ goodScripts = { "leaderboard" }
 goodScripts = { "*Chat*", "*channel*", "*ShiftGUI*" }
 goodScripts = { "serverWarping", "warper" }
 goodScripts = { "*keyboard*", "serverWarping" }
-goodScripts = { "userDataClient" }
--- goodScripts = {}
+-- goodScripts = { "*setting*" }
+goodScripts = {}
+
+if config.isInStudio() then
+	-- table.insert(goodScripts, "httpService")
+	-- table.insert(goodScripts, "rdb")
+	-- table.insert(goodScripts, "receiveClientEventServer")
+	-- table.insert(goodScripts, "morphs")
+	-- table.insert(goodScripts, "*avatarM*")
+	-- table.insert(goodScripts, "keyboard")
+	-- table.insert(goodScripts, "*warp*")
+	-- table.insert(goodScripts, "*marathon*")
+end
 
 -- for tracking the time gap from the initial loading of the thing - from getAnnotator to calling .annotate('end')
 local totalDone: { [string]: boolean } = {}
-
--- also exclude these guys.
-local badScripts = {}
--- badScripts = { "*movement*" }
-
-local showAllRegardless = false
--- showAllRegardless = true
 
 local register = function(s: Script | ModuleScript | LocalScript): string
 	if startTick == nil then
@@ -123,10 +139,17 @@ end
 module.getAnnotater = function(s: Script | ModuleScript | LocalScript)
 	local myname: string = register(s)
 	local doAnnotation = ScriptShouldBeAnnotated(s)
-
 	if showAllRegardless then
 		doAnnotation = true
 	end
+
+	for _, pattern in ipairs(badScripts) do
+		if matchWildcard(pattern, s.Name) then
+			-- exclusions overrides turning all on
+			doAnnotation = false
+		end
+	end
+
 	if not doAnnotation then
 		local s = 3
 	end
@@ -135,19 +158,31 @@ module.getAnnotater = function(s: Script | ModuleScript | LocalScript)
 	local theLabel = label
 	totalDone[myname] = false
 
-	local curry = function(myCopyOfDoAnnotation: boolean): (string | any) -> ()
-		local x = function(input: string | any)
-			if input == "end" then
-				local gap = tick() - startTick
-				-- if gap > 1 then
-				-- 	print(string.format("%s (%s) done in %0.2fs", myname, s.ClassName, gap))
-				-- end
+	local curry = function(myCopyOfDoAnnotation: boolean): (string, any?) -> ()
+		local x = function(inputString: string, inputObject: any?)
+			if inputString == "end" then
 				totalDone[myname] = true
 				return
 			end
+			local stringVersionOfInputObject = ""
+			if inputObject then
+				stringVersionOfInputObject = " "
+				for k, v in pairs(inputObject) do
+					stringVersionOfInputObject = stringVersionOfInputObject
+						.. string.format("\t%s=%s\r\n", tostring(k), tostring(v))
+				end
+			end
 			if myCopyOfDoAnnotation then
-				if typeof(input) == "string" then
-					print(string.format("%0.3f %s --- %s", tick() - startTick, theLabel, input))
+				if typeof(inputString) == "string" then
+					print(
+						string.format(
+							"%0.3f %-25s %s%s",
+							tick() - startTick,
+							theLabel,
+							inputString,
+							stringVersionOfInputObject
+						)
+					)
 				else
 					print(string.format("  %0.3f %s   - ", tick() - startTick, theLabel))
 				end
@@ -159,8 +194,22 @@ module.getAnnotater = function(s: Script | ModuleScript | LocalScript)
 	return curry(doAnnotation)
 end
 
+local innitted = false
+
+-- this is for measuring how long each thing takes to load.
 module.Init = function()
-	if false then
+	if innitted then
+		return
+	end
+	innitted = true
+	local errorReporting = require(game.ReplicatedStorage.util.errorReporting)
+	errorReporting.Init()
+
+	module.Error = errorReporting.Error
+	errorReporting.Init()
+
+	-- to help debug loading order issues.
+	if config.isTestGame() and true then
 		task.spawn(function()
 			while true do
 				wait(5)

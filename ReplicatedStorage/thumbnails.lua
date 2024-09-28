@@ -1,5 +1,6 @@
-local Players = game:GetService("Players")
 --!strict
+
+local Players = game:GetService("Players")
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
@@ -59,7 +60,7 @@ end
 
 module.getBadgeAssetThumbnailContent = function(badgeAssetId: number): string
 	if badgeAssetId == nil or badgeAssetId < 0 then
-		error("bad id.")
+		annotater.Error("bad id.")
 	end
 	local at = "BadgeIcon"
 	local content = "rbxthumb://type=" .. at .. "&id=" .. badgeAssetId .. "&w=150&h=150"

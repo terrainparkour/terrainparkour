@@ -16,7 +16,7 @@ function CreateMeCommandMessageLabel(messageData, channelName)
 	local useChannelColor = extraData.ChannelColor or useChatColor
 	local numNeededSpaces = 0
 
-	local BaseFrame, BaseMessage = util:CreateBaseMessage("", useFont, useTextSize, useChatColor)
+	local BaseFrame: Frame, BaseMessage: TextLabel = util:CreateBaseMessage("", useFont, useTextSize, useChatColor)
 	local ChannelButton = nil
 
 	if channelName ~= messageData.OriginalChannel then

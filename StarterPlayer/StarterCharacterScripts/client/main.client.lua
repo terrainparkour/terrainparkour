@@ -4,6 +4,7 @@
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
+annotater.Init()
 
 -------- GENERAL CLIENT SETUP -----------
 game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
@@ -16,12 +17,13 @@ localPlayer.CameraMaxZoomDistance = 11999
 local movement = require(game.StarterPlayer.StarterCharacterScripts.client.movement)
 local morphs = require(game.StarterPlayer.StarterCharacterScripts.client.morphs)
 local particles = require(game.StarterPlayer.StarterCharacterScripts.client.particles)
-
-local notifier = require(game.StarterPlayer.StarterCharacterScripts.client.notifier)
+local userData = require(game.StarterPlayer.StarterPlayerScripts.userData)
+userData.Init()
+local notifyClient = require(game.StarterPlayer.StarterCharacterScripts.client.notifyClient)
 local serverEvents = require(game.StarterPlayer.StarterCharacterScripts.client.serverEvents)
 
 local userDataClient = require(game.StarterPlayer.StarterPlayerScripts.userDataClient)
-local leaderboard = require(game.StarterPlayer.StarterCharacterScripts.client.leaderboard)
+local leaderboard = require(game.StarterPlayer.StarterCharacterScripts.lb.leaderboard)
 local marathonClient = require(game.StarterPlayer.StarterCharacterScripts.client.marathonClient)
 local avatarEventMonitor = require(game.StarterPlayer.StarterCharacterScripts.client.avatarEventMonitor)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
@@ -31,9 +33,13 @@ local settings = require(game.ReplicatedStorage.settings)
 local racing = require(game.StarterPlayer.StarterCharacterScripts.client.racing)
 local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
-
+local localSignClickability = require(game.StarterPlayer.StarterPlayerScripts.guis.localSignClickability)
+local avatarManipulation = require(game.ReplicatedStorage.avatarManipulation)
 local keyboard = require(game.StarterPlayer.StarterCharacterScripts.client.keyboard)
-local mt = require(game.ReplicatedStorage.avatarEventTypes)
+local aet = require(game.ReplicatedStorage.avatarEventTypes)
+local resetCharacterSetup = require(game.StarterPlayer.StarterCharacterScripts.client.resetCharacterSetup)
+local runResultsGuiCreator = require(game.ReplicatedStorage.gui.runresults.runResultsGuiCreator)
+local contestButtonGetter = require(game.StarterPlayer.StarterPlayerScripts.buttons.contestButtonGetter)
 
 ---------- CALL INIT ON ALL THOSE THINGS SINCE THEY'RE STILL LOADED ONLY ONE TIME even if the user resets or dies etc. -----------
 local setup = function()
@@ -45,7 +51,7 @@ local setup = function()
 	movement.Init()
 	morphs.Init()
 	particles.Init()
-	notifier.Init()
+	notifyClient.Init()
 	serverEvents.Init()
 	leaderboard.Init()
 	marathonClient.Init()
@@ -53,48 +59,16 @@ local setup = function()
 	warper.Init()
 	commands.Init()
 	textHighlighting.Init()
+	localSignClickability.Init()
 	keyboard.Init()
-
+	resetCharacterSetup.Init()
+	runResultsGuiCreator.Init()
+	contestButtonGetter.Init()
 	-- you can't race til everything is set up.
 	racing.Init()
 	_annotate("client main setup done.")
 end
 
 setup()
-
-local resetBindable = Instance.new("BindableEvent")
-
---this is about the user resetting themself. screwed up, definitely.
-resetBindable.Event:Connect(function()
-	local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
-	local fireEvent = avatarEventFiring.FireEvent
-	fireEvent(mt.avatarEventTypes.AVATAR_RESET, {})
-	-- _annotate("the player reset now.")
-	if character and humanoid then
-		_annotate("killin player")
-		humanoid.Health = 0
-	else
-		warn("failed killin player")
-	end
-	local didDie = false
-	while true do
-		humanoid = character:WaitForChild("Humanoid") :: Humanoid
-		if not humanoid then
-			didDie = true
-			wait(0.01)
-		end
-		wait(0.01)
-		if didDie then
-			if humanoid.Health > 0 then
-				break
-			end
-		end
-	end
-	setup()
-end)
-
--- This will remove the current behavior for when the reset button
--- is pressed and just fire resetBindable instead.
-game:GetService("StarterGui"):SetCore("ResetButtonCallback", resetBindable)
 
 _annotate("end")

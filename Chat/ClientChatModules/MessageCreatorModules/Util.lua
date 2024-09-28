@@ -60,7 +60,8 @@ end
 
 function methods:GetMessageHeight(BaseMessage, BaseFrame, xSize)
 	xSize = xSize or BaseFrame.AbsoluteSize.X
-	local textBoundsSize = self:GetStringTextBounds(BaseMessage.Text, BaseMessage.Font, BaseMessage.TextSize, Vector2.new(xSize, 1000))
+	local textBoundsSize =
+		self:GetStringTextBounds(BaseMessage.Text, BaseMessage.Font, BaseMessage.TextSize, Vector2.new(xSize, 1000))
 	return textBoundsSize.Y
 end
 
@@ -71,7 +72,7 @@ function methods:GetNumberOfSpaces(str, font, textSize)
 end
 
 function methods:CreateBaseMessage(message, font, textSize, chatColor)
-	local BaseFrame = self:GetFromObjectPool("Frame")
+	local BaseFrame: Frame = self:GetFromObjectPool("Frame")
 	BaseFrame.Selectable = false
 	BaseFrame.Size = UDim2.new(1, 0, 0, 18)
 	BaseFrame.Visible = true
@@ -79,7 +80,7 @@ function methods:CreateBaseMessage(message, font, textSize, chatColor)
 
 	local messageBorder = 8
 
-	local BaseMessage = self:GetFromObjectPool("TextLabel")
+	local BaseMessage: TextLabel = self:GetFromObjectPool("TextLabel")
 	BaseMessage.Selectable = false
 	BaseMessage.Size = UDim2.new(1, -(messageBorder + 6), 1, 0)
 	BaseMessage.Position = UDim2.new(0, messageBorder, 0, 0)
@@ -101,7 +102,7 @@ end
 
 function methods:AddNameButtonToBaseMessage(BaseMessage, nameColor, formatName, playerName)
 	local speakerNameSize = self:GetStringTextBounds(formatName, BaseMessage.Font, BaseMessage.TextSize)
-	local NameButton = self:GetFromObjectPool("TextButton")
+	local NameButton: TextButton = self:GetFromObjectPool("TextButton")
 	NameButton.Selectable = false
 	NameButton.Size = UDim2.new(0, speakerNameSize.X, 0, speakerNameSize.Y)
 	NameButton.Position = UDim2.new(0, 0, 0, 0)
@@ -134,7 +135,7 @@ end
 
 function methods:AddChannelButtonToBaseMessage(BaseMessage, channelColor, formatChannelName, channelName)
 	local channelNameSize = self:GetStringTextBounds(formatChannelName, BaseMessage.Font, BaseMessage.TextSize)
-	local ChannelButton = self:GetFromObjectPool("TextButton")
+	local ChannelButton: TextButton = self:GetFromObjectPool("TextButton")
 	ChannelButton.Selectable = false
 	ChannelButton.Size = UDim2.new(0, channelNameSize.X, 0, channelNameSize.Y)
 	ChannelButton.Position = UDim2.new(0, 0, 0, 0)
@@ -155,7 +156,7 @@ function methods:AddChannelButtonToBaseMessage(BaseMessage, channelColor, format
 	end)
 
 	local changedConn = nil
- 	changedConn = ChannelButton.Changed:connect(function(prop)
+	changedConn = ChannelButton.Changed:connect(function(prop)
 		if prop == "Parent" then
 			clickedConn:Disconnect()
 			changedConn:Disconnect()
@@ -173,7 +174,7 @@ function methods:NameButtonClicked(nameButton, playerName)
 	if ChatSettings.ClickOnPlayerNameToWhisper then
 		local player = Players:FindFirstChild(playerName)
 		if player and player ~= LocalPlayer then
-			local whisperChannel = "To " ..playerName
+			local whisperChannel = "To " .. playerName
 			if self.ChatWindow:GetChannel(whisperChannel) then
 				self.ChatBar:ResetCustomState()
 				local targetChannelName = self.ChatWindow:GetTargetMessageChannel()
@@ -183,7 +184,7 @@ function methods:NameButtonClicked(nameButton, playerName)
 				self.ChatBar:ResetText()
 				self.ChatBar:CaptureFocus()
 			elseif not self.ChatBar:IsInCustomState() then
-				local whisperMessage = "/w " ..playerName
+				local whisperMessage = "/w " .. playerName
 				self.ChatBar:CaptureFocus()
 				self.ChatBar:SetText(whisperMessage)
 			end
@@ -283,12 +284,7 @@ function methods:CreateFadeFunctions(fadeObjects)
 	local function UpdateAnimFunction(dtScale, CurveUtil)
 		for object, properties in pairs(AnimParams) do
 			for property, values in pairs(properties) do
-				values.Current = CurveUtil:Expt(
-					values.Current,
-					values.Target,
-					values.NormalizedExptValue,
-					dtScale
-				)
+				values.Current = CurveUtil:Expt(values.Current, values.Target, values.NormalizedExptValue, dtScale)
 			end
 		end
 
@@ -333,11 +329,10 @@ function module.new()
 	return obj
 end
 
-
 local function getGap(n)
-	local res = ''
-	for ii=1,n do
-		res=res..' '
+	local res = ""
+	for ii = 1, n do
+		res = res .. " "
 	end
 	return res
 end

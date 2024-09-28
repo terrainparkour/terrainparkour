@@ -15,14 +15,19 @@ function CreateSystemMessageLabel(messageData, channelName)
 	local useChatColor = extraData.ChatColor or ChatSettings.DefaultMessageColor
 	local useChannelColor = extraData.ChannelColor or useChatColor
 
-	local BaseFrame, BaseMessage = util:CreateBaseMessage(message, useFont, useTextSize, useChatColor)
+	local BaseFrame: Frame, BaseMessage: TextLabel = util:CreateBaseMessage(message, useFont, useTextSize, useChatColor)
 	local ChannelButton = nil
 
 	if channelName ~= messageData.OriginalChannel then
-			local formatChannelName = string.format("{%s}", messageData.OriginalChannel)
-			ChannelButton = util:AddChannelButtonToBaseMessage(BaseMessage, useChannelColor, formatChannelName, messageData.OriginalChannel)
-			local numNeededSpaces = util:GetNumberOfSpaces(formatChannelName, useFont, useTextSize) + 1
-			BaseMessage.Text = string.rep(" ", numNeededSpaces) .. message
+		local formatChannelName = string.format("{%s}", messageData.OriginalChannel)
+		ChannelButton = util:AddChannelButtonToBaseMessage(
+			BaseMessage,
+			useChannelColor,
+			formatChannelName,
+			messageData.OriginalChannel
+		)
+		local numNeededSpaces = util:GetNumberOfSpaces(formatChannelName, useFont, useTextSize) + 1
+		BaseMessage.Text = string.rep(" ", numNeededSpaces) .. message
 	end
 
 	local function GetHeightFunction(xSize)
@@ -31,14 +36,14 @@ function CreateSystemMessageLabel(messageData, channelName)
 
 	local FadeParmaters = {}
 	FadeParmaters[BaseMessage] = {
-		TextTransparency = {FadedIn = 0, FadedOut = 1},
-		TextStrokeTransparency = {FadedIn = 0.75, FadedOut = 1}
+		TextTransparency = { FadedIn = 0, FadedOut = 1 },
+		TextStrokeTransparency = { FadedIn = 0.75, FadedOut = 1 },
 	}
 
 	if ChannelButton then
 		FadeParmaters[ChannelButton] = {
-			TextTransparency = {FadedIn = 0, FadedOut = 1},
-			TextStrokeTransparency = {FadedIn = 0.75, FadedOut = 1}
+			TextTransparency = { FadedIn = 0, FadedOut = 1 },
+			TextStrokeTransparency = { FadedIn = 0.75, FadedOut = 1 },
 		}
 	end
 
@@ -51,11 +56,11 @@ function CreateSystemMessageLabel(messageData, channelName)
 		[util.KEY_GET_HEIGHT] = GetHeightFunction,
 		[util.KEY_FADE_IN] = FadeInFunction,
 		[util.KEY_FADE_OUT] = FadeOutFunction,
-		[util.KEY_UPDATE_ANIMATION] = UpdateAnimFunction
+		[util.KEY_UPDATE_ANIMATION] = UpdateAnimFunction,
 	}
 end
 
 return {
 	[util.KEY_MESSAGE_TYPE] = ChatConstants.MessageTypeSystem,
-	[util.KEY_CREATOR_FUNCTION] = CreateSystemMessageLabel
+	[util.KEY_CREATOR_FUNCTION] = CreateSystemMessageLabel,
 }

@@ -10,7 +10,7 @@ local module = {}
 
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local AvatarEventBindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
-local mt = require(game.ReplicatedStorage.avatarEventTypes)
+local aet = require(game.ReplicatedStorage.avatarEventTypes)
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
 
@@ -22,75 +22,90 @@ local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wai
 local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 ---------- SIGNS ------------
-local angerSign = require(game.StarterPlayer.StarterCharacterScripts.specialSigns.angerSign)
-local pulseSign = require(game.StarterPlayer.StarterCharacterScripts.specialSigns.pulseSign)
-local bigSign = require(game.StarterPlayer.StarterCharacterScripts.specialSigns.bigSign)
-local smallSign = require(game.StarterPlayer.StarterCharacterScripts.specialSigns.smallSign)
-local ghostSign = require(game.StarterPlayer.StarterCharacterScripts.specialSigns.ghostSign)
-local cowSign = require(game.StarterPlayer.StarterCharacterScripts.specialSigns.cowSign)
-local avatarManipulation = require(game.StarterPlayer.StarterPlayerScripts.avatarManipulation)
+local angerSign = require(game.ReplicatedStorage.specialSigns.angerSign)
+local pulseSign = require(game.ReplicatedStorage.specialSigns.pulseSign)
+local bigSign = require(game.ReplicatedStorage.specialSigns.bigSign)
+local smallSign = require(game.ReplicatedStorage.specialSigns.smallSign)
+local ghostSign = require(game.ReplicatedStorage.specialSigns.ghostSign)
+local cowSign = require(game.ReplicatedStorage.specialSigns.cowSign)
+local fpsSign = require(game.ReplicatedStorage.specialSigns.fpsSign)
+local zoomSign = require(game.ReplicatedStorage.specialSigns.zoomSign)
+local avatarManipulation = require(game.ReplicatedStorage.avatarManipulation)
 
 ----------- GLOBALS -----------
 
 local isMorphBlockedByWarp = false
-local activeRunSignModule = nil
+local activeRunSignModule: Script | nil = nil
 
 ----------- FUNCTIONS -----------
+local eventsWeCareAbout: { number } = {
+	aet.avatarEventTypes.GET_READY_FOR_WARP,
 
-local debouncHandleAvatarEvent = false
-local function handleAvatarEvent(ev: mt.avatarEvent)
-	--- initial section just check for warps.
-	_annotate(string.format("handling afvatar event. %s", avatarEventFiring.DescribeEvent(ev.eventType, ev.details)))
-	while debouncHandleAvatarEvent do
-		-- _annotate("waiting to handle avatar event.")
-		wait(0.1)
+	aet.avatarEventTypes.WARP_DONE_RESTART_MORPHS, ------ other people killing our runs.
+	aet.avatarEventTypes.RUN_CANCEL,
+	aet.avatarEventTypes.RUN_COMPLETE,
+
+	aet.avatarEventTypes.RUN_START,
+	aet.avatarEventTypes.RETOUCH_SIGN,
+	aet.avatarEventTypes.FLOOR_CHANGED,
+}
+
+local debounceHandleAvatarEvent = false
+local function handleAvatarEvent(ev: aet.avatarEvent)
+	if not avatarEventFiring.EventIsATypeWeCareAbout(ev, eventsWeCareAbout) then
+		return
 	end
-	debouncHandleAvatarEvent = true
 
-	if ev.eventType == mt.avatarEventTypes.GET_READY_FOR_WARP then
-		_annotate("getign ready for warp.)")
+	while debounceHandleAvatarEvent do
+		_annotate("waiting to handle avatar event.")
+		task.wait(0.1)
+	end
+	debounceHandleAvatarEvent = true
+
+	--- initial section just check for warps.
+	if ev.eventType == aet.avatarEventTypes.GET_READY_FOR_WARP then
+		_annotate(string.format("handling: %s", avatarEventFiring.DescribeEvent(ev)))
 		isMorphBlockedByWarp = true
-		activeScaleMultiplerAbsolute = 1
 		avatarManipulation.ResetPhysicalAvatarMorphs(humanoid, character)
 		avatarManipulation.AnchorCharacter(humanoid, character)
 		if activeRunSignModule then
 			activeRunSignModule.InformRunEnded()
 			activeRunSignModule = nil
 		end
-		fireEvent(mt.avatarEventTypes.MORPHING_WARPER_READY, {})
-		debouncHandleAvatarEvent = false
 		_annotate("Done morphing warper ready.")
+		fireEvent(aet.avatarEventTypes.MORPHING_WARPER_READY, { sender = "morphs" })
+		debounceHandleAvatarEvent = false
 		return
-	elseif ev.eventType == mt.avatarEventTypes.WARP_DONE_RESTART_MORPHS then
-		_annotate("restarting morphs.")
-		activeScaleMultiplerAbsolute = 1
-		avatarManipulation.ResetPhysicalAvatarMorphs(humanoid, character)
-		avatarManipulation.ResetMomentum(humanoid, character)
-		avatarManipulation.AnchorCharacter(humanoid, character)
+	elseif ev.eventType == aet.avatarEventTypes.WARP_DONE_RESTART_MORPHS then
+		_annotate(string.format("handling: %s", avatarEventFiring.DescribeEvent(ev)))
 		if activeRunSignModule then
 			warn("you definitely should not have had an active sign module here.")
 			activeRunSignModule.InformRunEnded()
 			activeRunSignModule = nil
 		end
 		isMorphBlockedByWarp = false
-		fireEvent(mt.avatarEventTypes.MORPHING_RESTARTED, {})
 		avatarManipulation.UnAnchorCharacter(humanoid, character)
-		debouncHandleAvatarEvent = false
 		_annotate("Done morphing restarted.")
+		fireEvent(aet.avatarEventTypes.MORPHING_RESTARTED, { sender = "morphs" })
+		debounceHandleAvatarEvent = false
 		return
+	else
+		-- its okay we handle it later probably.
 	end
 
 	if isMorphBlockedByWarp then
 		_annotate(
-			"rejected utterly incorporating this because blocked by warp. "
-				.. avatarEventFiring.DescribeEvent(ev.eventType, ev.details)
+			string.format(
+				"morphs rejected incoming avatarEvent because blocked by warp. %s",
+				avatarEventFiring.DescribeEvent(ev)
+			)
 		)
-		debouncHandleAvatarEvent = false
+		debounceHandleAvatarEvent = false
 		return
 	end
 
 	-- ROUTE THESE - WHY NOT HAVE THE SIGN ITSELF MONITOR THE SITUATION?
-	if ev.eventType == mt.avatarEventTypes.RUN_CANCEL or ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
+	if ev.eventType == aet.avatarEventTypes.RUN_CANCEL or ev.eventType == aet.avatarEventTypes.RUN_COMPLETE then
 		_annotate("killing or ending run.")
 		if activeRunSignModule then
 			activeRunSignModule.InformRunEnded()
@@ -100,19 +115,21 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 
 		--note: among many other places, the fact that the user can arbitrarily send RUN_CANCEL by hitting z at any time makes this confusing!
 		avatarManipulation.ResetPhysicalAvatarMorphs(humanoid, character)
-		avatarManipulation.ResetMomentum(humanoid, character)
-		_annotate("reset momentum1")
 		activeRunSignModule = nil
-	elseif ev.eventType == mt.avatarEventTypes.RUN_START then
+	elseif ev.eventType == aet.avatarEventTypes.RUN_START then
 		if activeRunSignModule then
 			warn(
-				"how can you start a run again with an existing activeRunSignModule ongoing? %s"
-					.. tostring(activeRunSignModule)
+				string.format(
+					"how can you start a run again with an existing activeRunSignModule ongoing? %s",
+					tostring(activeRunSignModule)
+				)
 			)
 			activeRunSignModule.InformRunEnded()
 		end
 		activeRunSignModule = nil
+		avatarManipulation.ResetPhysicalAvatarMorphs(humanoid, character)
 		avatarManipulation.ResetMomentum(humanoid, character)
+
 		_annotate("reset momentum")
 		if ev.details.startSignName == "Pulse" then
 			activeRunSignModule = pulseSign
@@ -124,6 +141,10 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 			activeRunSignModule = ghostSign
 		elseif ev.details.startSignName == "🗯" then
 			activeRunSignModule = angerSign
+		elseif ev.details.startSignName == "FPS" then
+			activeRunSignModule = fpsSign
+		elseif ev.details.startSignName == "Zoom" then
+			activeRunSignModule = zoomSign
 		elseif ev.details.startSignName == "Cow" then
 			activeRunSignModule = cowSign
 		end
@@ -131,26 +152,31 @@ local function handleAvatarEvent(ev: mt.avatarEvent)
 			_annotate("initting active module.")
 			activeRunSignModule.InformRunStarting()
 		end
-		debouncHandleAvatarEvent = false
+		debounceHandleAvatarEvent = false
 		return
-	elseif ev.eventType == mt.avatarEventTypes.RETOUCH_SIGN then
+	elseif ev.eventType == aet.avatarEventTypes.RETOUCH_SIGN then
 		--not all of them have this defined.
-		local s, e = pcall(function()
-			activeRunSignModule.InformRetouch()
-			_annotate("did retouch.")
-		end)
-		if not s then
-			_annotate(string.format("retouch informing sign failed: %s", e))
+		if activeRunSignModule and activeRunSignModule.InformRetouch then
+			local s, e = pcall(function()
+				activeRunSignModule.InformRetouch()
+				_annotate("did retouch.")
+			end)
+			if not s then
+				_annotate(string.format("retouch informing sign failed: %s", e))
+			end
 		end
-		debouncHandleAvatarEvent = false
+		-- avatarManipulation.ResetMomentum(humanoid, character)
+		debounceHandleAvatarEvent = false
 		return
-	elseif ev.eventType == mt.avatarEventTypes.FLOOR_CHANGED then
+	elseif ev.eventType == aet.avatarEventTypes.FLOOR_CHANGED then
 		if activeRunSignModule then
 			_annotate("Telling acitve module about floor.")
 			activeRunSignModule.InformSawFloorDuringRunFrom(ev.details.floorMaterial)
 		end
+	else
+		warn("unhandled avatar event in morphs. " .. avatarEventFiring.DescribeEvent(ev))
 	end
-	debouncHandleAvatarEvent = false
+	debounceHandleAvatarEvent = false
 end
 
 ----- set player to fast update health. theoretically this survives everywhere?
@@ -166,12 +192,17 @@ local healthUpdaterSignal = hb:Connect(function()
 	end
 end)
 
+local avatarEventConnection = nil
 module.Init = function()
 	_annotate("init")
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	isMorphBlockedByWarp = false
-	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
+	if avatarEventConnection then
+		avatarEventConnection:Disconnect()
+		avatarEventConnection = nil
+	end
+	avatarEventConnection = AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 	_annotate("init end.")
 end
 

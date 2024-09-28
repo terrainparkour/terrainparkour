@@ -1,8 +1,5 @@
 --!strict
 
-local annotater = require(game.ReplicatedStorage.util.annotater)
-local _annotate = annotater.getAnnotater(script)
-
 local module = {}
 
 local emojis = {}
@@ -24,5 +21,4 @@ emojis.DIGIT_NINE = "9️⃣"
 
 module.emojis = emojis
 
-_annotate("end")
 return module

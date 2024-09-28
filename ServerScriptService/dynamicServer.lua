@@ -10,12 +10,13 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local PlayersService = game:GetService("Players")
+local playerData2 = require(game.ServerScriptService.playerData2)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local rdb = require(game.ServerScriptService.rdb)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local config = require(game.ReplicatedStorage.config)
 local serverUtil = require(game.ServerScriptService.serverUtil)
-
+local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local dynamicRunningEvent = remotes.getRemoteEvent("DynamicRunningEvent") :: RemoteEvent
 local signs: Folder = game.Workspace:FindFirstChild("Signs")
@@ -48,11 +49,12 @@ local function getNearestSigns(pos: Vector3, userId: number, count: number)
 
 	-- yes it's dumb to do this entire thing, no it doesn't actually matter based on measurement
 	for _, sign: Part in ipairs(signs:GetChildren()) do
-		local dist = tpUtil.getDist(pos, sign.Position)
 		local signId = tpUtil.signName2SignId(sign.Name)
+
 		if not serverUtil.UserCanInteractWithSignId(userId, signId) then
 			continue
 		end
+		local dist = tpUtil.getDist(pos, sign.Position)
 
 		table.insert(dists, { signName = sign.Name, dist = dist, signId = signId })
 	end
@@ -69,17 +71,53 @@ local function getNearestSigns(pos: Vector3, userId: number, count: number)
 		if not dists[ii] then
 			break
 		end
-		local signName = dists[ii].signName
-		if signName == nil or signName == "" then
-			_annotate("signName is nil or empty")
-			break
-		end
 		local signId = dists[ii].signId
 
-		if not rdb.hasUserFoundSign(userId, signId) then
-			continue
-		end
 		table.insert(res, signId)
+	end
+
+	return res
+end
+
+--look up dynamic run stats for the signs included, which are likely ones which the user is approaching
+local dynamicRunFrom = function(
+	userId: number,
+	startSignId: number,
+	targetSignIds: { number }
+): tt.dynamicRunFromData | nil
+	local targetSignIdsString = {}
+	for _, el in ipairs(targetSignIds) do
+		table.insert(targetSignIdsString, tostring(el))
+	end
+
+	local request: tt.postRequest = {
+		remoteActionName = "dynamicRunFrom",
+		data = {
+			userId = userId,
+			startSignId = startSignId,
+			targetSignIds = textUtil.stringJoin(",", targetSignIdsString),
+		},
+	}
+	local res: tt.dynamicRunFromData = rdb.MakePostRequest(request)
+
+	if res == nil then
+		return nil
+	end
+
+	--this has string keys on the wire. how to generally make them show up as number, so types match?
+	for k, frame: tt.DynamicRunFrame in ipairs(res.frames) do
+		frame.targetSignId = tonumber(frame.targetSignId)
+		if frame.myplace ~= nil then
+			frame.myplace.place = tonumber(frame.myplace.place)
+			frame.myplace.userId = tonumber(frame.myplace.userId)
+			frame.myplace.timeMs = tonumber(frame.myplace.timeMs)
+		end
+		for place, p in pairs(frame.places) do
+			p.place = tonumber(p.place)
+			p.timeMs = tonumber(p.timeMs)
+			p.userId = tonumber(p.userId)
+			frame.places[tonumber(place)] = p
+		end
 	end
 
 	return res
@@ -104,7 +142,7 @@ local function dynamicControlServer(player: Player, input: tt.dynamicRunningCont
 			local sentSignIds: { [number]: boolean } = {}
 			_annotate("starting dynamic run for: " .. tostring(player.Name .. tostring(input.fromSignId)))
 			while true do
-				_annotate("looping sending")
+				-- _annotate("looping sending")
 				if activeLoopMarkers[userId] ~= input.fromSignId then
 					_annotate("breaking sending dyanmic info from server.")
 					break
@@ -129,14 +167,14 @@ local function dynamicControlServer(player: Player, input: tt.dynamicRunningCont
 						continue
 					end
 					if sentSignIds[signId] then
-						_annotate("sign already sent" .. tostring(signId))
+						-- _annotate("sign already sent " .. tostring(signId))
 						continue
 					end
 					table.insert(todoSignIds, signId)
 					sentSignIds[signId] = true
 				end
 				if #todoSignIds > 0 then
-					local dynamicRunFromDataFrames = rdb.dynamicRunFrom(userId, input.fromSignId, todoSignIds)
+					local dynamicRunFromDataFrames = dynamicRunFrom(userId, input.fromSignId, todoSignIds)
 					_annotate("sending dynamic frame update.")
 					if dynamicRunFromDataFrames == nil then
 						warn("Http 'overload'?")
@@ -153,7 +191,7 @@ local function dynamicControlServer(player: Player, input: tt.dynamicRunningCont
 						break
 					end
 				else
-					_annotate("skipping dynamic frames since nothing to do.")
+					-- _annotate("skipping dynamic frames since nothing to do.")
 				end
 
 				task.wait(3)

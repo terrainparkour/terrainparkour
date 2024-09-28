@@ -16,9 +16,12 @@ local remotes = require(game.ReplicatedStorage.util.remotes)
 local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
 local config = require(game.ReplicatedStorage.config)
 local rdb = require(game.ServerScriptService.rdb)
-local PlayersService = game:GetService("Players")
+
+local playerData2 = require(game.ServerScriptService.playerData2)
 local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
+
+local PlayersService = game:GetService("Players")
 
 local ServerEventRemoteEvent = remotes.getRemoteEvent("ServerEventRemoteEvent")
 local ServerEventRemoteFunction = remotes.getRemoteFunction("ServerEventRemoteFunction")
@@ -70,7 +73,14 @@ local function shouldEndServerEvent(event: tt.runningServerEvent): boolean
 	return false
 end
 
---used for removing and reating events
+local reportServerEventEnd = function(ev: tt.runningServerEvent, allocations)
+	local request: tt.postRequest = {
+		remoteActionName = "reportServerEventEnd",
+		data = { ev = ev, allocations = allocations },
+	}
+	local res = rdb.MakePostRequest(request)
+	return res
+end
 
 local function endServerEvent(serverEvent: tt.runningServerEvent): boolean
 	while debounceEventUpdater do
@@ -95,17 +105,7 @@ local function endServerEvent(serverEvent: tt.runningServerEvent): boolean
 
 	badgeCheckers.CheckServerEventAllocations(allocations, serverEvent.distance)
 
-	local res = rdb.reportServerEventEnd(serverEvent, allocations)
-
-	if res.userLbStats then
-		for _, otherPlayer in ipairs(PlayersService:GetPlayers()) do
-			local otherStats = res.userLbStats[tostring(otherPlayer.UserId)]
-			if not otherStats then
-				continue
-			end
-			lbUpdaterServer.updateLeaderboardForServerEventCompletionRun(otherPlayer, otherStats)
-		end
-	end
+	local res = reportServerEventEnd(serverEvent, allocations)
 	return true
 end
 
@@ -145,8 +145,7 @@ local function getTixValueOfServerEvent(ev: tt.runningServerEvent): number
 		distmultipler = math.sqrt(ev.distance / 1000)
 	end
 	local res = math.floor(w1 * math.sqrt(seenUsers) * distmultipler)
-	_annotate("new tix value of event. " .. tostring(res))
-	_annotate(ev)
+	_annotate("new tix value of event. " .. tostring(res), ev)
 	return res
 end
 
@@ -162,7 +161,7 @@ local function startServerEvent(data: tt.ServerEventCreateType): tt.runningServe
 	local allFoundSignIds = {}
 	local foundSigns = {}
 	for _, player in ipairs(PlayersService:GetPlayers()) do
-		local finds = rdb.getUserSignFinds(player.UserId)
+		local finds = playerData2.GetUserSignFinds(player.UserId, "startServerEvent")
 		for signId, _ in pairs(finds) do
 			if not foundSigns[signId] then
 				foundSigns[signId] = true
@@ -311,8 +310,7 @@ end
 
 --version which returns.
 local function serverReceiveFunction(player: Player, message: string, data: tt.ServerEventCreateType)
-	_annotate("receive event " .. message)
-	_annotate(data)
+	_annotate("receive event " .. message, data)
 	--hhmm maybe overkill here, but why not just periodally
 
 	if message == serverEventEnums.messageTypes.CREATE then

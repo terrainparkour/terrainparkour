@@ -8,6 +8,7 @@ local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
+local playerData2 = require(game.ServerScriptService.playerData2)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local enums = require(game.ReplicatedStorage.util.enums)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
@@ -18,20 +19,30 @@ local raceCompleteData = require(game.ServerScriptService.raceCompleteData)
 local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
 local remotes = require(game.ReplicatedStorage.util.remotes)
+local notify = require(game.ReplicatedStorage.notify)
 
 local PlayerService = game:GetService("Players")
-local TellServerRunEndedRemoteEvent = remotes.getRemoteEvent("TellServerRunEndedRemoteEvent")
+
+local ClientToServerRemoteFunction = remotes.getRemoteFunction("ClientToServerRemoteFunction")
 local ServerEventBindableEvent = remotes.getBindableEvent("ServerEventBindableEvent")
 
---in new trust the client code, just call this directly with the actual details.
+--in this new(ish) trust the client code, just call this directly with the actual details.
 --note: it would be nice to retain server-side timing to detect hackers. nearly every one would give themselves away.
-local function receiveClientMessageAboutRunEnding(
-	player: Player,
-	startSignName: string,
-	endSignName: string,
-	runMilliseconds: number,
-	floorSeenCount: number
-)
+
+local function userFinishedRun(data: tt.userFinishedRunOptions): tt.dcRunResponse
+	local request: tt.postRequest = {
+		remoteActionName = "userFinishedRun",
+		data = data,
+	}
+	local res: tt.dcRunResponse = rdb.MakePostRequest(request)
+	return res
+end
+
+local function receiveClientMessageAboutRunEnding(player: Player, data: tt.runEndingData)
+	local startSignName = data.startSignName
+	local endSignName = data.endSignName
+	local runMilliseconds = data.runMilliseconds
+	local floorSeenCount = data.floorSeenCount
 	if banning.getBanLevel(player.UserId) > 0 then
 		_annotate(
 			string.format("ban level > 0, not saving run for userName=%s, userId: %d", player.Name, player.UserId)
@@ -60,44 +71,19 @@ local function receiveClientMessageAboutRunEnding(
 			endSignId = endSignId,
 			runMilliseconds = runMilliseconds,
 			allPlayerUserIds = userIds,
-			remoteActionName = "userFinishedRun",
 		}
-		local userFinishedRunResponse: tt.pyUserFinishedRunResponse = rdb.userFinishedRun(userFinishedRunOptions)
+		local dcRunResponse: tt.dcRunResponse = userFinishedRun(userFinishedRunOptions)
 
 		task.spawn(function()
-			badgeCheckers.CheckBadgeGrantingAfterRun(
-				userId,
-				userFinishedRunResponse,
-				startSignId,
-				endSignId,
-				floorSeenCount
-			)
+			badgeCheckers.CheckBadgeGrantingAfterRun(userId, dcRunResponse, startSignId, endSignId, floorSeenCount)
 		end)
 
 		_annotate("showbesttimes for: " .. tostring(userId))
-		raceCompleteData.showBestTimes(player, raceName, startSignId, endSignId, speed, false, userFinishedRunResponse)
+		raceCompleteData.showBestTimes(player, raceName, startSignId, endSignId, speed, dcRunResponse)
 
 		_annotate("preparing data to send to update everyone's LBs")
-
-		-- okay, we simplify the full run response data into just the stuff the LB needs and send that on.
-		-- name juggling here has definitely caused problems.
-		local lbRunUpdate: tt.lbUpdateFromRun = {
-			kind = "lbUpdate from run",
-			userId = userId,
-			userTix = userFinishedRunResponse.userTix,
-			cwrs = userFinishedRunResponse.cwrs,
-			cwrTop10s = userFinishedRunResponse.cwrTop10s,
-			top10s = userFinishedRunResponse.top10s,
-			userTotalRaceCount = userFinishedRunResponse.userTotalRaceCount,
-			userTotalRunCount = userFinishedRunResponse.userTotalRunCount,
-			wrCount = userFinishedRunResponse.wrCount,
-			wrRank = userFinishedRunResponse.wrRank,
-			daysInGame = userFinishedRunResponse.daysInGame,
-			awardCount = userFinishedRunResponse.awardCount,
-		}
-
 		for _, anyPlayer in ipairs(PlayerService:GetPlayers()) do
-			lbUpdaterServer.updateLeaderboardForRun(anyPlayer, lbRunUpdate)
+			lbUpdaterServer.SendUpdateToPlayer(anyPlayer, dcRunResponse.lbUserStats)
 		end
 	end)
 
@@ -107,14 +93,18 @@ local function receiveClientMessageAboutRunEnding(
 		endSignId = endSignId,
 		timeMs = runMilliseconds,
 		userId = userId,
-		username = rdb.getUsernameByUserId(userId),
+		username = playerData2.GetUsernameByUserId(userId),
 	}
 	ServerEventBindableEvent:Fire(data)
 end
 
-TellServerRunEndedRemoteEvent.OnServerEvent:Connect(receiveClientMessageAboutRunEnding)
-
-module.Init = function() end
+module.Init = function()
+	ClientToServerRemoteFunction.OnServerInvoke = function(player: Player, event: tt.clientToServerRemoteEvent)
+		if event.eventKind == "runEnding" then
+			receiveClientMessageAboutRunEnding(player, event.data)
+		end
+	end
+end
 
 _annotate("end")
 return module

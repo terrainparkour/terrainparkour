@@ -13,7 +13,7 @@ local module = {}
 module.CreateTemporaryLightPillar = function(pos: Vector3, desc: string)
 	local part = Instance.new("Part")
 	part.Position = Vector3.new(pos.X, pos.Y + 320, pos.Z)
-	part.Size = Vector3.new(700, 6, 6)
+	part.Size = Vector3.new(1700, 9, 9)
 	part.TopSurface = Enum.SurfaceType.Smooth
 	part.BottomSurface = Enum.SurfaceType.Smooth
 	part.CanCollide = false
@@ -36,7 +36,7 @@ module.CreateTemporaryLightPillar = function(pos: Vector3, desc: string)
 	task.spawn(function()
 		while true do
 			wait(1 / 37)
-			part.Transparency = part.Transparency + 0.009
+			part.Transparency = part.Transparency + 1 / 370
 			if part.Transparency >= 1 then
 				part:Destroy()
 				break

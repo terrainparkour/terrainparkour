@@ -1,5 +1,8 @@
 --!strict
 
+-- particles.lua
+-- this is the client side of the particle system.
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
@@ -7,7 +10,7 @@ local module = {}
 
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local mt = require(game.ReplicatedStorage.avatarEventTypes)
+local aet = require(game.ReplicatedStorage.avatarEventTypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local colors = require(game.ReplicatedStorage.util.colors)
 local settings = require(game.ReplicatedStorage.settings)
@@ -88,10 +91,10 @@ local createParticleEmitter = function(desc: tt.particleDescriptor)
 	emitters[desc.name] = particleEmitter
 end
 
-local function doEmit(desc: tt.particleDescriptor, emitter: ParticleEmitter, ev: mt.avatarEvent)
+local function doEmit(desc: tt.particleDescriptor, emitter: ParticleEmitter, ev: aet.avatarEvent)
 	emitter.Enabled = true
 	emitter.Parent = localPlayer.Character.Humanoid.RootPart
-	if ev.eventType == mt.avatarEventTypes.DO_SPEED_CHANGE then
+	if ev.eventType == aet.avatarEventTypes.DO_SPEED_CHANGE then
 		local speedChange = math.abs(ev.details.newSpeed - ev.details.oldSpeed)
 		local mult = 650
 		local usingNewRate = speedChange * mult
@@ -177,51 +180,51 @@ end
 -- I'll pull them into the particleEnums descriptors for these keys (which are a refinement of a subset of avatarEventTypes)
 -- (arguably we should extrapolate that up, but that's not generically possible so just eat the choice)
 -- then later remove some of these cause it's insane.
-local emitParticleForEvent = function(ev: mt.avatarEvent)
+local emitParticleForEvent = function(ev: aet.avatarEvent)
 	local key: string
-	if ev.eventType == mt.avatarEventTypes.DO_SPEED_CHANGE then
+	if ev.eventType == aet.avatarEventTypes.DO_SPEED_CHANGE then
 		if ev.details.newSpeed > ev.details.oldSpeed then
 			key = "speedup"
 		else
 			key = "slowdown"
 		end
-	elseif ev.eventType == mt.avatarEventTypes.DO_JUMPPOWER_CHANGE then
+	elseif ev.eventType == aet.avatarEventTypes.DO_JUMPPOWER_CHANGE then
 		key = "jumppowerchange"
-	elseif ev.eventType == mt.avatarEventTypes.AVATAR_DIED then
+	elseif ev.eventType == aet.avatarEventTypes.AVATAR_DIED then
 		key = "died"
-	elseif ev.eventType == mt.avatarEventTypes.CHARACTER_ADDED then
+	elseif ev.eventType == aet.avatarEventTypes.CHARACTER_ADDED then
 		key = "added"
-	elseif ev.eventType == mt.avatarEventTypes.RETOUCH_SIGN then
+	elseif ev.eventType == aet.avatarEventTypes.RETOUCH_SIGN then
 		key = "retouch"
-	elseif ev.eventType == mt.avatarEventTypes.TOUCH_SIGN then
+	elseif ev.eventType == aet.avatarEventTypes.TOUCH_SIGN then
 		key = "touch"
-	elseif ev.eventType == mt.avatarEventTypes.RUN_COMPLETE then
+	elseif ev.eventType == aet.avatarEventTypes.RUN_COMPLETE then
 		key = "runcomplete"
-	elseif ev.eventType == mt.avatarEventTypes.RUN_CANCEL then
+	elseif ev.eventType == aet.avatarEventTypes.RUN_CANCEL then
 		key = "runkill"
-	elseif ev.eventType == mt.avatarEventTypes.AVATAR_RESET then
+	elseif ev.eventType == aet.avatarEventTypes.AVATAR_RESET then
 		key = "reset"
-	elseif ev.eventType == mt.avatarEventTypes.RUN_START then
+	elseif ev.eventType == aet.avatarEventTypes.RUN_START then
 		key = "runstart"
-	elseif ev.eventType == mt.avatarEventTypes.FLOOR_CHANGED then
+	elseif ev.eventType == aet.avatarEventTypes.FLOOR_CHANGED then
 		key = "floorchanged"
-	elseif ev.eventType == mt.avatarEventTypes.AVATAR_RESET then
+	elseif ev.eventType == aet.avatarEventTypes.AVATAR_RESET then
 		key = "reset"
-	elseif ev.eventType == mt.avatarEventTypes.KEYBOARD_WALK then
+	elseif ev.eventType == aet.avatarEventTypes.KEYBOARD_WALK then
 		key = "keyboardwalk"
-	elseif ev.eventType == mt.avatarEventTypes.AVATAR_STARTED_MOVING then
+	elseif ev.eventType == aet.avatarEventTypes.AVATAR_STARTED_MOVING then
 		key = "startedmoving"
-	elseif ev.eventType == mt.avatarEventTypes.AVATAR_STOPPED_MOVING then
+	elseif ev.eventType == aet.avatarEventTypes.AVATAR_STOPPED_MOVING then
 		key = "stoppedmoving"
 	-- elseif ev.eventType == mt.avatarEventTypes.AVATAR_CHANGED_DIRECTION then
 	-- 	key = "changeddirection"
-	elseif ev.eventType == mt.avatarEventTypes.AVATAR_STARTED_MOVING then
+	elseif ev.eventType == aet.avatarEventTypes.AVATAR_STARTED_MOVING then
 		key = "startedmoving"
-	elseif ev.eventType == mt.avatarEventTypes.AVATAR_STOPPED_MOVING then
+	elseif ev.eventType == aet.avatarEventTypes.AVATAR_STOPPED_MOVING then
 		key = "stoppedmoving"
-	elseif ev.eventType == mt.avatarEventTypes.GET_READY_FOR_WARP then
+	elseif ev.eventType == aet.avatarEventTypes.GET_READY_FOR_WARP then
 		key = "startwarp"
-	elseif ev.eventType == mt.avatarEventTypes.STATE_CHANGED then
+	elseif ev.eventType == aet.avatarEventTypes.STATE_CHANGED then
 		if ev.details.newState == Enum.HumanoidStateType.FallingDown then
 			key = "fallingDown"
 		elseif ev.details.newState == Enum.HumanoidStateType.Ragdoll then
@@ -291,12 +294,12 @@ local emitParticleForEvent = function(ev: mt.avatarEvent)
 end
 
 local eventsWeCareAbout = {
-	mt.avatarEventTypes.DO_SPEED_CHANGE,
+	aet.avatarEventTypes.DO_SPEED_CHANGE,
 
-	mt.avatarEventTypes.RUN_START,
-	mt.avatarEventTypes.RETOUCH_SIGN,
+	aet.avatarEventTypes.RUN_START,
+	aet.avatarEventTypes.RETOUCH_SIGN,
 
-	mt.avatarEventTypes.RUN_COMPLETE,
+	aet.avatarEventTypes.RUN_COMPLETE,
 	-- mt.avatarEventTypes.RUN_CANCEL,
 
 	-- mt.avatarEventTypes.TOUCH_SIGN,
@@ -310,14 +313,15 @@ local eventsWeCareAbout = {
 }
 
 -- 2024: we monitor all incoming events and for ones which we care about, emit a particle.
-local handleAvatarEvent = function(ev: mt.avatarEvent)
+local handleAvatarEvent = function(ev: aet.avatarEvent)
 	if not avatarEventFiring.EventIsATypeWeCareAbout(ev, eventsWeCareAbout) then
 		return
 	end
-	_annotate("handling:  " .. avatarEventFiring.DescribeEvent(ev.eventType, ev.details))
+	_annotate("handling:  " .. avatarEventFiring.DescribeEvent(ev))
 	emitParticleForEvent(ev)
 end
 
+local avatarEventConnection = nil
 local function handleShowParticleSettingChange(setting: tt.userSettingValue)
 	_annotate("handleShowParticleSettingChange: " .. setting.name .. " " .. tostring(setting.booleanValue))
 
@@ -326,16 +330,20 @@ local function handleShowParticleSettingChange(setting: tt.userSettingValue)
 
 		if particlesEnabledAtAll then
 			_annotate("enabled, connecting")
-			connection = AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
+			if avatarEventConnection then
+				avatarEventConnection:Disconnect()
+				avatarEventConnection = nil
+			end
+			avatarEventConnection = AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 		else
 			_annotate("disabled, disconnecting")
 			for _, emitter in pairs(emitters) do
 				emitter.Rate = 0
 			end
 
-			if connection then
-				connection:Disconnect()
-				connection = nil
+			if avatarEventConnection then
+				avatarEventConnection:Disconnect()
+				avatarEventConnection = nil
 			end
 		end
 	end
@@ -348,7 +356,7 @@ module.Init = function()
 		settingEnums.settingDefinitions.SHOW_PARTICLES.name
 	)
 
-	handleShowParticleSettingChange(settings.getSettingByName(settingEnums.settingDefinitions.SHOW_PARTICLES.name))
+	handleShowParticleSettingChange(settings.GetSettingByName(settingEnums.settingDefinitions.SHOW_PARTICLES.name))
 	_annotate("init done")
 end
 

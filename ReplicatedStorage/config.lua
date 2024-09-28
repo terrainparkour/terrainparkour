@@ -1,15 +1,11 @@
 --!strict
 
-local annotater = require(game.ReplicatedStorage.util.annotater)
-local _annotate = annotater.getAnnotater(script)
-
 local module = {}
 
 -- controlling which server endpoints/debugging status should be used.
 module.isInStudio = function()
 	local forceProd = false
 	if forceProd then
-		_annotate("FORCE PROD....")
 		return false
 	end
 
@@ -30,5 +26,4 @@ module.isTestGame = function()
 	return false
 end
 
-_annotate("end")
 return module

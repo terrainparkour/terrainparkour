@@ -16,13 +16,12 @@ local function replacePartWithAir(part)
 	elseif part.Shape == Enum.PartType.Wedge then
 		workspace.Terrain:FillWedge(CFrame.new(position), size, Enum.Material.Air)
 	else
-		print("NO")
 		return
 	end
 end
 
 -- Example usage:
-replacePartWithAir(game.workspace.Part)
+replacePartWithAir(game.workspace:FindFirstChild("Part"))
 
 local allTerrain = {
 	[0] = Enum.Material.WoodPlanks,
@@ -49,19 +48,14 @@ local allTerrain = {
 	[21] = Enum.Material.Glacier,
 }
 
-local function randomizeTerrainAround4()
-    print("abc")
-end
+local function randomizeTerrainAround4() end
 
 local function randomizeTerrainAround2(pos)
 	local radius = 10
-	print(radius)
 	local step = 1
-	print(step)
 
 	for x = pos.X - radius, pos.X + radius, step do
 		for z = pos.Z - radius, pos.Z + radius, step do
-			print(x, z)
 			local randomIndex = math.random(0, #allTerrain)
 			local randomMateria = allTerrain[randomIndex]
 
@@ -71,5 +65,5 @@ local function randomizeTerrainAround2(pos)
 end
 
 -- Example usage:
-randomizeTerrainAround2(game.Workspace.Part.Position)
-print(game.Workspace.Part.Position)
+local part: Part = game.Workspace:FindFirstChild("Part")
+randomizeTerrainAround2(part.Position)

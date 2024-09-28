@@ -27,7 +27,7 @@ module.BadgeSort = function(a: tt.badgeDescriptor, b: tt.badgeDescriptor)
 	return a.name < b.name
 end
 
-module.BadgeAttainmentSort = function(a: tt.badgeAttainment, b: tt.badgeAttainment)
+module.BadgeStatusSort = function(a: tt.badgeProgress, b: tt.badgeProgress)
 	return module.BadgeSort(a.badge, b.badge)
 end
 

@@ -20,17 +20,18 @@ local module = {}
 --create server event, wait for ui to pop, then display a simple modal for success or failure.
 
 --TODO make this into an ephemeral notification.
-local CreateServerEventButtonClicked = function(): ScreenGui | nil
+local CreateServerEventButtonClicked = function(localPlayer: Player, userIds: { number }): ScreenGui
 	local userId = localPlayer.UserId
 	ServerEventRemoteFunction:InvokeServer(serverEventEnums.messageTypes.CREATE, { userId = userId })
+	return Instance.new("ScreenGui")
 end
 
 local serverEventButton: gt.actionButton = {
 	name = "Create Server Event",
 	contentsGetter = CreateServerEventButtonClicked,
-	hoverHint = "Create new server event",
 	shortName = "Random Race",
-	getActive = function()
+	hoverHint = "Create new server event",
+	getActive = function(): boolean
 		return true
 	end,
 	widthXScale = 0.25,

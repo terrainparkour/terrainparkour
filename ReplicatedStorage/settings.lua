@@ -19,6 +19,7 @@ local remotes = require(game.ReplicatedStorage.util.remotes)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local GetUserSettingsFunction: RemoteFunction = remotes.getRemoteFunction("GetUserSettingsFunction")
 local UserSettingsChangedFunction = remotes.getRemoteFunction("UserSettingsChangedFunction") :: RemoteFunction
+local localPlayer = game.Players.LocalPlayer
 local module = {}
 
 --local listeners send callbacks here for notification when other local settings changers change a setting, or when server receives the change.
@@ -68,9 +69,9 @@ end
 -- big problem: I think this can only have one handle listening per setting. Easy to fix, just haven't done it yet. watch out if things are confusing.
 module.RegisterFunctionToListenForSettingName = function(func: (tt.userSettingValue) -> nil, name: string)
 	-- let's make sure we're registering a setting which exists in the enums and things.
-	_annotate(string.format("handle local setting change receivere: %s %s", name, tostring(func)))
+	_annotate(string.format("Register setting listener for: %s", name))
 	local exi = false
-	for _,setting in pairs(settingEnums.settingDefinitions) do
+	for _, setting in pairs(settingEnums.settingDefinitions) do
 		if setting.name == name then
 			exi = true
 			break
@@ -82,10 +83,10 @@ module.RegisterFunctionToListenForSettingName = function(func: (tt.userSettingVa
 		warn("trying to register a setting change receiver with a name that doesn't exist: " .. name)
 		return
 	end
-	_annotate(string.format("successfully registered: %s %s", name, tostring(func)))
+	-- _annotate(string.format("registered: %s", name))
 	if settingChangeMonitoringFunctions[name] ~= nil then
 		_annotate(string.format("trying to reset monitoring for setting which is already monitored. %s", name))
-		error(string.format("trying to reset monitoring for setting which is already monitored. %s", name))
+		annotater.Error(string.format("trying to reset monitoring for setting which is already monitored. %s", name))
 		return
 	end
 	settingChangeMonitoringFunctions[name] = func
@@ -93,7 +94,11 @@ end
 
 --also just tell registered scripts this change happened
 local function LocalNotifySettingChange(setting: tt.userSettingValue)
-	_annotate("LocalNotifySettingChange: " .. setting.name .. " " .. tostring(setting.booleanValue))
+	if setting.kind == settingEnums.settingKinds.BOOLEAN then
+		_annotate(string.format("LocalNotifySettingChange: %s %s", setting.name, tostring(setting.booleanValue)))
+	elseif setting.kind == settingEnums.settingKinds.STRING then
+		_annotate(string.format("LocalNotifySettingChange: %s %s", setting.name, tostring(setting.stringValue)))
+	end
 	for name: string, funcWhichCaresAboutThisSettingChange: (tt.userSettingValue) -> nil in
 		pairs(settingChangeMonitoringFunctions)
 	do
@@ -112,20 +117,36 @@ end
 
 --2024 is this safe to globally just use? like, in the chat toggler can I hit this and get some kind of useful or at least
 -- not super slow/not missing data way to get the current value?
-module.getSettingByName = function(settingName: string): tt.userSettingValue
+module.GetSettingByName = function(settingName: string): tt.userSettingValue
 	local req: settingEnums.settingRequest = { settingName = settingName }
-	return GetUserSettingsFunction:InvokeServer(req)
+	local theSetting = GetUserSettingsFunction:InvokeServer(req)
+	return theSetting
 end
 
-module.getSettingByDomain = function(domain: string): { [string]: tt.userSettingValue }
+module.GetSettingByDomain = function(domain: string): { [string]: tt.userSettingValue }
 	local req: settingEnums.settingRequest = { domain = domain }
-	return GetUserSettingsFunction:InvokeServer(req)
+	local theSetting = GetUserSettingsFunction:InvokeServer(req)
+	return theSetting
 end
 
-module.setSetting = function(setting: tt.userSettingValue)
-	local serverRes = UserSettingsChangedFunction:InvokeServer(setting)
-	--TODO we should check the save status? but doesn't really matter, if db down, we are in trouble anyway.
-	LocalNotifySettingChange(setting)
+module.GetSettingByDomainAndKind = function(domain: string, kind: string): { [string]: tt.userSettingValue }
+	local req: settingEnums.settingRequest = { domain = domain, kind = kind }
+	local theSetting = GetUserSettingsFunction:InvokeServer(req)
+	return theSetting
+end
+
+module.SetSetting = function(setting: tt.userSettingValue): tt.setSettingResponse
+	local serverRes: tt.setSettingResponse = UserSettingsChangedFunction:InvokeServer(setting)
+	if serverRes and serverRes ~= nil then
+		LocalNotifySettingChange(setting)
+	else
+		local error = serverRes and serverRes.error or "nothing returned at all.."
+		warn(
+			string.format("failed to set setting: %s %s %d %s", setting.name, setting.domain, localPlayer.UserId, error)
+		)
+	end
+
+	return serverRes
 end
 
 _annotate("end")

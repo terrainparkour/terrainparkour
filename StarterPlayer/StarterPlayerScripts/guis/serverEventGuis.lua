@@ -47,18 +47,25 @@ local function getServerEventContentsFrame(initial: boolean?): Frame | nil
 
 	if #runningEvents > 0 then
 		local targetSize = 1 / #runningEventFrames
+		-- Adjust the size of each event frame
+		for _, event in pairs(runningEventFrames) do
+			if event:IsA("Frame") then
+				event.Size = UDim2.new(1, 0, targetSize, -12 / #runningEventFrames)
+			end
+		end
 		for _, event: Frame in pairs(runningEventFrames) do
 			event.Size = UDim2.new(1, 0, targetSize, -12 / #runningEventFrames)
 		end
 	end
 	local outer: Frame = serverEventContents.Parent
 	outer.Size = UDim2.new(outer.Size.X.Scale, outer.Size.X.Offset, 0, height + 12)
+	local par = outer :: Frame
 	if #runningEventFrames == 0 then
-		serverEventContents.Parent.Visible = false
+		par.Visible = false
 	else
-		if not serverEventContents.Parent.Visible then
-			serverEventContents.Parent.Visible = true
-			serverEventContents.Parent.Position = UDim2.new(0.8, 0, 0.5, 0)
+		if not par.Visible then
+			par.Visible = true
+			par.Position = UDim2.new(0.8, 0, 0.5, 0)
 		end
 	end
 	return serverEventContents
@@ -303,7 +310,7 @@ module.updateEventVisually = function(serverEvent: tt.runningServerEvent, userId
 	end
 	_annotate("update" .. replServerEvent(serverEvent))
 	if serverEventContentsFrame == nil then
-		error("zx")
+		annotater.Error("no serverEventContentsFrame")
 	end
 	local serverEventRowName = determineServerEventRowName(serverEvent)
 
@@ -334,7 +341,9 @@ end
 _annotate("end")
 
 module.Init = function()
+	_annotate("init")
 	getServerEventContentsFrame(true)
+	_annotate("init done")
 end
 
 return module

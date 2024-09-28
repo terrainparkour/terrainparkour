@@ -12,9 +12,8 @@ local PlayersService = game:GetService("Players")
 
 local module = {}
 
---this is only available on the server unfortunately.
 local playerUsernames = {}
-module.getUsernameByUserId = function(userId: number)
+module.GetUsernameByUserId = function(userId: number): string
 	if not playerUsernames[userId] then
 		--just shortcut this to save time on async lookup.
 		if userId < 0 then

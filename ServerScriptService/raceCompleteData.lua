@@ -5,7 +5,7 @@
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
-
+local playerData2 = require(game.ServerScriptService.playerData2)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local PlayersService = game:GetService("Players")
 local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
@@ -23,7 +23,7 @@ local WORSE = 3
 
 local function setYourText(val: string, existingYourText: string, marker: string)
 	if existingYourText ~= "" and existingYourText ~= nil then
-		print("resetting yt from '" .. existingYourText .. "' to '" .. val .. "'" .. " \tMarker: " .. marker)
+		warn("resetting yt from '" .. existingYourText .. "' to '" .. val .. "'" .. " \tMarker: " .. marker)
 	end
 	return val
 end
@@ -36,16 +36,15 @@ module.showBestTimes = function(
 	startSignId: number,
 	endSignId: number,
 	spd: number,
-	newFind: boolean,
-	pyUserFinishedRunResponse: tt.pyUserFinishedRunResponse
+	dcRunResponse: tt.dcRunResponse
 )
-	local formattedRunMilliseconds = tpUtil.fmt(pyUserFinishedRunResponse.thisRunMilliseconds)
+	-- local formattedRunMilliseconds = tpUtil.fmt(dcRunResponse.runMilliseconds)
 	--res is the new object with stats in it
 	--pull out metas
 	local racerUserId = player.UserId
 	local racerUsername = player.Name
 
-	local runEntries: { tt.runEntry } = pyUserFinishedRunResponse.runEntries
+	local runEntries: { tt.runEntry } = dcRunResponse.runEntries
 	local legitEntries: { tt.runEntry } = {}
 	for _, el in ipairs(runEntries) do
 		if el.place ~= 0 then
@@ -80,11 +79,6 @@ module.showBestTimes = function(
 	--now we have set the user's yourPlace representing thei
 
 	local placeText = tpUtil.getPlaceText(thisRun.place)
-	local virtualPlaceText = tpUtil.getPlaceText(thisRun.virtualPlace)
-	local pastPlaceText = ""
-	if pastRun then
-		pastPlaceText = tpUtil.getPlaceText(pastRun.place)
-	end
 
 	local raceName = raceName
 	local yourText = "" --summary of the race, time, speed, results from racer's POV
@@ -96,15 +90,15 @@ module.showBestTimes = function(
 		grantBadge.GrantBadge(racerUserId, badgeEnums.badges.NewRace)
 	end
 
-	if pyUserFinishedRunResponse.totalRunsOfThisRaceCount == 1 then
+	if dcRunResponse.totalRunsOfThisRaceCount == 1 then
 		yourText = setYourText("Found a new race", yourText, "a")
 		otherText = string.format("%s ran the race %s for the first time", racerUsername, raceName)
 		otherKind = "first time WR"
 	else
-		if pyUserFinishedRunResponse.mode == NEW then
+		if dcRunResponse.mode == NEW then
 			if thisRun.place == 1 then --you got WR
 				yourText = setYourText("First time WR!", yourText, "b")
-				otherText = racerUsername .. " got a first time WR on " .. raceName
+				otherText = racerUsername .. " got a WR on his or her first run of " .. raceName
 				otherKind = "first time WR"
 			elseif thisRun.place > 0 and thisRun.place < 11 then
 				if thisRun.place == 1 then
@@ -126,7 +120,7 @@ module.showBestTimes = function(
 		end
 	end
 
-	if pyUserFinishedRunResponse.mode == BETTER then
+	if dcRunResponse.mode == BETTER then
 		local improvementMilliseconds = pastRun.runMilliseconds - thisRun.runMilliseconds
 		if thisRun.place == 1 then
 			if pastRun.virtualPlace == 1 then --had WR before
@@ -141,7 +135,7 @@ module.showBestTimes = function(
 					.. " by "
 					.. tpUtil.fmt(improvementMilliseconds)
 				otherKind = "improved WR"
-			else --didn't have WR before but had run before
+			else --didn't have WR before but had run beforex
 				local yt = "World record! Amazing! Your time was "
 					.. tpUtil.fmt(improvementMilliseconds)
 					.. " faster, improving your prior "
@@ -192,11 +186,11 @@ module.showBestTimes = function(
 					yourText = setYourText(yt, yourText, "i")
 					otherText = racerUsername
 						.. " got "
-						.. virtualPlaceText
+						.. tpUtil.getCardinalEmoji(thisRun.place)
 						.. " place in the race from "
 						.. raceName
 						.. "!  (previously "
-						.. pastPlaceText
+						.. tpUtil.getCardinalEmoji(pastRun.virtualPlace)
 						.. ")"
 					otherKind = "improved place"
 				end
@@ -210,17 +204,19 @@ module.showBestTimes = function(
 		end
 	end
 
-	if pyUserFinishedRunResponse.mode == WORSE then
+	if dcRunResponse.mode == WORSE then
 		if (thisRun.place < 11 and thisRun.place > 1) or (thisRun.virtualPlace > 0) then
 			if thisRun.virtualPlace == nil then
-				_annotate("weirdly nil virtualrun.")
+				warn("weirdly nil virtualrun.")
 			else
-				if thisRun.virtualPlace == pastRun.place then --same place, slight improvement
+				-- same vp == place but time worse.
+				if thisRun.virtualPlace == pastRun.place and thisRun.place < 11 and thisRun.place > 1 then
 					local yt = "You got another "
 						.. tpUtil.getCardinalEmoji(thisRun.virtualPlace)
 						.. ", with a worse time by "
 						.. tpUtil.fmt(thisRun.runMilliseconds - pastRun.runMilliseconds)
 					yourText = setYourText(yt, yourText, "k")
+				-- vp is worse than p, still top 10
 				elseif thisRun.virtualPlace < 11 then --you were 2-10th
 					local yt = "You finished in "
 						.. tpUtil.getCardinalEmoji(thisRun.virtualPlace)
@@ -230,10 +226,11 @@ module.showBestTimes = function(
 						.. tpUtil.fmt(thisRun.runMilliseconds - pastRun.runMilliseconds)
 						.. "."
 					yourText = setYourText(yt, yourText, "l")
-				end
-				if thisRun.virtualPlace > 10 or thisRun.virtualPlace == 0 then
+				elseif thisRun.virtualPlace > 10 or thisRun.virtualPlace == 0 then
 					local yt = "You didn't finish in the top 10. You missed tenth place by "
 						.. tpUtil.fmt(thisRun.runMilliseconds - legitEntries[10].runMilliseconds)
+						.. "and you missed beating your best time by "
+						.. tpUtil.fmt(thisRun.runMilliseconds - pastRun.runMilliseconds)
 						.. "! Don't give up!"
 					yourText = setYourText(yt, yourText, "m")
 				end
@@ -253,18 +250,18 @@ module.showBestTimes = function(
 			end
 
 			--TODO inline import this, not really valid at top due to conflicts.
-			local rdb = require(game.ServerScriptService.rdb)
+
 			local useWarpToSignId = (
 				startSignId
-				and rdb.hasUserFoundSign(op.UserId, startSignId)
+				and playerData2.HasUserFoundSign(op.UserId, startSignId)
 				and not enums.SignIdIsExcludedFromStart[startSignId]
 				and startSignId
 			) or 0
 
 			local useHighlightTargetSignId = endSignId
-					and not enums.SignIdIsExcludedFromStart[startSignId]
-					and rdb.hasUserFoundSign(op.UserId, startSignId)
-				or 0
+			if enums.SignIdIsExcludedFromStart[endSignId] or not playerData2.HasUserFoundSign(op.UserId, endSignId) then
+				useHighlightTargetSignId = nil
+			end
 			if knockoutText ~= "" then
 				notify.notifyPlayerAboutActionResult(op, {
 					userId = player.UserId,
@@ -307,19 +304,19 @@ module.showBestTimes = function(
 
 	--pull out my ARs and include them for extra rows on the end
 
-	pyUserFinishedRunResponse.kind = "race results"
-	pyUserFinishedRunResponse.speed = spd
-	pyUserFinishedRunResponse.startSignId = startSignId
-	pyUserFinishedRunResponse.endSignId = endSignId
-	pyUserFinishedRunResponse.raceName = raceName
-	pyUserFinishedRunResponse.yourText = yourText
+	dcRunResponse.kind = "race results"
+	dcRunResponse.speed = spd
+	dcRunResponse.startSignId = startSignId
+	dcRunResponse.endSignId = endSignId
+	dcRunResponse.raceName = raceName
+	dcRunResponse.yourText = yourText
 	-- pyUserFinishedRunResponse.raceTotalHistoryText = raceTotalHistoryText
 
 	-- _annotate("handoff optitons and future")
 	-- _annotate(options)
 	-- _annotate(userFinishedRunResponse)
 
-	notify.notifyPlayerOfRunResults(player, pyUserFinishedRunResponse)
+	notify.notifyPlayerOfRunResults(player, dcRunResponse)
 end
 
 _annotate("end")

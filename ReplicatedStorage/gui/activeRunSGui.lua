@@ -8,15 +8,18 @@ local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
--- local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local colors = require(game.ReplicatedStorage.util.colors)
+local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
 
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
 
 --TYPES
-local mt = require(game.ReplicatedStorage.avatarEventTypes)
+local aet = require(game.ReplicatedStorage.avatarEventTypes)
+local tt = require(game.ReplicatedStorage.types.gametypes)
 
 --HUMANOID
 local localPlayer: Player = game.Players.LocalPlayer
@@ -26,6 +29,8 @@ local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
 -- GLOBALS
 local currentRunStartTick: number = 0
 local currentRunSignName: string = ""
+local currentRunStartPosition: Vector3
+local theFont = Font.new("rbxasset://fonts/families/Arimo.json")
 
 -- this is okay because a user is only running from one at a time.
 local globalActiveRunSgui: ScreenGui = nil
@@ -38,9 +43,85 @@ local renderSteppedConnection: RBXScriptConnection?
 
 local playerGui
 local activeRunSgui
-local raceGuiTransparency = 0.7
-local timeSourceLabel: TextButton
-local detailsLabel: TextButton
+
+local timeLabel: TextButton
+local sourceLabel: TextLabel
+local distanceLabel: TextLabel
+local detailsLabel: TextLabel
+
+local settings = require(game.ReplicatedStorage.settings)
+
+local currentRunUIConfiguration: tt.currentRunUIConfiguration = nil
+
+----------------------- FOR SAVING LB CONFIGURATION -----------------
+
+local lastSaveRequestCount = 0
+
+local function saveActiveRunConfiguration()
+	lastSaveRequestCount += 1
+	local yourSaveRequestCount = lastSaveRequestCount
+
+	task.spawn(function()
+		task.wait(0.4)
+		if yourSaveRequestCount ~= lastSaveRequestCount then
+			return
+		end
+
+		playerGui = localPlayer:WaitForChild("PlayerGui")
+		local activeRunGui = playerGui:FindFirstChild("ActiveRunGui")
+		local outerFrame: Frame = activeRunGui:FindFirstChild("outer_activeRun")
+		if not outerFrame then
+			_annotate("no active run frame in saveActiveRunConfiguration")
+			return
+		end
+		_annotate("savinging ")
+
+		local absoluteSize = outerFrame.AbsoluteSize
+		local sizeInOffset = UDim2.new(0, absoluteSize.X, 0, absoluteSize.Y)
+		local absolutePosition = outerFrame.AbsolutePosition
+
+		local topInset = game:GetService("GuiService"):GetGuiInset().Y
+		local positionInOffset = UDim2.new(0, absolutePosition.X, 0, absolutePosition.Y + topInset)
+		currentRunUIConfiguration.size = sizeInOffset
+		currentRunUIConfiguration.position = positionInOffset
+		_annotate(
+			"actually saving the run configuratino. size, pos=- "
+				.. tostring(sizeInOffset)
+				.. ", "
+				.. tostring(positionInOffset)
+		)
+
+		local setting: tt.userSettingValue = {
+			name = settingEnums.settingDefinitions.ACTIVE_RUN_CONFIGURATION.name,
+			domain = settingEnums.settingDomains.USERSETTINGS,
+			kind = settingEnums.settingKinds.LUA,
+			luaValue = currentRunUIConfiguration,
+		}
+		settings.SetSetting(setting)
+	end)
+end
+
+local function monitorActiveRunSGui()
+	local playerGui = localPlayer:WaitForChild("PlayerGui")
+	local activeRunGui = playerGui:FindFirstChild("ActiveRunGui")
+	local outerFrame: Frame = activeRunGui:FindFirstChild("outer_activeRun")
+	if not outerFrame then
+		_annotate("No lbOuterFrame in monitorLeaderboardFrame")
+		return
+	end
+
+	-- these are changes that are made directly by windows.
+	-- other changes, like those of the sort data, are made in here and direclty save when changed.
+	outerFrame:GetPropertyChangedSignal("Position"):Connect(function()
+		currentRunUIConfiguration.position = outerFrame.Position
+		saveActiveRunConfiguration()
+	end)
+
+	outerFrame:GetPropertyChangedSignal("Size"):Connect(function()
+		currentRunUIConfiguration.size = outerFrame.Size
+		saveActiveRunConfiguration()
+	end)
+end
 
 --receive updates to these items. otherwise I am independent
 module.UpdateExtraRaceDescription = function(outerRaceDescription: string): boolean
@@ -65,21 +146,36 @@ module.KillActiveRun = function()
 	end
 	currentRunStartTick = 0
 	currentRunSignName = ""
-	-- currentRunStartPosition = Vector3.zero
+	currentRunStartPosition = Vector3.new(0, 0, 0)
 	optionalRaceDescription = ""
 	movementDetails = ""
 	lastActiveRunUpdateTime = ""
 end
 
 -- an internal loop calls this periodically to update the UI.
-updateRunProgress = function()
+local updateRunProgress = function()
 	if localPlayer.Character == nil or localPlayer.Character.PrimaryPart == nil then
 		_annotate("nil char or nil primary part in runProgressSgui, kllin.")
 		module.KillActiveRun()
 		return false
 	end
 
-	local formattedRuntime = string.format("%.2fs", tick() - currentRunStartTick)
+	local dist = tpUtil.getDist(character.PrimaryPart.Position, currentRunStartPosition)
+
+	local formattedRuntime = ""
+	if currentRunUIConfiguration.digitsInTime == 0 then
+		formattedRuntime = string.format("%.0fs", tick() - currentRunStartTick)
+	elseif currentRunUIConfiguration.digitsInTime == 1 then
+		formattedRuntime = string.format("%.1fs", tick() - currentRunStartTick)
+	elseif currentRunUIConfiguration.digitsInTime == 2 then
+		formattedRuntime = string.format("%.2fs", tick() - currentRunStartTick)
+	elseif currentRunUIConfiguration.digitsInTime == 3 then
+		formattedRuntime = string.format("%.3fs", tick() - currentRunStartTick)
+	else
+		_annotate("what didigs ya got?")
+		formattedRuntime = string.format("%.2fs", tick() - currentRunStartTick)
+	end
+
 	if lastActiveRunUpdateTime == formattedRuntime then
 		return true
 	end
@@ -93,12 +189,11 @@ updateRunProgress = function()
 		end
 	end
 
-	timeSourceLabel.Text = string.format("%s\nFrom: %s%s", formattedRuntime, currentRunSignName, optionalSignAliasText)
+	timeLabel.Text = string.format("%s", formattedRuntime)
+	distanceLabel.Text = string.format("%0.1fd", dist)
+	sourceLabel.Text = string.format("From: %s%s", currentRunSignName, optionalSignAliasText)
 
 	local secondText = ""
-	-- _annotate(
-	-- 	string.format("optionalRaceDescription: '%s', movementDetails: '%s'", optionalRaceDescription, movementDetails)
-	-- )
 	if optionalRaceDescription ~= "" and movementDetails ~= "" then
 		secondText = optionalRaceDescription .. "\n" .. movementDetails
 	elseif optionalRaceDescription ~= "" then
@@ -108,22 +203,51 @@ updateRunProgress = function()
 	else
 		secondText = ""
 	end
+	detailsLabel.BackgroundTransparency = 1
 
 	if secondText ~= "" then
 		detailsLabel.Text = secondText
-		detailsLabel.BackgroundTransparency = raceGuiTransparency
+
+		detailsLabel.Visible = true
 	else
 		detailsLabel.Text = ""
-		detailsLabel.BackgroundTransparency = 1
+		detailsLabel.Visible = false
 	end
 
 	return true
 end
 
+local function ensureOnScreen(candidateConfiguration)
+	local viewportSize = workspace.CurrentCamera.ViewportSize
+	local position = UDim2.new(
+		candidateConfiguration.position.X.Scale,
+		candidateConfiguration.position.X.Offset,
+		candidateConfiguration.position.Y.Scale,
+		candidateConfiguration.position.Y.Offset
+	)
+	local size = candidateConfiguration.size
+
+	local minX = 0
+	local minY = 0
+	local maxX = viewportSize.X - size.X.Offset
+	local maxY = viewportSize.Y - size.Y.Offset
+
+	local newX = math.clamp(position.X.Offset, minX, maxX)
+	local newY = math.clamp(position.Y.Offset, minY, maxY)
+
+	if newX ~= position.X.Offset or newY ~= position.Y.Offset then
+		local newPosition = UDim2.new(0, newX, 0, newY)
+		candidateConfiguration.position = newPosition
+	end
+end
+
 local debounceCreateRunProgressSgui = false
-module.StartActiveRunGui = function(startTimeTick, signName, pos)
-	playerGui = localPlayer:WaitForChild("PlayerGui")
-	local ex = playerGui:FindFirstChild("ActiveRunGui")
+module.StartActiveRunGui = function(startTimeTick, signName, signPosition)
+	local configSetting = settings.GetSettingByName(settingEnums.settingDefinitions.ACTIVE_RUN_CONFIGURATION.name)
+	currentRunUIConfiguration = configSetting.luaValue
+	ensureOnScreen(currentRunUIConfiguration)
+	local playerGui: PlayerGui = localPlayer:WaitForChild("PlayerGui")
+	local ex: ScreenGui = playerGui:FindFirstChild("ActiveRunGui")
 	if ex then
 		ex:Destroy()
 	end
@@ -139,74 +263,112 @@ module.StartActiveRunGui = function(startTimeTick, signName, pos)
 	end
 	debounceCreateRunProgressSgui = true
 	module.KillActiveRun()
+
+	local guiSystemFrames = windows.SetupFrame("activeRun", true, true, false)
+
+	local outerFrame = guiSystemFrames.outerFrame
+	activeRunFrame = outerFrame
+	local contentFrame = guiSystemFrames.contentFrame
+	outerFrame.Parent = activeRunSgui
+	contentFrame.Parent = outerFrame
+
 	currentRunSignName = signName
-	-- currentRunStartPosition = pos
-
 	currentRunStartTick = startTimeTick
+	currentRunStartPosition = signPosition
 
-	-- make a new frame
-	activeRunFrame = Instance.new("Frame")
+	outerFrame.Size = currentRunUIConfiguration.size
+	outerFrame.Position = currentRunUIConfiguration.position
+	outerFrame.BackgroundTransparency = 1.0
+	outerFrame.BorderSizePixel = 0
+	outerFrame.BorderColor3 = colors.meColor
+	outerFrame.BorderMode = Enum.BorderMode.Outline
 
-	activeRunFrame.Parent = activeRunSgui
-	activeRunFrame.Size = UDim2.new(0.6, 0, 0.1, 0)
-	activeRunFrame.Position = UDim2.new(0.3, 0, 0.81, 0)
-	activeRunFrame.Transparency = 1
-	activeRunFrame.BorderSizePixel = 2
-	activeRunFrame.BorderColor3 = colors.meColor
-	activeRunFrame.BorderMode = Enum.BorderMode.Outline
-	activeRunFrame.Name = "ActiveRunFrame"
+	contentFrame.BackgroundTransparency = 1
+	contentFrame.BorderSizePixel = 2
+	contentFrame.BorderColor3 = colors.meColor
+	contentFrame.BorderMode = Enum.BorderMode.Outline
+	-- contentFrame.Name = "ActiveRunContentFrame"
 
 	local hh = Instance.new("UIListLayout")
-	hh.Parent = activeRunFrame
-	hh.Name = "ActiveRunFrameLayout"
-	hh.FillDirection = Enum.FillDirection.Horizontal
+	hh.Parent = contentFrame
+	hh.Name = "ActiveRun_hh"
+	hh.HorizontalFlex = Enum.UIFlexAlignment.Fill
+
+	hh.HorizontalAlignment = Enum.HorizontalAlignment.Left
 	hh.VerticalAlignment = Enum.VerticalAlignment.Top
+	hh.FillDirection = Enum.FillDirection.Horizontal
+	hh.SortOrder = Enum.SortOrder.Name
 	hh.HorizontalAlignment = Enum.HorizontalAlignment.Left
 	hh.SortOrder = Enum.SortOrder.Name
 
 	-- three parts: big for current runtime and source.
 	-- optional for race desc etc.
-	timeSourceLabel = Instance.new("TextButton")
-	timeSourceLabel.Size = UDim2.new(0.5, 0, 1, 0)
-	timeSourceLabel.Position = UDim2.new(0, 0, 0, 0)
-	timeSourceLabel.TextTransparency = 0
-	timeSourceLabel.BackgroundColor3 = colors.black
-	timeSourceLabel.BackgroundTransparency = raceGuiTransparency
-	timeSourceLabel.TextScaled = true
-	timeSourceLabel.TextColor3 = colors.yellow
-	timeSourceLabel.Name = "1TimeSourceLabel"
-	timeSourceLabel.Text = ""
-	timeSourceLabel.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json")
-	timeSourceLabel.TextXAlignment = Enum.TextXAlignment.Left
-	timeSourceLabel.TextYAlignment = Enum.TextYAlignment.Top
-	timeSourceLabel.Parent = activeRunFrame
-	timeSourceLabel.Activated:Connect(function()
-		local details: mt.avatarEventDetails = {
+	timeLabel = Instance.new("TextButton")
+	timeLabel.Size = UDim2.new(0.33, 0, 1, 0)
+	-- timeLabel.Position = UDim2.new(0, 0, 0, 0)
+	timeLabel.TextTransparency = 0
+	timeLabel.BackgroundColor3 = colors.black
+	timeLabel.BackgroundTransparency = currentRunUIConfiguration.transparency
+	timeLabel.TextScaled = true
+	timeLabel.TextColor3 = colors.yellow
+	timeLabel.Name = "01_ActiveRunGui_Time"
+	timeLabel.Text = ""
+	timeLabel.FontFace = theFont
+	timeLabel.TextXAlignment = Enum.TextXAlignment.Left
+	timeLabel.TextYAlignment = Enum.TextYAlignment.Top
+	timeLabel.Parent = contentFrame
+	timeLabel.Activated:Connect(function()
+		local details: aet.avatarEventDetails = {
 			reason = "clicked on timeSourceLabel in active run SGui",
+			sender = "activeRunSGui",
 		}
-		fireEvent(mt.avatarEventTypes.RUN_CANCEL, details)
+		fireEvent(aet.avatarEventTypes.RUN_CANCEL, details)
 	end)
 
-	detailsLabel = Instance.new("TextButton")
+	sourceLabel = Instance.new("TextLabel")
+	sourceLabel.Size = UDim2.new(0.33, 0, 1, 0)
+	-- timeLabel.Position = UDim2.new(0, 0, 0, 0)
+	sourceLabel.TextTransparency = 0
+	sourceLabel.BackgroundColor3 = colors.black
+	sourceLabel.BackgroundTransparency = currentRunUIConfiguration.transparency
+	sourceLabel.TextScaled = true
+	sourceLabel.TextColor3 = colors.yellow
+	sourceLabel.Name = "02_ActiveRunGui_Source"
+	sourceLabel.Text = ""
+	sourceLabel.FontFace = theFont
+	sourceLabel.TextXAlignment = Enum.TextXAlignment.Left
+	sourceLabel.TextYAlignment = Enum.TextYAlignment.Top
+	sourceLabel.Parent = contentFrame
+
+	distanceLabel = Instance.new("TextLabel")
+	distanceLabel.Size = UDim2.new(0.33, 0, 1, 0)
+	distanceLabel.Position = UDim2.new(0, 0, 0, 0)
+	distanceLabel.TextTransparency = 0
+	distanceLabel.BackgroundColor3 = colors.black
+	distanceLabel.BackgroundTransparency = currentRunUIConfiguration.transparency
+	distanceLabel.TextScaled = true
+	distanceLabel.TextColor3 = colors.yellow
+	distanceLabel.Name = "02_ActiveRunGui_DistanceLabel"
+	distanceLabel.Text = "Distance: 0m"
+	distanceLabel.FontFace = theFont
+	distanceLabel.TextXAlignment = Enum.TextXAlignment.Left
+	distanceLabel.TextYAlignment = Enum.TextYAlignment.Top
+	distanceLabel.Parent = contentFrame
+
+	detailsLabel = Instance.new("TextLabel")
 	detailsLabel.Size = UDim2.new(0.4, 0, 1, 0)
 	detailsLabel.Position = UDim2.new(0.6, 0, 0, 0)
 	detailsLabel.TextTransparency = 0
 	detailsLabel.BackgroundColor3 = colors.black
-	detailsLabel.BackgroundTransparency = raceGuiTransparency
+	detailsLabel.BackgroundTransparency = currentRunUIConfiguration.transparency
 	detailsLabel.TextScaled = true
 	detailsLabel.TextColor3 = colors.yellow
-	detailsLabel.Name = "2DetailsLabel"
+	detailsLabel.Name = "03_ActiveRunGui_DetailsLabel"
 	detailsLabel.Text = ""
-	detailsLabel.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json")
+	detailsLabel.FontFace = theFont
 	detailsLabel.TextXAlignment = Enum.TextXAlignment.Left
 	detailsLabel.TextYAlignment = Enum.TextYAlignment.Top
-	detailsLabel.Parent = activeRunFrame
-	detailsLabel.Activated:Connect(function()
-		local details: mt.avatarEventDetails = {
-			reason = "clicked on detailsLabel in active run SGui",
-		}
-		fireEvent(mt.avatarEventTypes.RUN_CANCEL, details)
-	end)
+	detailsLabel.Parent = contentFrame
 
 	local function onActiveRunSGuiDestroyed()
 		if renderSteppedConnection then
@@ -224,11 +386,6 @@ module.StartActiveRunGui = function(startTimeTick, signName, pos)
 	end
 
 	renderSteppedConnection = game:GetService("RunService").RenderStepped:Connect(function(deltaTime)
-		-- if deltaTime < 0.01 then
-		-- 	_annotate(string.format("too fast delta for a fraem: %0.5f", deltaTime))
-		-- 	return
-		-- end
-		-- _annotate(string.format("Delta was: %0.5f", deltaTime))
 		if not updateRunProgress() then
 			if renderSteppedConnection ~= nil then
 				renderSteppedConnection:Disconnect()
@@ -236,6 +393,8 @@ module.StartActiveRunGui = function(startTimeTick, signName, pos)
 			renderSteppedConnection = nil
 		end
 	end)
+
+	monitorActiveRunSGui()
 end
 
 _annotate("end")

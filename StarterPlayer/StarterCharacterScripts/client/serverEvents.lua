@@ -78,6 +78,7 @@ module.Init = function()
 	serverEventGuis.Init()
 	ServerEventRemoteEvent.OnClientEvent:Connect(serverEventClientReceiveMessage)
 	ServerEventRemoteFunction:InvokeServer(serverEventEnums.messageTypes.CONNECT, {})
+	_annotate("init done")
 end
 
 _annotate("end")

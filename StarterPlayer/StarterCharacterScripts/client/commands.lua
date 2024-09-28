@@ -31,7 +31,9 @@ local function showSigns(signIds: { number }, extraText: string?)
 end
 
 module.Init = function()
+	_annotate("init")
 	ShowSignsEvent.OnClientEvent:Connect(showSigns)
+	_annotate("init done")
 end
 
 _annotate("end")

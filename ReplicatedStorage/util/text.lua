@@ -6,6 +6,7 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local rdb = require(game.ServerScriptService.rdb)
+local playerData2 = require(game.ServerScriptService.playerData2)
 local colors = require(game.ReplicatedStorage.util.colors)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local enums = require(game.ReplicatedStorage.util.enums)
@@ -32,7 +33,7 @@ module.describeChallenge = function(parts): string
 	local finders = {}
 	local missers = {}
 	for _, player in pairs(PlayersService:GetPlayers()) do
-		local found = rdb.hasUserFoundSign(player.UserId, signId)
+		local found = playerData2.HasUserFoundSign(player.UserId, signId)
 		if found then
 			findCount = findCount + 1
 			table.insert(finders, player.Name)
@@ -82,7 +83,7 @@ module.describeRemainingSigns = function(looseUsername: string, describeMissing:
 	local missingSigns = {}
 	local userId = player.UserId
 	for signName, signId in pairs(enums.name2signId) do
-		seen = rdb.hasUserFoundSign(userId, signId)
+		seen = playerData2.HasUserFoundSign(userId, signId)
 		if seen then
 			table.insert(seenSigns, signName)
 		else
@@ -127,7 +128,9 @@ module.generateTextForRankedList = function(
 	results: { tt.userRankedOrderItem },
 	playersInServer: { [number]: boolean },
 	speakerUserId: number,
-	getStats: (userId: number) -> { count: number, rank: number }
+	backupGetterForPeopleNotInInputData: (
+		userId: number
+	) -> { count: number, rank: number, signIds: { number } }
 ): { messageItem }
 	local messageItems = {}
 	local shownUserIds: { [number]: boolean } = {}
@@ -135,7 +138,7 @@ module.generateTextForRankedList = function(
 		if obj.userId < 0 then
 			obj.username = "TestUser_" .. obj.userId
 		else
-			obj.username = rdb.getUsernameByUserId(obj.userId)
+			obj.username = playerData2.GetUsernameByUserId(obj.userId)
 		end
 		local color = colors.white
 		--the person in the top list also is in server, so highlight them.
@@ -161,9 +164,9 @@ module.generateTextForRankedList = function(
 		if shownUserIds[userIdInServer] then
 			continue
 		end
-		-- _annotate("showing" .. userIdInServer)
-		local username = rdb.getUsernameByUserId(userIdInServer)
-		local stats = getStats(userIdInServer)
+
+		local username = playerData2.GetUsernameByUserId(userIdInServer)
+		local stats = backupGetterForPeopleNotInInputData(userIdInServer)
 		local res = tpUtil.getCardinalEmoji(stats.rank) .. ":\t" .. stats.count .. " - " .. username
 		local color = colors.greenGo
 		if userIdInServer == speakerUserId then

@@ -24,7 +24,6 @@ module.getFirstCodepointAsString = function(input: string): string
 		-- body
 		return utf8.char(codepoint)
 	end
-	error("no such first letter.")
 end
 
 module.stringSplit = function(str: string, pat: string)

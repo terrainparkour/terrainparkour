@@ -6,18 +6,22 @@
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
+
+local module = {}
+
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
 local text = require(game.ReplicatedStorage.util.text)
 local grantBadge = require(game.ServerScriptService.grantBadge)
 local config = require(game.ReplicatedStorage.config)
+local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
-local playerdata = require(game.ServerScriptService.playerdata)
+local playerData2 = require(game.ServerScriptService.playerData2)
 local rdb = require(game.ServerScriptService.rdb)
 
 local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
-local channelCommands = require(game.ReplicatedStorage.chat.channelCommands)
+local channelCommands = require(game.ReplicatedStorage.chat.commands.channelCommands)
 local signProfileCommand = require(game.ReplicatedStorage.commands.signProfileCommand)
 local showSignsCommand = require(game.ReplicatedStorage.commands.showSignsCommand)
 
@@ -25,7 +29,36 @@ local sendMessageModule = require(game.ReplicatedStorage.chat.sendMessage)
 local sendMessage = sendMessageModule.sendMessage
 local PlayersService = game:GetService("Players")
 
-local module = {}
+-- COMMANDS
+
+--TODO would be nice to fix this up, including return types.
+local getTixBalanceByUsername = function(username: string)
+	local request: tt.postRequest = {
+		remoteActionName = "getTixBalanceByUsername",
+		data = { username = username },
+	}
+	local res = rdb.MakePostRequest(request)
+	return res
+end
+
+local getMarathonKindLeaders = function(marathonKind: string)
+	local request: tt.postRequest = {
+		remoteActionName = "getMarathonKindLeaders",
+		data = { marathonKind = marathonKind },
+	}
+	local res = rdb.MakePostRequest(request)
+	return res
+end
+
+local getMarathonKinds = function()
+	local request: tt.postRequest = {
+		remoteActionName = "getMarathonKinds",
+		data = {},
+	}
+	local res = rdb.MakePostRequest(request)
+	return res
+end
+--other
 
 --looks like this is a way to shuffle around pointers to actual channel objects.
 
@@ -129,6 +162,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 		return channelCommands.meta(speaker, channel)
 	end
 	local verb: string = parts[1]
+	local argumentToCommand = textUtil.coalesceFrom(parts, 2)
 
 	if verb == "challenge" then
 		return channelCommands.challenge(speaker, channel, parts)
@@ -163,10 +197,13 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 		return channelCommands.version(speaker, channel)
 	elseif verb == "uptime" then
 		return channelCommands.uptime(speaker, channel)
-
-		-- if verb == "longest" then
-		-- 	return channelCommands.longest(speaker, channel)
-		-- end
+	elseif verb == "pin" then
+		local pinRaceCommand = require(game.ReplicatedStorage.chat.commands.pinRaceCommand)
+		local userInput = textUtil.coalesceFrom(parts, 2)
+		return pinRaceCommand.PinRace(speaker, channel, userInput)
+	elseif verb == "unpin" then
+		local pinRaceCommand = require(game.ReplicatedStorage.chat.commands.pinRaceCommand)
+		return pinRaceCommand.UnpinRace(speaker, channel)
 	elseif verb == "chomik" then
 		return channelCommands.chomik(speaker, channel)
 	elseif verb == "wrs" then
@@ -177,6 +214,8 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 		return channelCommands.missingTop10s(speaker, channel)
 	elseif verb == "beckon" then
 		return channelCommands.beckon(speaker, channel)
+	-- elseif verb == "remove" then
+	-- 	return channelCommands.removeRun(speaker, channel, argumentToCommand)
 	elseif verb == "nonwrs" then
 		local to: string
 		local signId: number = 0
@@ -204,7 +243,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 		return channelCommands.hint(speaker, channel, parts)
 	elseif verb == "marathons" then
 		GrandCmdlineBadge(speaker.UserId)
-		local res = rdb.getMarathonKinds()
+		local res = getMarathonKinds()
 		sendMessage(channel, res["message"])
 		return true
 	elseif verb == "marathon" then
@@ -212,7 +251,10 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 		if parts[2] == nil or parts[2] == "" then
 			return false
 		end
-		local res = rdb.getMarathonKindLeaders(parts[2])
+		local res = getMarathonKindLeaders(parts[2])
+		if not res.message then
+			res.message = "Couldn't find that marathon."
+		end
 		sendMessage(channel, res["message"])
 		return true
 	elseif verb == "awards" then
@@ -233,7 +275,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 		if #parts == 2 then
 			target = parts[2]
 		end
-		local res = rdb.GetTixBalanceByUsername(target)
+		local res = getTixBalanceByUsername(target)
 		if res.success then
 			sendMessage(channel, res.message)
 			GrandCmdlineBadge(speaker.UserId)
@@ -248,7 +290,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 		module.ShowEvents(channelName, speaker.UserId)
 		return true
 	elseif verb == "player" or verb == "p" then
-		local playerDescription = playerdata.getPlayerDescriptionMultilineByUsername(parts[2])
+		local playerDescription = playerData2.getPlayerDescriptionMultilineByUsername(parts[2])
 		if playerDescription ~= "unknown" then
 			local res = "stats: " .. playerDescription
 			sendMessage(channel, res)
@@ -267,22 +309,30 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 		-- /sign X Y <info on sign X about player Y, even if Y is not in server>
 		table.remove(parts, 1)
 
-		--maybe its one big signid.
-		signId = tpUtil.looseSignName2SignId(textUtil.coalesceFrom(parts, 1))
+		-- we get the sign name here.
+		local signName = textUtil.coalesceFrom(parts, 1)
+		local signId = tpUtil.looseSignName2SignId(signName)
 		if not signId then
 			--multi-word sign. take all the ones before last.
 			subjectUsername = parts[#parts]
 			table.remove(parts, #parts)
-			signId = tpUtil.looseSignName2SignId(textUtil.coalesceFrom(parts, 1))
+			signName = textUtil.coalesceFrom(parts, 1)
+			signId = tpUtil.looseSignName2SignId(signName)
+		end
+		if not signId then
+			signName = textUtil.coalesceFrom(parts, 1)
+			signId = tpUtil.looseSignName2SignId(signName)
 		end
 
 		if signId and subjectUsername then
 			--problem: we have not verified the username here.
+			if not playerData2.HasUserFoundSign(speaker.UserId, signId) then
+				return true
+			end
 			signProfileCommand.signProfileCommand(subjectUsername, signId, speaker)
 		else
 			return false
 		end
-		return true
 	end
 
 	if verb == "found" then
@@ -315,7 +365,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 	--first look up exact match on player.
 	for _, player: Player in ipairs(PlayersService:GetPlayers()) do
 		if player.Name:lower() == coalescedVerb then
-			local playerDescription = playerdata.getPlayerDescriptionMultilineByUserId(player.UserId)
+			local playerDescription = playerData2.GetPlayerDescriptionMultilineByUserId(player.UserId)
 			if playerDescription ~= "unknown" then
 				local res = player.Name .. " stats: " .. playerDescription
 				sendMessage(channel, res)
@@ -337,7 +387,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 	--now treat it as a player prefix (in the server)
 	local messageplayer = tpUtil.looseGetPlayerFromUsername(message:lower())
 	if messageplayer then
-		local playerDescription = playerdata.getPlayerDescriptionMultilineByUserId(messageplayer.UserId)
+		local playerDescription = playerData2.GetPlayerDescriptionMultilineByUserId(messageplayer.UserId)
 		if playerDescription ~= "unknown" then
 			local res = messageplayer.Name .. " stats: " .. playerDescription
 			sendMessage(channel, res)
@@ -346,8 +396,15 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 		end
 	end
 
-	local signId1, signId2 = tpUtil.AttemptToParseRaceFromInput(message)
-	if not rdb.hasUserFoundSign(speaker.UserId, signId1) or not rdb.hasUserFoundSign(speaker.UserId, signId2) then
+	local res: tt.RaceParseResult = tpUtil.AttemptToParseRaceFromInput(message)
+	if res.error ~= "" then
+		sendMessage(channel, res.error)
+		return true
+	end
+	if
+		not playerData2.HasUserFoundSign(speaker.UserId, res.signId1)
+		or not playerData2.HasUserFoundSign(speaker.UserId, res.signId2)
+	then
 		sendMessage(channel, "You haven't found one of those signs.")
 		GrandCmdlineBadge(speaker.UserId)
 		return true
@@ -359,9 +416,10 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 		table.insert(userIdsInServer, player.UserId)
 	end
 	if config.isInStudio then
-		table.insert(userIdsInServer, enums.objects.Brouhahaha)
+		table.insert(userIdsInServer, enums.objects.BrouhahahaUserId)
 	end
-	local entries = playerdata.describeRaceHistoryMultilineText(signId1, signId2, speaker.UserId, userIdsInServer)
+	local entries =
+		playerData2.describeRaceHistoryMultilineText(res.signId1, res.signId2, speaker.UserId, userIdsInServer)
 	for _, el in pairs(entries) do
 		sendMessage(channel, el.message, el.options)
 	end

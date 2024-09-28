@@ -7,9 +7,9 @@ local _annotate = annotater.getAnnotater(script)
 
 local us: UserSettings = UserSettings()
 
-local GameSettings = us.GameSettings
+local GameSettings: UserGameSettings = us:GetService("UserGameSettings")
 
-local function onGameSettingChanged(nameOfSetting)
+local function onGameSettingChanged(nameOfSetting: string)
 	local canGetSetting, setting = pcall(function()
 		return GameSettings[nameOfSetting]
 	end)

@@ -8,7 +8,7 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local module = {}
-
+local tt = require(game.ReplicatedStorage.types.gametypes)
 local modulesFolder = script.Parent
 local Chat = game:GetService("Chat")
 local RunService = game:GetService("RunService")
@@ -23,7 +23,6 @@ local Util = require(modulesFolder:WaitForChild("Util"))
 --//////////////////////////////////////
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
-local enums = require(game.ReplicatedStorage.util.enums)
 local rdb = require(game.ServerScriptService.rdb)
 
 local methods = {}
@@ -64,7 +63,7 @@ function methods:SendSystemMessageToSpeaker(message, speakerName, extraData)
 	end
 end
 
-function methods:SendMessageObjToFilters(message, messageObj, fromSpeaker)
+function methods:SendMessageObjToFilters(message: string, messageObj: any, fromSpeaker: any)
 	local oldMessage = messageObj.Message
 	messageObj.Message = message
 	self:InternalDoMessageFilter(fromSpeaker.Name, messageObj, self.Name)
@@ -85,7 +84,7 @@ function ChatSettingsEnabled()
 	return chatPrivacySettingsEnabled
 end
 
-function methods:CanCommunicateByUserId(userId1, userId2)
+function methods:CanCommunicateByUserId(userId1: number, userId2: number)
 	if RunService:IsStudio() then
 		return true
 	end
@@ -111,7 +110,7 @@ function methods:CanCommunicate(speakerObj1, speakerObj2)
 	return true
 end
 
-function methods:SendMessageToSpeaker(message, speakerName, fromSpeakerName, extraData)
+function methods:SendMessageToSpeaker(message: string, speakerName: string, fromSpeakerName: string, extraData: any)
 	local speakerTo = self.Speakers[speakerName]
 	local speakerFrom = self.ChatService:GetSpeaker(fromSpeakerName)
 	if speakerTo and speakerFrom then
@@ -141,10 +140,10 @@ function methods:SendMessageToSpeaker(message, speakerName, fromSpeakerName, ext
 	end
 end
 
-function methods:KickSpeaker(speakerName, reason)
+function methods:KickSpeaker(speakerName: string, reason: string)
 	local speaker = self.ChatService:GetSpeaker(speakerName)
 	if not speaker then
-		error('Speaker "' .. speakerName .. '" does not exist!')
+		annotater.Error('Speaker "' .. speakerName .. '" does not exist!')
 	end
 
 	local messageToSpeaker = ""
@@ -163,10 +162,10 @@ function methods:KickSpeaker(speakerName, reason)
 	self:SendSystemMessage(messageToChannel)
 end
 
-function methods:MuteSpeaker(speakerName, reason, length)
+function methods:MuteSpeaker(speakerName: string, reason: string, length: number)
 	local speaker = self.ChatService:GetSpeaker(speakerName)
 	if not speaker then
-		error('Speaker "' .. speakerName .. '" does not exist!')
+		annotater.Error('Speaker "' .. speakerName .. '" does not exist!')
 	end
 
 	self.Mutes[speakerName:lower()] = (length == 0 or length == nil) and 0 or (os.time() + length)
@@ -196,7 +195,7 @@ end
 function methods:UnmuteSpeaker(speakerName)
 	local speaker = self.ChatService:GetSpeaker(speakerName)
 	if not speaker then
-		error('Speaker "' .. speakerName .. '" does not exist!')
+		annotater.Error(string.format("Speaker '%s' does not exist!", speakerName))
 	end
 
 	self.Mutes[speakerName:lower()] = nil
@@ -233,7 +232,7 @@ end
 
 function methods:RegisterFilterMessageFunction(funcId, func, priority)
 	if self.FilterMessageFunctions:HasFunction(funcId) then
-		error(string.format("FilterMessageFunction '%s' already exists", funcId))
+		annotater.Error(string.format("FilterMessageFunction '%s' already exists", funcId))
 	end
 	self.FilterMessageFunctions:AddFunction(funcId, func, priority)
 end
@@ -244,14 +243,14 @@ end
 
 function methods:UnregisterFilterMessageFunction(funcId)
 	if not self.FilterMessageFunctions:HasFunction(funcId) then
-		error(string.format("FilterMessageFunction '%s' does not exists", funcId))
+		annotater.Error(string.format("FilterMessageFunction '%s' does not exists", funcId))
 	end
 	self.FilterMessageFunctions:RemoveFunction(funcId)
 end
 
 function methods:RegisterProcessCommandsFunction(funcId, func, priority)
 	if self.ProcessCommandsFunctions:HasFunction(funcId) then
-		error(string.format("ProcessCommandsFunction '%s' already exists", funcId))
+		annotater.Error(string.format("ProcessCommandsFunction '%s' already exists", funcId))
 	end
 	self.ProcessCommandsFunctions:AddFunction(funcId, func, priority)
 end
@@ -262,7 +261,7 @@ end
 
 function methods:UnregisterProcessCommandsFunction(funcId)
 	if not self.ProcessCommandsFunctions:HasFunction(funcId) then
-		error(string.format("ProcessCommandsFunction '%s' does not exist", funcId))
+		annotater.Error(string.format("ProcessCommandsFunction '%s' does not exist", funcId))
 	end
 	self.ProcessCommandsFunctions:RemoveFunction(funcId)
 end
@@ -270,7 +269,7 @@ end
 local function DeepCopy(table)
 	local copy = {}
 	for i, v in pairs(table) do
-		if type(v) == table then
+		if type(v) == "table" then
 			copy[i] = DeepCopy(v)
 		else
 			copy[i] = v
@@ -335,19 +334,27 @@ function methods:InternalDoProcessCommands(speakerName, message, channel)
 		local success, returnValue = pcall(function()
 			local ret = func(speakerName, message, channel)
 			if type(ret) ~= "boolean" then
-				error("Process command functions must return a bool")
+				annotater.Error("Process command functions must return a bool")
 			end
 			return ret
 		end)
 
 		if not success then
-			warn(string.format("DoProcessCommands Function '%s' failed for reason: %s", funcId, returnValue))
+			warn(string.format("DoProcessCommands Function '%s' failed for reason: %s", funcId, tostring(returnValue)))
 		elseif returnValue then
 			return true
 		end
 	end
 
 	return false
+end
+
+module.userSentMessage = function(data: any): any
+	local request: tt.postRequest = {
+		remoteActionName = "userSentMessage",
+		data = data,
+	}
+	return rdb.MakePostRequest(request) :: tt.dcRunResponse
 end
 
 function methods:InternalPostMessage(fromSpeaker, message, extraData)
@@ -419,11 +426,14 @@ function methods:InternalPostMessage(fromSpeaker, message, extraData)
 		messageObj.Message = filteredMessage
 
 		if player then
-			local options = {
-				userId = tostring(player.UserId),
-				filteredtext = tostring(filteredMessage),
+			local request: tt.postRequest = {
+				remoteActionName = "userSentMessage",
+				data = {
+					userId = tostring(player.UserId),
+					filteredtext = tostring(filteredMessage),
+				},
 			}
-			rdb.userSentMessage(options)
+			rdb.MakePostRequest(request)
 		end
 	else
 		return false
@@ -583,7 +593,7 @@ end
 
 function methods:RegisterGetWelcomeMessageFunction(func)
 	if type(func) ~= "function" then
-		error("RegisterGetWelcomeMessageFunction must be called with a function.")
+		annotater.Error("RegisterGetWelcomeMessageFunction must be called with a function.")
 	end
 	self.GetWelcomeMessageFunction = func
 end

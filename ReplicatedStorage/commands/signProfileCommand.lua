@@ -16,9 +16,18 @@ local ShowClientSignProfileEvent = remotes.getRemoteEvent("ShowClientSignProfile
 
 local module = {}
 
+local getSignProfileForUser = function(username: string, signId: number)
+	local data = { username = username, signId = signId }
+	local request: tt.postRequest = {
+		remoteActionName = "getSignProfileForUser",
+		data = data,
+	}
+	return rdb.MakePostRequest(request)
+end
+
 local function prepareSignProfileData(username: string, signId: number): tt.playerSignProfileData
 	_annotate(string.format("prepareSignProfileData username: %s, signId: %d", username, signId))
-	local res: tt.playerSignProfileData = rdb.getSignProfileForUser(username, signId)["res"]
+	local res: tt.playerSignProfileData = getSignProfileForUser(username, signId)
 	return res
 end
 

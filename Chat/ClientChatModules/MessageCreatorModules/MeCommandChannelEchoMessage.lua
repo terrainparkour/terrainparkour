@@ -26,7 +26,8 @@ function CreateMeCommandChannelEchoMessageLabel(messageData)
 	local numNeededSpaces2 = util:GetNumberOfSpaces(formatChannelName, useFont, useFontSize) + 1
 	local modifiedMessage = string.rep(" ", numNeededSpaces2) .. message
 
-	local BaseFrame, BaseMessage = util:CreateBaseMessage(modifiedMessage, useFont, useFontSize, useChatColor)
+	local BaseFrame: Frame, BaseMessage: TextLabel =
+		util:CreateBaseMessage(modifiedMessage, useFont, useFontSize, useChatColor)
 	local ChannelButton = util:AddChannelButtonToBaseMessage(BaseMessage, formatChannelName, BaseMessage.TextColor3)
 
 	local function UpdateTextFunction(newMessageObject)

@@ -6,7 +6,7 @@ local _annotate = annotater.getAnnotater(script)
 
 local config = require(game.ReplicatedStorage.config)
 local enums = require(game.ReplicatedStorage.util.enums)
-local mt = require(game.ReplicatedStorage.avatarEventTypes)
+local aet = require(game.ReplicatedStorage.avatarEventTypes)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local settings = require(game.ReplicatedStorage.settings)
@@ -213,13 +213,23 @@ module.DoHighlightMultiple = function(signIds: { number })
 	end
 end
 
-local function handleAvatarEvent(event: mt.avatarEvent)
-	_annotate("handleAvatarEvent " .. avatarEventFiring.DescribeEvent(event.eventType, event.details))
+local eventsWeCareAbout: { number } = {
+	aet.avatarEventTypes.AVATAR_DIED,
+	aet.avatarEventTypes.GET_READY_FOR_WARP,
+	aet.avatarEventTypes.RUN_COMPLETE,
+	aet.avatarEventTypes.RUN_CANCEL,
+}
+
+local function handleAvatarEvent(ev: aet.avatarEvent)
+	if not avatarEventFiring.EventIsATypeWeCareAbout(ev, eventsWeCareAbout) then
+		return
+	end
+	_annotate("handle " .. avatarEventFiring.DescribeEvent(ev))
 	if
-		event.eventType == mt.avatarEventTypes.AVATAR_DIED
-		or event.eventType == mt.avatarEventTypes.GET_READY_FOR_WARP
-		or event.eventType == mt.avatarEventTypes.RUN_COMPLETE
-		or event.eventType == mt.avatarEventTypes.RUN_CANCEL
+		ev.eventType == aet.avatarEventTypes.AVATAR_DIED
+		or ev.eventType == aet.avatarEventTypes.GET_READY_FOR_WARP
+		or ev.eventType == aet.avatarEventTypes.RUN_COMPLETE
+		or ev.eventType == aet.avatarEventTypes.RUN_CANCEL
 	then
 		module.KillAllExistingHighlights()
 	end
@@ -231,13 +241,17 @@ local function handleUserSettingChanged(userSetting: tt.userSettingValue)
 	end
 end
 
+local avatarEventConnection = nil
 module.Init = function()
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 	humanoid = character:WaitForChild("Humanoid")
+	if avatarEventConnection then
+		avatarEventConnection:Disconnect()
+		avatarEventConnection = nil
+	end
+	avatarEventConnection = AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 
-	AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
-
-	handleUserSettingChanged(settings.getSettingByName(settingEnums.settingDefinitions.HIGHLIGHT_AT_ALL.name))
+	handleUserSettingChanged(settings.GetSettingByName(settingEnums.settingDefinitions.HIGHLIGHT_AT_ALL.name))
 	-- handleUserSettingChanged(
 	-- 	settings.getSettinedsgByName(settingeEnums.settingNames.ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION)
 	-- )

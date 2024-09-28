@@ -2,10 +2,39 @@
 
 local module = {}
 
-module.gameVersion = "0.282"
+module.gameVersion = "0.298"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
+	["Lavaslug"] = 589,
+	["Alone"] = 588,
+	["Auryn"] = 587,
+	-- ["Hypernormalization"] = 586, --
+	["Nimbus"] = 585,
+
+	-- ["Hyperparasite"] = 584, --
+	["Hypernudge"] = 583, --
+	["Tesla"] = 582,
+	["Ys"] = 581,
+	["Hyperborea"] = 580,
+	["Algorithm"] = 579,
+	["Hiraeth"] = 578,
+	["Brussel Sprouts"] = 577,
+	["Nauvis"] = 576,
+	["Tsundoku"] = 575,
+	["Vellichor"] = 574,
+	["Eigengrau"] = 573,
+	["Hygge"] = 572,
+	["Crystal Mentality"] = 571,
+	["Zenzizenzizenzic"] = 570,
+	["Zoom"] = 569,
+	["FPS"] = 568,
+	["Cryotheque"] = 567,
+	["Gradus"] = 566,
+	["Chert"] = 565,
+	["Papua"] = 564,
+	["Nighthawks"] = 563,
+	["Whippoorwill"] = 562,
 	["Tri Arch"] = 1,
 	["Gold Pond"] = 2,
 	["3d cube"] = 3, --todo do NOT change to "3d Cube"
@@ -571,12 +600,6 @@ local name2signId: { [string]: number } = {
 	["Polytropon"] = 559,
 	["DNA"] = 560,
 	["Prefontaine"] = 561,
-	["Whippoorwill"] = 562,
-	["Nighthawks"] = 563,
-	["Papua"] = 564,
-	["Chert"] = 565,
-	["Gradus"] = 566,
-	["Cryotheque"] = 567,
 }
 
 --aliases of symbolic signs to their english alias.
@@ -618,11 +641,12 @@ module.aliasesWhichAreVeryCloseSoDontNeedToBeShown["Éliante"] = true
 module.aliasesWhichAreVeryCloseSoDontNeedToBeShown["Molière"] = true
 
 local useLeftFaceSignNames = { ["cOld mOld on a sLate pLate"] = 1, ["Tetromino"] = 2 }
+local usesBackFaceSignNames = { ["Brussel Sprouts"] = 1 }
 local unanchoredSignNames = { ["Freedom"] = 1 }
 
 module.useLeftFaceSignNames = useLeftFaceSignNames
 module.unanchoredSignNames = unanchoredSignNames
-
+module.usesBackFaceSignNames = usesBackFaceSignNames
 local alternateNames = [[Tiramisu Parboil
 Turin Parchment
 Tar Heel Parker
@@ -639,8 +663,6 @@ Tarantula Parturition]]
 --℘
 
 module.name2signId = name2signId
-module.minSignId = 1
-module.maxSignId = #name2signId
 
 module.ExcludeSignNamesFromEndingAt = {
 	"007",
@@ -657,75 +679,17 @@ module.ExcludeSignNamesFromStartingAt = {
 	"Chaoskampf",
 	"Nyx",
 	"👻",
-
 	"💀",
-	"👍",
 	"🔥",
 	"Ø",
 	"Chirality",
 	"Why",
 	"Chomik",
-	"Troll Bridge", -- the above should likely never be warpable.
-
-	-- "Obelisk",
-	-- "Gemelo",
-
-	-- "Helix",
-	-- "Elevator",
-	-- "Sputnik",
-	-- "Maobahe",
-	-- "Mauna Loa",
-	-- "Hosho",
-	-- "Roblox",
-	-- "Aorta",
-	-- "Pretzel",
-	-- "Beehive",
-	-- "Pharoah",
-	-- "Subterranean Temple",
-	-- "Blanc",
-	-- "Flint",
-	-- "Woodingdean",
-
-	-- "Lignin",
-	-- "Mencius",
-	-- "Ooloi",
-	-- "Rapunzel",
 	"Rubble",
-	-- "Olympus",
-	-- "Summit",
 	"Vesuvius",
-	-- "Wozniak",
-	-- "Klytus",
-	-- "Tapochki",
-	-- "Cinchona",
-	-- "Sciocchi",
-	-- "Erg",
-	-- "Sakura",
-	-- "Slig",
-	-- "Asana",
 	"Kew",
-	-- "Guru",
-	-- "Darwin",
-	-- "Aphid",
-	-- "Ararat",
-	-- "Petrichor",
-	-- "Kudzu",
-	-- "Soylent",
-	"IPO",
-	-- "Mitchell",
-	-- "Rosen",
-	-- "Roygbiv",
-	"Yang",
-	-- "Swiss",
-	"Slig",
-	"Nakamura",
-	-- "Frow",
-	"Kongzi",
-	"Mogwai",
-	"Verne",
-	"Coagulate",
-	-- "Floor",
-	-- "Neandertal",
+	"Neandertal",
+	"Troll Bridge", -- the above should likely never be warpable.
 }
 
 local SignIdIsExcludedFromStart: { [number]: boolean } = {}
@@ -780,7 +744,7 @@ objects.TerrainParkourDevGameUniverseId = 1
 module.objects = objects
 
 --amount of time to do green 'something changed' ui
-module.greenTime = 20
+module.greenTime = 24
 
 local releaseNotes: { [number]: string } = {
 	[185] = [[* fix challenge for long sign names

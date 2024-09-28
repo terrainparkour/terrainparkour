@@ -22,15 +22,11 @@ export type avatarEventDetails = {
 	startSignName: string?,
 	endSignId: number?,
 	endSignName: string?,
-	-- relatedSignId: number?,
-	-- relatedSignName: string?,
 	floorMaterial: Enum.Material?, --this is either a terrain or a non-terrain, you need to check.
 	newMoveDirection: Vector3?,
 	oldMoveDirection: Vector3?,
 	newState: Enum.HumanoidStateType?,
 	oldState: Enum.HumanoidStateType?,
-	-- warpSourceSignName: string?,
-	-- warpDestinationSignName: string?,
 	oldSpeed: number?,
 	newSpeed: number?,
 	oldJumpPower: number?,
@@ -40,12 +36,14 @@ export type avatarEventDetails = {
 	position: Vector3?, -- of the avatar. These are ALWAYS provided by avatarEventFiring.
 	lookVector: Vector3?, -- of the avatar. These are ALWAYS provided by avatarEventFiring.
 	walkSpeed: number?,
+	sender: string,
 }
 
 export type avatarEvent = {
 	eventType: number,
 	timestamp: number,
-	details: avatarEventDetails?,
+	details: avatarEventDetails,
+	id: number,
 }
 
 --the types of all the events broadcast by avatarEventMonitor.

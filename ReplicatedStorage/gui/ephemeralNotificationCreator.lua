@@ -115,7 +115,6 @@ module.notify = function(options: tt.ephemeralNotificationOptions)
 		warpTl.Position = UDim2.new(0, 0, 0.8, 0)
 		warpTl.ZIndex = 20
 		warpTl.Parent = frame
-		-- local useHighlightSignId = options.highlightSignId and not enums.SignIdIsExcludedFromStart[options.highlightSignId] and rdb.hasUserFoundSign(op.UserId, startSignId)
 		warpTl.Activated:Connect(function()
 			warper.WarpToSignId(options.warpToSignId, options.highlightSignId)
 		end)

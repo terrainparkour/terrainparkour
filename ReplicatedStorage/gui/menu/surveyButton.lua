@@ -27,7 +27,7 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 	local label = guiUtil.getTl("00-Domain", UDim2.new(0.2, 0, 1, 0), 4, fr, colors.defaultGrey, 1)
 	label.TextScaled = false
 	label.Text = setting.domain
-	label.FontSize = Enum.FontSize.Size18
+	label.TextSize = 18
 	label.TextXAlignment = Enum.TextXAlignment.Center
 	label.TextYAlignment = Enum.TextYAlignment.Center
 
@@ -36,12 +36,13 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 	tl.TextXAlignment = Enum.TextXAlignment.Left
 	local noButton = guiUtil.getTb("02-No." .. setting.name, UDim2.new(0.1, -3, 1, 0), 2, fr, colors.defaultGrey, 1)
 	noButton.Text = "No"
+
 	local unsetButton =
 		guiUtil.getTb("03-Unset-" .. setting.name, UDim2.new(0.1, -4, 1, 0), 2, fr, colors.defaultGrey, 1)
 	unsetButton.Text = "-"
 	local yesButton = guiUtil.getTb("04-Yes-" .. setting.name, UDim2.new(0.1, -3, 1, 0), 2, fr, colors.defaultGrey, 1)
 	yesButton.Text = "Yes"
-	local nowValue = nil
+	local nowValue: boolean | nil = nil
 
 	if setting.booleanValue == false then
 		noButton.BackgroundColor3 = colors.redStop
@@ -64,7 +65,7 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 			yesButton.BackgroundColor3 = colors.defaultGrey
 		end
 		setting.booleanValue = nowValue
-		settings.setSetting(setting)
+		settings.SetSetting(setting)
 	end)
 
 	unsetButton.Activated:Connect(function()
@@ -73,7 +74,7 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 			noButton.BackgroundColor3 = colors.defaultGrey
 			yesButton.BackgroundColor3 = colors.defaultGrey
 			setting.booleanValue = nowValue
-			settings.setSetting(setting)
+			settings.SetSetting(setting)
 		end
 	end)
 
@@ -88,7 +89,7 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 			yesButton.BackgroundColor3 = colors.defaultGrey
 		end
 		setting.booleanValue = nowValue
-		settings.setSetting(setting)
+		settings.SetSetting(setting)
 	end)
 
 	return fr
@@ -102,7 +103,7 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 	screenGui.Name = "SettingsSgui"
 
 	--just get marathon settings.
-	local surveyData = settings.getSettingByDomain(settingEnums.settingDomains.SURVEYS)
+	local surveyData = settings.GetSettingByDomain(settingEnums.settingDomains.SURVEYS)
 
 	local outerFrame = Instance.new("Frame")
 	outerFrame.Parent = screenGui

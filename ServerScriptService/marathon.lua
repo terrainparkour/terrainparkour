@@ -3,6 +3,8 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
+local module = {}
+
 local rdb = require(game.ServerScriptService.rdb)
 local notify = require(game.ReplicatedStorage.notify)
 
@@ -12,9 +14,8 @@ local PlayerService = game:GetService("Players")
 
 local grantBadge = require(game.ServerScriptService.grantBadge)
 
-local mds = require(game.ReplicatedStorage.marathonDescriptors)
-
-local module = {}
+local mds = require(game.ReplicatedStorage.marathon.marathonDescriptors)
+local remotes = require(game.ReplicatedStorage.util.remotes)
 
 --the client has decided a marathon is complete.
 --this should actually be determined from python server.
@@ -26,12 +27,21 @@ local serverInvokeMarathonComplete = function(
 	orderedSigns: string,
 	runMilliseconds: number
 )
-	local pyUserFinishedRunResponse: tt.pyUserFinishedRunResponse =
-		rdb.userFinishedMarathon(player.UserId, marathonKind, orderedSigns, runMilliseconds)
+	local request: tt.postRequest = {
+		remoteActionName = "userFinishedMarathon",
+		data = {
+			userId = player.UserId,
+			marathonKind = marathonKind,
+			orderedSigns = orderedSigns,
+			runMilliseconds = runMilliseconds,
+		},
+	}
+
+	local dcRunResponse: tt.dcRunResponse = rdb.MakePostRequest(request)
 
 	local descTry = mds[marathonKind]
 	if descTry == nil then
-		_annotate("bad mk" .. marathonKind)
+		_annotate(string.format("bad mk" .. marathonKind))
 	end
 	if descTry ~= nil then
 		if descTry.awardBadge ~= nil then
@@ -39,16 +49,15 @@ local serverInvokeMarathonComplete = function(
 		end
 	end
 
-	pyUserFinishedRunResponse.kind = "marathon results"
+	dcRunResponse.kind = "marathon results"
 
-	notify.notifyPlayerAboutMarathonResults(player, pyUserFinishedRunResponse)
+	notify.notifyPlayerAboutMarathonResults(player, dcRunResponse)
 
 	for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
-		lbUpdaterServer.updateLeaderboardForMarathon(otherPlayer, pyUserFinishedRunResponse)
+		lbUpdaterServer.SendUpdateToPlayer(otherPlayer, dcRunResponse.lbUserStats)
 	end
 end
 
-local remotes = require(game.ReplicatedStorage.util.remotes)
 module.Init = function()
 	local marathonCompleteEvent: RemoteEvent = remotes.getRemoteEvent("MarathonCompleteEvent") :: RemoteEvent
 	if marathonCompleteEvent == nil then

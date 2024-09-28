@@ -40,10 +40,11 @@ local function addRow(
 			width = 1
 		end
 		if bgcolor == nil then
-			bgcolor = colors.defaultGrey
+			bgcolor = colors.defaultGrey :: Color3
 		end
 
-		local tl = guiUtil.getTl("01" .. text, UDim2.new(width, 0, 1, 0), 2, frame, bgcolor, 1)
+		local actualBgColor: Color3 = bgcolor
+		local tl = guiUtil.getTl("01" .. text, UDim2.new(width, 0, 1, 0), 2, frame, actualBgColor, 1)
 		tl.Text = text
 		if textColor ~= nil then
 			tl.TextColor3 = textColor
@@ -53,12 +54,13 @@ local function addRow(
 	return frame
 end
 
-module.createFindScreenGui = function(options: tt.signFindOptions): ScreenGui
+module.createFindScreenGui = function(options: tt.dcFindResponse): ScreenGui
 	local newFindSgui: ScreenGui = Instance.new("ScreenGui")
 	newFindSgui.IgnoreGuiInset = true
 	newFindSgui.Name = "NewFindSgui"
 
-	local detailsMessage = tostring(options.findCount) .. "/" .. tostring(options.totalSignsInGame)
+	local detailsMessage = tostring(options.userFindCount) .. "/" .. tostring(options.totalSignsInGame)
+
 	local finderMessage = tpUtil.getCardinalEmoji(options.signTotalFinds) .. " finder!"
 
 	local frame = Instance.new("Frame")
@@ -106,7 +108,12 @@ module.createFindScreenGui = function(options: tt.signFindOptions): ScreenGui
 
 	--other finders of this sign
 	local descTl = guiUtil.getTl("03lastfound", UDim2.new(1, 0, 0.10, 0), 2, frame, colors.meColor, 1)
-	descTl.Text = string.format("Last found by " .. options.lastFinderUsername)
+	descTl.Text = string.format(
+		"Last found by %s, %d seconds ago.",
+		options.lastFinderUsername,
+		math.floor(options.lastFindAgoSeconds)
+	)
+
 	descTl.TextXAlignment = Enum.TextXAlignment.Center
 
 	if options.lastFinderUserId and options.lastFinderUserId ~= 0 and options.lastFinderUserId ~= "0" then
@@ -132,6 +139,7 @@ module.createFindScreenGui = function(options: tt.signFindOptions): ScreenGui
 		img.BorderSizePixel = 1
 		img.BackgroundColor3 = colors.grey
 		img.Parent = portraitRow
+		img.ScaleType = Enum.ScaleType.Crop
 	end
 
 	guiUtil.setupKillOnClick(newFindSgui, nil)

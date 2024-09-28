@@ -2,6 +2,9 @@
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
+
+local tt = require(game.ReplicatedStorage.types.gametypes)
+
 local rdb = require(game.ServerScriptService.rdb)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
@@ -9,9 +12,30 @@ local config = require(game.ReplicatedStorage.config)
 
 local module = {}
 
+local setSignPosition = function(data: { name: string, signId: number, x: number, y: number, z: number })
+	local request: tt.postRequest = {
+		remoteActionName = "setSignPosition",
+		data = data,
+	}
+	local response = rdb.MakePostRequest(request)
+end
+
+local getKnownSignIds = function(): { [number]: boolean }
+	local request: tt.postRequest = {
+		remoteActionName = "getKnownSignIds",
+		data = {},
+	}
+	local raw = rdb.MakePostRequest(request)
+	local res = {}
+	for signId, val in pairs(raw) do
+		res[tonumber(signId)] = val
+	end
+	return res
+end
+
 --set them according to their positiong in generated.
 module.checkSignsNeedingPushing = function()
-	local knownSignIds: { [number]: boolean } = rdb.GetKnownSignIds()
+	local knownSignIds: { [number]: boolean } = getKnownSignIds()
 	-- note that the server will not fully register new signs in its cache until its been restarted.
 	-- This leads to spurious local reposting of signs on server startup occasionally
 	local knownSignCount = 0
@@ -40,7 +64,7 @@ module.checkSignsNeedingPushing = function()
 				z = tpUtil.noe(pos.Z),
 				name = signname,
 			}
-			rdb.SetSignPosition(data)
+			setSignPosition(data)
 		end
 	end
 end
