@@ -5,7 +5,8 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local module = {}
+local specialSign = {}
+local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
@@ -16,7 +17,7 @@ local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 local pulseLaunchDebounce = false
 
 -------------- MAIN --------------
-module.InformRunEnded = function()
+specialSign.InformRunEnded = function()
 	pulseLaunchDebounce = false
 end
 
@@ -46,21 +47,31 @@ local DoLaunchForPulse = function()
 	pulseLaunchDebounce = false
 end
 
-module.InformRetouch = function()
+specialSign.InformRetouch = function()
 	if pulseLaunchDebounce then
 		return
 	end
 	DoLaunchForPulse()
 end
 
-module.InformRunStarting = function()
+specialSign.InformRunStarting = function()
 	pulseLaunchDebounce = false
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	DoLaunchForPulse()
 end
 
-module.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?) end
+specialSign.CanRunEnd = function(): tt.runEndExtraDataForRacing
+	return {
+		canRunEndNow = true,
+	}
+end
 
+specialSign.GetName = function()
+	return "Pulse"
+end
+
+specialSign.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?) end
+local module: tt.ScriptInterface = specialSign
 _annotate("end")
 return module

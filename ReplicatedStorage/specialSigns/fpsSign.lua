@@ -11,7 +11,8 @@ https://github.com/terrainparkour/terrainparkour/blob/master/StarterPlayer/Start
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local module = {}
+local specialSign = {}
+local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
@@ -24,16 +25,27 @@ local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 ----------- GLOBALS -----------
 -------------- MAIN --------------
-module.InformRunEnded = function()
+specialSign.InformRunEnded = function()
 	localPlayer.CameraMode = Enum.CameraMode.Classic
 end
 
-module.InformRunStarting = function()
+specialSign.InformRunStarting = function()
 	localPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
 end
-module.InformRetouch = function() end
+specialSign.InformRetouch = function() end
 
-module.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?) end
+specialSign.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?) end
 
+specialSign.CanRunEnd = function(): tt.runEndExtraDataForRacing
+	return {
+		canRunEndNow = true,
+	}
+end
+
+specialSign.GetName = function()
+	return "FPS"
+end
+
+local module: tt.ScriptInterface = specialSign
 _annotate("end")
 return module

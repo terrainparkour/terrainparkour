@@ -51,7 +51,7 @@ local periodicallySendErrors = function()
 				remoteActionName = "reportServerErrors",
 				data = { errors = theErrors },
 			}
-			local res = posting.MakePostRequest(request)["res]"]
+			local res = posting.MakePostRequest(request)["res"]
 			theErrors = {}
 		end
 		task.wait(20)

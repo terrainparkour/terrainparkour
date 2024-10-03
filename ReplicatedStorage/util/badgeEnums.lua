@@ -1210,12 +1210,12 @@ local badges: { [string]: tt.badgeDescriptor } = {
 		badgeClass = badgeClasses.META,
 		hint = "",
 	},
-	-- Unused2 = {
-	-- 	name = "B",
-	-- 	assetId = 1882550611928475,
-	-- 	badgeClass = badgeClasses.CONTRIBUTION,
-	-- 	hint = "",
-	-- },
+	MaxHarmsBadge = {
+		name = "Max Harms",
+		assetId = 1882550611928475,
+		badgeClass = badgeClasses.WEIRD,
+		hint = "",
+	},
 	-- Unused3 = {
 	-- 	name = "C",
 	-- 	assetId = 1007417965641417,

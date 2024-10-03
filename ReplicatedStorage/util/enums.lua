@@ -2,10 +2,13 @@
 
 local module = {}
 
-module.gameVersion = "0.298"
+module.gameVersion = "0.303"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
+	["Schlafli"] = 592,
+	["Elon"] = 591,
+	["Society"] = 590,
 	["Lavaslug"] = 589,
 	["Alone"] = 588,
 	["Auryn"] = 587,
@@ -592,7 +595,7 @@ local name2signId: { [string]: number } = {
 	["◄"] = 551,
 	["🗯"] = 552,
 	["Gemelo"] = 553,
-	["Cow"] = 554,
+	-- ["Cow"] = 554,
 	["Claude"] = 555,
 	["Molière"] = 556,
 	["Éliante"] = 557,

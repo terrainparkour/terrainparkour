@@ -18,7 +18,8 @@ Obviously I want to be able to do more there, not just text but full UIs etc.
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local module = {}
+local specialSign = {}
+local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
@@ -37,7 +38,7 @@ local loopRunning = false
 local killLoop = false
 
 -------------- MAIN --------------
-module.InformRunEnded = function()
+specialSign.InformRunEnded = function()
 	_annotate("telling sign the run ended.")
 	if loopRunning then
 		killLoop = true
@@ -83,7 +84,7 @@ local startDescriptionLoopingUpdate = function()
 				lastHealthText = healthText
 				local ok1 = activeRunSGui.UpdateMovementDetails(healthText)
 				if not ok1 then
-					module.InformRunEnded()
+					specialSign.InformRunEnded()
 					loopRunning = false
 					killLoop = false
 					break
@@ -95,7 +96,7 @@ local startDescriptionLoopingUpdate = function()
 	end)
 end
 
-module.InformRunStarting = function()
+specialSign.InformRunStarting = function()
 	_annotate("init")
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
@@ -119,7 +120,7 @@ module.InformRunStarting = function()
 	assert(not killLoop, "killLoop running?")
 end
 
-module.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?)
+specialSign.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?)
 	if not floorMaterial then
 		return
 	end
@@ -133,7 +134,7 @@ module.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?)
 		if humanoid.Health <= 40 then
 			local signId = tpUtil.signName2SignId("🗯")
 			humanoid.Health = 100
-			module.InformRunEnded()
+			specialSign.InformRunEnded()
 			warper.WarpToSignId(signId)
 			humanoid.Health = 100
 			return
@@ -149,7 +150,19 @@ module.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?)
 	end
 end
 
-module.InformRetouch = function() end
+specialSign.InformRetouch = function() end
+
+specialSign.CanRunEnd = function(): tt.runEndExtraDataForRacing
+	return {
+		canRunEndNow = true,
+	}
+end
+
+specialSign.GetName = function()
+	return "🗯"
+end
+
+local module: tt.ScriptInterface = specialSign
 
 _annotate("end")
 return module

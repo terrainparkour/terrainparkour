@@ -220,8 +220,7 @@ local function ServerDoWarpToPosition(player: Player, pos: Vector3, randomize: b
 	if randomize then
 		local goodPosition = findWarpablePositionForSign(sign)
 		if not goodPosition then
-			_annotate("can't figure out how to warp to here, so bailing out.")
-			annotater.Error("no good position found")
+			annotater.Error(string.format("no good position found for: %s", tostring(sign.Name)))
 			return false
 		end
 		pos = goodPosition
@@ -250,10 +249,13 @@ local function ServerDoWarpToPosition(player: Player, pos: Vector3, randomize: b
 	end
 	humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
 	humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, true)
-	task.wait(0.02)
-	lightPillar.CreateTemporaryLightPillar(rootPart.Position, "source")
 
+	task.wait(0.02)
+
+	lightPillar.CreateTemporaryLightPillar(rootPart.Position, "source")
+	humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
 	rootPart.Position = pos
+	humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
 	_annotate(string.format("Changed Position to %s", tostring(pos)))
 
 	lightPillar.CreateTemporaryLightPillar(pos, "destination")

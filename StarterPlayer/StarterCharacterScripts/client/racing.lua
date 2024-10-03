@@ -29,6 +29,7 @@ local fireEvent = avatarEventFiring.FireEvent
 local activeRunSGui = require(game.ReplicatedStorage.gui.activeRunSGui)
 local terrainTouchMonitor = require(game.ReplicatedStorage.terrainTouchMonitor)
 local tt = require(game.ReplicatedStorage.types.gametypes)
+local morphs = require(game.StarterPlayer.StarterCharacterScripts.client.morphs)
 
 ---------- CHARACTER -------------
 local localPlayer: Player = game.Players.LocalPlayer
@@ -193,17 +194,47 @@ local function TouchedSign(signId: number, signName: string, touchTimeTick: numb
 			endSignName = signName,
 			runMilliseconds = runMilliseconds,
 			floorSeenCount = floorSeen,
+			useThisRunMilliseconds = runMilliseconds,
 		}
 		local event: tt.clientToServerRemoteEvent = {
 			eventKind = "runEnding",
 			data = runEndData,
 		}
-		ClientToServerRemoteFunction:InvokeServer(event)
 
 		-- various local scripts will respond - non-exhaustively: particles will show, morphs will reset, movement reset(?) etc.
-		fireEvent(aet.avatarEventTypes.RUN_COMPLETE, details)
+		local activeDynamicSign = morphs.GetActiveRunSignModule()
+		if activeDynamicSign then
+			local canEndRunData = activeDynamicSign.CanRunEnd()
+			_annotate(string.format("canEndRunData:"), canEndRunData)
+			if canEndRunData.canRunEndNow then
+				if canEndRunData.extraTimeS then
+					local usingMillisecondsIncludingPenalties = runMilliseconds + canEndRunData.extraTimeS * 1000
+					_annotate(
+						string.format(
+							"end run with extra time added. original %0.1f, after penalties %0.1f",
+							runMilliseconds,
+							usingMillisecondsIncludingPenalties
+						)
+					)
+					runEndData.useThisRunMilliseconds = usingMillisecondsIncludingPenalties
+					endClientRun("end run with extra time added.", touchTimeTick)
+					ClientToServerRemoteFunction:InvokeServer(event)
+				else
+					_annotate("dynamic sign, but no penalty.")
+					endClientRun("end run with no time added.", touchTimeTick)
+					ClientToServerRemoteFunction:InvokeServer(event)
+				end
 
-		endClientRun("normal end run.", touchTimeTick)
+				fireEvent(aet.avatarEventTypes.RUN_COMPLETE, details)
+			else
+				_annotate(string.format("cannot end run without signs permission. %s", activeDynamicSign.GetName()))
+			end
+		else
+			_annotate("normal end run.")
+			fireEvent(aet.avatarEventTypes.RUN_COMPLETE, details)
+			endClientRun("normal end run.", touchTimeTick)
+			ClientToServerRemoteFunction:InvokeServer(event)
+		end
 	end
 	clientTouchDebounce[localPlayer.Name] = false
 end

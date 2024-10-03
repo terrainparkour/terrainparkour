@@ -42,6 +42,7 @@ local function receiveClientMessageAboutRunEnding(player: Player, data: tt.runEn
 	local startSignName = data.startSignName
 	local endSignName = data.endSignName
 	local runMilliseconds = data.runMilliseconds
+	local useThisRunMilliseconds = data.useThisRunMilliseconds
 	local floorSeenCount = data.floorSeenCount
 	if banning.getBanLevel(player.UserId) > 0 then
 		_annotate(
@@ -69,7 +70,7 @@ local function receiveClientMessageAboutRunEnding(player: Player, data: tt.runEn
 			userId = userId,
 			startSignId = startSignId,
 			endSignId = endSignId,
-			runMilliseconds = runMilliseconds,
+			runMilliseconds = useThisRunMilliseconds,
 			allPlayerUserIds = userIds,
 		}
 		local dcRunResponse: tt.dcRunResponse = userFinishedRun(userFinishedRunOptions)
@@ -91,7 +92,7 @@ local function receiveClientMessageAboutRunEnding(player: Player, data: tt.runEn
 	local data: tt.serverFinishRunNotifierType = {
 		startSignId = startSignId,
 		endSignId = endSignId,
-		timeMs = runMilliseconds,
+		timeMs = useThisRunMilliseconds,
 		userId = userId,
 		username = playerData2.GetUsernameByUserId(userId),
 	}
@@ -100,7 +101,9 @@ end
 
 module.Init = function()
 	ClientToServerRemoteFunction.OnServerInvoke = function(player: Player, event: tt.clientToServerRemoteEvent)
+		_annotate("server received event", event.kind)
 		if event.eventKind == "runEnding" then
+			_annotate("server received runEnding event", event.data)
 			receiveClientMessageAboutRunEnding(player, event.data)
 		end
 	end

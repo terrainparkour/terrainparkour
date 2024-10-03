@@ -235,12 +235,18 @@ module.describeSingleSign = function(speaker: Player, signId: number, channel)
 	end
 
 	for _, leader in ipairs(toleaders) do
+		if not leader then
+			continue
+		end
+		if not leader.userId then
+			continue
+		end
 		local username: string
 
 		if leader.userId < 0 then
 			username = "TestUser" .. leader.userId
 		else
-			username = playerData2.getUsernameByUserId(leader.userId)
+			username = playerData2.GetUsernameByUserId(leader.userId)
 		end
 		if counts[username] == nil then
 			counts[username] = { to = 0, from = 0, username = username, inServer = false }

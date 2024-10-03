@@ -14,38 +14,18 @@ local signProfileGrindingGui = require(game.ReplicatedStorage.gui.signProfile.si
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
 
---[[
-
-export type playerSignProfileData = {
-    signName: string,
-    signId: number,
-    relationships: { userSignSignRelationship },
-    unrunCwrs: { signName: string, runCount: number }, --limited selection. This is the signNames followed by parentheticals with the number of times they've been run total
-    unrunRaces: { signName: string, runCount: number }, --EXCLUDES unrunCwrs. like, 'Wilson (10)'
-    username: string,
-    userId: number, --the SUBJECT userid.
-    neverRunSignIds: { number },
-}
-
---a chip that appears in a row for a placement level, DNP or unrun, for cwr races/noncwr races on sign profiles.
-export type signProfileChipType = {
-    text: string,
-    relatedRaceData: { relatedRace } | nil,
-    widthWeight: number?,
-    bgcolor: Color3?,
-}
-
-    ]]
---
 local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
 local signGrindUIScreenGui: ScreenGui = nil
 
--- for a list of relationships, creates a nice row.
+-- for a list of relationships, creates a nice row with:"your results in this type of race from this sign including: your
+-- placements at every place (first..10th, did not place) followed by also a list of unrun races. --which can be riskier since
+-- you may not have even found the sign yet.
 local createPlacementRowForSetOfRaces = function(
 	sourceSignName: string,
 	sourceContext: string,
 	relationships: { tt.userSignSignRelationship },
-	unruns: { tt.relatedRace }
+	unruns: { tt.relatedRace },
+	globalUnrunRaces: { tt.relatedRace }
 ): { tt.signProfileChipType }
 	local placementChips: { tt.signProfileChipType } = {}
 	local placementCounts = {}
@@ -59,6 +39,7 @@ local createPlacementRowForSetOfRaces = function(
 			placementRelatedRaces[rel.bestPlace] = {}
 		end
 		placementCounts[rel.bestPlace] += 1
+
 		table.insert(placementRelatedRaces[rel.bestPlace], rel)
 	end
 	local startSignId = tpUtil.signName2SignId(sourceSignName)
@@ -67,15 +48,18 @@ local createPlacementRowForSetOfRaces = function(
 	-- now iterate over the places.
 	while ii <= 11 do
 		local useCount = placementCounts[ii] or 0
-		local guys: { tt.userSignSignRelationship } = placementRelatedRaces[ii]
+		local relationshipsForThisPlacementRank: { tt.userSignSignRelationship } = placementRelatedRaces[ii]
 
-		if guys then
-			table.sort(guys, function(a: tt.userSignSignRelationship, b: tt.userSignSignRelationship)
-				if a.runCount ~= b.runCount then
-					return a.runCount < b.runCount
+		if relationshipsForThisPlacementRank then
+			table.sort(
+				relationshipsForThisPlacementRank,
+				function(a: tt.userSignSignRelationship, b: tt.userSignSignRelationship)
+					if a.runCount ~= b.runCount then
+						return a.runCount < b.runCount
+					end
+					return a.endSignName < b.endSignName
 				end
-				return a.endSignName < b.endSignName
-			end)
+			)
 		end
 		local term
 		if ii < 11 then
@@ -91,18 +75,20 @@ local createPlacementRowForSetOfRaces = function(
 		clicker.TextScaled = true
 		clicker.TextSize = 14
 
-		if guys and #guys > 0 then
+		if relationshipsForThisPlacementRank and #relationshipsForThisPlacementRank > 0 then
 			clicker.Activated:Connect(function()
 				local fakeRrs: { tt.relatedRace } = {}
-				for _, rel in ipairs(guys) do
+				for _, rel in ipairs(relationshipsForThisPlacementRank) do
 					local tehFake: tt.relatedRace = {
 						signName = rel.endSignName,
 						totalRunnerCount = rel.runCount,
 						signId = rel.endSignId,
+						hasFoundSign = true, --the onlye signs that it's even possible we haven't found are the unrun ones.
 					}
 					table.insert(fakeRrs, tehFake)
 				end
-				local subwindowTitle = string.format("Grinding %s %s from %s", term, sourceContext, sourceSignName)
+				local subwindowTitle =
+					string.format("Grinding %s races from %s where you place %s", sourceContext, sourceSignName, term)
 				local s = signProfileGrindingGui.MakeSignProfileGrindingGui(startSignId, subwindowTitle, fakeRrs)
 				signGrindUIScreenGui = playerGui:FindFirstChild("SignGrindUIScreenGui")
 
@@ -127,17 +113,17 @@ local createPlacementRowForSetOfRaces = function(
 	end
 
 	-- accumulating the info on unrun.
-	local clicker = Instance.new("TextButton")
-	clicker.Name = "99_UnrunChip"
-	clicker.Text = string.format("your unrun (%d)", #unruns)
-	clicker.Size = UDim2.new(1, 0, 1, 0)
-	clicker.BackgroundTransparency = 1
-	clicker.TextScaled = true
-	clicker.TextSize = 14
+	local yourUnrunClicker = Instance.new("TextButton")
+	yourUnrunClicker.Name = "98_UnrunChip"
+	yourUnrunClicker.Text = string.format("you never ran: %d", #unruns)
+	yourUnrunClicker.Size = UDim2.new(1, 0, 1, 0)
+	yourUnrunClicker.BackgroundTransparency = 1
+	yourUnrunClicker.TextScaled = true
+	yourUnrunClicker.TextSize = 14
 
 	if unruns and #unruns > 0 then
-		clicker.Activated:Connect(function()
-			local subwindowTitle = string.format("Grinding Unrun %s from %s", sourceContext, sourceSignName)
+		yourUnrunClicker.Activated:Connect(function()
+			local subwindowTitle = string.format("Grinding your unrun %s from %s", sourceContext, sourceSignName)
 			local s = signProfileGrindingGui.MakeSignProfileGrindingGui(startSignId, subwindowTitle, unruns)
 			signGrindUIScreenGui = playerGui:FindFirstChild("SignGrindUIScreenGui")
 
@@ -152,8 +138,36 @@ local createPlacementRowForSetOfRaces = function(
 		end)
 	end
 
-	local theGuy: tt.signProfileChipType = { text = "NONE", clicker = clicker, widthWeight = 1 }
+	local theGuy: tt.signProfileChipType = { text = "NONE", clicker = yourUnrunClicker, widthWeight = 1 }
 	table.insert(placementChips, theGuy)
+
+	-- local globalUnrunClicker = Instance.new("TextButton")
+	-- globalUnrunClicker.Name = "99_GlobalUnrunChip"
+	-- globalUnrunClicker.Text = string.format("nobody ever ran: %d", #unruns)
+	-- globalUnrunClicker.Size = UDim2.new(1, 0, 1, 0)
+	-- globalUnrunClicker.BackgroundTransparency = 1
+	-- globalUnrunClicker.TextScaled = true
+	-- globalUnrunClicker.TextSize = 14
+
+	-- if globalUnrunRaces and #globalUnrunRaces > 0 then
+	-- 	globalUnrunClicker.Activated:Connect(function()
+	-- 		local subwindowTitle = string.format("Grinding global never run %s from %s ", sourceContext, sourceSignName)
+	-- 		local s = signProfileGrindingGui.MakeSignProfileGrindingGui(startSignId, subwindowTitle, globalUnrunRaces)
+	-- 		signGrindUIScreenGui = playerGui:FindFirstChild("SignGrindUIScreenGui")
+
+	-- 		if not signGrindUIScreenGui then
+	-- 			signGrindUIScreenGui = Instance.new("ScreenGui")
+	-- 			signGrindUIScreenGui.Name = "SignGrindUIScreenGui"
+	-- 			signGrindUIScreenGui.Parent = playerGui
+	-- 			signGrindUIScreenGui.IgnoreGuiInset = true
+	-- 		end
+	-- 		signGrindUIScreenGui.Enabled = true
+	-- 		s.Parent = signGrindUIScreenGui
+	-- 	end)
+	-- end
+
+	-- local theGuy: tt.signProfileChipType = { text = "NONE", clicker = globalUnrunClicker, widthWeight = 1 }
+	-- table.insert(placementChips, theGuy)
 
 	return placementChips
 end
@@ -161,15 +175,23 @@ end
 -- it takes all sign relationships of you+the sign, filters for just the non-cwrs, and makes rows.
 local signProfilePlacementRowMaker = function(data: tt.playerSignProfileData): { tt.signProfileChipType }
 	local placementChips: { tt.signProfileChipType } = {}
-	table.insert(placementChips, { text = "Your non-CWR results", widthWeight = 4 })
+	table.insert(placementChips, { text = "Your non-CWR performance", widthWeight = 4 })
 	local relatedRelationships: { tt.userSignSignRelationship } = {}
+
+	-- filtering just for cwrs here.
 	for _, rel in ipairs(data.relationships) do
 		if rel.isCwr then
 			continue
 		end
 		table.insert(relatedRelationships, rel)
 	end
-	local otherChips = createPlacementRowForSetOfRaces(data.signName, "nonCWRs", relatedRelationships, data.unrunRaces)
+	local otherChips = createPlacementRowForSetOfRaces(
+		data.signName,
+		"nonCWRs",
+		relatedRelationships,
+		data.unrunRaces,
+		data.unrunRaces
+	)
 	for _, chip in ipairs(otherChips) do
 		table.insert(placementChips, chip)
 	end
@@ -179,7 +201,7 @@ end
 -- it takes all sign relationships of you+the sign, filters for just the cwrs, and makes rows.
 local signProfileCRWRowMaker = function(data: tt.playerSignProfileData): { tt.signProfileChipType }
 	local placementChips: { tt.signProfileChipType } = {}
-	table.insert(placementChips, { text = "Your CWR results", widthWeight = 4 })
+	table.insert(placementChips, { text = "Your CWR performance", widthWeight = 4 })
 	local relatedRelationships = {}
 	for _, rel in ipairs(data.relationships) do
 		if not rel.isCwr then
@@ -187,7 +209,8 @@ local signProfileCRWRowMaker = function(data: tt.playerSignProfileData): { tt.si
 		end
 		table.insert(relatedRelationships, rel)
 	end
-	local otherChips = createPlacementRowForSetOfRaces(data.signName, "CWRs", relatedRelationships, data.unrunCwrs)
+	local otherChips =
+		createPlacementRowForSetOfRaces(data.signName, "CWRs", relatedRelationships, data.unrunCwrs, data.unrunCwrs)
 	for _, chip in ipairs(otherChips) do
 		table.insert(placementChips, chip)
 	end

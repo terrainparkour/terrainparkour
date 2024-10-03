@@ -2,8 +2,8 @@ if true then
 	return
 end
 
-local oldName = "人"
-local newName = "Lavaslug"
+local oldName = "A"
+local newName = "Elon"
 local signsFolder = game.workspace:FindFirstChild("Signs")
 
 local function makeSign(part)

@@ -1,25 +1,26 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local module = {}
+local specialSign = {}
+local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
 local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
-local humanoid = character:WaitForChild("Humanoid") :: Humanoid
+local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 ----------- GLOBALS -----------
 local Moved = false
 local Stone = false
 -------------- MAIN --------------
 
-module.kill = function()
+specialSign.kill = function()
 	if Stone then
 		Stone = false
 	end
 end
 
-module.Init = function()
+specialSign.Init = function()
 	_annotate("init")
 	if humanoid.Velocity > 0 and Stone then
 		Moved = true
@@ -54,6 +55,20 @@ module.Init = function()
 	_annotate("init done")
 end
 
+specialSign.InformRetouch = function() end
+specialSign.CanRunEnd = function(): tt.runEndExtraDataForRacing
+	return {
+		canRunEndNow = true,
+	}
+end
+
+specialSign.GetName = function()
+	return "Medusa"
+end
+
+local module: tt.ScriptInterface = specialSign
 local DescriptionUpdateText = function()
 	--I ain't doing gui stuff, oh hell nah
 end
+
+return module

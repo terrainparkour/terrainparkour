@@ -13,6 +13,7 @@ local AvatarEventBindableEvent = remotes.getBindableEvent("AvatarEventBindableEv
 local aet = require(game.ReplicatedStorage.avatarEventTypes)
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
+local tt = require(game.ReplicatedStorage.types.gametypes)
 
 -- this is shared w/terrainTouchMonitor incorrectly now. but let's see how it works out.
 
@@ -30,12 +31,24 @@ local ghostSign = require(game.ReplicatedStorage.specialSigns.ghostSign)
 local cowSign = require(game.ReplicatedStorage.specialSigns.cowSign)
 local fpsSign = require(game.ReplicatedStorage.specialSigns.fpsSign)
 local zoomSign = require(game.ReplicatedStorage.specialSigns.zoomSign)
+local elonSign = require(game.ReplicatedStorage.specialSigns.elonSign)
+local societySign = require(game.ReplicatedStorage.specialSigns.societySign)
 local avatarManipulation = require(game.ReplicatedStorage.avatarManipulation)
 
 ----------- GLOBALS -----------
 
 local isMorphBlockedByWarp = false
-local activeRunSignModule: Script | nil = nil
+local activeRunSignModule: tt.ScriptInterface | nil = nil
+
+module.GetActiveRunSignModule = function()
+	_annotate("someone asked for active run sign module. ")
+	if activeRunSignModule then
+		_annotate(string.format("active run sign module: %s", activeRunSignModule.GetName()))
+	else
+		_annotate("no active run sign module.")
+	end
+	return activeRunSignModule
+end
 
 ----------- FUNCTIONS -----------
 local eventsWeCareAbout: { number } = {
@@ -147,6 +160,10 @@ local function handleAvatarEvent(ev: aet.avatarEvent)
 			activeRunSignModule = zoomSign
 		elseif ev.details.startSignName == "Cow" then
 			activeRunSignModule = cowSign
+		elseif ev.details.startSignName == "Elon" then
+			activeRunSignModule = elonSign
+		elseif ev.details.startSignName == "Society" then
+			activeRunSignModule = societySign
 		end
 		if activeRunSignModule then
 			_annotate("initting active module.")

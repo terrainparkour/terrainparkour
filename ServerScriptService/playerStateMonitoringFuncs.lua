@@ -19,7 +19,17 @@ local PlayersService = game:GetService("Players")
 
 module.BackfillBadges = function(player: Player): nil
 	-- we do this so that the caches for all the badgeStatus and stuff are likely already gotten.
-	badgeCheckersSecret.BackfillBadges(player)
+	local s, e = pcall(function()
+		badgeCheckersSecret.BackfillBadges(player)
+	end)
+
+	if not s then
+		if player then
+			annotater.Error("Error backfilling badges for " .. player.UserId .. ": " .. e)
+		else
+			annotater.Error("Error backfilling badges for unknown player: " .. e)
+		end
+	end
 end
 
 module.LogJoin = function(player: Player): nil

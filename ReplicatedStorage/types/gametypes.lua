@@ -18,6 +18,7 @@ export type runEndingData = {
 	endSignName: string,
 	runMilliseconds: number,
 	floorSeenCount: number,
+	useThisRunMilliseconds: number?, --when we magically override the time to be used in the run!
 }
 
 export type dcFindResponse = {
@@ -35,7 +36,7 @@ export type dcFindResponse = {
 	kind: string, -- the only non-default one in lua side.
 }
 
-export type pyUserBadgeStatus = {
+export type jsonBadgeStatus = {
 	userId: number,
 	badgeAssetId: number,
 	badgeName: string,
@@ -288,9 +289,15 @@ export type userSignSignRelationship = {
 	bestTimeMs: number,
 	dist: number,
 	isCwr: boolean,
+	hasFoundFirstSign: boolean,
 }
 
-export type relatedRace = { totalRunnerCount: number, signId: number, signName: string }
+export type relatedRace = {
+	totalRunnerCount: number,
+	signId: number,
+	signName: string,
+	hasFoundSign: boolean,
+}
 
 export type playerSignProfileData = {
 	signName: string,
@@ -298,6 +305,9 @@ export type playerSignProfileData = {
 	relationships: { userSignSignRelationship },
 	unrunCwrs: { relatedRace }, --limited selection. This is the signNames followed by parentheticals with the number of times they've been run total
 	unrunRaces: { relatedRace }, --EXCLUDES unrunCwrs. like, 'Wilson (10)'
+	-- globalUnrunRaces: { relatedRace }, -- races which nobody has ever run --this overlaps with neverRunSignIds.
+	-- TODO actually we should really combine this with related race. that is, there doesn't need to be two types here.
+	-- just one type scoped to: user, source signId and every single one is like: targetSignId, place, anyone has ever run, isCwr, cause the code that progressively prepares the data here is too multilayer.
 	username: string,
 	userId: number, --the SUBJECT userid.
 	neverRunSignIds: { number },
@@ -397,6 +407,21 @@ export type currentRunUIConfiguration = {
 export type postRequest = {
 	remoteActionName: string,
 	data: any,
+}
+
+export type ScriptInterface = {
+	InformRunEnded: () -> (),
+	InformRunStarting: () -> (),
+	InformRetouch: (() -> ())?,
+	InformSawFloorDuringRunFrom: (floorMaterial: Enum.Material) -> (),
+	CanRunEnd: () -> runEndExtraDataForRacing,
+	GetName: () -> string,
+}
+
+-- racing module will consult the active special sign and do what it says based on this info transfer system.
+export type runEndExtraDataForRacing = {
+	canRunEndNow: boolean,
+	extraTimeS: number?, -- extra time to add to the end of the run
 }
 
 return {}

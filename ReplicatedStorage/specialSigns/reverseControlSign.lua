@@ -7,7 +7,8 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local module = {}
+local specialSign = {}
+local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
@@ -56,16 +57,31 @@ local function reverseControls()
 end
 
 -------------- MAIN --------------
-module.Kill = function() end
 
-module.Init = function()
+specialSign.InformRunStarting = function()
 	_annotate("init")
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	_annotate("init done")
 end
 
-module.SawFloor = function(floorMaterial: Enum.Material?) end
+specialSign.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material)
+	-- Implementation here if needed
+end
 
+specialSign.InformRetouch = function() end
+specialSign.CanRunEnd = function(): tt.runEndExtraDataForRacing
+	return {
+		canRunEndNow = true,
+	}
+end
+
+specialSign.GetName = function(): string
+	return "Reverse"
+end
+
+specialSign.InformRunEnded = function() end
+
+local module: tt.ScriptInterface = specialSign
 _annotate("end")
 return module

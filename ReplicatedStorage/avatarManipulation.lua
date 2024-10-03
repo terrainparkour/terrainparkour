@@ -167,7 +167,11 @@ module.ResetPhysicalAvatarMorphs = function(humanoid: Humanoid, character: Model
 	end
 
 	local state = humanoid:GetState()
-	if state == Enum.HumanoidStateType.Ragdoll or state == Enum.HumanoidStateType.FallingDown then
+	if
+		state == Enum.HumanoidStateType.Ragdoll
+		or state == Enum.HumanoidStateType.FallingDown
+		or state == Enum.HumanoidStateType.PlatformStanding
+	then
 		_annotate("reset state yet char is in ragdoll.")
 		--this happens because there is some lag in setting state
 		--this can happen after warping

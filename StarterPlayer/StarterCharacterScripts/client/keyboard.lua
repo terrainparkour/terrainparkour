@@ -121,9 +121,9 @@ local function KillPopups()
 		if el.Name == "EphemeralTooltip" then
 			el:Destroy()
 		end
-		if el.Name == "SignGrindUIScreenGui" then
-			el:Destroy()
-		end
+		-- if el.Name == "SignGrindUIScreenGui" then
+		-- 	el:Destroy()
+		-- end
 	end
 	if not ignoreChatWhenHittingX then
 		ToggleChat(false)

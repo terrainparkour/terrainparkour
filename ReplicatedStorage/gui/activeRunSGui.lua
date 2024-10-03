@@ -29,7 +29,7 @@ local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
 -- GLOBALS
 local currentRunStartTick: number = 0
 local currentRunSignName: string = ""
-local currentRunStartPosition: Vector3
+local currentRunStartPosition: Vector3 = Vector3.new(0, 0, 0)
 local theFont = Font.new("rbxasset://fonts/families/Arimo.json")
 
 -- this is okay because a user is only running from one at a time.
@@ -159,7 +159,10 @@ local updateRunProgress = function()
 		module.KillActiveRun()
 		return false
 	end
-
+	if not currentRunStartPosition then
+		_annotate("no currentRunStartPosition in runProgressSgui, kllin.")
+		return
+	end
 	local dist = tpUtil.getDist(character.PrimaryPart.Position, currentRunStartPosition)
 
 	local formattedRuntime = ""

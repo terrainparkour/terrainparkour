@@ -769,12 +769,12 @@ module.Init = function()
 	_annotate("End of movement.Init.")
 end
 
-spawn(function()
-	while true do
-		task.wait(1)
-		print(humanoid:GetState())
-	end
-end)
+-- spawn(function()
+-- 	while true do
+-- 		task.wait(1)
+-- 		print(humanoid:GetState())
+-- 	end
+-- end)
 
 _annotate("end")
 return module

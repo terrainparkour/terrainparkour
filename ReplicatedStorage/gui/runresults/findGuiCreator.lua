@@ -108,10 +108,19 @@ module.createFindScreenGui = function(options: tt.dcFindResponse): ScreenGui
 
 	--other finders of this sign
 	local descTl = guiUtil.getTl("03lastfound", UDim2.new(1, 0, 0.10, 0), 2, frame, colors.meColor, 1)
+
+	local daysAgo = math.floor(options.lastFindAgoSeconds / 86400)
+	local hoursAgo = math.floor((options.lastFindAgoSeconds - (daysAgo * 86400)) / 3600)
+	local minutesAgo = math.floor((options.lastFindAgoSeconds - (daysAgo * 86400) - (hoursAgo * 3600)) / 60)
+	local secondsAgo =
+		math.floor(options.lastFindAgoSeconds - (daysAgo * 86400) - (hoursAgo * 3600) - (minutesAgo * 60))
 	descTl.Text = string.format(
-		"Last found by %s, %d seconds ago.",
+		"Last found by %s, %d days, %d hours, %d minutes, and %d seconds ago.",
 		options.lastFinderUsername,
-		math.floor(options.lastFindAgoSeconds)
+		daysAgo,
+		hoursAgo,
+		minutesAgo,
+		secondsAgo
 	)
 
 	descTl.TextXAlignment = Enum.TextXAlignment.Center

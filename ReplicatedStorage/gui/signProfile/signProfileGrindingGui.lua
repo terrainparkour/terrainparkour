@@ -21,6 +21,7 @@ local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 
 --------------- FUNCTIONS -------------------------
 
+-- we need to be very careful; if not rr.hasFoundSign, we need to make sure we don't let the player highlight the target.
 local function getIndividualGrindButton(startSignId: number, num: number, rr: tt.relatedRace): TextButton | nil
 	local name = string.format("%03d_GrindUIButtonTo %s", num, rr.signName)
 	local button = guiUtil.getTb(name, UDim2.new(0, 90, 0, 30), 1, nil, colors.lightBlue, 1)
@@ -29,7 +30,11 @@ local function getIndividualGrindButton(startSignId: number, num: number, rr: tt
 	button.BorderSizePixel = 0
 	button.BorderColor3 = Color3.fromRGB(100, 100, 100)
 	button.TextScaled = true
-	button.Text = string.format("%s (%d)", rr.signName, rr.totalRunnerCount)
+	local hasFoundSignText = ""
+	if not rr.hasFoundSign then
+		hasFoundSignText = " (?)"
+	end
+	button.Text = string.format("%s%s (%d)", rr.signName, hasFoundSignText, rr.totalRunnerCount)
 
 	button.MouseEnter:Connect(function()
 		local signProfileSgui: ScreenGui = localPlayer.PlayerGui:FindFirstChild("SignProfileSgui")
@@ -41,31 +46,37 @@ local function getIndividualGrindButton(startSignId: number, num: number, rr: tt
 		end
 	end)
 
-	button.Activated:Connect(function()
-		textHighlighting.KillAllExistingHighlights()
-		textHighlighting.DoHighlightSingleSignId(rr.signId, "getGrindButton.")
-		textHighlighting.RotateCameraToFaceSignId(rr.signId)
-		warper.WarpToSignId(startSignId, rr.signId)
-	end)
+	if rr.hasFoundSign then
+		button.Activated:Connect(function()
+			textHighlighting.KillAllExistingHighlights()
+			textHighlighting.DoHighlightSingleSignId(rr.signId, "getGrindButton.")
+			textHighlighting.RotateCameraToFaceSignId(rr.signId)
+			warper.WarpToSignId(startSignId, rr.signId)
+		end)
+	end
 
 	return button.Parent
 end
 
 -- make the permanent popup. for now just show tiles.
-module.MakeSignProfileGrindingGui = function(startSignId: number, sourceName: string, guys: { tt.relatedRace }): Frame
+module.MakeSignProfileGrindingGui = function(
+	startSignId: number,
+	sourceName: string,
+	relatedUnrunRacesOfType: { tt.relatedRace }
+): Frame
 	local d = windows.SetupFrame("signProfileGrinding", true, true, true)
 	local outerFrame = d.outerFrame
 	local contentFrame = d.contentFrame
 
 	local realGuyCount = 0
 	local buttons = {}
-	for _, rr in ipairs(guys) do
-		local sign = tpUtil.signId2Sign(rr.signId)
+	for _, unrunRelationship: tt.relatedRace in ipairs(relatedUnrunRacesOfType) do
+		local sign = tpUtil.signId2Sign(unrunRelationship.signId)
 		if not sign then
 			continue
 		end
 
-		local button = getIndividualGrindButton(startSignId, realGuyCount, rr)
+		local button = getIndividualGrindButton(startSignId, realGuyCount, unrunRelationship)
 		if button then
 			table.insert(buttons, button)
 			realGuyCount += 1

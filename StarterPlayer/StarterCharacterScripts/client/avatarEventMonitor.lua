@@ -199,6 +199,7 @@ module.Init = function()
 				exactPositionOfHit = limb.Position,
 				sender = "avatarEventMonitor",
 			}
+			_annotate("accepted touch event with details", details)
 			fireEvent(aet.avatarEventTypes.TOUCH_SIGN, details)
 		end
 	end)

@@ -338,12 +338,6 @@ module.AttemptToParseRaceFromInput = function(message: string): tt.RaceParseResu
 		local sign2name = module.signId2signName(signId2)
 
 		local error = false
-		if not module.SignNameCanBeHighlighted(sign1name) then
-			error = string.format("No highlighting of: %s", tostring(sign1name))
-		end
-		if not module.SignNameCanBeHighlighted(sign2name) then
-			error = string.format("No highlighting of: %s", tostring(sign2name))
-		end
 
 		if signId1 == signId2 then
 			error = "Trol"

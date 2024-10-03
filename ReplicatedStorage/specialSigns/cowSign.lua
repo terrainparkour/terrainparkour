@@ -5,7 +5,8 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local module = {}
+local specialSign = {}
+local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 
@@ -24,7 +25,7 @@ local loopRunning = false
 local killLoop = false
 
 -------------- MAIN --------------
-module.InformRunEnded = function()
+specialSign.InformRunEnded = function()
 	character:ScaleTo(1)
 	if loopRunning then
 		killLoop = true
@@ -94,7 +95,7 @@ local startDescriptionLoopingUpdate = function()
 			local text = string.format("%0.2f size\n%s", usingMult, lastText)
 			local ok1 = activeRunSGui.UpdateMovementDetails(text)
 			if not ok1 then
-				module.InformRunEnded()
+				specialSign.InformRunEnded()
 				loopRunning = false
 				killLoop = false
 				break
@@ -104,7 +105,7 @@ local startDescriptionLoopingUpdate = function()
 	end)
 end
 
-module.InformRunStarting = function()
+specialSign.InformRunStarting = function()
 	_annotate("init")
 	character:ScaleTo(1)
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
@@ -122,8 +123,19 @@ module.InformRunStarting = function()
 	assert(not killLoop, "killLoop running?")
 end
 
-module.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?) end
-module.InformRetouch = function() end
+specialSign.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?) end
+specialSign.InformRetouch = function() end
 
+specialSign.CanRunEnd = function(): tt.runEndExtraDataForRacing
+	return {
+		canRunEndNow = true,
+	}
+end
+
+specialSign.GetName = function()
+	return "Cow"
+end
+
+local module: tt.ScriptInterface = specialSign
 _annotate("end")
 return module

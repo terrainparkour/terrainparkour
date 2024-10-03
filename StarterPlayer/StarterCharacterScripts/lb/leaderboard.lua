@@ -136,20 +136,41 @@ local function ensureLeaderboardOnScreen()
 	local position = leaderboardConfiguration.position
 	local size = leaderboardConfiguration.size
 
+	-- Convert UDim2 values to pixel values
+	local positionX = position.X.Scale * viewportSize.X + position.X.Offset
+	local positionY = position.Y.Scale * viewportSize.Y + position.Y.Offset
+	local sizeX = size.X.Scale * viewportSize.X + size.X.Offset
+	local sizeY = size.Y.Scale * viewportSize.Y + size.Y.Offset
+
+	-- Calculate boundaries
 	local minX = 0
 	local minY = 0
-	local maxX = viewportSize.X - size.X.Offset
-	local maxY = viewportSize.Y - size.Y.Offset
+	local maxX = viewportSize.X - sizeX
+	local maxY = viewportSize.Y - sizeY
 
-	local newX = math.clamp(position.X.Offset, minX, maxX)
-	local newY = math.clamp(position.Y.Offset, minY, maxY)
+	-- Clamp position within boundaries
+	local newX = math.clamp(positionX, minX, maxX)
+	local newY = math.clamp(positionY, minY, maxY)
 
-	if newX ~= position.X.Offset or newY ~= position.Y.Offset then
+	-- Check if position needs adjustment
+	if newX ~= positionX or newY ~= positionY then
+		-- Convert back to UDim2
 		local newPosition = UDim2.new(0, newX, 0, newY)
 		leaderboardConfiguration.position = newPosition
 		lbOuterFrame.Position = newPosition
 		_annotate(string.format("Adjusted Leaderboard position to %s", tostring(newPosition)))
-		-- saveLeaderboardConfiguration()
+		saveLeaderboardConfiguration()
+	end
+
+	-- Ensure size is within viewport
+	local newSizeX = math.min(sizeX, viewportSize.X)
+	local newSizeY = math.min(sizeY, viewportSize.Y)
+	if newSizeX ~= sizeX or newSizeY ~= sizeY then
+		local newSize = UDim2.new(0, newSizeX, 0, newSizeY)
+		leaderboardConfiguration.size = newSize
+		lbOuterFrame.Size = newSize
+		_annotate(string.format("Adjusted Leaderboard size to %s", tostring(newSize)))
+		saveLeaderboardConfiguration()
 	end
 end
 
@@ -417,9 +438,8 @@ local function applyUserDataChanges(userDataChanges, subjectUserId: number)
 		local oldTextLabel: TextLabel = oldTextLabelParent:FindFirstChild("Inner")
 
 		if oldTextLabel == nil then
-			warn("Missing old label to put in - this should not happen " .. descriptor.num)
 			debounceUpdateUserLeaderboardRow[subjectUserId] = nil
-			annotater.Error(descriptor)
+			annotater.Error("Missing old label to put in - this should not happen " .. descriptor.num .. descriptor)
 		end
 
 		--if this exists, do green fade
@@ -585,7 +605,7 @@ local function receiveHeaderRowClick(key: string)
 end
 
 local comdeb = false
-local function completelyResetUserLB(forceResize: boolean)
+local function completelyResetUserLB(forceResize: boolean, kind: string)
 	if comdeb then
 		return
 	end
@@ -671,7 +691,7 @@ local function completelyResetUserLB(forceResize: boolean)
 
 	for _, v in pairs(userId2rowframe) do
 		_annotate("\tuserId2rowframe: " .. v.Name)
-		annotater.Error("which is weird cause we're reserttings it.")
+		annotater.Error(string.format("which is weird cause we're reserttings it. %s", kind))
 	end
 
 	userId2rowframe = {}
@@ -908,7 +928,10 @@ local function handleUserSettingChanged(setting: tt.userSettingValue, initial: b
 	-- this is the fallthrough for any of the columnsEnabled changes.
 	if not initial then
 		_annotate("completely resetting userLB cause setting changed")
-		completelyResetUserLB(false)
+		completelyResetUserLB(
+			false,
+			"non-initial reset within handleUserSettingChanged for setting: " .. tostring(setting.name)
+		)
 	end
 end
 
@@ -1038,7 +1061,7 @@ module.Init = function()
 	-- all column settings are loaded so we can draw the LB.
 
 	--initial load at game start.
-	completelyResetUserLB(true)
+	completelyResetUserLB(true, "initial setup.")
 	loadedSettings = true
 
 	-- now we hook up to listen to user data events

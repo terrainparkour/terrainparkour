@@ -1,6 +1,6 @@
 --!strict
 
--- slugSign
+-- ElonSign
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
@@ -18,11 +18,7 @@ local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wai
 local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 ----------- GLOBALS -----------
-local signId = tpUtil.signName2SignId("🗯")
-local originalTexture
-local lastTerrain: Enum.Material? = nil
-local loopRunning = false
-local killLoop = false
+local HasTouchedRed = false
 
 -------------- MAIN --------------
 
@@ -32,21 +28,33 @@ end
 
 specialSign.InformRunStarting = function()
 	localPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
+	HasTouchedRed = false
+	activeRunSGui.UpdateExtraRaceDescription("You must touch Sandstone of Mars")
 end
 
-specialSign.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?) end
+specialSign.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?)
+	if floorMaterial == Enum.Material.Sandstone then
+		activeRunSGui.UpdateExtraRaceDescription("You have touched Sandstone so you may end the race now.")
+		HasTouchedRed = true
+	end
+end
 
-specialSign.InformRetouch = function() end
 specialSign.CanRunEnd = function(): tt.runEndExtraDataForRacing
 	return {
-		canRunEndNow = true,
+		canRunEndNow = HasTouchedRed,
 	}
 end
 
 specialSign.GetName = function()
-	return "Lavaslug"
+	return "Elon"
 end
 
-local module: tt.ScriptInterface = specialSign
+specialSign.InformRetouch = function()
+	HasTouchedRed = false
+end
+
 _annotate("end")
+
+local module: tt.ScriptInterface = specialSign
+
 return module

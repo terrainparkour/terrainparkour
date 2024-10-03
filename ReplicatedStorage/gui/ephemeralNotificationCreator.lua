@@ -40,8 +40,7 @@ module.notify = function(options: tt.ephemeralNotificationOptions)
 	end
 
 	if config.isInStudio() then --already updated upstream
-		_annotate("legacy notifier: " .. options.kind)
-		_annotate(options)
+		_annotate("legacy notifier: " .. options.kind, options)
 	end
 
 	local screenGui = Instance.new("ScreenGui")

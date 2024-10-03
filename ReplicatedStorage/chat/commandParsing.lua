@@ -396,6 +396,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 		end
 	end
 
+	-- now treat it as a lookup of a race.
 	local res: tt.RaceParseResult = tpUtil.AttemptToParseRaceFromInput(message)
 	if res.error ~= "" then
 		sendMessage(channel, res.error)

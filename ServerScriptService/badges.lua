@@ -5,7 +5,8 @@
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
-local BadgeService: BadgeService = game:GetService("BadgeService")
+
+local module = {}
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
 local badgeSorts = require(game.ReplicatedStorage.util.badgeSorts)
@@ -13,7 +14,7 @@ local rdb = require(game.ServerScriptService.rdb)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local playerData2 = require(game.ServerScriptService.playerData2)
 
-local module = {}
+local BadgeService: BadgeService = game:GetService("BadgeService")
 
 -- the actual truth. either we know they have it, they don't have it.
 -- changing assumptions 2024.09: we *always* know this complete info and just consult this dictionary.
@@ -48,6 +49,9 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 		-- and then just assume that everyhting is okay
 		_annotate(string.format("well, someone unblocked this user so I'm assuming they're done. %d %s", userId, kind))
 		-- at least lets return the other function
+		if not userIdHasDataPrepared[userId] then
+			annotater.Error("someone else released setup lock but we failed.")
+		end
 		return userIdHasDataPrepared[userId]
 	end
 
@@ -58,7 +62,7 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 		remoteActionName = "getBadgeStatusesByUser",
 		data = { userId = userId, kind = string.format("initial user setup %d %s", userId, kind) },
 	}
-	local res: { tt.pyUserBadgeStatus } = rdb.MakePostRequest(request)
+	local res: { tt.jsonBadgeStatus } = rdb.MakePostRequest(request)
 	_annotate(string.format("loaded %d loaded user badge statuses from db for user %d %s", #res, userId, kind))
 	-- got them, now we apply them to
 	if badgeStatusesRAM[userId] == nil then
@@ -112,7 +116,15 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 			if userId < 0 then
 				useUserId = -1 * userId
 			end
-			local badgeAssetIdsTheUserDoesHave = BadgeService:CheckUserBadgesAsync(useUserId, badgeAssetIdsToCheck)
+			local badgeAssetIdsTheUserDoesHave
+			local badgeCallSuccess, err = pcall(function()
+				badgeAssetIdsTheUserDoesHave = BadgeService:CheckUserBadgesAsync(useUserId, badgeAssetIdsToCheck)
+			end)
+			if not badgeCallSuccess then
+				annotater.Error(string.format("failed to check roblox badges for user %d %s", userId, kind, err))
+				task.wait(10)
+				continue
+			end
 
 			-- set it in ram here and also update the full data so we can save that to db.
 			for _, el in ipairs(badgeAssetIdsTheUserDoesHave) do
@@ -149,9 +161,11 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 	local waited = 0
 	while not userIdHasDataPrepared[userId] do
 		waited += task.wait(5)
-		_annotate(string.format("Have waited so far %0.1f seconds to prepare badge data for user: %d", waited, userId))
+		annotater.Error(
+			string.format("Have waited so far %0.1f seconds to prepare badge data for user: %d", waited, userId)
+		)
 		if waited > 100 then
-			_annotate(string.format("giving up waiting for this user's badge setup to bv done %d", userId))
+			annotater.Error(string.format("giving up waiting for this user's badge setup to bv done %d", userId))
 			break
 		end
 	end
@@ -164,16 +178,35 @@ end
 module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor, kind: string): boolean?
 	local prepared = ensureBadgeDataGotten(userId, "UserHasBadge " .. badge.name)
 	if not prepared then
-		_annotate(
-			string.format(
-				"UserHasBadge: wasn't able to ever get user prepared, so bailing. badge=%s, . %d",
-				badge.name,
-				userId
-			)
-		)
+		annotater.Error(string.format("was unable to prepare badge data for player: %d %s", userId, kind))
+		print(string.format("was unable to prepare badge data for player: %d %s", userId, kind))
 		return nil
 	end
 	return badgeStatusesRAM[userId][badge.assetId]
+end
+
+module.SaveBadgeOwnershipStatusToMyDBAndRAM = function(
+	userId: number,
+	badgeAssetId: number,
+	badgeName: string,
+	hasBadge: boolean
+)
+	local thingToSave = {}
+	thingToSave[badgeAssetId] = {
+		assetId = badgeAssetId,
+		name = badgeName,
+		hasBadge = hasBadge,
+	}
+	local request: tt.postRequest = {
+		remoteActionName = "multiPostUserBadgeStatus",
+		data = {
+			userId = userId,
+			validatedBadgeInfos = thingToSave,
+		},
+	}
+	badgeStatusesRAM[userId][badgeAssetId] = hasBadge
+	local res: tt.jsonBadgeStatus = rdb.MakePostRequest(request)[1]
+	return res
 end
 
 --for a given badgeClass, how to lookup relevant detail from stats to calculate progress?
