@@ -35,6 +35,8 @@ local YOURAN = 3
 local YOUNEVERRAN = 4
 
 local function getColorForSignItemKind(signItem): Color3
+	_annotate(signItem)
+	_annotate(signItem.kind)
 	if signItem == nil then
 		warn("nil. signitem.")
 	end
@@ -506,16 +508,19 @@ local function DisplaySignRelatedData(signRelatedData, sign)
 		for _, signToDisplay in pairs(dataset) do
 			ct = ct + 1
 			local youlead = false
-			if signToDisplay.key ~= nil then
-				local a = 3
-			end
+
 			if signToDisplay.best_userId == localPlayer.UserId then
 				youlead = true
 			end
 			local myct = ct
 			task.spawn(function()
-				local row = generateRowForRelatedSign(signToDisplay, myct, youlead, yscale)
-				row.Parent = rightFrame
+				local s, e = pcall(function()
+					local row = generateRowForRelatedSign(signToDisplay, myct, youlead, yscale)
+					row.Parent = rightFrame
+				end)
+				if not s then
+					annotater.Error("failed to generate row for related sign" .. e, signToDisplay)
+				end
 			end)
 		end
 	end
@@ -564,7 +569,7 @@ local function leftClickSign(signId: number, sign: Part)
 				toggledOnSigns[signId] = false
 				break
 			end
-			wait(1)
+			task.wait(1)
 		end
 	end)
 end

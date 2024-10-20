@@ -22,7 +22,6 @@ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 ---------- CHARACTER -------------
 local localPlayer: Player = game.Players.LocalPlayer
 local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 local ClientRequestsWarpToRequestFunction = remotes.getRemoteFunction("ClientRequestsWarpToRequestFunction")
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
@@ -110,7 +109,7 @@ module.WarpToSignId = function(warpToSignId: number, highlightSignId: number?)
 		return
 	end
 	if currentWarpRequest ~= nil then
-		warn("WarpToSignId: set new warp request when one was alread set.")
+		annotater.Error("WarpToSignId: set new warp request when one was alread set.")
 		return
 	end
 	doingAWarp = true
@@ -202,7 +201,14 @@ local function handleAvatarEvent(ev: aet.avatarEvent)
 		end
 
 		-- note that this is a function so that we won't proceed until the warping is done on the server.
-		local res = ClientRequestsWarpToRequestFunction:InvokeServer(currentWarpRequest)
+		local res: tt.warpResult = ClientRequestsWarpToRequestFunction:InvokeServer(currentWarpRequest)
+		if not res or not res.didWarp then
+			annotater.Error("derailed from warping")
+			debounceHandleAvatarEvent = false
+			TeardownWarpSetup()
+			return
+		end
+		-- the only returns when they are **actually done**
 		-- res is about whether we moved, for example, some signs can't be warped to easily.
 
 		_annotate("warp request done")
@@ -248,6 +254,7 @@ local function handleServerRequestWarpLockEvent(request: tt.serverWarpRequest)
 	doingAWarp = true
 
 	-- why are we firing this again? it was already fired when the user initially did WarpToSignId
+	-- ah because sometimes the server is the one initiating it, e.g. when they do "/rr".
 
 	fireEvent(aet.avatarEventTypes.GET_READY_FOR_WARP, { sender = "warper" })
 end

@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "0.303"
+module.gameVersion = "0.306"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -857,6 +857,38 @@ and I'm working on more stuff soon.]],
 * moved running UI to center and gave it a light background. This UI will likely change and also be more configurable and moveable and controllable, etc in the future for you.]],
 	[261] = [[* actually fix lacking speedups as you run? Also somewhat improve race running UI
 * make speed display continuous rather than only showing up when you are on a run.]],
+	[304] = [["Swift as wind, footsteps like verse",
+"Mountains as paths, clouds as bounds",
+"Each step anew, each leap unique",
+"Endless terrain, boundless chance",
+"Speed and passion, perfect blend",
+"Challenge self, surpass the peak",
+"Write with speed, compose with leaps",
+"In chaos seek, the finest route",
+"Parkour's way, supreme and high",
+"Break limits, transcend mortal realm"
+
+Scavenger hunt speedrunning!
+
+3d terrain routing and speedrunning!
+
+Race and explore a huge world!  Find the best routes and set world records!
+
+"No more invisible walls!"
+"Just One More Race"
+"Everything matters"
+
+Updates
+* Weekly Contests
+* More Signs
+* Neko Sign!
+* Beluga Sign!
+
+Join the group for special chat color! https://www.roblox.com/My/Groups.aspx?gid=3200785
+
+Update: MovementV2
+
+Note: Source code for the Lua part of this game is available online here: github terrainparkour]],
 }
 
 local SpecialSignDescriptions = {

@@ -215,7 +215,7 @@ local function calculateTextForDynamic(frame: tt.DynamicRunFrame): (string, Colo
 		end
 	else
 		if frame.myplace and frame.myplace.place == comparatorPlace then
-			useColor = colors.lightOrange
+			useColor = colors.lightOrangeWRProgression
 		else
 			useColor = colors.lightBlue
 		end
@@ -434,8 +434,8 @@ module.Init = function()
 
 	--in addition to this, needs to get the original setting to set it locally too.
 	settings.RegisterFunctionToListenForSettingName(function(item)
-		return handleUserSettingChanged(item)
-	end, settingEnums.settingDefinitions.ENABLE_DYNAMIC_RUNNING.name)
+		return handleUserSettingChanged(item, true)
+	end, settingEnums.settingDefinitions.ENABLE_DYNAMIC_RUNNING.name, "dynamicRunning")
 
 	local dynset = settings.GetSettingByName(settingEnums.settingDefinitions.ENABLE_DYNAMIC_RUNNING.name)
 	handleUserSettingChanged(dynset)

@@ -47,6 +47,6 @@ specialSign.GetName = function()
 	return "Lavaslug"
 end
 
-local module: tt.ScriptInterface = specialSign
+local module: tt.SpecialSignInterface = specialSign
 _annotate("end")
 return module

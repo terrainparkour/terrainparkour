@@ -1,7 +1,7 @@
 --!strict
 
 --bunch of text block renderers, annoyingly coupled with some game logic (rdb)
---maybe shouuld be in a commands section instead?
+--maybe shuuld be in a commands section instead?
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 

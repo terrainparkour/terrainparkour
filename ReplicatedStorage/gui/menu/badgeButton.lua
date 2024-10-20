@@ -106,7 +106,7 @@ local function makeBadgeRowFrame(
 			)
 			restl.Text = "got"
 		else --progress bar
-			if oAttainment.progress == -1 then
+			if not oAttainment.progress then
 				local progressinTL = guiUtil.getTl(
 					progressTileName,
 					UDim2.new(resultWidthScale, resultWidthPixel, 1, 0),

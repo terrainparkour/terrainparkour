@@ -43,12 +43,14 @@ local lastCompleteRunStart = nil
 local lastCompleteRunEnd = nil
 
 local function ToggleChat(intendedState: boolean)
+	_annotate("toggle chat, intended: " .. tostring(intendedState))
 	local ChatMain =
 		require(game.Players.LocalPlayer.PlayerScripts:FindFirstChild("ChatScript"):WaitForChild("ChatMain"))
 	ChatMain:SetVisible(intendedState)
 end
 
 local function ToggleServerEventScreenGui(intendedState: boolean)
+	_annotate("toggle server event screen gui, intended: " .. tostring(intendedState))
 	local items = { localPlayer:WaitForChild("PlayerGui"):FindFirstChild("ServerEventScreenGui") }
 	if not items then
 		_annotate("no server event screen gui found.")
@@ -60,6 +62,7 @@ local function ToggleServerEventScreenGui(intendedState: boolean)
 end
 
 local function ToggleMarathonScreenGui(intendedState: boolean)
+	_annotate("toggle marathon screen gui, intended: " .. tostring(intendedState))
 	local items = { localPlayer:WaitForChild("PlayerGui"):FindFirstChild("MarathonScreenGui") }
 	if not items then
 		_annotate("no marathon screen gui found.")
@@ -71,6 +74,7 @@ local function ToggleMarathonScreenGui(intendedState: boolean)
 end
 
 local function ToggleLB(intendedState: boolean)
+	_annotate("toggle leaderboard screen gui, intended: " .. tostring(intendedState))
 	local items = { localPlayer:WaitForChild("PlayerGui"):FindFirstChild("LeaderboardScreenGui") }
 	if not items then
 		_annotate("no leaderboard screen gui found.")
@@ -86,6 +90,7 @@ local function ToggleLB(intendedState: boolean)
 end
 
 local function ToggleSettingsButton(intendedState: boolean)
+	_annotate("toggle settings button, intended: " .. tostring(intendedState))
 	local items = { localPlayer:WaitForChild("PlayerGui"):FindFirstChild("HamburgerMenu") }
 	if not items then
 		_annotate("no leaderboard screen gui found.")
@@ -101,6 +106,7 @@ local function ToggleSettingsButton(intendedState: boolean)
 end
 
 local function KillPopups()
+	_annotate("kill popups")
 	for _, el in ipairs(localPlayer:WaitForChild("PlayerGui"):GetChildren()) do
 		if string.sub(el.Name, 0, 14) == "RaceResultSgui" then
 			el:Destroy()
@@ -234,12 +240,14 @@ module.Init = function()
 
 	settings.RegisterFunctionToListenForSettingName(
 		handleUserSettingChanged,
-		settingEnums.settingDefinitions.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP.name
+		settingEnums.settingDefinitions.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP.name,
+		"keyboard"
 	)
 
 	settings.RegisterFunctionToListenForSettingName(
 		handleUserSettingChanged,
-		settingEnums.settingDefinitions.X_BUTTON_IGNORES_CHAT.name
+		settingEnums.settingDefinitions.X_BUTTON_IGNORES_CHAT.name,
+		"keyboard"
 	)
 
 	handleUserSettingChanged(

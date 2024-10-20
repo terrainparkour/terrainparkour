@@ -23,6 +23,8 @@ local rdb = require(game.ServerScriptService.rdb)
 local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
 local channelCommands = require(game.ReplicatedStorage.chat.commands.channelCommands)
 local signProfileCommand = require(game.ReplicatedStorage.commands.signProfileCommand)
+local wrProgressionCommand = require(game.ReplicatedStorage.commands.wrProgressionCommand)
+local runResultsCommand = require(game.ReplicatedStorage.commands.runResultsCommand)
 local showSignsCommand = require(game.ReplicatedStorage.commands.showSignsCommand)
 
 local sendMessageModule = require(game.ReplicatedStorage.chat.sendMessage)
@@ -162,7 +164,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 		return channelCommands.meta(speaker, channel)
 	end
 	local verb: string = parts[1]
-	local argumentToCommand = textUtil.coalesceFrom(parts, 2)
+	-- local argumentToCommand = textUtil.coalesceFrom(parts, 2)
 
 	if verb == "challenge" then
 		return channelCommands.challenge(speaker, channel, parts)
@@ -244,7 +246,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 	elseif verb == "marathons" then
 		GrandCmdlineBadge(speaker.UserId)
 		local res = getMarathonKinds()
-		sendMessage(channel, res["message"])
+		sendMessage(channel, res)
 		return true
 	elseif verb == "marathon" then
 		GrandCmdlineBadge(speaker.UserId)
@@ -252,10 +254,10 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 			return false
 		end
 		local res = getMarathonKindLeaders(parts[2])
-		if not res.message then
-			res.message = "Couldn't find that marathon."
+		if not res then
+			res = "Couldn't find that marathon."
 		end
-		sendMessage(channel, res["message"])
+		sendMessage(channel, res)
 		return true
 	elseif verb == "awards" then
 		GrandCmdlineBadge(speaker.UserId)
@@ -286,9 +288,9 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 			end
 		end
 		return true
-	elseif verb == "events" then
-		module.ShowEvents(channelName, speaker.UserId)
-		return true
+	-- elseif verb == "events" then
+	-- 	module.ShowEvents(channelName, speaker.UserId)
+	-- 	return true
 	elseif verb == "player" or verb == "p" then
 		local playerDescription = playerData2.getPlayerDescriptionMultilineByUsername(parts[2])
 		if playerDescription ~= "unknown" then
@@ -329,13 +331,45 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 			if not playerData2.HasUserFoundSign(speaker.UserId, signId) then
 				return true
 			end
-			signProfileCommand.signProfileCommand(subjectUsername, signId, speaker)
+			return signProfileCommand.signProfileCommand(subjectUsername, signId, speaker)
 		else
 			return false
 		end
-	end
+	elseif verb == "h" or verb == "history" then
+		local rest = textUtil.coalesceFrom(parts, 2)
 
-	if verb == "found" then
+		local res: tt.RaceParseResult = tpUtil.AttemptToParseRaceFromInput(rest)
+		_annotate("parsed result of history query to: ", res)
+		if res.error ~= "" then
+			sendMessage(channel, res.error)
+			return true
+		end
+		return wrProgressionCommand.GetWRProgression(speaker, res.signId1, res.signId2)
+	elseif verb == "res" then
+		local rest = textUtil.coalesceFrom(parts, 2)
+		local res: tt.RaceParseResult = tpUtil.AttemptToParseRaceFromInput(rest)
+		if res.error ~= "" then
+			sendMessage(channel, res.error)
+			return true
+		end
+		if
+			not playerData2.HasUserFoundSign(speaker.UserId, res.signId1)
+			or not playerData2.HasUserFoundSign(speaker.UserId, res.signId2)
+		then
+			GrandCmdlineBadge(speaker.UserId)
+			return true
+		end
+		-- okay this is a race UI.
+
+		-- local userIdsInServer = {}
+		-- for _, player in ipairs(PlayersService:GetPlayers()) do
+		-- 	table.insert(userIdsInServer, player.UserId)
+		-- end
+		-- if config.isInStudio then
+		-- 	table.insert(userIdsInServer, enums.objects.BrouhahahaUserId)
+		-- end
+		return runResultsCommand.SendRunResults(speaker, res.signId1, res.signId2)
+	elseif verb == "found" then
 		local target: string
 		if #parts == 1 then
 			target = speakerName

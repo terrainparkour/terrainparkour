@@ -196,7 +196,7 @@ function createChatBubbleMain(filePrefix, sliceRect)
 	chatBubbleMain.Name = "ChatBubble"
 	chatBubbleMain.ScaleType = Enum.ScaleType.Slice
 	chatBubbleMain.SliceCenter = sliceRect
-	chatBubbleMain.Image = "rbxasset://textures/" .. tostring(filePrefix) .. ".png"
+	chatBubbleMain.Image = string.format("rbxasset://textures/%s.png", tostring(filePrefix))
 	chatBubbleMain.BackgroundTransparency = 1
 	chatBubbleMain.BorderSizePixel = 0
 	chatBubbleMain.Size = UDim2.new(1.0, 0, 1.0, 0)
@@ -510,7 +510,7 @@ function this:DestroyBubble(bubbleQueue, bubbleToDestroy)
 
 	spawn(function()
 		while bubbleQueue:Front().RenderBubble ~= bubbleToDestroy do
-			wait()
+			task.wait()
 		end
 
 		bubble = bubbleQueue:Front().RenderBubble

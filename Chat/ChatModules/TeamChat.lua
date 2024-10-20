@@ -93,6 +93,7 @@ local function Run(ChatService)
 		local processedCommand = false
 
 		if message == nil then
+			annotater.Error("no message")
 			error("Message is nil")
 		end
 

@@ -38,6 +38,6 @@ end
 specialSign.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?) end
 specialSign.InformRetouch = function() end
 
-local module: tt.ScriptInterface = specialSign
+local module: tt.SpecialSignInterface = specialSign
 _annotate("end")
 return module

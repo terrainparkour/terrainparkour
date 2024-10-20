@@ -258,7 +258,8 @@ module.Init = function()
 
 	settings.RegisterFunctionToListenForSettingName(
 		handleUserSettingChanged,
-		settingEnums.settingDefinitions.HIGHLIGHT_AT_ALL.name
+		settingEnums.settingDefinitions.HIGHLIGHT_AT_ALL.name,
+		"textHighlight"
 	)
 	-- settings.RegisterLocalSettingChangeReceiver(
 	-- 	handleUserSettingChanged,

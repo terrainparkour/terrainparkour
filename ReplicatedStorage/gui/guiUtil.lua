@@ -31,7 +31,7 @@ module.getTl = function(
 	tl.BackgroundColor3 = bgcolor
 	tl.BorderMode = Enum.BorderMode.Inset
 	tl.BorderSizePixel = 1
-	tl.BackgroundTransparency = transparency
+	tl.BackgroundTransparency = transparency or 0
 	if automaticSize ~= nil then
 		tl.AutomaticSize = automaticSize
 	end
@@ -82,7 +82,7 @@ module.getTb = function(
 	if transparency == nil then
 		transparency = 0
 	end
-	
+
 	local outerTb = Instance.new("TextButton")
 	outerTb.ZIndex = 1
 	outerTb.TextTransparency = 1
@@ -93,7 +93,7 @@ module.getTb = function(
 	outerTb.BorderMode = Enum.BorderMode.Inset
 	outerTb.BorderSizePixel = 1
 
-	outerTb.BackgroundTransparency = transparency
+	outerTb.BackgroundTransparency = transparency or 0
 
 	if borderSizePixel ~= nil then
 		outerTb.BorderSizePixel = borderSizePixel
@@ -122,10 +122,11 @@ end
 --IS used for runresults, not used for find
 module.setupKillOnClick = function(sgui: ScreenGui, excludeElementName: string?, actualExcludedFrame: Frame?)
 	local invisibleCloseModalButton = Instance.new("TextButton")
-	local mainFrame = sgui:FindFirstChildOfClass("Frame")
-	
+	local mainFrame = sgui:FindFirstChildOfClass("Frame") :: Frame
+	if not mainFrame then
+		annotater.Error("no mainiframe.'")
+	end
 	invisibleCloseModalButton.Position = mainFrame.Position
-
 	invisibleCloseModalButton.Size = mainFrame.Size
 	invisibleCloseModalButton.Name = "invisibleCloseModalButton"
 	invisibleCloseModalButton.Transparency = 1.0

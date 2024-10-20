@@ -30,6 +30,7 @@ module.GetUsernameByUserId = function(userId: number): string
 		end)
 		if not s then
 			warn(e)
+			annotater.Error(string.format("failed to get username for userId: %d", userId), userId, e)
 			return "Unknown Username for " .. userId
 		end
 

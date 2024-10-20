@@ -2,7 +2,7 @@
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
-print("chatMain.")
+print("chatMain12.")
 
 --	// FileName: ChatMain.lua
 --	// Written by: Xsitsu
@@ -212,6 +212,28 @@ MessageCreatorUtil:RegisterChatWindow(ChatWindow)
 
 local MessageSender = require(modulesFolder:WaitForChild("MessageSender"))
 MessageSender:RegisterSayMessageFunction(EventFolder.SayMessageRequest)
+
+local function SimulateSendMessage(message)
+	if not CommandProcessor:ProcessCompletedChatMessage(message, ChatWindow) then
+		message = string.gsub(message, "\n", "")
+		message = string.gsub(message, "[ ]+", " ")
+
+		local targetChannel = ChatWindow:GetTargetMessageChannel()
+		if targetChannel then
+			MessageSender:SendMessage(message, targetChannel)
+		else
+			print("No target channel")
+		end
+	end
+end
+
+task.spawn(function()
+	print("fork")
+	task.wait(2)
+	print("waited")
+	SimulateSendMessage("Hello, this is a test message!")
+	SimulateSendMessage("/h a-b")
+end)
 
 if UserInputService.TouchEnabled then
 	ChatBar:SetTextLabelText(ChatLocalization:Get("GameChat_ChatMain_ChatBarTextTouch", "Tap here to chat"))
@@ -623,7 +645,7 @@ end
 moduleApiTable.ChatMakeSystemMessageEvent:connect(function(valueTable)
 	if valueTable["Text"] and type(valueTable["Text"]) == "string" then
 		while not DidFirstChannelsLoads do
-			wait()
+			task.wait()
 		end
 
 		local channel = ChatSettings.GeneralChannelName

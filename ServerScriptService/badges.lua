@@ -21,7 +21,7 @@ local BadgeService: BadgeService = game:GetService("BadgeService")
 local badgeStatusesRAM: { [number]: { [number]: boolean? } } = {}
 
 -- boolean for if the data getter, running in a separate thread, is done.
-local userIdHasDataPrepared: { [number]: boolean? } = {}
+local userIdHasDataPrepared: { [number]: boolean } = {}
 
 -- deb is a map of userId to whether we're actively debouncing their badge lookup work right now.
 local deb = {}
@@ -32,38 +32,50 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 	if userIdHasDataPrepared[userId] == nil then
 		userIdHasDataPrepared[userId] = false
 	end
+	local username = playerData2.GetUsernameByUserId(userId)
 
 	-- we are the first caller so we set debouncing for this guy to be true.
 	if deb[userId] == nil or deb[userId] == false then
 		deb[userId] = true
 		-- and we will do the work
 	else
-		-- we wait for the other task to finish.
+		-- we wait for the other task to finish, so never do work ourselves.
 		while deb[userId] do
 			_annotate(
-				string.format("waiting to get the right to set up ensureBadgeDataGotten for %d, kind: %s", userId, kind)
+				string.format(
+					"waiting to get the right to set up ensureBadgeDataGotten for %s, kind: %s",
+					username,
+					kind
+				)
 			)
 			task.wait(0.1)
 		end
 		-- we should actually be done now so probably just return.
 		-- and then just assume that everyhting is okay
-		_annotate(string.format("well, someone unblocked this user so I'm assuming they're done. %d %s", userId, kind))
+		_annotate(
+			string.format("well, someone unblocked this user so I'm assuming they're done. %s %s", username, kind)
+		)
 		-- at least lets return the other function
 		if not userIdHasDataPrepared[userId] then
-			annotater.Error("someone else released setup lock but we failed.")
+			annotater.Error(
+				string.format(
+					"someone else released setup lock but we failed. Returning %s",
+					tostring(userIdHasDataPrepared[userId])
+				)
+			)
+			return userIdHasDataPrepared[userId]
 		end
-		return userIdHasDataPrepared[userId]
 	end
 
-	_annotate(string.format("Doing initial user badge data loading for: %d %s", userId, kind))
+	_annotate(string.format("Doing initial user badge data loading for: %s %s", username, kind))
 	deb[userId] = true
 
 	local request: tt.postRequest = {
 		remoteActionName = "getBadgeStatusesByUser",
-		data = { userId = userId, kind = string.format("initial user setup %d %s", userId, kind) },
+		data = { userId = userId, kind = string.format("initial user setup %s %s", username, kind) },
 	}
 	local res: { tt.jsonBadgeStatus } = rdb.MakePostRequest(request)
-	_annotate(string.format("loaded %d loaded user badge statuses from db for user %d %s", #res, userId, kind))
+	_annotate(string.format("loaded %d loaded user badge statuses from db for user %s %s", #res, username, kind))
 	-- got them, now we apply them to
 	if badgeStatusesRAM[userId] == nil then
 		badgeStatusesRAM[userId] = {}
@@ -76,12 +88,12 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 	task.spawn(function()
 		-- okay we got the known ones from my db.
 		-- now, let's check the rest from roblox.
-		actualCheckCount = 0
+		local actualCheckCount = 0
 		while true do
 			local badgeAssetIdsToCheck = {}
 			local fullerAssetIdsToCheckData: { [number]: { assetId: number, name: string, hasBadge: boolean? } } = {}
 			for _, badge in pairs(badgeEnums.badges) do
-				-- we know what's up with it already.
+				-- we know the status already.
 				if badgeStatusesRAM[userId][badge.assetId] ~= nil then
 					continue
 				end
@@ -104,13 +116,13 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 			end
 
 			if #badgeAssetIdsToCheck == 0 then
-				_annotate(string.format("none more to check, for user %d %s", userId, kind))
+				_annotate(string.format("none more to check, for user %s %s", username, kind))
 				-- we have done all the badges, so we done
 				break
 			end
 
 			_annotate(
-				string.format("hitting roblox for %d badge ownership statuses for %d", #badgeAssetIdsToCheck, userId)
+				string.format("hitting roblox for %d badge ownership statuses for %s", #badgeAssetIdsToCheck, username)
 			)
 			local useUserId = userId
 			if userId < 0 then
@@ -121,8 +133,8 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 				badgeAssetIdsTheUserDoesHave = BadgeService:CheckUserBadgesAsync(useUserId, badgeAssetIdsToCheck)
 			end)
 			if not badgeCallSuccess then
-				annotater.Error(string.format("failed to check roblox badges for user %d %s", userId, kind, err))
-				task.wait(10)
+				annotater.Error(string.format("failed to check roblox badges for user %s %s %s", username, kind, err))
+				task.wait(12)
 				continue
 			end
 
@@ -140,13 +152,13 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 				},
 			}
 			rdb.MakePostRequest(request2)
-			task.wait(5)
+			task.wait(7)
 		end
 		_annotate(
 			string.format(
-				"ending spawn which checked roblox status after actually checking roblox for %d user %d %s",
+				"ending spawn which checked roblox status after actually checking roblox for %d user %s %s",
 				actualCheckCount,
-				userId,
+				username,
 				kind
 			)
 		)
@@ -159,15 +171,33 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 	-- all those guys should still wait. The first one will kick off checker then wait here.
 	-- the others will wait above and then return
 	local waited = 0
-	while not userIdHasDataPrepared[userId] do
+	while userIdHasDataPrepared[userId] == nil do
 		waited += task.wait(5)
 		annotater.Error(
-			string.format("Have waited so far %0.1f seconds to prepare badge data for user: %d", waited, userId)
+			string.format("Have waited so far %0.1f seconds to prepare badge data for user: %s", waited, username)
 		)
 		if waited > 100 then
-			annotater.Error(string.format("giving up waiting for this user's badge setup to bv done %d", userId))
-			break
+			annotater.Error(string.format("giving up waiting for this user's badge setup to bv done %s", username))
+			return false
 		end
+	end
+	if userIdHasDataPrepared[userId] == false then
+		annotater.Error(
+			string.format(
+				"within badges, exited wait with false for user data preparation after time %0.1f seconds for user %s",
+				waited,
+				username
+			)
+		)
+	end
+	if userIdHasDataPrepared[userId] == nil then
+		annotater.Error(
+			string.format(
+				"within badges, exited wait with nil for user data preparation after time %0.1f seconds for user %s",
+				waited,
+				username
+			)
+		)
 	end
 	deb[userId] = false
 	return userIdHasDataPrepared[userId]
@@ -177,9 +207,9 @@ end
 -- true, false or nil?
 module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor, kind: string): boolean?
 	local prepared = ensureBadgeDataGotten(userId, "UserHasBadge " .. badge.name)
+	local username = playerData2.GetUsernameByUserId(userId)
 	if not prepared then
-		annotater.Error(string.format("was unable to prepare badge data for player: %d %s", userId, kind))
-		print(string.format("was unable to prepare badge data for player: %d %s", userId, kind))
+		annotater.Error(string.format("was unable to prepare badge data for player: %s %s", username, kind))
 		return nil
 	end
 	return badgeStatusesRAM[userId][badge.assetId]
@@ -211,7 +241,11 @@ end
 
 --for a given badgeClass, how to lookup relevant detail from stats to calculate progress?
 --very annoying to have to create this type of matching classes
-local function getProgressForStatsKindAndNumber(el: tt.badgeDescriptor, stats: tt.lbUserStats): number
+local function getProgressForStatsKindAndNumber(el: tt.badgeDescriptor, stats: tt.lbUserStats): number?
+	if el.baseNumber == nil then
+		return nil
+	end
+
 	if el.badgeClass == "top10s" then
 		return math.min(stats.top10s, el.baseNumber)
 	elseif el.badgeClass == "tix" then
@@ -229,21 +263,9 @@ local function getProgressForStatsKindAndNumber(el: tt.badgeDescriptor, stats: t
 	elseif el.badgeClass == "cwrTop10s" then
 		return math.min(stats.cwrTop10s, el.baseNumber)
 	end
-	warn("fail badgeClass progress lookup.")
-	return 0
-end
 
---for a bunch of users at once.
-local getBadgeProgressForUserIds = function(
-	userIdsInServer: { number },
-	kind: string
-): { [number]: { tt.badgeProgress } }
-	local res: { [number]: { tt.badgeProgress } } = {}
-	for _, oUserId: number in ipairs(userIdsInServer) do
-		local badgeProgress = module.getAllBadgeProgressDetailsForUserId(oUserId, kind)
-		res[oUserId] = badgeProgress
-	end
-	return res
+	annotater.Error(string.format("fail badgeClass progress lookup for %s", el.badgeClass))
+	return 0
 end
 
 -- relies on badges being sorted such that badgeStatus is sequential for cases where
@@ -253,20 +275,21 @@ end
 -- WARNING: if anything about badge setup fails, we will just not return any badge info.
 -- this can be improved by modifying ensureBadgeDataGotten to return a more meaningful set of data, distinguishing between whether my db is down, roblox badge service is, or  both.
 -- given that 99% of the data will be stored by me in the future, this would be helpful if (when) badge service is flaky.
-module.getAllBadgeProgressDetailsForUserId = function(userId: number, kind: string): { tt.badgeProgress }
+module.GetAllBadgeProgressDetailsForUserId = function(userId: number, kind: string): { tt.badgeProgress }
 	local prepared = ensureBadgeDataGotten(userId, "getAllBadgeProgressDetailsForUserId " .. kind)
+	local username = playerData2.GetUsernameByUserId(userId)
 	if not prepared then
 		_annotate(
 			string.format(
-				"getAllBadgeProgressDetailsForUserId: wasn't able to ever get user prepared, so bailing. %d",
-				userId
+				"getAllBadgeProgressDetailsForUserId: wasn't able to ever get user prepared, so bailing. %s",
+				username
 			)
 		)
 		return {}
 	end
 
 	-- local completeClasses: { [string]: boolean } = {}
-	local allBadges = {}
+	local allBadges: { tt.badgeDescriptor } = {}
 	for _, thebadge in pairs(badgeEnums.badges) do
 		table.insert(allBadges, thebadge)
 	end
@@ -274,55 +297,70 @@ module.getAllBadgeProgressDetailsForUserId = function(userId: number, kind: stri
 	local ii = 0
 
 	local stats: tt.lbUserStats = playerData2.GetStatsByUserId(userId, "badge progress")
-	local badgeStatus: { tt.badgeProgress } = {}
+	local badgeStatuses: { tt.badgeProgress } = {}
 	local knownGotBadgeCount = 0 --for 100 badge badge gramt
-	for _, badge: tt.badgeDescriptor in pairs(allBadges) do
+	for _, badgeDescriptor: tt.badgeDescriptor in pairs(allBadges) do
 		ii += 1
-		local userHasBadge: boolean = badgeStatusesRAM[userId][badge.assetId]
+		local userHasBadge: boolean? = badgeStatusesRAM[userId][badgeDescriptor.assetId]
 		if userHasBadge == nil then
 			annotater.Error(
 				string.format(
-					"getAllBadgeProgressDetailsForUserId: user %d has nil badge status for %d which should never happen",
-					userId,
-					badge.assetId
+					"getAllBadgeProgressDetailsForUserId: user %s has nil badge status for %d which should never happen",
+					username,
+					badgeDescriptor.assetId
 				)
 			)
 			return {}
 		end
 		--calculate progress
 
-		local progress = -1 --guard value
-		if badge.baseNumber ~= nil then
-			progress = getProgressForStatsKindAndNumber(badge, stats)
+		local progress: number? = nil
+		if badgeDescriptor.baseNumber ~= nil then
+			progress = getProgressForStatsKindAndNumber(badgeDescriptor, stats)
 		end
+
 		local badgeStatus: tt.badgeProgress = {
-			badge = badge,
+			badge = badgeDescriptor,
 			got = userHasBadge,
 			progress = progress,
-			baseNumber = badge.baseNumber,
+			baseNumber = badgeDescriptor.baseNumber,
 		}
-		table.insert(badgeStatus, badgeStatus)
+		table.insert(badgeStatuses, badgeStatus)
 
 		if userHasBadge then
 			knownGotBadgeCount += 1
 		end
 	end
 
-	table.sort(badgeStatus, badgeSorts.BadgeStatusSort)
+	table.sort(badgeStatuses, badgeSorts.BadgeStatusSort)
 	_annotate("complete entire badge status gotten.")
 
-	return badgeStatus
+	return badgeStatuses
+end
+
+--for a bunch of users at once.
+local getBadgeProgressForUserIds = function(
+	userIdsInServer: { number },
+	kind: string
+): { [number]: { tt.badgeProgress } }
+	local res: { [number]: { tt.badgeProgress } } = {}
+	for _, oUserId: number in ipairs(userIdsInServer) do
+		local badgeProgress = module.GetAllBadgeProgressDetailsForUserId(oUserId, kind)
+		res[oUserId] = badgeProgress
+	end
+	return res
 end
 
 module.getBadgeCountByUser = function(userId: number, kind: string): number
+	local username = playerData2.GetUsernameByUserId(userId)
 	local prepared = ensureBadgeDataGotten(userId, "getBadgeCountByUser " .. kind)
 	if not prepared then
-		_annotate(string.format("getBadgeCountByUser: wasn't able to ever get user prepared, so bailing. %d", userId))
+		_annotate(string.format("getBadgeCountByUser: wasn't able to ever get user prepared, so bailing. %s", username))
 		return 0
 	end
 	local hasBadgeCount = 0
 
-	for assetId, hasBadge in pairs(badgeStatusesRAM[userId]) do
+	for _, hasBadge in pairs(badgeStatusesRAM[userId]) do
 		if hasBadge then
 			hasBadgeCount += 1
 		end
@@ -333,7 +371,7 @@ end
 module.Init = function()
 	_annotate("init")
 	local BadgeProgressFunction = remotes.getRemoteFunction("BadgeProgressFunction") :: RemoteFunction
-	BadgeProgressFunction.OnServerInvoke = function(player: Player, userIdsInServer: { number }, kind: string): any
+	BadgeProgressFunction.OnServerInvoke = function(_: Player, userIdsInServer: { number }, kind: string): any
 		return getBadgeProgressForUserIds(userIdsInServer, kind)
 	end
 	_annotate("init done")

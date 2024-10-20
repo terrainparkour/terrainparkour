@@ -64,7 +64,7 @@ module.Init = function()
 	serverEventTitle.Font = Enum.Font.Gotham
 
 	serverEventTitle.Position = UDim2.new(0, 0, 0, 0)
-	serverEventTitle.BackgroundColor3 = colors.defaultGrey
+	serverEventTitle.BackgroundColor3 = colors.blueDone
 	serverEventsOuterFrame.Parent = serverEventScreenGui
 	serverEventsOuterFrame.Size = UDim2.new(0.15, 0, 0.08, 0)
 	serverEventsOuterFrame.Position = UDim2.new(0.8, 0, 0.2, 0)

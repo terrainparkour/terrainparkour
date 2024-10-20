@@ -38,7 +38,7 @@ local avatarManipulation = require(game.ReplicatedStorage.avatarManipulation)
 ----------- GLOBALS -----------
 
 local isMorphBlockedByWarp = false
-local activeRunSignModule: tt.ScriptInterface | nil = nil
+local activeRunSignModule: tt.SpecialSignInterface | nil = nil
 
 module.GetActiveRunSignModule = function()
 	_annotate("someone asked for active run sign module. ")

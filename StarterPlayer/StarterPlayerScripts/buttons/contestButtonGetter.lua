@@ -49,7 +49,7 @@ local function getColorForTimeGap(gap: number)
 		useColor = colors.lightYellow
 	elseif gap < 10000 then
 		plus = "+"
-		useColor = colors.lightOrange
+		useColor = colors.lightOrangeWRProgression
 	elseif gap < 20000 then
 		plus = "+"
 		useColor = colors.lightRed
@@ -509,7 +509,8 @@ module.Init = function()
 	_annotate("init")
 	settings.RegisterFunctionToListenForSettingName(
 		handleUserSettingChanged,
-		settingEnums.settingDefinitions.SHORTEN_CONTEST_DIGIT_DISPLAY.name
+		settingEnums.settingDefinitions.SHORTEN_CONTEST_DIGIT_DISPLAY.name,
+		"contestButton"
 	)
 
 	handleUserSettingChanged(

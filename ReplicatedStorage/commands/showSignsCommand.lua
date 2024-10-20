@@ -21,12 +21,12 @@ module.ShowSignCommand = function(player: Player, targetUserId: number?): boolea
 		local signIdsHeHasThatYouDontHave: { number } = {}
 		local signIdsYouHaveThatHeDoesntHave: { number } = {}
 		for signId, val in pairs(hisSignIds) do
-			if not playerSignIds[signId] then
+			if val and not playerSignIds[signId] then
 				table.insert(signIdsHeHasThatYouDontHave, signId)
 			end
 		end
 		for signId, val in pairs(playerSignIds) do
-			if hisSignIds[signId] then
+			if val and not hisSignIds[signId] then
 				-- we only show intersection
 				signIdsToShow[signId] = true
 			else
@@ -42,7 +42,7 @@ module.ShowSignCommand = function(player: Player, targetUserId: number?): boolea
 		local signIds: { [number]: boolean } = playerData2.GetUserSignFinds(player.UserId, "showSignCommand")
 		for signId, val in pairs(signIds) do
 			if val then
-				table.insert(signIdsToShow, signId)
+				signIdsToShow[signId] = true
 			end
 		end
 	end

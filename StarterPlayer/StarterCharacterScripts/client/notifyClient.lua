@@ -9,7 +9,7 @@ local module = {}
 local config = require(game.ReplicatedStorage.config)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
-local runResultsGuiCreator = require(game.ReplicatedStorage.gui.runresults.runResultsGuiCreator)
+local drawRunResultsGuiCreator = require(game.ReplicatedStorage.gui.runresults.drawRunResultsGuiCreator)
 
 local findResultsCreator = require(game.ReplicatedStorage.gui.runresults.findGuiCreator)
 local ephemeralNotifications = require(game.ReplicatedStorage.gui.ephemeralNotificationCreator)
@@ -22,12 +22,13 @@ local playerGui = localPlayer:WaitForChild("PlayerGui")
 type legacyOptions = {}
 
 --notify player of something.
+-- note: 2024, I am taking this over and instead generically probably going ot handle it in clientCommands.
 local function clientReceiveNotification(pythonResponse: any)
 	if config.isInStudio() then
 		_annotate("client receive notifications:" .. tostring(pythonResponse.kind))
 	end
 	if pythonResponse.kind == "race results" then
-		local thing = runResultsGuiCreator.createNewRunResultSgui(pythonResponse)
+		local thing = drawRunResultsGuiCreator.DrawRunResultsGui(pythonResponse)
 		thing.Parent = playerGui
 		return
 	elseif pythonResponse.kind == "userFoundSign" then
@@ -37,7 +38,7 @@ local function clientReceiveNotification(pythonResponse: any)
 		return
 	elseif pythonResponse.kind == "marathon results" then
 		pythonResponse = pythonResponse :: tt.dcRunResponse
-		local thing = runResultsGuiCreator.createNewRunResultSgui(pythonResponse)
+		local thing = drawRunResultsGuiCreator.DrawRunResultsGui(pythonResponse)
 		thing.Parent = playerGui
 		return
 	else

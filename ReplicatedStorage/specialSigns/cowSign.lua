@@ -34,7 +34,7 @@ specialSign.InformRunEnded = function()
 	task.spawn(function()
 		while loopRunning do
 			_annotate("wait loop die.")
-			wait(0.1)
+			task.wait(0.1)
 		end
 		totalSizeGain = 0
 		_annotate("-------------ENDED----------------")
@@ -113,7 +113,7 @@ specialSign.InformRunStarting = function()
 	while loopRunning do
 		killLoop = true
 		_annotate("wait loop die.")
-		wait(0.1)
+		task.wait(0.1)
 	end
 	killLoop = false
 	activeRunSGui.UpdateExtraRaceDescription("Moo")
@@ -136,6 +136,6 @@ specialSign.GetName = function()
 	return "Cow"
 end
 
-local module: tt.ScriptInterface = specialSign
+local module: tt.SpecialSignInterface = specialSign
 _annotate("end")
 return module

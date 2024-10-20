@@ -46,6 +46,6 @@ specialSign.GetName = function()
 	return "Ghost"
 end
 
-local module: tt.ScriptInterface = specialSign
+local module: tt.SpecialSignInterface = specialSign
 _annotate("end")
 return module

@@ -8,17 +8,16 @@ export type avatarMorphData = {
 	transparency: number | nil,
 }
 
-export type clientToServerRemoteEvent = {
+export type clientToServerRemoteEventOrFunction = {
 	eventKind: string,
 	data: any,
 }
 
-export type runEndingData = {
+export type runEndingDataFromClient = {
 	startSignName: string,
 	endSignName: string,
-	runMilliseconds: number,
+	runMilliseconds: number, -- this is the 'actually use' time including penalties so don't rely on it for starting time calculations. re: signs which have penalties, there is only one now (10/2024)
 	floorSeenCount: number,
-	useThisRunMilliseconds: number?, --when we magically override the time to be used in the run!
 }
 
 export type dcFindResponse = {
@@ -87,29 +86,33 @@ export type dcRunResponse = {
 export type lbUserStats = {
 	kind: string,
 	userId: number,
-	username: string?,
-	userTix: number?,
-	findCount: number?,
-	findRank: number?,
-	cwrs: number?,
-	cwrRank: number?,
-	cwrTop10s: number?,
-	wrCount: number?,
-	wrRank: number?,
-	top10s: number?,
-	userTotalRunCount: number?,
-	userTotalRaceCount: number?,
-	daysInGame: number?,
-	awardCount: number?,
-	badgeCount: number?,
-	serverPatchedInTotalSignCount: number?,
-	cwrsToday: number?,
-	wrsToday: number?,
-	runsToday: number?,
-	pinnedRace: string?,
+	username: string,
+	userTix: number,
+	findCount: number,
+	findRank: number,
+	cwrs: number,
+	cwrRank: number,
+	cwrTop10s: number,
+	wrCount: number,
+	wrRank: number,
+	top10s: number,
+	userTotalRunCount: number,
+	userTotalRaceCount: number,
+	daysInGame: number,
+	awardCount: number,
+	badgeCount: number,
+	serverPatchedInTotalSignCount: number,
+	cwrsToday: number,
+	wrsToday: number,
+	runsToday: number,
+	pinnedRace: string,
 }
 
-export type genericLeaderboardUpdateDataType = { kind: string, lbUserStats: lbUserStats, userId: number }
+export type genericLeaderboardUpdateDataType = {
+	kind: string,
+	lbUserStats: lbUserStats,
+	userId: number,
+}
 
 export type ephemeralNotificationOptions = {
 	userId: number,
@@ -127,14 +130,15 @@ export type userFinishedRunOptions = {
 	allPlayerUserIds: string,
 }
 
---in runresult, describe a prior best result.  TODO: does or does not include the last run / the old prior best of subject user?
+--in runresult, describe a prior best result.
 export type runEntry = {
 	kind: string,
 	userId: number,
 	runMilliseconds: number,
 	username: string,
 	place: number, --1-10 mean normal. 0 means "insert visually in the order it appears in list"
-	virtualPlace: number, --the
+	virtualPlace: number,
+	runAgeSeconds: number, -- Add this new field
 }
 
 --specifier for a simple python-formatted message.
@@ -177,8 +181,8 @@ export type badgeDescriptor = {
 export type badgeProgress = {
 	badge: badgeDescriptor,
 	got: boolean,
-	progress: number,
-	baseNumber: number,
+	progress: number?, -- some badges don't have progress since they have baseNumber.
+	baseNumber: number?,
 }
 
 export type badgeOptions = {
@@ -208,23 +212,49 @@ export type userSettingValue = {
 	-- on it.
 }
 
-export type userSettingValuesWithDistributions = { name: string, domain: string, value: boolean?, percentage: number }
+export type userSettingValuesWithDistributions = {
+	name: string,
+	domain: string,
+	value: boolean?,
+	percentage: number,
+}
 
 --for the left side of a sign popup.
-export type signWrStatus = { userId: number, count: number }
+export type signWrStatus = {
+	userId: number,
+	count: number,
+}
 
 --for big ordered lists coming from server
-export type userRankedOrderItem = { userId: number, username: string, rank: number, count: number }
+export type userRankedOrderItem = {
+	userId: number,
+	username: string,
+	rank: number,
+	count: number,
+}
 
 -- the generic version of this, which also contains a string description, for example for displaying top long runs of the day.
 -- export type genericRankedOrderItem = { userId: number, username: string, desc: string, rank: number, count: number }
 
-export type missingRunRequestParams = { userId: number, kind: string, signId: number }
+export type missingRunRequestParams = {
+	userId: number,
+	kind: string,
+	signId: number,
+}
 
-export type userAward = { userId: number, contestName: string, awardName: string }
+export type userAward = {
+	userId: number,
+	contestName: string,
+	awardName: string,
+}
 
 -- on the wire from python backend types
-export type DynamicPlace = { place: number, username: string, userId: number, timeMs: number }
+export type DynamicPlace = {
+	place: number,
+	username: string,
+	userId: number,
+	timeMs: number,
+}
 
 --contextual summary data for this user, current run, and this target.
 --later: add myfound too, so we can green highlight target more easily.
@@ -235,13 +265,26 @@ export type DynamicRunFrame = {
 	myplace: DynamicPlace?, --requesting user's place
 	myfound: boolean,
 }
-export type dynamicRunFromData = { kind: string, fromSignName: string, frames: { DynamicRunFrame } }
+export type dynamicRunFromData = {
+	kind: string,
+	fromSignName: string,
+	frames: { DynamicRunFrame },
+}
 
 --for dynamic running event communication localscript to server
-export type dynamicRunningControlType = { action: string, fromSignId: number, userId: number }
+export type dynamicRunningControlType = {
+	action: string,
+	fromSignId: number,
+	userId: number,
+}
 
 --SERVEREVENTS
-export type runningServerEventUserBest = { userId: number, username: string, timeMs: number, runCount: number }
+export type runningServerEventUserBest = {
+	userId: number,
+	username: string,
+	timeMs: number,
+	runCount: number,
+}
 
 --when reporting (either from server or client)
 --also, userId is optional; when sending from client, why not include it!
@@ -276,7 +319,12 @@ export type serverFinishRunNotifierType = {
 	username: string,
 }
 
-export type serverEventTixAllocation = { userId: number, username: string, tixallocation: number, eventPlace: number }
+export type serverEventTixAllocation = {
+	userId: number,
+	username: string,
+	tixallocation: number,
+	eventPlace: number,
+}
 
 export type playerProfileData = {}
 
@@ -330,10 +378,17 @@ export type signProfileChipType = {
 
 export type rowDescriptor = (playerSignProfileData) -> { signProfileChipType }
 
-export type movementHistoryQueueItem = { action: number, time: number }
+export type movementHistoryQueueItem = {
+	action: number,
+	time: number,
+}
 
 ------------------------ LEADERBOARD ------------------------
-export type leaderboardUserDataChange = { key: string, oldValue: number | string, newValue: number | string }
+export type leaderboardUserDataChange = {
+	key: string,
+	oldValue: number | string,
+	newValue: number | string,
+}
 
 -- details on a server initiated server warp request
 export type serverWarpRequest = {
@@ -409,7 +464,8 @@ export type postRequest = {
 	data: any,
 }
 
-export type ScriptInterface = {
+-- to make UGS signs work better.
+export type SpecialSignInterface = {
 	InformRunEnded: () -> (),
 	InformRunStarting: () -> (),
 	InformRetouch: (() -> ())?,
@@ -422,6 +478,177 @@ export type ScriptInterface = {
 export type runEndExtraDataForRacing = {
 	canRunEndNow: boolean,
 	extraTimeS: number?, -- extra time to add to the end of the run
+}
+
+--------- These are for future use. They're the luau versions of the python serializers. ----------------
+
+export type JsonUserAward = {
+	contestName: string,
+	userId: number,
+	awardName: string,
+}
+
+export type JsonRace = {
+	id: number,
+	name: string,
+	runcount: number,
+	distance: number,
+}
+
+export type JsonUserBooleanSetting = {
+	name: string,
+	booleanValue: boolean,
+	domain: string,
+	kind: "boolean",
+}
+
+export type JsonUserStringSetting = {
+	name: string,
+	stringValue: string,
+	domain: string,
+	kind: "string",
+}
+
+export type JsonUserLuaSetting = {
+	name: string,
+	luaValue: any,
+	domain: string,
+	kind: "lua",
+}
+
+export type JsonMarathonRun = {
+	runMilliseconds: number,
+	username: string,
+	userId: number,
+	place: number,
+}
+
+export type JsonMarathonKindRun = {
+	runMilliseconds: number,
+	username: string,
+	userId: number,
+	place: number,
+}
+
+export type JsonUser = {
+	username: string,
+	userId: number,
+}
+
+export type JsonBadgeStatus = {
+	hasBadge: boolean,
+	badgeName: string,
+	userId: number,
+	badgeAssetId: number,
+	badgeTotalGrantCount: number,
+}
+
+export type JsonWr = {
+	username: string,
+	count: number,
+	userId: number,
+}
+
+export type JsonEvent = {
+	id: number,
+	start: string,
+	["end"]: string,
+	badgeAssetId: number,
+	badgeId: string | number,
+	badgeName: string,
+	startsignId: number,
+	endsignId: number,
+	startSignName: string,
+	endSignName: string,
+	distance: number,
+	name: string,
+	ephemeral: boolean,
+	eventDescription: string,
+}
+
+export type wrProgressionEntry = {
+	gameVersion: string,
+	hasData: boolean,
+	runId: number,
+	improvementMs: number, -- '-1' means skip/no improvement
+	raceId: number,
+	runTime: number,
+	runMilliseconds: number,
+	userId: number,
+	username: string,
+	recordStood: number,
+}
+
+-- when reporting a WR progression, we also throw in the user's fastest run ever. WE display it if it was never a WR.
+export type userFastestRun = {
+	gameVersion: string,
+	hasData: boolean,
+	runId: number,
+	raceId: number,
+	runTime: number,
+	runMilliseconds: number,
+	userId: number,
+	username: string,
+	contemporaneousPlace: number,
+}
+
+export type raceHistoryData = {
+	raceId: number,
+	raceCreatedTime: number,
+	raceStartName: string,
+	raceEndName: string,
+	raceStartSignId: number,
+	raceEndSignId: number,
+	raceRunCount: number,
+	raceRunnerCount: number,
+	raceLength: number,
+	raceFirstRun: JsonRun,
+	userRunCount: number,
+	firstRunnerUsername: string,
+	firstRunnerUserId: number,
+	userFastestRun: userFastestRun,
+}
+
+export type JsonRun = {
+	runMilliseconds: number,
+	username: string,
+	userId: number,
+	place: number,
+	runAgeSeconds: number,
+}
+
+export type headerDefinition = {
+	text: string,
+	TextXAlignment: Enum.TextXAlignment,
+	width: number,
+	order: number,
+	isMonospaced: boolean,
+}
+
+export type WRProgressionEndpointResponse = {
+	wrProgression: { wrProgressionEntry },
+	raceHistoryData: raceHistoryData,
+	raceExists: boolean,
+	headers: { headerDefinition },
+	userFastestRunObject: wrProgressionEntry,
+}
+
+-- a simple object for adding chips to a row
+export type runChip = {
+	text: string,
+	bgcolor: Color3,
+}
+
+export type warpResult = {
+	didWarp: boolean,
+}
+
+export type lbConfig = {
+	position: UDim2,
+	size: UDim2,
+	minimized: boolean,
+	sortDirection: "ascending" | "descending",
+	sortColumn: string,
 }
 
 return {}

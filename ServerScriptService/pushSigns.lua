@@ -46,9 +46,6 @@ module.checkSignsNeedingPushing = function()
 	local signs = game.Workspace:FindFirstChild("Signs")
 	for signName, signId in pairs(enums.name2signId) do
 		if signId ~= nil then
-			if signName == "Society" then
-				local a = 1
-			end
 			if knownSignIds[signId] then --TODO FORCE UPLOAD POSITIONS
 				knownSignCount = knownSignCount + 1
 				--server knows about sign
@@ -62,6 +59,11 @@ module.checkSignsNeedingPushing = function()
 				end
 				continue
 			end
+
+			-- Hey, you! yeah, you, here wondering why the server keeps posting this
+			-- even after they've been uploaded already?
+			-- it's because the db server has an in-ram cache of known signids
+			-- which is what is returned by getKnownSignIds above.
 			annotater.Error("posting data on new sign:" .. signName)
 			local pos = signPart.Position
 			local data = {

@@ -26,17 +26,20 @@ local tooltipAge = 0
 
 local function DestroyToolTips(killYoungerThan: number?)
 	local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
+	if not playerGui then
+		return
+	end
 	local ttgui = playerGui:FindFirstChild("ToolTipGui")
 	if not ttgui then
 		return
 	end
 	for _, el in ipairs(ttgui:GetChildren()) do
-		if not el.Name == ephemeralToolTipFrameName then
+		if el.Name ~= ephemeralToolTipFrameName then
 			continue
 		end
 
 		if killYoungerThan ~= nil then
-			local ageValue: NumberValue = el:FindFirstChild("AgeValue")
+			local ageValue = el:FindFirstChild("AgeValue")
 			if ageValue and ageValue:IsA("NumberValue") then
 				if ageValue.Value < killYoungerThan then
 					for _, el2 in ipairs(el:GetChildren()) do
@@ -59,16 +62,19 @@ module.KillFinalTooltip = function()
 end
 
 --right=they float right+down rather than left+down from cursor. default is right.
+local LLMGeneratedUIFunctions = require(game.ReplicatedStorage.gui.menu.LLMGeneratedUIFunctions)
+
 module.setupToolTip = function(
 	target: TextLabel | TextButton | ImageLabel | Frame,
-	tooltipContents: string | ImageLabel | { signName: string, extraText: string }, --when its a {string} we make a grid of insane mouseover sign names which highlight.
+	tooltipContents: string | ImageLabel | { signName: string, extraText: string },
 	size: UDim2,
-	right: boolean?, --this refers to where the draws itself related to the mouse (i.e. default is the tooltip falls down to the lower right from the mouse, but if this is false, its to the lower left. )
-	xalignment: any?, --this refers to the text
+	right: boolean?,
+	xalignment: any?,
 	alongBottom: boolean?,
 	frame: Frame?
 )
 	if tooltipContents == nil or tooltipContents == "" then
+		warn("Tooltip contents is empty or nil")
 		return
 	end
 
@@ -86,26 +92,25 @@ module.setupToolTip = function(
 	target.MouseEnter:Connect(function()
 		tooltipAge += 1
 		myAge = tooltipAge
-		-- reuse the ttgui
 		local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
 		local ttgui = playerGui:FindFirstChild("ToolTipGui")
 		if ttgui == nil then
-			ttgui = Instance.new("ScreenGui")
-			ttgui.Parent = playerGui
-			ttgui.Name = "ToolTipGui"
-			ttgui.Enabled = true
+			ttgui = LLMGeneratedUIFunctions.createUIElement("ScreenGui", {
+				Name = "ToolTipGui",
+				Parent = playerGui,
+				Enabled = true,
+				DisplayOrder = 100,
+			})
 		end
-		local tooltipFrame = Instance.new("Frame")
-		tooltipFrame.Size = size
-		tooltipFrame.Name = ephemeralToolTipFrameName
-		tooltipFrame.Parent = ttgui
-		local hh = Instance.new("UIListLayout")
-		hh.Parent = tooltipFrame
-		hh.FillDirection = Enum.FillDirection.Horizontal
-		hh.Wraps = true
-		hh.Name = "SignRelated-ToolTipListLayout"
-		hh.HorizontalAlignment = Enum.HorizontalAlignment.Left
-		hh.VerticalAlignment = Enum.VerticalAlignment.Top
+
+		local tooltipFrame = LLMGeneratedUIFunctions.createFrame({
+			Name = ephemeralToolTipFrameName,
+			Size = size,
+			Parent = ttgui,
+			ZIndex = 10,
+			BackgroundTransparency = 0,
+			BackgroundColor3 = Color3.new(0.8, 0.8, 0.8), -- Light grey background
+		})
 
 		local numberValue = Instance.new("NumberValue")
 		numberValue.Name = "AgeValue"
@@ -113,13 +118,30 @@ module.setupToolTip = function(
 		numberValue.Parent = tooltipFrame
 
 		if typeof(tooltipContents) == "string" then
-			local tl = guiUtil.getTl("theTl", UDim2.new(1, 0, 1, 0), 2, tooltipFrame, colors.defaultGrey, 1)
-			tl.Text = tooltipContents
-			tl.TextScaled = true
-			tl.Font = Enum.Font.Gotham
-			tl.TextXAlignment = xalignment
-			tl.TextYAlignment = Enum.TextYAlignment.Top
-		else --image tooltips not working so well.
+			_annotate(string.format("Creating text tooltip: %s", tooltipContents)) -- Debug print
+			local tl = LLMGeneratedUIFunctions.createTextLabel({
+				Name = "TooltipContent",
+				Size = UDim2.new(1, -10, 1, -10), -- Fill most of the frame, leaving a small margin
+				Position = UDim2.new(0, 5, 0, 5), -- Small offset from the edges
+				Text = tooltipContents,
+				TextColor3 = Color3.new(0, 0, 0), -- Black text
+				BackgroundTransparency = 1,
+				TextScaled = true, -- Enable text scaling
+				Font = Enum.Font.GothamBold, -- Use a bold font for better visibility
+				TextXAlignment = xalignment,
+				TextYAlignment = Enum.TextYAlignment.Center, -- Center text vertically
+				Parent = tooltipFrame,
+				ZIndex = 11, -- Higher Z-index than the tooltipFrame
+			})
+
+			-- Add text size constraint
+			local sizeConstraint = Instance.new("UITextSizeConstraint")
+			sizeConstraint.MaxTextSize = 48 -- Increase max text size for larger text
+			sizeConstraint.Parent = tl
+		elseif typeof(tooltipContents) == "table" then
+			-- Handle the case for insane mouseover sign names
+			-- This part needs to be implemented based on your specific requirements
+		else
 			local s, e = pcall(function()
 				tooltipContents.Parent = tooltipFrame
 			end)
@@ -128,20 +150,42 @@ module.setupToolTip = function(
 			end
 		end
 
-		if right then
-			tooltipFrame.Position = UDim2.fromOffset(mouse.X + 10, mouse.Y + 10)
-		else
-			tooltipFrame.Position = UDim2.fromOffset(mouse.X + 10 - size.X.Offset, mouse.Y + 10)
+		local function updatePosition()
+			local mousePos = game:GetService("UserInputService"):GetMouseLocation()
+			local viewportSize = workspace.CurrentCamera.ViewportSize
+			local xPos, yPos
+
+			if right then
+				xPos = mousePos.X + 10
+				yPos = mousePos.Y + 10
+			else
+				xPos = mousePos.X - size.X.Offset - 10
+				yPos = mousePos.Y + 10
+			end
+
+			-- Ensure the tooltip doesn't go off-screen
+			xPos = math.clamp(xPos, 0, viewportSize.X - size.X.Offset)
+			yPos = math.clamp(yPos, 0, viewportSize.Y - size.Y.Offset)
+
+			tooltipFrame.Position = UDim2.fromOffset(xPos, yPos)
 		end
 
-		if alongBottom then
-			-- we hang down below hangOffTheBottomOfThis which is a screengui
-			-- we want to hang down below the center of that screengui
+		updatePosition()
 
-			local pos =
-				UDim2.fromOffset(frame.AbsolutePosition.X - 240, frame.AbsolutePosition.Y + frame.AbsoluteSize.Y + 90)
-			tooltipFrame.Position = pos
-		end
+		-- Update position when the mouse moves
+		local connection
+		connection = game:GetService("UserInputService").InputChanged:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseMovement then
+				updatePosition()
+			end
+		end)
+
+		-- Disconnect the InputChanged event when the tooltip is destroyed
+		tooltipFrame.AncestryChanged:Connect(function(_, parent)
+			if not parent then
+				connection:Disconnect()
+			end
+		end)
 	end)
 
 	target.MouseLeave:Connect(function()

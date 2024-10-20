@@ -3,6 +3,7 @@
 -- receiveClientEventServer.lua listens for client events and just trusts them.
 -- avatar morphs, etc.
 
+local runEnding = require(script.Parent.runEnding)
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
@@ -10,8 +11,13 @@ local module = {}
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
+local runResultsCommand = require(game.ReplicatedStorage.commands.runResultsCommand)
 
-local AvatarManipulationRemoteFunction = remotes.getRemoteFunction("AvatarManipulationRemoteFunction")
+local wrProgressionCommand = require(game.ReplicatedStorage.commands.wrProgressionCommand)
+-- local runResultsCommand = require(game.ReplicatedStorage.commands.runResultsCommand)
+
+-- local GenericClientUIEvent = remotes.getRemoteEvent("GenericClientUIEvent")
+local GenericClientUIFunction = remotes.getRemoteFunction("GenericClientUIFunction")
 
 --in new trust the client code, just call this directly with the actual details.
 --note: it would be nice to retain server-side timing to detect hackers. nearly every one would give themselves away.
@@ -49,11 +55,38 @@ local function handleAvatarMorph(player: Player, data: tt.avatarMorphData)
 	return didAnything
 end
 
+local function handleWRProgressionRequest(player: Player, data: { startSignId: number, endSignId: number })
+	_annotate("handleWRProgressionRequest", data)
+
+	local startSignId, endSignId = data.startSignId, data.endSignId
+
+	return wrProgressionCommand.GetWRProgression(player, startSignId, endSignId)
+end
+
+local function handleRunEndingRequest(player: Player, data: tt.runEndingDataFromClient)
+	_annotate("handleRunResultsRequest", data)
+
+	return runEnding.DoRunEnd(player, data)
+end
+
+local function handleRunResultsRequest(player: Player, data: tt.dcRunResponse)
+	_annotate("handleRunResultsDelivery", data)
+	return runResultsCommand.SendRunResults(player, data.startSignId, data.endSignId)
+end
+
 module.Init = function()
 	_annotate("init")
-	AvatarManipulationRemoteFunction.OnServerInvoke = function(player: Player, event: tt.clientToServerRemoteEvent)
+	GenericClientUIFunction.OnServerInvoke = function(player: Player, event: tt.clientToServerRemoteEventOrFunction)
 		if event.eventKind == "avatarMorph" then
 			return handleAvatarMorph(player, event.data)
+		elseif event.eventKind == "wrProgressionRequest" then
+			return handleWRProgressionRequest(player, event.data)
+		elseif event.eventKind == "runEnding" then
+			local converted: tt.runEndingDataFromClient = event.data :: tt.runEndingDataFromClient
+			-- we call runEnding to end the run, then it calls the generic commadn to message the user with data including extra calculated stuff.
+			return handleRunEndingRequest(player, converted)
+		elseif event.eventKind == "runResultsRequest" then
+			return handleRunResultsRequest(player, event.data)
 		end
 
 		return false

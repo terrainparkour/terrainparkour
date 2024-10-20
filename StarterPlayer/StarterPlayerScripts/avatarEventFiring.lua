@@ -110,7 +110,7 @@ module.FireEvent = function(avatarEventType: number, details: aet.avatarEventDet
 		local pos, lv, s = module.GetPlayerPosition()
 		details.position = pos
 		details.lookVector = lv
-		details.walkSpeed = character:FindFirstChild("Humanoid").WalkSpeed
+		details.walkSpeed = s
 	end)
 	if not s then
 		warn("error getting player position", e)

@@ -40,7 +40,8 @@ end
 
 -------------STORAGE  and SENDING-----------------------------------
 -- we store them here in ram and then loop to send them.
-local theErrors: { tt.robloxServerError } = {}
+-- they are already stringieda t this point so are just raw.
+local theErrors: { { rawMessage: string } } = {}
 
 -- without consulting any rate limiting data, just send the accumulated errors every 20 seconds
 local periodicallySendErrors = function()
@@ -63,7 +64,9 @@ local doError = function(err: robloxError)
 	if isServer() then
 		local preparedError = { rawMessage = HttpService:JSONEncode(lua2Json.Lua2StringTable(err)) }
 		table.insert(theErrors, preparedError)
+		warn(err)
 	elseif isClient() then
+		warn(err)
 		ErrorMessageEvent:FireServer(err)
 	else
 		error("you are neither server nor client. you should not be calling this.")

@@ -35,15 +35,12 @@ module.notifyPlayerAboutBadge = function(player: Player, options: tt.badgeOption
 	ServerToClientEvent:FireClient(player, options)
 end
 
-module.notifyPlayerOfRunResults = function(player: Player, options: tt.dcRunResponse)
-	ServerToClientEvent:FireClient(player, options)
-end
-
 module.notifyPlayerOfSignFind = function(player: Player, options: tt.dcFindResponse)
 	ServerToClientEvent:FireClient(player, options)
 end
 
 module.notifyPlayerOfEphemeralMarathonRun = function(player: Player, res: emt.emRunResults)
+	annotater.Error("not set up.", player.UserId)
 	warn("not set up.")
 end
 

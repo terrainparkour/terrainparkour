@@ -46,6 +46,6 @@ specialSign.GetName = function()
 	return "FPS"
 end
 
-local module: tt.ScriptInterface = specialSign
+local module: tt.SpecialSignInterface = specialSign
 _annotate("end")
 return module

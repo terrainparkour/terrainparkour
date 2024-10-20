@@ -19,10 +19,15 @@ local postUrl = "http://" .. host.HOST .. "terrain/postEndpoint/"
 
 -------------- ADJUST HOW MANY REQUESTS WE CAN DO ------------------------
 
+-- it is very bad if the requstdata or any child has any non-string (?) here. at least, vector3 are very unhappy.
+-- so, please check that you convert them first, as does, e.g. sendUserData for movement event datas which have Vector3 positions and lookvectors etc in them.
+-- TODO also someone at some point should automatically ora t least sometimes chek that JSONEncode isn't being called on items with vector2s and otehr roblox object in them
+-- because they'll just show up null with no warning.
 module.MakePostRequest = function(request: tt.postRequest): any
 	host.addSecretTbl(request)
 	local post = HttpService:JSONEncode(request)
 	if not request.remoteActionName then
+		
 		error("no remoteActionName")
 	end
 	if not request.data then

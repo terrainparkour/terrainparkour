@@ -54,10 +54,14 @@ module.RegisterFunctionToListenForDomain = function(func: (tt.userSettingValue) 
 			"trying to register a setting domain change receiver with a name that doesn't exist: "
 				.. listeningDomainName
 		)
-		warn(
-			"trying to register a setting domain change receiver with a name that doesn't exist: "
-				.. listeningDomainName
+
+		annotater.Error(
+			string.format(
+				"trying to register a setting domain change receiver with a name that doesn't exist: %s",
+				listeningDomainName
+			)
 		)
+
 		return
 	end
 	_annotate(string.format("successfully registered domain listnerer for: %s %s", listeningDomainName, tostring(func)))
@@ -67,7 +71,12 @@ end
 -- anyone who wants to be told that a specific setting has changed can register here by saying like:
 -- when this setting changes, call this function.
 -- big problem: I think this can only have one handle listening per setting. Easy to fix, just haven't done it yet. watch out if things are confusing.
-module.RegisterFunctionToListenForSettingName = function(func: (tt.userSettingValue) -> nil, name: string)
+-- source is your unique source id so we can muli-monitor.
+module.RegisterFunctionToListenForSettingName = function(
+	func: (tt.userSettingValue) -> nil,
+	name: string,
+	source: string
+)
 	-- let's make sure we're registering a setting which exists in the enums and things.
 	_annotate(string.format("Register setting listener for: %s", name))
 	local exi = false
@@ -83,13 +92,17 @@ module.RegisterFunctionToListenForSettingName = function(func: (tt.userSettingVa
 		warn("trying to register a setting change receiver with a name that doesn't exist: " .. name)
 		return
 	end
-	-- _annotate(string.format("registered: %s", name))
-	if settingChangeMonitoringFunctions[name] ~= nil then
+
+	local nameKey = name .. "|" .. source
+
+	if settingChangeMonitoringFunctions[nameKey] ~= nil then
 		_annotate(string.format("trying to reset monitoring for setting which is already monitored. %s", name))
 		annotater.Error(string.format("trying to reset monitoring for setting which is already monitored. %s", name))
 		return
 	end
-	settingChangeMonitoringFunctions[name] = func
+
+	settingChangeMonitoringFunctions[nameKey] = func
+	_annotate(string.format("registered: %s to listen to setting named: %s", nameKey, name))
 end
 
 --also just tell registered scripts this change happened

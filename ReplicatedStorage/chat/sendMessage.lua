@@ -34,6 +34,7 @@ module.usageCommandDesc = [[Admin Command examples:
 /finders - List top finders.
 /found - List of signs you have found.
 /hint <username> - List of signs that user in server needs to find.
+/history <a>-<b> - show WR history for a-b. (abbreviation: 'h')
 /Mazatlan - details on a sign.
 /Maza-3d - details on a race.  You can use abbreviations!
 /marathon [marathonName] show top runners of a specific marathon.
@@ -44,6 +45,7 @@ module.usageCommandDesc = [[Admin Command examples:
 /popular - show popular top runs and server ranking.
 /random - Give a random sign name you have found.
 /randomrace or /rr - start a random race for the server between two signs!
+/res <a>-<b> - popup the run results GUI for race A-B
 /sign <username> [signname] - show user's sign profile, defaults to you.
 /stats - Show today's stats.
 /tix [username] - Find out the TIX balance for any user!

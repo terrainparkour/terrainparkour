@@ -353,7 +353,8 @@ module.Init = function()
 	_annotate("init")
 	settings.RegisterFunctionToListenForSettingName(
 		handleShowParticleSettingChange,
-		settingEnums.settingDefinitions.SHOW_PARTICLES.name
+		settingEnums.settingDefinitions.SHOW_PARTICLES.name,
+		"particles"
 	)
 
 	handleShowParticleSettingChange(settings.GetSettingByName(settingEnums.settingDefinitions.SHOW_PARTICLES.name))

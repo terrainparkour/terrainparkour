@@ -21,7 +21,7 @@ local function showSignLeadersPopup(player: Player, signId: number)
 
 	local signWRLeaderData: { tt.signWrStatus }
 	local s1, e1 = pcall(function()
-		relatedSignData = playerData2.getRelatedSigns(signId, player.UserId)
+		relatedSignData = playerData2.getRelatedSignsForSignLeaderLeftClick(signId, player.UserId)
 		got = got + 1
 	end)
 

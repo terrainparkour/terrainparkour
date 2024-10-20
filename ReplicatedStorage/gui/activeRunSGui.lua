@@ -20,11 +20,12 @@ local fireEvent = avatarEventFiring.FireEvent
 --TYPES
 local aet = require(game.ReplicatedStorage.avatarEventTypes)
 local tt = require(game.ReplicatedStorage.types.gametypes)
-
+local PlayersService = game:GetService("Players")
 --HUMANOID
-local localPlayer: Player = game.Players.LocalPlayer
+local localPlayer = PlayersService.LocalPlayer
+
 local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
+-- local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 -- GLOBALS
 local currentRunStartTick: number = 0
@@ -33,15 +34,15 @@ local currentRunStartPosition: Vector3 = Vector3.new(0, 0, 0)
 local theFont = Font.new("rbxasset://fonts/families/Arimo.json")
 
 -- this is okay because a user is only running from one at a time.
-local globalActiveRunSgui: ScreenGui = nil
-local activeRunFrame: Frame = nil
+local globalActiveRunSgui: ScreenGui | nil = nil
+local activeRunFrame: Frame | nil = nil
 
 local optionalRaceDescription = ""
 local movementDetails = ""
 local lastActiveRunUpdateTime = ""
 local renderSteppedConnection: RBXScriptConnection?
 
-local playerGui
+-- local playerGui
 local activeRunSgui
 
 local timeLabel: TextButton
@@ -62,14 +63,14 @@ local function saveActiveRunConfiguration()
 	local yourSaveRequestCount = lastSaveRequestCount
 
 	task.spawn(function()
-		task.wait(0.4)
+		task.wait(0.4) -- we delay so that we don't spam
 		if yourSaveRequestCount ~= lastSaveRequestCount then
 			return
 		end
 
-		playerGui = localPlayer:WaitForChild("PlayerGui")
-		local activeRunGui = playerGui:FindFirstChild("ActiveRunGui")
-		local outerFrame: Frame = activeRunGui:FindFirstChild("outer_activeRun")
+		local playerGui = localPlayer:WaitForChild("PlayerGui") :: PlayerGui
+		local activeRunGui: ScreenGui = playerGui:FindFirstChild("ActiveRunGui") :: ScreenGui
+		local outerFrame: Frame = activeRunGui:FindFirstChild("outer_activeRun") :: Frame
 		if not outerFrame then
 			_annotate("no active run frame in saveActiveRunConfiguration")
 			return
@@ -103,8 +104,8 @@ end
 
 local function monitorActiveRunSGui()
 	local playerGui = localPlayer:WaitForChild("PlayerGui")
-	local activeRunGui = playerGui:FindFirstChild("ActiveRunGui")
-	local outerFrame: Frame = activeRunGui:FindFirstChild("outer_activeRun")
+	local activeRunGui = playerGui:FindFirstChild("ActiveRunGui") :: ScreenGui
+	local outerFrame: Frame = activeRunGui:FindFirstChild("outer_activeRun") :: Frame
 	if not outerFrame then
 		_annotate("No lbOuterFrame in monitorLeaderboardFrame")
 		return
@@ -161,9 +162,10 @@ local updateRunProgress = function()
 	end
 	if not currentRunStartPosition then
 		_annotate("no currentRunStartPosition in runProgressSgui, kllin.")
-		return
+		return false
 	end
-	local dist = tpUtil.getDist(character.PrimaryPart.Position, currentRunStartPosition)
+	local characterPosition = localPlayer.Character.PrimaryPart.Position
+	local dist = tpUtil.getDist(characterPosition, currentRunStartPosition)
 
 	local formattedRuntime = ""
 	if currentRunUIConfiguration.digitsInTime == 0 then
@@ -220,37 +222,17 @@ local updateRunProgress = function()
 	return true
 end
 
-local function ensureOnScreen(candidateConfiguration)
-	local viewportSize = workspace.CurrentCamera.ViewportSize
-	local position = UDim2.new(
-		candidateConfiguration.position.X.Scale,
-		candidateConfiguration.position.X.Offset,
-		candidateConfiguration.position.Y.Scale,
-		candidateConfiguration.position.Y.Offset
-	)
-	local size = candidateConfiguration.size
-
-	local minX = 0
-	local minY = 0
-	local maxX = viewportSize.X - size.X.Offset
-	local maxY = viewportSize.Y - size.Y.Offset
-
-	local newX = math.clamp(position.X.Offset, minX, maxX)
-	local newY = math.clamp(position.Y.Offset, minY, maxY)
-
-	if newX ~= position.X.Offset or newY ~= position.Y.Offset then
-		local newPosition = UDim2.new(0, newX, 0, newY)
-		candidateConfiguration.position = newPosition
-	end
-end
-
 local debounceCreateRunProgressSgui = false
 module.StartActiveRunGui = function(startTimeTick, signName, signPosition)
 	local configSetting = settings.GetSettingByName(settingEnums.settingDefinitions.ACTIVE_RUN_CONFIGURATION.name)
+	if configSetting.luaValue == nil then
+		annotater.Error("no config setting for active run gui")
+		return
+	end
 	currentRunUIConfiguration = configSetting.luaValue
-	ensureOnScreen(currentRunUIConfiguration)
-	local playerGui: PlayerGui = localPlayer:WaitForChild("PlayerGui")
-	local ex: ScreenGui = playerGui:FindFirstChild("ActiveRunGui")
+
+	local playerGui = localPlayer:WaitForChild("PlayerGui") :: PlayerGui
+	local ex = playerGui:FindFirstChild("ActiveRunGui") :: ScreenGui?
 	if ex then
 		ex:Destroy()
 	end
@@ -381,14 +363,16 @@ module.StartActiveRunGui = function(startTimeTick, signName, signPosition)
 	end
 
 	-- Connect the onActiveRunSGuiDestroyed function to the Destroying event of activeRunSGui
-	globalActiveRunSgui.Destroying:Connect(onActiveRunSGuiDestroyed)
+	if globalActiveRunSgui then
+		globalActiveRunSgui.Destroying:Connect(onActiveRunSGuiDestroyed)
+	end
 
 	debounceCreateRunProgressSgui = false
 	if renderSteppedConnection then
 		renderSteppedConnection:Disconnect()
 	end
 
-	renderSteppedConnection = game:GetService("RunService").RenderStepped:Connect(function(deltaTime)
+	renderSteppedConnection = game:GetService("RunService").RenderStepped:Connect(function(_deltaTime)
 		if not updateRunProgress() then
 			if renderSteppedConnection ~= nil then
 				renderSteppedConnection:Disconnect()

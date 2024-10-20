@@ -33,7 +33,9 @@ goodScripts = { "leaderboard" }
 goodScripts = { "*Chat*", "*channel*", "*ShiftGUI*" }
 goodScripts = { "serverWarping", "warper" }
 goodScripts = { "*keyboard*", "serverWarping" }
--- goodScripts = { "*setting*" }
+goodScripts = { "*windows*", "rdb" }
+goodScripts = { "*chat*", "*lead*" }
+goodScripts = { "*windows*" }
 goodScripts = {}
 
 if config.isInStudio() then

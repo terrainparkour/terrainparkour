@@ -32,13 +32,12 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local morphs = require(game.StarterPlayer.StarterCharacterScripts.client.morphs)
 
 ---------- CHARACTER -------------
-local localPlayer: Player = game.Players.LocalPlayer
+local localPlayer: Player = game:GetService("Players").LocalPlayer
 -- local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 
 ----------- EVENTS -------------------
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
-local ClientToServerRemoteFunction = remotes.getRemoteFunction("ClientToServerRemoteFunction")
+local GenericClientUIFunction = remotes.getRemoteFunction("GenericClientUIFunction")
 
 -------------------------------------- GLOBALS --------------------------------------
 local isRacingBlockedByWarp = false
@@ -128,7 +127,7 @@ local function TouchedSign(signId: number, signName: string, touchTimeTick: numb
 
 	------- START RUN ------------
 	if currentRunSignName == "" then
-		_annotate(string.format("started run from" .. signName))
+		_annotate(string.format("started run from %s", signName))
 		currentRunSignName = signName
 		currentRunSignId = signId
 		activeRunSGui.StartActiveRunGui(touchTimeTick, signName, sign.Position)
@@ -146,11 +145,11 @@ local function TouchedSign(signId: number, signName: string, touchTimeTick: numb
 		})
 		currentRunStartTick = touchTimeTick
 		terrainTouchMonitor.initTracking(signName)
-		_annotate(string.format("started run from" .. currentRunSignName))
+		_annotate(string.format("started run from %s", currentRunSignName))
 
 	--------- RETOUCH----------------------------
 	elseif currentRunSignName == signName then
-		_annotate(string.format("retouch start." .. signName))
+		_annotate(string.format("retouch start. %s", signName))
 		local gap = touchTimeTick - currentRunStartTick
 		if gap > 0.0 then
 			currentRunStartTick = touchTimeTick
@@ -173,7 +172,7 @@ local function TouchedSign(signId: number, signName: string, touchTimeTick: numb
 			annotater.Error("currentRunSignName is nil")
 		end
 
-		_annotate(string.format("run END init.." .. signName))
+		_annotate(string.format("run END init..%s", signName))
 
 		--locally calculated actual racing time.
 		local runMilliseconds: number = math.floor(1000 * (touchTimeTick - currentRunStartTick))
@@ -189,14 +188,13 @@ local function TouchedSign(signId: number, signName: string, touchTimeTick: numb
 		local floorSeen: number = terrainTouchMonitor.GetSeenTerrainTypesCountThisRun()
 
 		--tell the game server it ended so we can relay to store in db server.
-		local runEndData: tt.runEndingData = {
+		local runEndData: tt.runEndingDataFromClient = {
 			startSignName = currentRunSignName,
 			endSignName = signName,
 			runMilliseconds = runMilliseconds,
 			floorSeenCount = floorSeen,
-			useThisRunMilliseconds = runMilliseconds,
 		}
-		local event: tt.clientToServerRemoteEvent = {
+		local event: tt.clientToServerRemoteEventOrFunction = {
 			eventKind = "runEnding",
 			data = runEndData,
 		}
@@ -205,7 +203,7 @@ local function TouchedSign(signId: number, signName: string, touchTimeTick: numb
 		local activeDynamicSign = morphs.GetActiveRunSignModule()
 		if activeDynamicSign then
 			local canEndRunData = activeDynamicSign.CanRunEnd()
-			_annotate(string.format("canEndRunData:"), canEndRunData)
+			_annotate("canEndRunData:", canEndRunData)
 			if canEndRunData.canRunEndNow then
 				if canEndRunData.extraTimeS then
 					local usingMillisecondsIncludingPenalties = runMilliseconds + canEndRunData.extraTimeS * 1000
@@ -216,13 +214,13 @@ local function TouchedSign(signId: number, signName: string, touchTimeTick: numb
 							usingMillisecondsIncludingPenalties
 						)
 					)
-					runEndData.useThisRunMilliseconds = usingMillisecondsIncludingPenalties
+					runEndData.runMilliseconds = usingMillisecondsIncludingPenalties
 					endClientRun("end run with extra time added.", touchTimeTick)
-					ClientToServerRemoteFunction:InvokeServer(event)
+					GenericClientUIFunction:InvokeServer(event)
 				else
 					_annotate("dynamic sign, but no penalty.")
 					endClientRun("end run with no time added.", touchTimeTick)
-					ClientToServerRemoteFunction:InvokeServer(event)
+					GenericClientUIFunction:InvokeServer(event)
 				end
 
 				fireEvent(aet.avatarEventTypes.RUN_COMPLETE, details)
@@ -233,7 +231,7 @@ local function TouchedSign(signId: number, signName: string, touchTimeTick: numb
 			_annotate("normal end run.")
 			fireEvent(aet.avatarEventTypes.RUN_COMPLETE, details)
 			endClientRun("normal end run.", touchTimeTick)
-			ClientToServerRemoteFunction:InvokeServer(event)
+			GenericClientUIFunction:InvokeServer(event)
 		end
 	end
 	clientTouchDebounce[localPlayer.Name] = false
@@ -286,6 +284,7 @@ local function handleAvatarEvent(ev: aet.avatarEvent)
 		return
 	end
 	if ev.eventType == aet.avatarEventTypes.CHARACTER_ADDED then
+		local _ = 4
 	elseif
 		ev.eventType == aet.avatarEventTypes.AVATAR_DIED
 		or ev.eventType == aet.avatarEventTypes.AVATAR_RESET
@@ -305,11 +304,11 @@ local function handleAvatarEvent(ev: aet.avatarEvent)
 	end
 end
 
-local avatarEventConnection = nil
+local avatarEventConnection: RBXScriptConnection | nil = nil
 
 module.Init = function()
 	_annotate("init")
-	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	-- character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 	-- humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	currentRunStartTick = 0
 	currentRunSignName = ""

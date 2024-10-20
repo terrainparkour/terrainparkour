@@ -25,13 +25,14 @@ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 local activeRunSGui = require(game.ReplicatedStorage.gui.activeRunSGui)
 local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
+local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
 local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 ----------- GLOBALS -----------
-local signId = tpUtil.signName2SignId("🗯")
+-- local signId = tpUtil.signName2SignId("🗯")
 local originalTexture
 local lastTerrain: Enum.Material? = nil
 local loopRunning = false
@@ -46,7 +47,7 @@ specialSign.InformRunEnded = function()
 	task.spawn(function()
 		while loopRunning do
 			_annotate("wait loop die.")
-			wait(0.1)
+			task.wait(0.1)
 		end
 
 		humanoid.Health = 100
@@ -162,7 +163,7 @@ specialSign.GetName = function()
 	return "🗯"
 end
 
-local module: tt.ScriptInterface = specialSign
+local module: tt.SpecialSignInterface = specialSign
 
 _annotate("end")
 return module

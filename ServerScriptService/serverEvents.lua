@@ -311,7 +311,6 @@ end
 --version which returns.
 local function serverReceiveFunction(player: Player, message: string, data: tt.ServerEventCreateType)
 	_annotate("receive event " .. message, data)
-	--hhmm maybe overkill here, but why not just periodally
 
 	if message == serverEventEnums.messageTypes.CREATE then
 		local serverEvent = startServerEvent(data)

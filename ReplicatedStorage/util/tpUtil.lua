@@ -135,7 +135,11 @@ module.looseSignName2Sign = function(signSearchText: string): Part?
 	return game.Workspace:WaitForChild("Signs"):FindFirstChild(enums.signId2name[signId])
 end
 
-module.signId2signName = function(signId: number): string
+module.signId2signName = function(signId: number?): string
+	if not signId then
+		annotater.Error("no signId.")
+		return ""
+	end
 	local res = enums.signId2name[signId]
 	return res
 end

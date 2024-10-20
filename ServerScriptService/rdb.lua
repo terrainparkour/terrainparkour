@@ -11,7 +11,7 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local posting = require(game.ServerScriptService.posting)
 
 local host
-local hostS, c = pcall(function()
+local hostS, hostLoad = pcall(function()
 	host = require(game.ServerScriptService.hostSecret)
 end)
 if not hostS then
@@ -22,7 +22,7 @@ end
 ------------- STATE VARIABLES for the HttpService queue, requesting etc. --------------
 local httpRemaining = 20
 local httpPerMinMax = 470
-local waitTime = 0.6
+local waitTime = 0.03
 local httpaddPerSecond = math.floor(httpPerMinMax / 60)
 
 -------------- ADJUST HOW MANY REQUESTS WE CAN DO ------------------------
@@ -32,8 +32,10 @@ local startHttpServiceRequestManager = function()
 		while true do
 			local waited = task.wait(1)
 			httpRemaining = math.min(httpPerMinMax, httpRemaining + httpaddPerSecond * waited)
-			-- _annotate(string.format("httpRemaining: %d", httpRemaining))
-			task.wait(waitTime)
+			if httpRemaining < 2 then
+				_annotate(string.format("httpRemaining: %d, waiting.", httpRemaining))
+				task.wait(waitTime)
+			end
 		end
 	end)
 end

@@ -8,8 +8,7 @@ local enums = require(game.ReplicatedStorage.util.enums)
 local text = require(game.ReplicatedStorage.util.text)
 local config = require(game.ReplicatedStorage.config)
 local colors = require(game.ReplicatedStorage.util.colors)
-local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
-local grantBadge = require(game.ServerScriptService.grantBadge)
+
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local playerData2 = require(game.ServerScriptService.playerData2)
 local rdb = require(game.ServerScriptService.rdb)
@@ -40,11 +39,6 @@ local function GrandUndocumentedCommandBadge(userId: number)
 	grantBadge.GrantBadge(userId, badgeEnums.badges.UndocumentedCommand)
 	GrandCmdlineBadge(userId)
 end
-
--- local freedomBuffer = {}
--- module.freedom = function(speaker: Player, channel)
--- 	freedomBuffer = {}
--- end
 
 module.hint = function(speaker: Player, channel, parts: { string }): boolean
 	local target: string
@@ -139,7 +133,7 @@ module.cwrs = function(speaker: Player, channel): boolean
 		},
 	}
 	local data = rdb.MakePostRequest(request)
-	local tot = 0
+
 	local a = data.totalCwrCountA
 	local b = data.totalCwrCountB
 	local message = ""
@@ -198,25 +192,25 @@ module.describeSingleSign = function(speaker: Player, signId: number, channel)
 
 	type signLeader = { userId: number, count: number }
 
-	local request: tt.postRequest = {
+	local request2: tt.postRequest = {
 		remoteActionName = "getSignStartLeader",
 		data = { signId = signId },
 	}
-	local fromleaders: { signLeader } = rdb.MakePostRequest(request)
-	local request: tt.postRequest = {
+	local fromleaders: { signLeader } = rdb.MakePostRequest(request2)
+	local request3: tt.postRequest = {
 		remoteActionName = "getSignEndLeader",
 		data = { signId = signId },
 	}
-	local toleaders: { signLeader } = rdb.MakePostRequest(request)
+	local toleaders: { signLeader } = rdb.MakePostRequest(request3)
 	local counts: { [string]: { to: number, from: number, username: string, inServer: boolean } } = {}
-	local text = "\nSign Leader for "
+	local leaderText = "\nSign Leader for "
 		.. signName
 		.. "!\n"
 		.. tostring(signTotalFinds)
 		.. " players have found "
 		.. signName
 		.. "\nrank name total (from/to)"
-	sendMessage(channel, text)
+	sendMessage(channel, leaderText)
 	for _, leader in ipairs(fromleaders) do
 		local username: string
 		if leader.userId < 0 then
@@ -257,7 +251,7 @@ module.describeSingleSign = function(speaker: Player, signId: number, channel)
 		counts[username].to = counts[username].to + leader.count
 	end
 	local tbl = {}
-	for username, item in pairs(counts) do
+	for _, item in pairs(counts) do
 		table.insert(tbl, item)
 	end
 	table.sort(tbl, function(a, b)
@@ -316,7 +310,7 @@ local function getClosestSignToPlayer(player: Player): Instance?
 	local playerPos = root.Position
 	local bestSign = nil
 	local bestdist = nil
-	for _, sign: Part in ipairs(workspace:WaitForChild("Signs"):GetChildren()) do
+	for _, sign in ipairs(workspace:WaitForChild("Signs"):GetChildren()) do
 		local signId = tpUtil.looseSignName2SignId(sign.Name)
 		if not playerData2.HasUserFoundSign(player.UserId, signId :: number) then
 			continue
@@ -361,7 +355,7 @@ module.beckon = function(speaker: Player, channel): boolean
 	if #players == 1 then
 		occupancySentence = "The only one in the server."
 	elseif #players == 2 then
-		occupancySentence = string.format(" The server has 1 other player, too.")
+		occupancySentence = " The server has 1 other player, too."
 	else
 		occupancySentence = string.format(" The server has %d other players, too.", #players - 1)
 	end
@@ -395,7 +389,7 @@ module.beckon = function(speaker: Player, channel): boolean
 end
 
 module.badges = function(speaker: Player, channel): boolean
-	local allBadgeStatuses = badges.getAllBadgeProgressDetailsForUserId(speaker.UserId, "cmdline")
+	local allBadgeStatuses = badges.GetAllBadgeProgressDetailsForUserId(speaker.UserId, "cmdline")
 	sendMessage(channel, "Badge status for: " .. speaker.Name)
 	local gotStr = "BADGES GOTTEN:"
 	local ungotStr = "BADGES NOT GOTTEN:"
@@ -481,7 +475,7 @@ module.AdminOnlyWarp = function(cmd, object, speaker): boolean
 		_annotate(string.format("WarpToUsername username=%s", object))
 		local pos = targetPlayer.Character.PrimaryPart.Position + Vector3.new(10, 20, 10)
 		if not pos then
-			warn("player not found in workspace")
+			annotater.Error("player not found in workspace within AdminOnlyWarp", targetPlayer.UserId)
 			return false
 		end
 		local request: tt.serverWarpRequest = {
@@ -853,7 +847,7 @@ module.popular = function(speaker: Player, channel): boolean
 end
 
 module.finders = function(speaker: Player, channel): boolean
-	local res = playerData2.getFinderLeaders()
+	local finderLeaders = playerData2.getFinderLeaders()
 
 	sendMessage(channel, "Top Finders:")
 	local playersInServer = {}
@@ -864,7 +858,7 @@ module.finders = function(speaker: Player, channel): boolean
 		local data: tt.lbUserStats = playerData2.GetStatsByUserId(userId, "finders_command")
 		return { rank = data.findRank, count = data.findCount }
 	end
-	local res = text.generateTextForRankedList(res, playersInServer, speaker.UserId, getter)
+	local res = text.generateTextForRankedList(finderLeaders, playersInServer, speaker.UserId, getter)
 	for _, el in ipairs(res) do
 		sendMessage(channel, el.message, el.options)
 	end

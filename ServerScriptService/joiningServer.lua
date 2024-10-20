@@ -12,11 +12,11 @@ local playerData2 = require(game.ServerScriptService.playerData2)
 
 local module = {}
 
-local racersChannel = channelDefinitions.GetChannel("Racers")
+local racersChannel
 
 module.PostJoinToRacersImmediate = function(player: Player)
+	racersChannel = channelDefinitions.GetChannel("Racers")
 	_annotate("Posting join to racers: " .. player.Name)
-	local character = player.Character or player.CharacterAdded:Wait()
 	local statTag = playerData2.GetPlayerDescriptionLine(player.UserId)
 	local text = player.Name .. " joined! " .. statTag
 	local options = { ChatColor = colors.greenGo }
@@ -24,6 +24,7 @@ module.PostJoinToRacersImmediate = function(player: Player)
 end
 
 module.PostLeaveToRacersImmediate = function(player: Player)
+	racersChannel = channelDefinitions.GetChannel("Racers")
 	_annotate("Posting leave to racers: " .. player.Name)
 	local statTag = playerData2.GetPlayerDescriptionLine(player.UserId)
 	local text = player.Name .. " left! " .. statTag

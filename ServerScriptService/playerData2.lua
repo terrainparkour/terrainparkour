@@ -72,7 +72,7 @@ local getServerPatchedInTotalSignCountGameSignCount = function(): number
 	return gameTotalSigncount
 end
 
-local userIdStatsCache: { [number]: { time: number, stats: tt.lbUserStats } } = {}
+local userIdStatsCache: { [number]: { time: number, userstats: tt.lbUserStats } } = {}
 local getStatsDebounce = false
 --kind is just a description for debugging.
 module.GetStatsByUserId = function(userId: number, kind: string): tt.lbUserStats
@@ -86,7 +86,7 @@ module.GetStatsByUserId = function(userId: number, kind: string): tt.lbUserStats
 		if thisTick - userIdStatsCache[userId].time < 2 then
 			_annotate("used cache to return a user's stats." .. kind)
 			getStatsDebounce = false
-			return userIdStatsCache[userId].stats
+			return userIdStatsCache[userId].userstats
 		else
 			_annotate("cache was too old. " .. kind)
 			userIdStatsCache[userId] = nil
@@ -100,7 +100,7 @@ module.GetStatsByUserId = function(userId: number, kind: string): tt.lbUserStats
 		data = { userId = userId, kind = kind },
 	}
 	local stats: tt.lbUserStats = rdb.MakePostRequest(request)
-	userIdStatsCache[userId] = { time = thisTick, stats = stats }
+	userIdStatsCache[userId] = { time = thisTick, userstats = stats }
 	stats.kind = kind
 	local serverPatchedInTotalSignCount = getServerPatchedInTotalSignCountGameSignCount()
 	stats.serverPatchedInTotalSignCount = serverPatchedInTotalSignCount
@@ -208,9 +208,9 @@ module.getSignWRLeader = function(signId: number)
 	return leaders
 end
 
-module.getRelatedSigns = function(signId: number, userId: number)
+module.getRelatedSignsForSignLeaderLeftClick = function(signId: number, userId: number)
 	local request: tt.postRequest = {
-		remoteActionName = "getRelatedSigns",
+		remoteActionName = "getRelatedSignsForSignLeaderLeftClick",
 		data = { signId = signId, userId = userId },
 	}
 	local res = rdb.MakePostRequest(request)

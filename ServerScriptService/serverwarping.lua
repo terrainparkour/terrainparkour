@@ -15,6 +15,7 @@
 -- client then does the above process, involving sending back to the client that it should warp.
 -- when the client is done getting ready the server does the work, then the client is done.
 
+local playerData2 = require(script.Parent.playerData2)
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
@@ -42,7 +43,7 @@ local function isPositionInTerrain(position: Vector3): { success: boolean, occ: 
 	-- Read the terrain voxels in the region
 	local material, occupancy = workspace.Terrain:ReadVoxels(region, 4)
 
-	-- Check if any voxel in the region is occupied by non-air, non water
+	-- Check if any voxel in the region is occupied by non-air, non-water
 	local size = material.Size
 	for x = 1, size.X do
 		for y = 1, size.Y do
@@ -278,10 +279,26 @@ module.RequestClientToWarpToWarpRequest = function(player: Player, request: tt.s
 	ServerRequestClientToWarpLockEvent:FireClient(player, request)
 end
 
+local function CheckWarpingSecurityForPlayerAndSign(player: Player, signId: number): boolean
+	if not playerData2.HasUserFoundSign(player.UserId, signId) then
+		local signName = tpUtil.signId2signName(signId)
+		annotater.Error(
+			string.format("user %s had not found sign, so was rejected from warping to: %s", player.Name, signName),
+			player.UserId
+		)
+		return false
+	end
+
+	return true
+end
+
 module.Init = function()
 	_annotate("init")
 	--when player clicks warp to <sign> they fire this event and go.
-	ClientRequestsWarpToRequestFunction.OnServerInvoke = function(player: Player, request: tt.serverWarpRequest): any
+	ClientRequestsWarpToRequestFunction.OnServerInvoke = function(
+		player: Player,
+		request: tt.serverWarpRequest
+	): tt.warpResult
 		_annotate("server received client request to warp.")
 
 		if request.kind == "sign" then
@@ -294,13 +311,29 @@ module.Init = function()
 				)
 			)
 			local pos: Vector3 | nil = tpUtil.signId2Position(request.signId)
-			local sign: BasePart | nil = tpUtil.signId2Sign(request.signId)
 			if not pos then
 				_annotate("no POS?" .. tostring(request.signId))
-				return false
+				return { didWarp = false }
+			end
+
+			local sign: BasePart | nil = tpUtil.signId2Sign(request.signId)
+			if not sign then
+				_annotate("no SIGN?" .. tostring(request.signId))
+				return { didWarp = false }
+			end
+
+			local securityPass = CheckWarpingSecurityForPlayerAndSign(player, request.signId)
+			if not securityPass then
+				annotater.Error(
+					string.format("security pass failed %s %d", tostring(player.Name), tostring(request.signId))
+				)
+				return { didWarp = false }
 			end
 
 			local innerWarpRes = ServerDoWarpToPosition(player, pos, true, sign)
+			if not innerWarpRes then
+				return { didWarp = false }
+			end
 
 			_annotate(
 				string.format(
@@ -309,7 +342,7 @@ module.Init = function()
 					tostring(innerWarpRes)
 				)
 			)
-			return innerWarpRes
+			return { didWarp = true }
 		elseif request.kind == "position" then
 			local res = ServerDoWarpToPosition(player, request.position, false)
 			_annotate(

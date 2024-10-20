@@ -20,10 +20,10 @@ local function Run(ChatService)
 	end
 	channelsSetUp = true
 
-	local defs: { tt.channelDefinition } = channelDefinitions.getChannelDefinitions()
+	local theDefinitions: { tt.channelDefinition } = channelDefinitions.getChannelDefinitions()
 
 	local function getDef(channelName): tt.channelDefinition | nil
-		for _, def in ipairs(defs) do
+		for _, def in ipairs(theDefinitions) do
 			if def.Name == channelName then
 				return def
 			end
@@ -32,7 +32,7 @@ local function Run(ChatService)
 		return nil
 	end
 
-	for _, channelDef: tt.channelDefinition in pairs(defs) do
+	for _, channelDef: tt.channelDefinition in pairs(theDefinitions) do
 		local channel = ChatService:GetChannel(channelDef.Name)
 		if channel then
 			_annotate("channel found: " .. channelDef.Name)
@@ -77,10 +77,10 @@ local function Run(ChatService)
 	end)
 
 	_annotate("sending channels to channelDefinitions")
-	channelDefinitions.sendChannels(channels)
+	theDefinitions.SendChannels(channels)
 
 	local validChannelNames = {}
-	for _, def in ipairs(defs) do
+	for _, def in ipairs(theDefinitions) do
 		validChannelNames[def.Name] = true
 	end
 

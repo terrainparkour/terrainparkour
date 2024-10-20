@@ -11,11 +11,16 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 local UserInputService = game:GetService("UserInputService")
 local colors = require(game.ReplicatedStorage.util.colors)
+-- Correcting the require path for uiPositionManager
+local uiPositionManager = require(game.StarterPlayer.StarterPlayerScripts.guis.uiPositionManager)
 
 local module = {}
 
 local buttonScalePixel = 15
 local minimizedSize = Vector2.new(buttonScalePixel * 2, buttonScalePixel)
+
+-- Add this at the module level
+local currentlyDraggingFrame: Frame? = nil
 
 -- Helper function to calculate Vector2 delta
 local function calculateVector2Delta(input: Vector3, start: Vector2): Vector2
@@ -23,11 +28,59 @@ local function calculateVector2Delta(input: Vector3, start: Vector2): Vector2
 	return Vector2.new(delta.X, delta.Y)
 end
 
-function getLowerLeftOfFrame(frame: Frame): number
-	return frame.Size.Y.Offset + frame.Position.Y.Offset
+local attemptResizeOnMinimized = Instance.new("BindableEvent")
+
+local function isFrameOnTop(frame: Frame): boolean
+	local screenGui = frame:FindFirstAncestorOfClass("ScreenGui")
+	if not screenGui then
+		return false
+	end
+
+	local children = screenGui:GetChildren()
+	for i = #children, 1, -1 do
+		local child = children[i]
+		if child:IsA("GuiObject") and child.Visible then
+			return child == frame
+		end
+	end
+
+	return false
 end
 
-local attemptResizeOnMinimized = Instance.new("BindableEvent")
+local function bringFrameToFront(frame: Frame)
+	_annotate(string.format("bringing frame to front %s", frame.Name))
+	local screenGui: ScreenGui = frame:FindFirstAncestorOfClass("ScreenGui") :: ScreenGui
+	if screenGui then
+		screenGui.Enabled = not screenGui.Enabled
+		screenGui.Enabled = not screenGui.Enabled
+	end
+
+	-- -- Still set the ZIndex to be higher than siblings
+	-- local highestZIndex = 0
+	-- for _, child in ipairs(screenGui:GetChildren()) do
+	-- 	if child:IsA("GuiObject") and child.ZIndex > highestZIndex then
+	-- 		highestZIndex = child.ZIndex
+	-- 	end
+	-- end
+	-- frame.ZIndex = highestZIndex + 1
+end
+
+local function createCornerButton(frame: Frame, name: string, text: string, position: UDim2): TextButton
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(0, buttonScalePixel, 0, buttonScalePixel)
+	button.Position = position
+	button.Text = text
+	button.TextScaled = true
+	button.Name = frame.Name .. "_" .. name
+	button.ZIndex = 10
+	button.BackgroundColor3 = colors.defaultGrey
+	button.TextColor3 = colors.black
+	button.TextSize = 18
+	button.Font = Enum.Font.Gotham
+	button.Parent = frame
+	button.BackgroundTransparency = 0.5
+	return button
+end
 
 local SetupResizeability = function(frame: Frame): TextButton
 	local resizing = false
@@ -36,19 +89,8 @@ local SetupResizeability = function(frame: Frame): TextButton
 	local initialFramePosition = UDim2.new()
 
 	-- Create resize handle as a TextButton directly on the input frame.
-	-- it should appear in the bottom left of the frame, just outside the bottom left corner.
-	local resizeHandle = Instance.new("TextButton")
-	resizeHandle.Size = UDim2.new(0, buttonScalePixel, 0, buttonScalePixel)
-	resizeHandle.AnchorPoint = Vector2.new(0, 0)
-	resizeHandle.Position = UDim2.new(0, 0, 1, -1 * buttonScalePixel)
-
-	resizeHandle.Text = "O"
-	resizeHandle.BackgroundColor3 = Color3.new(0.8, 0.8, 0.8)
-	resizeHandle.BackgroundTransparency = 0.5
-	resizeHandle.Parent = frame
-	resizeHandle.ZIndex = 3
-
-	resizeHandle.Name = frame.Name .. "_resizer"
+	-- Position it in the bottom left corner of the frame
+	local resizeHandle = createCornerButton(frame, "resizer", "O", UDim2.new(0, 0, 1, -buttonScalePixel))
 
 	local deb = false
 	local function handleResize(input: InputObject)
@@ -71,6 +113,7 @@ local SetupResizeability = function(frame: Frame): TextButton
 
 		local newSizeXScale = initialFrameSize.X.Scale
 		local newSizeXOffset = initialFrameSize.X.Offset - delta.X
+		local newPositionXOffset = initialFramePosition.X.Offset + delta.X
 
 		local newSizeYScale = initialFrameSize.Y.Scale
 		local newSizeYOffset = initialFrameSize.Y.Offset + delta.Y
@@ -79,7 +122,7 @@ local SetupResizeability = function(frame: Frame): TextButton
 
 		local newPosition = UDim2.new(
 			initialFramePosition.X.Scale,
-			initialFramePosition.X.Offset + delta.X,
+			newPositionXOffset,
 			initialFramePosition.Y.Scale,
 			initialFramePosition.Y.Offset
 		)
@@ -136,21 +179,8 @@ local SetupMinimizeability = function(frame: Frame)
 
 	local isMinimized: boolean = false
 	local minimizeButton: TextButton
-	minimizeButton = Instance.new("TextButton")
-	minimizeButton.Size = UDim2.new(0, buttonScalePixel, 0, buttonScalePixel) -- Increased size
-	minimizeButton.Position = UDim2.new(0, buttonScalePixel, 1, -1 * buttonScalePixel)
-
-	minimizeButton.Text = "-"
-	minimizeButton.TextScaled = true
-	minimizeButton.Name = frame.Name .. "_minimizer"
-	minimizeButton.ZIndex = 10
-	minimizeButton.BackgroundColor3 = colors.defaultGrey
-	minimizeButton.TextColor3 = colors.black
-	minimizeButton.TextSize = 18 -- Larger text
-	minimizeButton.Font = Enum.Font.Gotham
-	minimizeButton.Parent = frame -- Set as sibling to the frame
-	minimizeButton.ZIndex = 6
-	minimizeButton.BackgroundTransparency = 0.5
+	-- Position the minimize button in the bottom left corner, next to the resize handle
+	minimizeButton = createCornerButton(frame, "minimizer", "-", UDim2.new(0, buttonScalePixel, 1, -buttonScalePixel))
 
 	local childrenSizes: { [string]: UDim2 } = {}
 	local originalSize: UDim2 = frame.Size
@@ -238,8 +268,24 @@ local SetupDraggability = function(frame: Frame)
 	local framePositionAtStartOfDrag: UDim2
 
 	local function startDragging(input: InputObject)
+		-- Check if another frame is already being dragged
+		if currentlyDraggingFrame and currentlyDraggingFrame ~= frame then
+			return
+		end
+
+		bringFrameToFront(frame)
+
+		if isFrameOnTop(frame) then
+			_annotate(string.format("on top so dragging me, %s", input.Name))
+		else
+			_annotate(string.format("not on top, so not dragging me., %s", input.Name))
+			return
+		end
+
 		_annotate("dragging me.")
+
 		dragging = true
+		currentlyDraggingFrame = frame
 
 		mouseDragStartPosition = Vector2.new(input.Position.X, input.Position.Y)
 		framePositionAtStartOfDrag = frame.Position
@@ -265,6 +311,7 @@ local SetupDraggability = function(frame: Frame)
 				or endedInput.UserInputType == Enum.UserInputType.Touch
 			then
 				dragging = false
+				currentlyDraggingFrame = nil
 				dragConnection:Disconnect()
 				endConnection:Disconnect()
 			end
@@ -287,8 +334,39 @@ local SetupDraggability = function(frame: Frame)
 	end)
 end
 
--- based on name and params, set up a frame which is the "outer" frame. That will have the controls attached to it.
--- you will be given the outer frame to position and the child "content" frame to populate
+-- Modify the isFrameOnScreen function
+local function isFrameOnScreen(frame: Frame): (boolean, string)
+	if not frame.Visible then
+		return false, "Frame is intentionally hidden"
+	end
+
+	local isMinimized = frame:GetAttribute("IsMinimized")
+	if isMinimized then
+		return true, "Frame is minimized"
+	end
+
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return false, "No camera found"
+	end
+
+	local viewportSize = camera.ViewportSize
+	local framePosition = frame.AbsolutePosition
+	local frameSize = frame.AbsoluteSize
+
+	local onScreen = framePosition.X < viewportSize.X
+		and framePosition.Y < viewportSize.Y
+		and framePosition.X + frameSize.X > 0
+		and framePosition.Y + frameSize.Y > 0
+
+	if onScreen then
+		return true, "Fully visible"
+	else
+		return false, "Off screen"
+	end
+end
+
+-- Modify the SetupFrame function
 module.SetupFrame = function(
 	name: string,
 	draggable: boolean,
@@ -314,10 +392,33 @@ module.SetupFrame = function(
 	local contentFrame = Instance.new("Frame")
 	contentFrame.Parent = outerFrame
 	contentFrame.Name = "content_" .. name
-	contentFrame.Size = UDim2.new(1, 0, 1, 0)
+	-- Adjust the size to leave space for the buttons at the bottom
+	contentFrame.Size = UDim2.new(1, 0, 1, -buttonScalePixel)
 	contentFrame.BackgroundTransparency = 1
 	contentFrame.Position = UDim2.new(0, 0, 0, 0)
 	contentFrame.Visible = true
+
+	uiPositionManager.registerFrame(outerFrame)
+
+	-- Debug: Print frame information when it's fully loaded
+	task.defer(function()
+		task.wait()
+		local position = outerFrame.AbsolutePosition
+		local size = outerFrame.AbsoluteSize
+		local onScreen, status = isFrameOnScreen(outerFrame)
+		_annotate(
+			string.format(
+				"GUI Debug - %s: Position: (%d, %d), Size: (%d, %d), Status: %s",
+				name,
+				position.X,
+				position.Y,
+				size.X,
+				size.Y,
+				status
+			)
+		)
+	end)
+
 	return { outerFrame = outerFrame, contentFrame = contentFrame }
 end
 

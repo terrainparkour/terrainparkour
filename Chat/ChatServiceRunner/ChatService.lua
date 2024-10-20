@@ -305,7 +305,7 @@ function methods:InternalApplyRobloxFilter(speakerName, message, toSpeakerName)
 		--// There is only latency the first time the message is filtered, all following calls will be instant.
 		if not StudioMessageFilteredCache[message] then
 			StudioMessageFilteredCache[message] = true
-			wait(0.2)
+			task.wait(0.2)
 		end
 		return message
 	end

@@ -66,7 +66,7 @@ specialSign.GetName = function()
 	return "Medusa"
 end
 
-local module: tt.ScriptInterface = specialSign
+local module: tt.SpecialSignInterface = specialSign
 local DescriptionUpdateText = function()
 	--I ain't doing gui stuff, oh hell nah
 end

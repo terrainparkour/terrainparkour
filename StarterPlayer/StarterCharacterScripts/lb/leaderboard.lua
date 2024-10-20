@@ -80,15 +80,7 @@ local enabledDescriptors: { [string]: boolean } = {}
 
 -- this will block things like adding rows.
 local loadedSettings = false
-local leaderboardConfiguration: leaderboardConfiguration? = nil
-
-type leaderboardConfiguration = {
-	position: UDim2,
-	size: UDim2,
-	minimized: boolean,
-	sortDirection: "ascending" | "descending",
-	sortColumn: string,
-}
+local leaderboardConfiguration: tt.lbConfig? = nil
 
 local lastSaveRequestCount = 0
 
@@ -126,7 +118,8 @@ local function saveLeaderboardConfiguration()
 	end)
 end
 
-local function ensureLeaderboardOnScreen()
+local function ensureLeaderboardOnScreen(reason: string?)
+	_annotate("ensureLeaderboardOnScreen " .. (reason or ""))
 	if not lbOuterFrame or not leaderboardConfiguration then
 		_annotate("No lbOuterFrame or leaderboardConfiguration in ensureLeaderboardOnScreen")
 		return
@@ -172,6 +165,7 @@ local function ensureLeaderboardOnScreen()
 		_annotate(string.format("Adjusted Leaderboard size to %s", tostring(newSize)))
 		saveLeaderboardConfiguration()
 	end
+	_annotate("done with ensureLeaderboardOnScreen " .. (reason or ""))
 end
 
 local function monitorLeaderboardFrame()
@@ -180,30 +174,32 @@ local function monitorLeaderboardFrame()
 		return
 	end
 
-	-- these are changes that are made directly by windows.
-	-- other changes, like those of the sort data, are made in here and direclty save when changed.
-	lbOuterFrame:GetPropertyChangedSignal("Position"):Connect(function()
-		leaderboardConfiguration.position = lbOuterFrame.Position
-		ensureLeaderboardOnScreen()
-		saveLeaderboardConfiguration()
-	end)
+	local function deferredUpdate()
+		task.defer(function()
+			leaderboardConfiguration.position = lbOuterFrame.Position
+			leaderboardConfiguration.size = lbOuterFrame.Size
+			ensureLeaderboardOnScreen("deferredUpdate")
+			saveLeaderboardConfiguration()
+		end)
+	end
 
-	lbOuterFrame:GetPropertyChangedSignal("Size"):Connect(function()
-		leaderboardConfiguration.size = lbOuterFrame.Size
-		ensureLeaderboardOnScreen()
-		saveLeaderboardConfiguration()
-	end)
+	lbOuterFrame:GetPropertyChangedSignal("Position"):Connect(deferredUpdate)
+	lbOuterFrame:GetPropertyChangedSignal("Size"):Connect(deferredUpdate)
 
 	lbOuterFrame:GetAttributeChangedSignal("IsMinimized"):Connect(function()
 		local minimizeState = lbOuterFrame:GetAttribute("IsMinimized")
-		leaderboardConfiguration.minimized = minimizeState
-		ensureLeaderboardOnScreen()
-		saveLeaderboardConfiguration()
+		if type(minimizeState) == "boolean" then
+			leaderboardConfiguration.minimized = minimizeState
+			ensureLeaderboardOnScreen('GetAttributeChangedSignal("IsMinimized")')
+			saveLeaderboardConfiguration()
+		else
+			annotater.Error(string.format("Invalid type for IsMinimized attribute: %s", tostring(minimizeState)))
+		end
 	end)
 
 	-- Add viewport size changed connection
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
-		ensureLeaderboardOnScreen()
+		ensureLeaderboardOnScreen("viewportSizeChanged")
 	end)
 end
 
@@ -220,7 +216,7 @@ local function setSize()
 	end
 	local normalizedPlayerRowYScale = 1 / rowCount
 
-	for _, child: Frame in ipairs(lbUserRowFrame:GetChildren()) do
+	for _, child in ipairs(lbUserRowFrame:GetChildren()) do
 		if child:IsA("Frame") and child.Name ~= "LeaderboardHeaderRow" then
 			child.Size = UDim2.fromScale(1, normalizedPlayerRowYScale)
 		end
@@ -295,56 +291,9 @@ local function getOrCreateRowForUser(userId: number): Frame?
 		if lbColumnDescriptor.name == "portrait" then
 			local portraitCell = userRowFrame:FindFirstChild(getNameForDescriptor(lbColumnDescriptor))
 			if not portraitCell then
-				portraitCell = Instance.new("Frame")
+				portraitCell = thumbnails.createAvatarPortraitPopup(userId, userRowFrame)
 				portraitCell.Size = UDim2.fromScale(widthYScale, 1)
-				portraitCell.BackgroundTransparency = 1
 				portraitCell.Name = getNameForDescriptor(lbColumnDescriptor)
-				portraitCell.Parent = userRowFrame
-				local img = Instance.new("ImageLabel")
-				img.Size = UDim2.new(1, 0, 1, 0)
-				img.BackgroundColor3 = colors.defaultGrey
-				img.Name = "PortraitImage"
-				img.Parent = portraitCell
-				img.BorderMode = Enum.BorderMode.Outline
-				img.ScaleType = Enum.ScaleType.Crop
-				img.BorderSizePixel = 1
-				local content =
-					thumbnails.getThumbnailContent(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
-				img.Image = content
-				-- Add mouseover functionality so that when you mouseover the portrait cell (the 1st one) to the left of it,
-				-- a larger portrait appears.  It has no effect on the row.
-
-				local avatarImages = Instance.new("Frame")
-				avatarImages.Size = UDim2.new(0, 420, 0, 420)
-				avatarImages.Position = UDim2.new(0, -440, 0, 0)
-				avatarImages.Parent = portraitCell
-				avatarImages.Visible = false
-				local vv = Instance.new("UIListLayout")
-				vv.FillDirection = Enum.FillDirection.Vertical
-				vv.Parent = avatarImages
-				vv.Name = "avatarVV"
-				local allContents = {
-					thumbnails.getThumbnailContent(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420),
-				}
-				for _, content in pairs(allContents) do
-					local img = Instance.new("ImageLabel")
-					img.Size = UDim2.new(1, 0, 1, 0)
-					img.BackgroundColor3 = colors.defaultGrey
-					img.Visible = false
-					img.ZIndex = 10
-					img.Image = content
-					img.Visible = true
-					img.Name = "LargeAvatarImage_" .. tostring(userId)
-					img.Parent = avatarImages
-				end
-
-				-- in general mouseenter can fire before mouseleave. which means sometimes the avatar image gets stuck
-				portraitCell.MouseEnter:Connect(function()
-					avatarImages.Visible = true
-				end)
-				portraitCell.MouseLeave:Connect(function()
-					avatarImages.Visible = false
-				end)
 			end
 		else --it's a textlabel whatever we're generating anyway.
 			local cellName = getNameForDescriptor(lbColumnDescriptor)
@@ -648,7 +597,7 @@ local function completelyResetUserLB(forceResize: boolean, kind: string)
 
 	--previous lb frame items now just are floating independently and adjustable freely.
 
-	local lbSystemFrames = windows.SetupFrame("lb", true, true, true)
+	local lbSystemFrames = windows.SetupFrame("lb", true, true, true, true)
 	lbOuterFrame = lbSystemFrames.outerFrame
 	local lbContentFrame = lbSystemFrames.contentFrame
 
@@ -841,12 +790,16 @@ local function handleUserSettingChanged(setting: tt.userSettingValue, initial: b
 		task.wait(0.1)
 		_annotate("waiting for settings to load for updateUserLeaderboardRow2")
 	end
+	local useValue = ""
+	if setting.booleanValue ~= nil then
+		useValue = tostring(setting.booleanValue)
+	elseif setting.luaValue ~= nil then
+		useValue = tostring(setting.luaValue)
+	elseif setting.stringValue ~= nil then
+		useValue = tostring(setting.stringValue)
+	end
 	_annotate(
-		string.format(
-			"leaderboard handleUserSettingChanged: loading setting: %s=%s",
-			tostring(setting.name),
-			tostring(setting.booleanValue)
-		)
+		string.format("leaderboard handleUserSettingChanged: loading setting: %s=%s", tostring(setting.name), useValue)
 	)
 	if setting.name == settingEnums.settingDefinitions.HIDE_LEADERBOARD.name then
 		if setting.booleanValue ~= lbIsEnabled then
@@ -879,49 +832,61 @@ local function handleUserSettingChanged(setting: tt.userSettingValue, initial: b
 	end
 
 	if setting.domain == settingEnums.settingDomains.LEADERBOARD then
-		if setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_PORTRAIT.name then
-			enabledDescriptors["portrait"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_USERNAME.name then
-			enabledDescriptors["username"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_AWARDS.name then
-			enabledDescriptors["awardCount"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_TIX.name then
-			enabledDescriptors["userTix"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_FINDS.name then
-			enabledDescriptors["findCount"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_FINDRANK.name then
-			enabledDescriptors["findRank"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_CWRS.name then
-			enabledDescriptors["cwrs"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_CWRANK.name then
-			enabledDescriptors["cwrRank"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_CWRTOP10S.name then
-			enabledDescriptors["cwrTop10s"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_TOP10S.name then
-			enabledDescriptors["top10s"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_WRS.name then
-			enabledDescriptors["wrCount"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_WRRANK.name then
-			enabledDescriptors["wrRank"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_RACES.name then
-			enabledDescriptors["userTotalRaceCount"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_RUNS.name then
-			enabledDescriptors["userTotalRunCount"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_BADGES.name then
-			enabledDescriptors["badgeCount"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_DAYSINGAME_COLUMN.name then
-			enabledDescriptors["daysInGame"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_PINNED_RACE_COLUMN.name then
-			enabledDescriptors["pinnedRace"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_RUNSTODAY_COLUMN.name then
-			enabledDescriptors["runsToday"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_WRSTODAY_COLUMN.name then
-			enabledDescriptors["wrsToday"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_CWRSTODAY_COLUMN.name then
-			enabledDescriptors["cwrsToday"] = setting.booleanValue
-		elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_PINNED_RACE.name then
+		if setting.name == settingEnums.settingDefinitions.LEADERBOARD_PINNED_RACE.name then
+			_annotate(
+				"received pinned race name but we don't apparently care. (since the info arrives with the update from db."
+			)
 		else
-			warn("unknown leaderboard setting: " .. tostring(setting.name))
+			if setting.booleanValue == nil then
+				annotater.Error(
+					"a LB setting value boolean value was nil, which isn't possible for the remaining LB settings which are all toggles (until we add more)"
+				)
+				error("a LB setting value boolean value was nil, which isn't possible")
+			end
+			local actualValue = setting.booleanValue or false
+			if setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_PORTRAIT.name then
+				enabledDescriptors["portrait"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_USERNAME.name then
+				enabledDescriptors["username"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_AWARDS.name then
+				enabledDescriptors["awardCount"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_TIX.name then
+				enabledDescriptors["userTix"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_FINDS.name then
+				enabledDescriptors["findCount"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_FINDRANK.name then
+				enabledDescriptors["findRank"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_CWRS.name then
+				enabledDescriptors["cwrs"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_CWRANK.name then
+				enabledDescriptors["cwrRank"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_CWRTOP10S.name then
+				enabledDescriptors["cwrTop10s"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_TOP10S.name then
+				enabledDescriptors["top10s"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_WRS.name then
+				enabledDescriptors["wrCount"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_WRRANK.name then
+				enabledDescriptors["wrRank"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_RACES.name then
+				enabledDescriptors["userTotalRaceCount"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_RUNS.name then
+				enabledDescriptors["userTotalRunCount"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_BADGES.name then
+				enabledDescriptors["badgeCount"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_DAYSINGAME_COLUMN.name then
+				enabledDescriptors["daysInGame"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_PINNED_RACE_COLUMN.name then
+				enabledDescriptors["pinnedRace"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_RUNSTODAY_COLUMN.name then
+				enabledDescriptors["runsToday"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_WRSTODAY_COLUMN.name then
+				enabledDescriptors["wrsToday"] = actualValue
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_CWRSTODAY_COLUMN.name then
+				enabledDescriptors["cwrsToday"] = actualValue
+			else
+				warn("unknown leaderboard setting: " .. tostring(setting.name))
+			end
 		end
 	end
 
@@ -1076,7 +1041,7 @@ module.Init = function()
 	-- now we listen for subsequent setting changes.
 	settings.RegisterFunctionToListenForSettingName(function(item: tt.userSettingValue): any
 		return handleUserSettingChanged(item, false)
-	end, settingEnums.settingDefinitions.HIDE_LEADERBOARD.name)
+	end, settingEnums.settingDefinitions.HIDE_LEADERBOARD.name, "leaderboard")
 
 	settings.RegisterFunctionToListenForDomain(function(item: tt.userSettingValue): any
 		return handleUserSettingChanged(item, false)

@@ -155,7 +155,7 @@ local evaluateFindInFixedOrderByFirstLetter = function(
 		--you touched an irrelevant sign.
 		return { added = false, marathonDone = false, started = false }
 	end
-	warn("should not get here.")
+	annotater.Error("should not get here.")
 end
 
 --the most naive method of pairing up signids after a marathon is done.

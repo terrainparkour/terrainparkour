@@ -10,10 +10,11 @@ local module = {}
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
-local AvatarManipulationRemoteFunction = remotes.getRemoteFunction("AvatarManipulationRemoteFunction")
-local localPlayer = game:GetService("Players").LocalPlayer
 
-module.AnchorCharacter = function(humanoid: Humanoid, character: Model)
+local GenericClientUIEvent = remotes.getRemoteEvent("GenericClientUIEvent")
+local GenericClientUIFunction = remotes.getRemoteFunction("GenericClientUIFunction")
+
+module.AnchorCharacter = function(_: Humanoid, character: Model)
 	local rootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
 
 	if rootPart then
@@ -28,7 +29,7 @@ module.AnchorCharacter = function(humanoid: Humanoid, character: Model)
 	_annotate("anchoring character done. rootPart position: " .. tostring(rootPart.Position))
 end
 
-module.UnAnchorCharacter = function(humanoid: Humanoid, character: Model)
+module.UnAnchorCharacter = function(_: Humanoid, character: Model)
 	local rootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
 	if rootPart then
 		_annotate("unanchor. rootPart position: " .. tostring(rootPart.Position))
@@ -48,9 +49,6 @@ module.ResetMomentum = function(humanoid: Humanoid, character: Model)
 
 	-- 2024: is this effectively just the server version of resetting movement states?
 	local rootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
-	if rootPart == nil then
-		annotater.Error("fail")
-	end
 
 	rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 
@@ -67,8 +65,7 @@ module.ResetMomentum = function(humanoid: Humanoid, character: Model)
 			break
 		end
 
-		wait(0.1)
-		-- warn("hmm")
+		task.wait(0.1)
 		_annotate("waited.in resetMomentum")
 	end
 	_annotate("movement:\tmomentum has been reset.")
@@ -127,18 +124,18 @@ module.ResetAbnormalMomentum = function(humanoid: Humanoid, character: Model)
 	resetMomentumDebounce = false
 end
 
-module.SetCharacterTransparency = function(player: Player, target: number)
+module.SetCharacterTransparency = function(_: Player, target: number)
 	_annotate("Player made transparent: " .. tostring(target))
 	local data: tt.avatarMorphData = {
 		transparency = target,
 		scale = nil,
 	}
-	local event: tt.clientToServerRemoteEvent = {
+	local event: tt.clientToServerRemoteEventOrFunction = {
 		eventKind = "avatarMorph",
 		data = data,
 	}
 
-	AvatarManipulationRemoteFunction:InvokeServer(event)
+	GenericClientUIFunction:InvokeServer(event)
 	_annotate("done setting character transparency")
 	-- return any
 end
@@ -153,11 +150,11 @@ module.ResetPhysicalAvatarMorphs = function(humanoid: Humanoid, character: Model
 		transparency = nil,
 		scale = 1,
 	}
-	local event: tt.clientToServerRemoteEvent = {
+	local event: tt.clientToServerRemoteEventOrFunction = {
 		eventKind = "avatarMorph",
 		data = data,
 	}
-	local changedAnythingOnServer = AvatarManipulationRemoteFunction:InvokeServer(event)
+	local changedAnythingOnServer = GenericClientUIFunction:InvokeServer(event)
 	if changedAnythingOnServer then
 		_annotate(
 			"client has received response from request to change avatar traints on server, and they DID do something"

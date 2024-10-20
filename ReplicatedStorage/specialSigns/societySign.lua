@@ -77,7 +77,7 @@ specialSign.GetName = function()
 	return "Society"
 end
 
-local module: tt.ScriptInterface = specialSign
+local module: tt.SpecialSignInterface = specialSign
 
 _annotate("end")
 return module

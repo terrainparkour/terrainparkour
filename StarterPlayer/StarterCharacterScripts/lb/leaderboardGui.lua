@@ -1,7 +1,13 @@
 --!strict
 
+-- leaderboardGui on client
+-- drawing the LB rows and managing them
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
+
+local module = {}
+
 local colors = require(game.ReplicatedStorage.util.colors)
 local leaderboardEnums = require(game.StarterPlayer.StarterCharacterScripts.lb.leaderboardEnums)
 local lt = require(game.StarterPlayer.StarterCharacterScripts.lb.leaderboardTypes)
@@ -9,10 +15,12 @@ local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
-local module = {}
+local LLMGeneratedUIFunctions = require(game.ReplicatedStorage.gui.menu.LLMGeneratedUIFunctions)
+
+local localPlayer = game:GetService("Players").LocalPlayer
 
 ------------------FUNCTIONS--------------
-module.CalculateCellWidths = function(enabledDescriptors): { [string]: number }
+module.CalculateCellWidths = function(enabledDescriptors: { [string]: boolean }): { [string]: number }
 	local totalWidthWeightScale = 0
 	local cellWidths: { [string]: number } = {}
 	-- we add them up once, then use that for all rows.
@@ -32,17 +40,22 @@ end
 
 --setup header row as first row in lbframe
 module.MakeLeaderboardHeaderRow = function(enabledDescriptors: { [string]: boolean }, headerRowYOffsetFixed): Frame
-	local headerRow = Instance.new("Frame")
-	headerRow.BorderMode = Enum.BorderMode.Inset
-	headerRow.BorderSizePixel = 1
-	headerRow.Name = "LeaderboardHeaderRow"
-	headerRow.Size = UDim2.new(1, 0, 0, headerRowYOffsetFixed)
-	headerRow.BackgroundColor3 = colors.greenGo
-	headerRow.BackgroundTransparency = 0.2
-	local hh = Instance.new("UIListLayout")
-	hh.FillDirection = Enum.FillDirection.Horizontal
-	hh.Parent = headerRow
-	hh.Name = "HeaderRow-hh"
+	local headerRow = LLMGeneratedUIFunctions.createFrame({
+		BorderMode = Enum.BorderMode.Inset,
+		BorderSizePixel = 1,
+		Name = "LeaderboardHeaderRow",
+		Size = UDim2.new(1, 0, 0, math.min(headerRowYOffsetFixed, 80)),
+		BackgroundColor3 = colors.greenGo,
+		BackgroundTransparency = 0.2,
+	})
+
+	local listLayout = LLMGeneratedUIFunctions.createLayout("UIListLayout", headerRow, {
+		FillDirection = Enum.FillDirection.Horizontal,
+		Name = "HeaderRow-hh",
+	})
+
+	local uiScale = Instance.new("UIScale")
+	uiScale.Parent = headerRow
 
 	local cellWidths = module.CalculateCellWidths(enabledDescriptors)
 
@@ -52,20 +65,20 @@ module.MakeLeaderboardHeaderRow = function(enabledDescriptors: { [string]: boole
 		end
 		local thisCellScale = cellWidths[lbUserCellDescriptor.name]
 
-		local elb = guiUtil.getTb(
-			string.format("%02d.header.%s", lbUserCellDescriptor.num, lbUserCellDescriptor.userFacingName),
-			UDim2.fromScale(thisCellScale, 1),
-			2,
-			headerRow,
-			colors.defaultGrey,
-			0
-		)
+		local elb = LLMGeneratedUIFunctions.createTextLabel({
+			Name = string.format("%02d.header.%s", lbUserCellDescriptor.num, lbUserCellDescriptor.userFacingName),
+			Size = UDim2.fromScale(thisCellScale, 1),
+			Parent = headerRow,
+			BackgroundColor3 = colors.defaultGrey,
+			BackgroundTransparency = 0,
+			Text = lbUserCellDescriptor.userFacingName,
+			ZIndex = lbUserCellDescriptor.num,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextYAlignment = Enum.TextYAlignment.Center,
+			TextScaled = true,
+		})
 
-		elb.Text = lbUserCellDescriptor.userFacingName
-		elb.ZIndex = lbUserCellDescriptor.num
-		elb.TextXAlignment = Enum.TextXAlignment.Center
-		elb.TextYAlignment = Enum.TextYAlignment.Center
-		elb.TextScaled = true
+		LLMGeneratedUIFunctions.addTextSizeConstraint(elb, 18)
 
 		local keyHolder = Instance.new("StringValue")
 		keyHolder.Name = "key"
@@ -73,20 +86,36 @@ module.MakeLeaderboardHeaderRow = function(enabledDescriptors: { [string]: boole
 		keyHolder.Parent = elb
 	end
 
+	-- Adjust UIScale to fit content within 80 pixel height
+	local function updateUIScale()
+		local contentSize = headerRow.AbsoluteSize
+		if contentSize.Y > 80 then
+			uiScale.Scale = 80 / contentSize.Y
+		else
+			uiScale.Scale = 1
+		end
+	end
+
+	-- Connect the function to the appropriate signals
+	headerRow:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateUIScale)
+	listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateUIScale)
+
+	-- Initial call to set the correct scale
+	updateUIScale()
+
 	return headerRow
 end
 
-local localPlayer = game.Players.LocalPlayer
-
 module.DrawRaceWarper = function(rowFrame: Frame, newPinnedRaceRawValue: string)
-	local oldChild = rowFrame:FindFirstChildOfClass("TextButton")
-	if oldChild and oldChild ~= nil then
+	local oldChild: TextButton | nil = rowFrame:FindFirstChildOfClass("TextButton")
+	if oldChild then
 		oldChild:Destroy()
 	end
 	if newPinnedRaceRawValue == nil or newPinnedRaceRawValue == "" then
-		local tb = Instance.new("TextButton")
-		tb.Text = ""
-		tb.Parent = rowFrame
+		LLMGeneratedUIFunctions.createTextButton({
+			Text = "",
+			Parent = rowFrame,
+		})
 		return
 	end
 	local parts = textUtil.stringSplit(newPinnedRaceRawValue, "-")
@@ -95,15 +124,22 @@ module.DrawRaceWarper = function(rowFrame: Frame, newPinnedRaceRawValue: string)
 	local signName1 = tpUtil.signId2signName(signId1)
 	local signName2 = tpUtil.signId2signName(signId2)
 
-	if not signName1 or not signName2 or signName1 == "" or signName2 == "" then
-		local tb = Instance.new("TextButton")
-		tb.Text = ""
-		tb.Parent = rowFrame
+	if not signName1 or not signName2 or signName1 == "" or signName2 == "" or signId1 == nil then
+		LLMGeneratedUIFunctions.createTextButton({
+			Text = "",
+			Parent = rowFrame,
+		})
 		return
 	end
 	local warpCellName = string.format("9999_%s_warper_%s-%s", localPlayer.Name, signName1, signName2)
-	local warp = guiUtil.getTb(warpCellName, UDim2.new(1, 0, 1, 0), 1, rowFrame, colors.lightBlue, 1)
-	warp.Text = string.format("%s-%s", signName1, signName2)
+	local warp = LLMGeneratedUIFunctions.createTextButton({
+		Name = warpCellName,
+		Size = UDim2.new(1, 0, 1, 0),
+		Parent = rowFrame,
+		BackgroundColor3 = colors.lightBlue,
+		BackgroundTransparency = 0,
+		Text = string.format("%s-%s", signName1, signName2),
+	})
 
 	warp.Activated:Connect(function()
 		warper.WarpToSignId(signId1, signId2)

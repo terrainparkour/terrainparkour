@@ -16,7 +16,7 @@ local module = {}
 --looks like this is a way to shuffle around pointers to actual channel objects.
 local channelsFromExternal = nil
 
-module.sendChannels = function(channels)
+module.SendChannels = function(channels)
 	_annotate(string.format("received #channels %d", #channels))
 	channelsFromExternal = channels
 end
@@ -104,7 +104,7 @@ module.getChannelDefinitions = function(): { tt.channelDefinition }
 	return res
 end
 
-module.GetChannel = function(name)
+module.GetChannel = function(name): tt.channelDefinition | nil
 	while true do
 		if channelsFromExternal ~= nil then
 			break
@@ -112,13 +112,13 @@ module.GetChannel = function(name)
 		_annotate("waiting for channelsFromExternal")
 		task.wait(1)
 	end
-	for k, v in pairs(channelsFromExternal) do
-		if v.Name == name then
+	for _, channel in pairs(channelsFromExternal) do
+		if channel.Name == name then
 			_annotate("returning channel " .. name)
-			return v
+			return channel
 		end
 	end
-	warn("no channel.")
+	annotater.Error(string.format("no channel when asking for: %s", name))
 end
 
 _annotate("end")

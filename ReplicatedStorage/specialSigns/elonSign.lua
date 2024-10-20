@@ -55,6 +55,6 @@ end
 
 _annotate("end")
 
-local module: tt.ScriptInterface = specialSign
+local module: tt.SpecialSignInterface = specialSign
 
 return module
