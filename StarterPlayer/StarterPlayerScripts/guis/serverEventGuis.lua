@@ -233,7 +233,7 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 		UDim2.fromScale(warpWidth, 1),
 		1,
 		servereventRow1,
-		colors.lightBlue,
+		colors.warpColor,
 		1,
 		0
 	)

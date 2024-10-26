@@ -209,15 +209,15 @@ local function calculateTextForDynamic(frame: tt.DynamicRunFrame): (string, Colo
 	local useColor = colors.defaultGrey
 	if comparatorPlace == 1 then
 		if frame.myplace and frame.myplace.place == 1 then
-			useColor = colors.lightBlue --just improve your 1st place.
+			useColor = colors.warpColor --just improve your 1st place.
 		else
 			useColor = colors.greenGo
 		end
 	else
 		if frame.myplace and frame.myplace.place == comparatorPlace then
-			useColor = colors.lightOrangeWRProgression
+			useColor = colors.WRProgressionColor
 		else
-			useColor = colors.lightBlue
+			useColor = colors.warpColor
 		end
 	end
 
@@ -401,14 +401,16 @@ end
 
 local function handleUserSettingChanged(setting: tt.userSettingValue)
 	if setting.name == settingEnums.settingDefinitions.ENABLE_DYNAMIC_RUNNING.name then
-		if setting.booleanValue then
+		if setting.booleanValue == true then
 			if not dynamicRunningEnabled then
+				_annotate("enabling dynamic running")
 				dynamicRunningEnabled = true
 				setupRenderStepped()
 			end
 		elseif setting.booleanValue == false then
 			if dynamicRunningEnabled then
 				--also destroy them all.
+				_annotate("disabling dynamic running")
 				dynamicRunningEnabled = false
 				renderStepped:Disconnect()
 				_annotate("kill renderstepped")
@@ -434,7 +436,7 @@ module.Init = function()
 
 	--in addition to this, needs to get the original setting to set it locally too.
 	settings.RegisterFunctionToListenForSettingName(function(item)
-		return handleUserSettingChanged(item, true)
+		return handleUserSettingChanged(item)
 	end, settingEnums.settingDefinitions.ENABLE_DYNAMIC_RUNNING.name, "dynamicRunning")
 
 	local dynset = settings.GetSettingByName(settingEnums.settingDefinitions.ENABLE_DYNAMIC_RUNNING.name)

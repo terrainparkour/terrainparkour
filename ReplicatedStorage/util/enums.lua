@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "0.306"
+module.gameVersion = "0.308"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
@@ -679,6 +679,7 @@ module.ExcludeSignNamesFromStartingAt = {
 	"007",
 	"65536",
 	"POGGOD",
+	"Aphex",
 	"Chaoskampf",
 	"Nyx",
 	"👻",
@@ -743,6 +744,10 @@ objects.TerrainParkourPlaceId = 868107368
 objects.TerrainParkourUniverseId = 360479749
 objects.TerrainParkourDevGamePlaceId = 1
 objects.TerrainParkourDevGameUniverseId = 1
+
+local topPlayerUserIds: { number } =
+	{ 1796098297, 2546938052, 3682042001, 507095653, 183056632, 1905672054, 299045490, 1444105681 }
+objects.topPlayerUserIds = topPlayerUserIds
 
 module.objects = objects
 

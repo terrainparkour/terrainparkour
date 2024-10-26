@@ -39,7 +39,6 @@ local getHowToPlayModal = function(localPlayer: Player): ScreenGui
 
 	local text = guiUtil.getTl("Text", UDim2.new(1, 0, 1, 0), 2, scrollingFrame, colors.defaultGrey, 1)
 	text.TextXAlignment = Enum.TextXAlignment.Left
-	text.FontSize = Enum.FontSize.Size14
 	text.Text = "Run and touch red signs to 'find' them.  Run from one to the other to complete runs.  Look at your run results and see how you did.  Get WRs. Get badges. Find your favorite spots.\n\nAdvanced play: Turn on marathons using settings and try to complete one.  Find 300+ signs.  Click a sign to examine other people's records. Complete sign runs to take over a sign. Use the secret command line commands to find things out. Get badges.  \n\nThe game has been around since 2017."
 		.. "\n\nExplorer - Wander around randomly"
 		.. "\n\nGrinder - Warp back over and over trying to beat a run"

@@ -48,7 +48,7 @@ local settingDefinitions: { [string]: tt.userSettingValue } = {
 		},
 		editorName = "",
 	},
-	ACTIVE_RUN_CONFIGURATION = {
+	ACTIVE_RUN_CONFIGURATION = { --the position (and maybe details?) of the active run ui like source, distance etc.
 		name = "active run configuration",
 		domain = settingDomains.USERSETTINGS,
 		kind = settingKinds.LUA,
@@ -60,6 +60,30 @@ local settingDefinitions: { [string]: tt.userSettingValue } = {
 			transparency = 0.6,
 		},
 		editorName = "",
+	},
+	ALLOW_WARP = {
+		name = "allow warping at all. If you set this, warping will not work although buttons will still appear. This is useful if you are doing long marathons, for example.",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = true,
+	},
+	SHOW_RUN_RESULT_POPUPS = {
+		name = "show run result popups",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = true,
+	},
+	SHRINK_RUN_RESULT_POPUPS = {
+		name = "shrink run result popups",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = false,
+	},
+	ONLY_HAVE_ONE_RUN_RESULT_POPUP_AT_A_TIME = {
+		name = "only have one run result popup at a time - if another one comes up, the existing one will be closed.",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = false,
 	},
 	ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION = {
 		name = "when you're warping with an implied destination, rotate your avatar and camera to face the direction",
@@ -112,6 +136,12 @@ local settingDefinitions: { [string]: tt.userSettingValue } = {
 	HIGHLIGHT_AT_ALL = {
 		name = "do any sign highlighting at all, for example when warping to a server event run",
 		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = true,
+	},
+	LEADERBOARD_ENABLE_FAVORITES = {
+		name = "show favorites",
+		domain = settingDomains.LEADERBOARD,
 		kind = settingKinds.BOOLEAN,
 		defaultBooleanValue = true,
 	},
@@ -490,9 +520,6 @@ for k, v in pairs(settingDefinitions) do
 end
 
 module.settingDefinitions = settingDefinitions
-
---this system fails when i add one here but don't create the userSetting in the db.
--- I should have a way to automatically at least do a getOrCreate there, like I do with signs.
 
 export type settingRequest = { domain: string?, settingName: string?, kind: string? }
 

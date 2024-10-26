@@ -1,4 +1,5 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- windows.lua, used in clients
 -- generic module to add resize functionality to frames
@@ -7,419 +8,463 @@
 -- 1. There is no option to make windows block each other / not overlap with each other, or at least, to "snap" stick to each others's edges.  Instead, they just overlap each other.
 -- 2.  it's a bit weird that the resize dragger is only on the left corner of windows; if they are already left-aligned, it means there isn't really a way to resize them.  It'd be nice to have multiple resizers, or to let the developer choose where to put the resizer.
 
+-- Generic UI popup creation system.
+-- nearly all popups ahve this format:
+-- the overall popup is a
+-- 1. title at top, full width. Cell widths are specified by a "width" which is an UDim, where scale part will be treated as a proportion, and offset part as an absolute reservation of that size.
+-- 2. data row at top,with many individual elements which are either textLabels, textButtons, or images. Widths are specified by widthWeight, or sometimes absolute pixel width.
+-- 3. header row which has headers for a scrolling area. Same here, using widthWeight and tt.headerDefinition
+-- 4. data area which can scroll up and down
+-- 5. last button row.
+-- Let's standardize on thse names in however we refer to each section.
+-- Let's also make it so that there are clearly specified formats for how to draw each thing, and its order, too.  i.e. an area for how to create the title row, then a list of descriptors for the entries in the data row.
+-- Then a list of information on the columns which applies to both the headers list, how to draw and create them, and their order. Then the data rows ALSO use this same column specification.
+-- Finally the last button row.
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
-local UserInputService = game:GetService("UserInputService")
 local colors = require(game.ReplicatedStorage.util.colors)
--- Correcting the require path for uiPositionManager
-local uiPositionManager = require(game.StarterPlayer.StarterPlayerScripts.guis.uiPositionManager)
+local fonts = require(game.StarterPlayer.StarterPlayerScripts.guis.fonts)
+local wt = require(game.StarterPlayer.StarterPlayerScripts.guis.windowsTypes)
+
+local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
+
+local toolTip = require(game.ReplicatedStorage.gui.toolTip)
+local thumbnails = require(game.ReplicatedStorage.thumbnails)
+
+local scrollingFrameBorderSizePixel = 1
+local textLabelBorderSizePixel = 1
+local textButtonBorderSizePixel = 1
+local frameBorderSizePixel = 1
+local portraitBorderSizePixel = 1
+local globalBorderMode = Enum.BorderMode.Outline
 
 local module = {}
 
-local buttonScalePixel = 15
-local minimizedSize = Vector2.new(buttonScalePixel * 2, buttonScalePixel)
+-------------------- DEFAULTS --------------------
+local globalMaxTextSize = 16
+local globalMaxTextSizeBold = 24
+local defaultTextBackgroundColor = colors.defaultGrey
+local defaultPortraitBackgroundColor = colors.defaultGrey
+local defaultTextColor = colors.black
 
--- Add this at the module level
-local currentlyDraggingFrame: Frame? = nil
+local defaultTextButtonColor = colors.black
+local defaultTextTileXAlignment = Enum.TextXAlignment.Left
+local defaultTextButtonXAlignment = Enum.TextXAlignment.Center
+local defaultTextButtonBackgroundColor = colors.defaultGrey
 
--- Helper function to calculate Vector2 delta
-local function calculateVector2Delta(input: Vector3, start: Vector2): Vector2
-	local delta = input - Vector3.new(start.X, start.Y, 0)
-	return Vector2.new(delta.X, delta.Y)
+----------------------
+
+local closeButtonTextButtonTileSpec: wt.buttonTileSpec = {
+	type = "button",
+	text = "Close",
+	onClick = function(_: InputObject, theButton: TextButton)
+		local screenGui = theButton:FindFirstAncestorOfClass("ScreenGui")
+		if screenGui then
+			toolTip.KillFinalTooltip()
+			screenGui:Destroy()
+		else
+			warn("Could not find ScreenGui to close")
+		end
+	end,
+	backgroundColor = colors.redSlowDown,
+	textColor = colors.white,
+	isMonospaced = false,
+	isBold = true,
+	textXAlignment = Enum.TextXAlignment.Center,
+}
+
+local closeButtonLeavingroom: wt.tileSpec = {
+	name = "Close",
+	order = 1,
+	width = UDim.new(1, -15),
+	spec = closeButtonTextButtonTileSpec,
+}
+
+local standardCloseButton: wt.tileSpec = {
+	name = "Close",
+	order = 1,
+	width = UDim.new(1, 0),
+	spec = closeButtonTextButtonTileSpec,
+}
+
+module.StandardCloseButton = standardCloseButton
+module.CloseButtonLeavingRoom = closeButtonLeavingroom
+
+module.CreateButton = function(buttonSpec: wt.buttonTileSpec): TextButton
+	local res = Instance.new("TextButton")
+	res.BorderSizePixel = textButtonBorderSizePixel
+	res.BorderMode = globalBorderMode
+	res.RichText = true
+	res.TextScaled = true
+
+	local constraint = Instance.new("UITextSizeConstraint")
+
+	constraint.Name = "UITextSizeConstraint_Text"
+	constraint.MaxTextSize = globalMaxTextSize
+	constraint.Parent = res
+
+	res.Text = buttonSpec.text
+	res.Activated:Connect(function(el: InputObject)
+		buttonSpec.onClick(el, res)
+	end)
+	return res
 end
 
-local attemptResizeOnMinimized = Instance.new("BindableEvent")
+module.CreatePortrait = function(portraitSpec: wt.portraitTileSpec): Frame
+	local res = thumbnails.createAvatarPortraitPopup(
+		portraitSpec.userId,
+		portraitSpec.doPopup,
+		portraitSpec.backgroundColor,
+		portraitBorderSizePixel
+	)
+	return res
+end
 
-local function isFrameOnTop(frame: Frame): boolean
-	local screenGui = frame:FindFirstAncestorOfClass("ScreenGui")
-	if not screenGui then
-		return false
+module.CreateText = function(textSpec: wt.textTileSpec): TextLabel
+	local res = Instance.new("TextLabel")
+	res.BorderSizePixel = textLabelBorderSizePixel
+	res.BorderMode = globalBorderMode
+	res.BackgroundColor3 = textSpec.backgroundColor or defaultTextBackgroundColor
+	res.TextColor3 = textSpec.textColor or defaultTextColor
+	res.TextScaled = true
+	res.RichText = true
+	res.TextXAlignment = textSpec.textXAlignment or defaultTextTileXAlignment
+	res.FontFace = fonts.GetFont(textSpec.isMonospaced, textSpec.isBold)
+	res.Text = textSpec.text
+
+	local constraint = Instance.new("UITextSizeConstraint")
+	constraint.Name = "UITextSizeConstraint_Text"
+
+	if textSpec.isBold then
+		constraint.MaxTextSize = globalMaxTextSizeBold
+	else
+		constraint.MaxTextSize = globalMaxTextSize
 	end
+	constraint.Parent = res
 
-	local children = screenGui:GetChildren()
-	for i = #children, 1, -1 do
-		local child = children[i]
-		if child:IsA("GuiObject") and child.Visible then
-			return child == frame
+	return res
+end
+
+local function addLayout(parent: Frame, direction: Enum.FillDirection): UIListLayout
+	local res = Instance.new("UIListLayout")
+	res.Name = string.format("%s_layout", parent.Name)
+	res.HorizontalFlex = Enum.UIFlexAlignment.Fill
+	res.SortOrder = Enum.SortOrder.Name
+	res.Parent = parent
+	res.FillDirection = direction
+	return res
+end
+
+local function applyProportionalHeights(objects: { Frame })
+	local totalScale = 0
+	local totalFixed = 0
+
+	-- Calculate total scale and fixed offset
+	for _, obj in ipairs(objects) do
+		local size = obj.Size
+		if size.Y.Scale > 0 then
+			totalScale = totalScale + size.Y.Scale
+		else
+			totalFixed = totalFixed + size.Y.Offset
 		end
 	end
 
-	return false
+	for _, obj in ipairs(objects) do
+		local size = obj.Size
+		local newScaleY = 0
+		local myNegative = 0
+		if totalScale > 0 then
+			newScaleY = size.Y.Scale / totalScale
+			myNegative = newScaleY * totalFixed * -1
+		end
+		obj.Size = UDim2.new(size.X.Scale, size.X.Offset, newScaleY, size.Y.Offset + myNegative)
+	end
 end
 
-local function bringFrameToFront(frame: Frame)
-	_annotate(string.format("bringing frame to front %s", frame.Name))
-	local screenGui: ScreenGui = frame:FindFirstAncestorOfClass("ScreenGui") :: ScreenGui
-	if screenGui then
-		screenGui.Enabled = not screenGui.Enabled
-		screenGui.Enabled = not screenGui.Enabled
+local function applyProportionalWidths(objects: { Frame | TextLabel | TextButton | ImageButton | ImageLabel })
+	local totalScale = 0
+	local totalFixed = 0
+
+	-- Calculate total scale and fixed offset
+	for _, obj in ipairs(objects) do
+		local size = obj.Size
+		if size.X.Scale > 0 then
+			totalScale = totalScale + size.X.Scale
+		else
+			totalFixed = totalFixed + size.X.Offset
+		end
 	end
 
-	-- -- Still set the ZIndex to be higher than siblings
-	-- local highestZIndex = 0
-	-- for _, child in ipairs(screenGui:GetChildren()) do
-	-- 	if child:IsA("GuiObject") and child.ZIndex > highestZIndex then
-	-- 		highestZIndex = child.ZIndex
-	-- 	end
+	for _, obj in ipairs(objects) do
+		local size = obj.Size
+		local newScaleX = 0
+		local myNegative = 0
+		if totalScale > 0 then
+			newScaleX = size.X.Scale / totalScale
+			myNegative = newScaleX * totalFixed * -1
+		end
+		obj.Size = UDim2.new(newScaleX, size.X.Offset + myNegative, size.Y.Scale, size.Y.Offset)
+	end
+end
+
+module.CreateScrollingFrame = function(scrollingFrameSpec: wt.scrollingFrameTileSpec): Frame
+	local contentFrame: Frame = Instance.new("Frame")
+	contentFrame.Name = string.format("%s_OuterFor_ScrollingFrame", scrollingFrameSpec.name)
+	contentFrame.BackgroundTransparency = 1
+	contentFrame.Size = UDim2.new(1, 0, 1, 0)
+	contentFrame.BorderSizePixel = frameBorderSizePixel
+	contentFrame.BorderMode = globalBorderMode
+
+	local headerRow: Frame = module.CreateRow(scrollingFrameSpec.headerRow)
+	headerRow.Parent = contentFrame
+	headerRow.Position = UDim2.new(0, 0, 0, 0)
+	-- headerRow.Size = UDim2.new(1, 0, 0, scrollingFrameSpec.rowHeight)
+
+	local contentFrameLayout: UIListLayout = addLayout(contentFrame, Enum.FillDirection.Vertical)
+	contentFrameLayout.SortOrder = Enum.SortOrder.Name
+	contentFrameLayout.FillDirection = Enum.FillDirection.Vertical
+	contentFrameLayout.Parent = contentFrame
+
+	local scrollingFrame: ScrollingFrame = Instance.new("ScrollingFrame")
+	scrollingFrame.Name = string.format("%s_ScrollingFrame", scrollingFrameSpec.name)
+	scrollingFrame.BorderMode = globalBorderMode
+	scrollingFrame.BackgroundTransparency = 1
+	scrollingFrame.BorderSizePixel = scrollingFrameBorderSizePixel
+	scrollingFrame.ScrollBarThickness = 8
+	scrollingFrame.VerticalScrollBarInset = Enum.ScrollBarInset.None
+	scrollingFrame.Parent = contentFrame
+	scrollingFrame.Size = UDim2.new(1, 0, 1, -1 * scrollingFrameSpec.rowHeight)
+
+	local layout: UIListLayout = addLayout(contentFrame, Enum.FillDirection.Vertical)
+	layout.SortOrder = Enum.SortOrder.Name
+	layout.FillDirection = Enum.FillDirection.Vertical
+	layout.Parent = scrollingFrame
+	layout.Name = "ScrollingFrameLayout"
+
+	for _, rowSpec in ipairs(scrollingFrameSpec.dataRows) do
+		local row: Frame = module.CreateRow(rowSpec)
+		row.Parent = scrollingFrame
+	end
+
+	-- Calculate content size
+	local contentHeight: number = #scrollingFrameSpec.dataRows * scrollingFrameSpec.rowHeight
+	contentFrame.Size = UDim2.new(1, 0, 0, contentHeight)
+	scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
+
+	return contentFrame
+end
+
+-- Modify the CreateRow function to handle scrolling frames
+module.CreateRow = function(rowSpec: wt.rowSpec): Frame
+	local frame = Instance.new("Frame")
+	frame.Name = string.format("%06d_%s", rowSpec.order, rowSpec.name)
+	frame.Size = UDim2.new(1, 0, 0, rowSpec.height.Offset)
+	frame.BorderSizePixel = frameBorderSizePixel
+	frame.BorderMode = globalBorderMode
+	local layout = addLayout(frame, Enum.FillDirection.Horizontal)
+	if rowSpec.horizontalAlignment then
+		layout.HorizontalAlignment = rowSpec.horizontalAlignment
+	end
+	local items: { ImageButton | ImageLabel | TextLabel | TextButton | Frame } = {}
+
+	-- we need to intelligently apply widths here based on both the tile widthWeight proportion, and also remembering to also handle offset-based tile types.
+	for _, tileSpec: wt.tileSpec in pairs(rowSpec.tileSpecs) do
+		if tileSpec.spec.type == "button" then
+			local button = module.CreateButton(tileSpec.spec)
+			button.BackgroundColor3 = tileSpec.spec.backgroundColor or defaultTextButtonBackgroundColor
+			button.FontFace = fonts.GetFont(tileSpec.spec.isMonospaced, tileSpec.spec.isBold)
+			button.TextColor3 = tileSpec.spec.textColor or defaultTextButtonColor
+			button.TextXAlignment = tileSpec.spec.textXAlignment or defaultTextButtonXAlignment
+			if tileSpec.tooltipText then
+				toolTip.setupToolTip(button, tileSpec.tooltipText, toolTip.enum.toolTipSize.NormalText)
+			end
+
+			button.Name = string.format("%04d_%s", tileSpec.order, tileSpec.name)
+			local useWidth: UDim = tileSpec.width or UDim.new(1, 0)
+			button.Size = UDim2.new(useWidth.Scale, useWidth.Offset, 1, 0)
+			table.insert(items, button)
+		elseif tileSpec.spec.type == "text" then
+			local text = module.CreateText(tileSpec.spec)
+			text.Name = string.format("%04d_%s", tileSpec.order, tileSpec.name)
+			local useWidth: UDim = tileSpec.width or UDim.new(1, 0)
+			text.Size = UDim2.new(useWidth.Scale, useWidth.Offset, 1, 0)
+
+			if tileSpec.tooltipText then
+				toolTip.setupToolTip(text, tileSpec.tooltipText, toolTip.enum.toolTipSize.NormalText)
+			end
+			table.insert(items, text)
+		elseif tileSpec.spec.type == "portrait" then
+			local imageFrame = module.CreatePortrait(tileSpec.spec)
+			imageFrame.Name = string.format("%04d_%s_ImageFrame", tileSpec.order, tileSpec.name)
+			local useWidth = tileSpec.width or UDim.new(1, 0)
+			imageFrame.Size = UDim2.new(useWidth.Scale, useWidth.Offset, 1, 0)
+			imageFrame.BackgroundColor3 = tileSpec.spec.backgroundColor or defaultPortraitBackgroundColor
+
+			local theImageLabel = imageFrame:FindFirstChildOfClass("ImageLabel") :: ImageLabel
+			theImageLabel.Name = string.format("%04d_%s", tileSpec.order, tileSpec.name)
+
+			if tileSpec.tooltipText then
+				toolTip.setupToolTip(theImageLabel, tileSpec.tooltipText, toolTip.enum.toolTipSize.NormalText)
+			end
+			table.insert(items, imageFrame)
+		elseif tileSpec.spec.type == "scrollingFrame" then
+			local scrollingFrameFrame = module.CreateScrollingFrame(tileSpec.spec)
+			scrollingFrameFrame.Name = string.format("%04d_%s", tileSpec.order, tileSpec.name)
+			local useWidth = tileSpec.width or UDim.new(1, 0)
+			scrollingFrameFrame.Size = UDim2.new(useWidth.Scale, useWidth.Offset, 1, 0)
+			table.insert(items, scrollingFrameFrame)
+		elseif tileSpec.spec.type == "rowTile" then
+			local fakeRowSpec: wt.rowSpec = {
+				type = "rowTile",
+				name = tileSpec.name,
+				order = tileSpec.order,
+				tileSpecs = tileSpec.spec.tileSpecs,
+				height = UDim.new(1, 0),
+			}
+
+			local theRow: Frame = module.CreateRow(fakeRowSpec) :: Frame
+			theRow.Name = string.format("%04d_%s", tileSpec.order, tileSpec.name)
+			theRow.Size = UDim2.new(1, 0, 1, 0)
+			table.insert(items, theRow)
+		else
+			error("Unknown tile type")
+		end
+	end
+	_annotate(string.format("applyng prop widths on %s - %s", frame.Name, rowSpec.name))
+
+	--- dataRows inherit the exact current width of the header row (which, if the header row has a fixed height item like a portrait, will already be a combination of scale and offset)
+	-- therefore we can't re-proportionalize them.
+	-- if rowSpec.name ~= "DataRow" then
+	applyProportionalWidths(items)
 	-- end
-	-- frame.ZIndex = highestZIndex + 1
+
+	for _, el in ipairs(items) do
+		el.Parent = frame
+	end
+	return frame
 end
 
-local function createCornerButton(frame: Frame, name: string, text: string, position: UDim2): TextButton
-	local button = Instance.new("TextButton")
-	button.Size = UDim2.new(0, buttonScalePixel, 0, buttonScalePixel)
-	button.Position = position
-	button.Text = text
-	button.TextScaled = true
-	button.Name = frame.Name .. "_" .. name
-	button.ZIndex = 10
-	button.BackgroundColor3 = colors.defaultGrey
-	button.TextColor3 = colors.black
-	button.TextSize = 18
-	button.Font = Enum.Font.Gotham
-	button.Parent = frame
-	button.BackgroundTransparency = 0.5
-	return button
-end
+-- module.CreateScrollingFrame = function(scrollingFrameSpec: scrollingFrameTileSpec): ScrollingFrame
+-- 	local res = Instance.new("ScrollingFrame")
+-- 	res.Name = scrollingFrameSpec.name
+-- 	local headerRow = module.CreateRow(scrollingFrameSpec.headerRow)
+-- 	headerRow.Parent = res
 
-local SetupResizeability = function(frame: Frame): TextButton
-	local resizing = false
-	local lastInputPosition = Vector2.new()
-	local initialFrameSize = UDim2.new()
-	local initialFramePosition = UDim2.new()
+-- 	for _, rowSpec in pairs(scrollingFrameSpec.dataRows) do
+-- 		local row = module.CreateRow(rowSpec)
+-- 		row.Parent = res
+-- 	end
+-- 	return res
+-- end
 
-	-- Create resize handle as a TextButton directly on the input frame.
-	-- Position it in the bottom left corner of the frame
-	local resizeHandle = createCornerButton(frame, "resizer", "O", UDim2.new(0, 0, 1, -buttonScalePixel))
-
-	local deb = false
-	local function handleResize(input: InputObject)
-		if deb then
-			return
-		end
-
-		deb = true
-		-- this is the delta since the last time we resized (as the user drags)
-		local delta = Vector2.new(input.Position.X - lastInputPosition.X, input.Position.Y - lastInputPosition.Y)
-
-		-- Adjust frame position and size
-		-- as you drag down, the height increases and position Y stays the same.
-		-- as you drag left, the width increases and position X shrinks since the window has to move underneath you.
-		-- do NOT remove the above explanatory comments above.
-
-		--continuously update the frame
-		initialFrameSize = frame.Size
-		initialFramePosition = frame.Position
-
-		local newSizeXScale = initialFrameSize.X.Scale
-		local newSizeXOffset = initialFrameSize.X.Offset - delta.X
-		local newPositionXOffset = initialFramePosition.X.Offset + delta.X
-
-		local newSizeYScale = initialFrameSize.Y.Scale
-		local newSizeYOffset = initialFrameSize.Y.Offset + delta.Y
-
-		frame.Size = UDim2.new(newSizeXScale, newSizeXOffset, newSizeYScale, newSizeYOffset)
-
-		local newPosition = UDim2.new(
-			initialFramePosition.X.Scale,
-			newPositionXOffset,
-			initialFramePosition.Y.Scale,
-			initialFramePosition.Y.Offset
-		)
-
-		frame.Position = newPosition
-
-		-- Update last input position
-		lastInputPosition = Vector2.new(input.Position.X, input.Position.Y)
-		deb = false
-	end
-
-	resizeHandle.InputBegan:Connect(function(input: InputObject)
-		if
-			input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch
-		then
-			if frame:GetAttribute("IsMinimized") then
-				attemptResizeOnMinimized:Fire(input, frame.Name)
-				return
-			end
-			resizing = true
-			lastInputPosition = input.Position
-			initialFrameSize = frame.Size
-			initialFramePosition = frame.Position
-		end
-	end)
-
-	UserInputService.InputChanged:Connect(function(input: InputObject)
-		if
-			resizing
-			and (
-				input.UserInputType == Enum.UserInputType.MouseMovement
-				or input.UserInputType == Enum.UserInputType.Touch
-			)
-		then
-			handleResize(input)
-		end
-	end)
-
-	UserInputService.InputEnded:Connect(function(input: InputObject)
-		if
-			input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch
-		then
-			resizing = false
-		end
-	end)
-
-	return resizeHandle
-end
-
-local SetupMinimizeability = function(frame: Frame)
-	_annotate("create minimize button for: " .. frame.Name)
-
-	local isMinimized: boolean = false
-	local minimizeButton: TextButton
-	-- Position the minimize button in the bottom left corner, next to the resize handle
-	minimizeButton = createCornerButton(frame, "minimizer", "-", UDim2.new(0, buttonScalePixel, 1, -buttonScalePixel))
-
-	local childrenSizes: { [string]: UDim2 } = {}
-	local originalSize: UDim2 = frame.Size
-	-- minimiize all Frame children of the outer frame.
-	minimizeButton.MouseButton1Click:Connect(function()
-		isMinimized = not isMinimized
-		frame:SetAttribute("IsMinimized", isMinimized)
-
-		if isMinimized then
-			-- we minimize it.
-			minimizeButton.Text = "+"
-			originalSize = frame.Size
-			frame.Size = UDim2.new(0, 2 * buttonScalePixel, 0, buttonScalePixel)
-		else
-			minimizeButton.Text = "-"
-			frame.Size = originalSize -- Restore original size
-			-- we need to bump it away from the edge as much as possible here.
-		end
-
-		-- find all child Frames and minimize them or restore them.
-		-- we shrink
-		for _, child in pairs(frame:GetChildren()) do
-			if child:IsA("Frame") then
-				local childFrame: Frame = child :: Frame
-				if isMinimized then
-					-- back up the size
-					childrenSizes[child.Name] = childFrame.Size
-					childFrame.Size = UDim2.new(0, 2 * buttonScalePixel, 0, buttonScalePixel)
-				else
-					-- restore the size
-					if childrenSizes[child.Name] then
-						childFrame.Size = childrenSizes[child.Name]
-					end
-				end
-
-				childFrame.Visible = not isMinimized
-			end
-		end
-	end)
-end
-
-local function updateDrag(
-	frame: Frame,
-	activelyChangingInput: InputObject,
-	mouseDragStart: Vector2,
-	framePositionAtStartOfDrag: UDim2
-)
-	local dragDelta = calculateVector2Delta(activelyChangingInput.Position, mouseDragStart)
-
-	local absoluteX = framePositionAtStartOfDrag.X.Scale * workspace.CurrentCamera.ViewportSize.X
-		+ framePositionAtStartOfDrag.X.Offset
-		+ dragDelta.X
-	local absoluteY = framePositionAtStartOfDrag.Y.Scale * workspace.CurrentCamera.ViewportSize.Y
-		+ framePositionAtStartOfDrag.Y.Offset
-		+ dragDelta.Y
-
-	local isMinimized = frame:GetAttribute("IsMinimized")
-
-	local currentSize = isMinimized and minimizedSize or frame.AbsoluteSize
-
-	-- Calculate the maximum allowed position
-	local maxX = workspace.CurrentCamera.ViewportSize.X - currentSize.X
-	local maxY = workspace.CurrentCamera.ViewportSize.Y - currentSize.Y
-
-	-- Cap the position based on minimized state
-	local cappedX: number
-	local cappedY: number
-	if not isMinimized then
-		cappedX = math.clamp(absoluteX, 0, math.max(maxX, 0))
-		cappedY = math.clamp(absoluteY, 0, math.max(maxY, 0))
-	else
-		cappedX = math.clamp(absoluteX, currentSize.X, workspace.CurrentCamera.ViewportSize.X)
-		cappedY = math.clamp(absoluteY, currentSize.Y, workspace.CurrentCamera.ViewportSize.Y)
-	end
-
-	-- Convert back to UDim2
-	local newPosition = UDim2.new(0, cappedX, 0, cappedY)
-	frame.Position = newPosition
-end
-
--- Main function to setup draggability for a frame
-local SetupDraggability = function(frame: Frame)
-	local dragging = false
-	local mouseDragStartPosition: Vector2
-	local framePositionAtStartOfDrag: UDim2
-
-	local function startDragging(input: InputObject)
-		-- Check if another frame is already being dragged
-		if currentlyDraggingFrame and currentlyDraggingFrame ~= frame then
-			return
-		end
-
-		bringFrameToFront(frame)
-
-		if isFrameOnTop(frame) then
-			_annotate(string.format("on top so dragging me, %s", input.Name))
-		else
-			_annotate(string.format("not on top, so not dragging me., %s", input.Name))
-			return
-		end
-
-		_annotate("dragging me.")
-
-		dragging = true
-		currentlyDraggingFrame = frame
-
-		mouseDragStartPosition = Vector2.new(input.Position.X, input.Position.Y)
-		framePositionAtStartOfDrag = frame.Position
-
-		local dragConnection
-		dragConnection = UserInputService.InputChanged:Connect(function(changedInput: InputObject)
-			if
-				dragging
-				and (
-					changedInput.UserInputType == Enum.UserInputType.MouseMovement
-					or changedInput.UserInputType == Enum.UserInputType.Touch
-				)
-			then
-				updateDrag(frame, changedInput, mouseDragStartPosition, framePositionAtStartOfDrag)
-			end
-		end)
-
-		-- Disconnect dragConnection when dragging ends
-		local endConnection
-		endConnection = UserInputService.InputEnded:Connect(function(endedInput: InputObject)
-			if
-				endedInput.UserInputType == Enum.UserInputType.MouseButton1
-				or endedInput.UserInputType == Enum.UserInputType.Touch
-			then
-				dragging = false
-				currentlyDraggingFrame = nil
-				dragConnection:Disconnect()
-				endConnection:Disconnect()
-			end
-		end)
-	end
-
-	frame.InputBegan:Connect(function(input: InputObject)
-		if
-			input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch
-		then
-			startDragging(input)
-		end
-	end)
-
-	attemptResizeOnMinimized.Event:Connect(function(input: InputObject, frameName: string)
-		if frame.Name == frameName then
-			startDragging(input)
-		end
-	end)
-end
-
--- Modify the isFrameOnScreen function
-local function isFrameOnScreen(frame: Frame): (boolean, string)
-	if not frame.Visible then
-		return false, "Frame is intentionally hidden"
-	end
-
-	local isMinimized = frame:GetAttribute("IsMinimized")
-	if isMinimized then
-		return true, "Frame is minimized"
-	end
-
-	local camera = workspace.CurrentCamera
-	if not camera then
-		return false, "No camera found"
-	end
-
-	local viewportSize = camera.ViewportSize
-	local framePosition = frame.AbsolutePosition
-	local frameSize = frame.AbsoluteSize
-
-	local onScreen = framePosition.X < viewportSize.X
-		and framePosition.Y < viewportSize.Y
-		and framePosition.X + frameSize.X > 0
-		and framePosition.Y + frameSize.Y > 0
-
-	if onScreen then
-		return true, "Fully visible"
-	else
-		return false, "Off screen"
-	end
-end
-
--- Modify the SetupFrame function
-module.SetupFrame = function(
+module.CreatePopup = function(
+	guiSpec: wt.guiSpec,
 	name: string,
 	draggable: boolean,
 	resizable: boolean,
-	minimizable: boolean
-): { outerFrame: Frame, contentFrame: Frame }
-	local outerFrame = Instance.new("Frame")
-	outerFrame.Name = "outer_" .. name
-	outerFrame.BackgroundTransparency = 1
-	outerFrame.Visible = true
-	outerFrame:SetAttribute("IsMinimized", false)
-
-	if draggable then
-		SetupDraggability(outerFrame)
+	minimizable: boolean,
+	pinnable: boolean,
+	dismissableWithX: boolean,
+	dismissableByClick: boolean,
+	desiredSize: UDim2,
+	intendedRowsOfScrollingFrameToShow: number?
+): ScreenGui
+	if intendedRowsOfScrollingFrameToShow == nil then
+		intendedRowsOfScrollingFrameToShow = 11
 	end
-	if resizable then
-		SetupResizeability(outerFrame)
+	local theSgui: ScreenGui = Instance.new("ScreenGui")
+	theSgui.IgnoreGuiInset = true
+	theSgui.Name = string.format("%s", name)
+	theSgui.Enabled = true
+
+	local res = windowFunctions.SetupFrame(name, draggable, resizable, minimizable, pinnable, desiredSize)
+	local contentFrame = res.contentFrame
+	local outerFrame = res.outerFrame
+	outerFrame.Transparency = 0
+	outerFrame.BorderSizePixel = frameBorderSizePixel
+	outerFrame.BorderMode = globalBorderMode
+	outerFrame.Parent = theSgui
+
+	addLayout(contentFrame, Enum.FillDirection.Vertical)
+	-- Center the outerFrame vertically without modifying AnchorPoint
+
+	local rowFrames: { Frame } = {}
+	for _, rowSpec in ipairs(guiSpec.rowSpecs) do
+		local rowFrame = module.CreateRow(rowSpec)
+
+		rowFrame.Size = UDim2.new(1, 0, rowSpec.height.Scale, rowSpec.height.Offset)
+		table.insert(rowFrames, rowFrame)
 	end
-	if minimizable then
-		SetupMinimizeability(outerFrame)
+
+	-- Apply proportional sizes after all rows are created
+	applyProportionalHeights(rowFrames)
+
+	for _, rowFrame in ipairs(rowFrames) do
+		rowFrame.Parent = contentFrame
 	end
 
-	local contentFrame = Instance.new("Frame")
-	contentFrame.Parent = outerFrame
-	contentFrame.Name = "content_" .. name
-	-- Adjust the size to leave space for the buttons at the bottom
-	contentFrame.Size = UDim2.new(1, 0, 1, -buttonScalePixel)
-	contentFrame.BackgroundTransparency = 1
-	contentFrame.Position = UDim2.new(0, 0, 0, 0)
-	contentFrame.Visible = true
+	--okay so i'm thinking, this might work, but OTOH maybe it'd be better to specify it in the actual rowSpec for the scorlling frame.
+	-- because he knows his own data counts? but
+	local function calculateTotalHeight()
+		local minVisibleRows = 1
+		local maxVisibleRows = intendedRowsOfScrollingFrameToShow
+		local totalHeight = 0
+		local scrollingFrameHeight = 0
 
-	uiPositionManager.registerFrame(outerFrame)
+		for _, rowSpec in ipairs(guiSpec.rowSpecs) do
+			for _, tileSpec in ipairs(rowSpec.tileSpecs) do
+				if tileSpec.spec.type == "scrollingFrame" then
+					local scrollingFrameSpec = tileSpec.spec :: scrollingFrameTileSpec
+					local dataRowCount = #scrollingFrameSpec.dataRows + 1 -- plusone for header.
+					local visibleRows = math.min(math.max(minVisibleRows, dataRowCount), maxVisibleRows)
+					scrollingFrameHeight = visibleRows * scrollingFrameSpec.rowHeight
+					totalHeight += scrollingFrameHeight + 4
+				end
+			end
+			totalHeight += rowSpec.height.Offset
+		end
 
-	-- Debug: Print frame information when it's fully loaded
-	task.defer(function()
-		task.wait()
-		local position = outerFrame.AbsolutePosition
-		local size = outerFrame.AbsoluteSize
-		local onScreen, status = isFrameOnScreen(outerFrame)
-		_annotate(
-			string.format(
-				"GUI Debug - %s: Position: (%d, %d), Size: (%d, %d), Status: %s",
-				name,
-				position.X,
-				position.Y,
-				size.X,
-				size.Y,
-				status
-			)
-		)
-	end)
+		return totalHeight, scrollingFrameHeight
+	end
 
-	return { outerFrame = outerFrame, contentFrame = contentFrame }
+	local totalHeight, scrollingFrameHeight = calculateTotalHeight()
+	local contentHeight = contentFrame.AbsoluteSize.Y
+
+	-- Ensure we're showing at least the scrolling frame height or all content if it's less
+	local finalHeight = math.max(totalHeight, contentHeight, scrollingFrameHeight)
+	outerFrame.Size = UDim2.new(outerFrame.Size.X.Scale, outerFrame.Size.X.Offset, 0, finalHeight)
+
+	local attribute = Instance.new("BoolValue")
+	attribute.Parent = outerFrame.Parent
+	attribute.Name = "DismissableWithX"
+	attribute.Value = dismissableWithX
+
+	-- position it in the center of the screen.
+	local screenSize = theSgui.AbsoluteSize
+	local outerFrameSize = outerFrame.AbsoluteSize
+
+	-- Calculate the centered position
+	local centeredPositionX = (screenSize.X - outerFrameSize.X) / 2
+	local centeredPositionY = (screenSize.Y - outerFrameSize.Y) / 2
+
+	-- Set the outerFrame's position to be centered
+	outerFrame.Position = UDim2.new(0, centeredPositionX, 0, centeredPositionY)
+
+	if dismissableByClick then
+		local clickAttribute = Instance.new("BoolValue")
+		clickAttribute.Parent = outerFrame.Parent
+		clickAttribute.Name = "DismissableByClick"
+		clickAttribute.Value = true
+
+		contentFrame.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				theSgui:Destroy()
+			end
+		end)
+	end
+
+	return theSgui
 end
 
 _annotate("end")

@@ -13,7 +13,7 @@ local enums = require(game.ReplicatedStorage.util.enums)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local colors = require(game.ReplicatedStorage.util.colors)
 local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
-
+local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
 
@@ -24,7 +24,7 @@ local PlayersService = game:GetService("Players")
 --HUMANOID
 local localPlayer = PlayersService.LocalPlayer
 
-local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+-- local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 -- local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 -- GLOBALS
@@ -249,7 +249,7 @@ module.StartActiveRunGui = function(startTimeTick, signName, signPosition)
 	debounceCreateRunProgressSgui = true
 	module.KillActiveRun()
 
-	local guiSystemFrames = windows.SetupFrame("activeRun", true, true, false)
+	local guiSystemFrames = windowFunctions.SetupFrame("activeRun", true, true, false, true, UDim2.new(0, 300, 0, 300))
 
 	local outerFrame = guiSystemFrames.outerFrame
 	activeRunFrame = outerFrame

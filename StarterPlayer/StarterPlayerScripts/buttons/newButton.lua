@@ -82,7 +82,7 @@ local function makeLeaderPositionChip(
 		if el.place == 1 then
 			posColor = colors.greenGo
 		else
-			posColor = colors.lightBlue
+			posColor = colors.warpColor
 		end
 	end
 	local pos = guiUtil.getTl("2pos", UDim2.new(1, 0, 0.5, 0), 1, right, posColor, 0)
@@ -174,7 +174,7 @@ local function makePopRowFrame(
 	end
 
 	if mode == "found" then
-		local warp = guiUtil.getTb("PopularResult_4_Warp", UDim2.new(0.15, 0, 1, 0), 1, fr, colors.lightBlue, 1)
+		local warp = guiUtil.getTb("PopularResult_4_Warp", UDim2.new(0.15, 0, 1, 0), 1, fr, colors.warpColor, 1)
 		warp.Text = "Warp"
 
 		warp.Activated:Connect(function()

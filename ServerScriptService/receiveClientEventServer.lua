@@ -12,9 +12,11 @@ local module = {}
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local runResultsCommand = require(game.ReplicatedStorage.commands.runResultsCommand)
-
 local wrProgressionCommand = require(game.ReplicatedStorage.commands.wrProgressionCommand)
--- local runResultsCommand = require(game.ReplicatedStorage.commands.runResultsCommand)
+local pinRaceCommand = require(game.ReplicatedStorage.chat.commands.pinRaceCommand)
+local userFavoriteRacesCommand = require(game.ReplicatedStorage.commands.userFavoriteRacesCommand)
+local rdb = require(game.ServerScriptService.rdb)
+local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 
 -- local GenericClientUIEvent = remotes.getRemoteEvent("GenericClientUIEvent")
 local GenericClientUIFunction = remotes.getRemoteFunction("GenericClientUIFunction")
@@ -60,7 +62,8 @@ local function handleWRProgressionRequest(player: Player, data: { startSignId: n
 
 	local startSignId, endSignId = data.startSignId, data.endSignId
 
-	return wrProgressionCommand.GetWRProgression(player, startSignId, endSignId)
+	local res = wrProgressionCommand.GetWRProgression(player, startSignId, endSignId)
+	return res
 end
 
 local function handleRunEndingRequest(player: Player, data: tt.runEndingDataFromClient)
@@ -69,9 +72,35 @@ local function handleRunEndingRequest(player: Player, data: tt.runEndingDataFrom
 	return runEnding.DoRunEnd(player, data)
 end
 
-local function handleRunResultsRequest(player: Player, data: tt.dcRunResponse)
+local function handleRunResultsRequest(player: Player, data: any)
 	_annotate("handleRunResultsDelivery", data)
+
 	return runResultsCommand.SendRunResults(player, data.startSignId, data.endSignId)
+end
+
+local function handlePinRaceRequest(player: Player, data: any)
+	_annotate("handlePinRaceRequest", data)
+	local res = pinRaceCommand.PinRace(player, data.startSignId, data.endSignId)
+	if not res.success then
+		error("nil response from PinRace")
+	end
+	return res
+end
+
+local function handleAdjustFavoriteRaceRequest(player: Player, data: any)
+	_annotate("handleAdjustFavoriteRaceRequest", data)
+	local res = userFavoriteRacesCommand.AdjustFavoriteRace(player, data.signId1, data.signId2, data.favoriteStatus)
+	return res
+end
+
+local function handleFavoriteRacesRequest(player: Player, data: any): tt.serverFavoriteRacesResponse
+	_annotate("handleFavoriteRacesRequest", data)
+	local res =
+		userFavoriteRacesCommand.GetFavoriteRaces(player, data.targetUserId, data.requestingUserId, data.otherUserIds)
+	-- if not res.success then
+	-- 	error("GetFavoriteRaces failed")
+	-- end
+	return res
 end
 
 module.Init = function()
@@ -87,10 +116,16 @@ module.Init = function()
 			return handleRunEndingRequest(player, converted)
 		elseif event.eventKind == "runResultsRequest" then
 			return handleRunResultsRequest(player, event.data)
+		elseif event.eventKind == "pinRaceRequest" then
+			return handlePinRaceRequest(player, event.data)
+		elseif event.eventKind == "adjustFavoriteRaceRequest" then
+			return handleAdjustFavoriteRaceRequest(player, event.data)
+		elseif event.eventKind == "favoriteRacesRequest" then
+			return handleFavoriteRacesRequest(player, event.data)
 		end
-
-		return false
 	end
+
+	return false
 end
 
 _annotate("end")

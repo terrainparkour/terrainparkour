@@ -14,7 +14,8 @@ local serverEventGuis = require(game.StarterPlayer.StarterPlayerScripts.guis.ser
 local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
 local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
 local colors = require(game.ReplicatedStorage.util.colors)
---
+local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
+
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
 
@@ -52,7 +53,8 @@ module.Init = function()
 	serverEventScreenGui.Parent = pgui
 	serverEventScreenGui.IgnoreGuiInset = true
 
-	local serverEventsSystemFrames = windows.SetupFrame("serverEvents", true, true, true)
+	local serverEventsSystemFrames =
+		windowFunctions.SetupFrame("serverEvents", true, true, true, true, UDim2.new(0, 200, 0, 200))
 	local serverEventsOuterFrame = serverEventsSystemFrames.outerFrame
 	local serverEventsContentFrame = serverEventsSystemFrames.contentFrame
 	local serverEventTitle = Instance.new("TextLabel")

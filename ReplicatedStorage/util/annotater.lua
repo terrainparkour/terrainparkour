@@ -35,7 +35,7 @@ goodScripts = { "serverWarping", "warper" }
 goodScripts = { "*keyboard*", "serverWarping" }
 goodScripts = { "*windows*", "rdb" }
 goodScripts = { "*chat*", "*lead*" }
-goodScripts = { "*windows*" }
+goodScripts = { "*leaderb*" }
 goodScripts = {}
 
 if config.isInStudio() then
@@ -52,23 +52,47 @@ end
 -- for tracking the time gap from the initial loading of the thing - from getAnnotator to calling .annotate('end')
 local totalDone: { [string]: boolean } = {}
 
-local register = function(s: Script | ModuleScript | LocalScript): string
+local lua2Json = require(game.ReplicatedStorage.util.lua2Json)
+
+local function deepToString(obj, indent)
+	indent = indent or 0
+	local result = ""
+	if type(obj) == "table" then
+		result = result .. "{\n"
+		for k, v in pairs(obj) do
+			result = result .. string.rep("  ", indent + 1)
+			if type(k) == "string" then
+				result = result .. string.format("[%q] = ", k)
+			else
+				result = result .. string.format("[%s] = ", tostring(k))
+			end
+			result = result .. deepToString(v, indent + 1) .. ",\n"
+		end
+		result = result .. string.rep("  ", indent) .. "}"
+	else
+		local stringObj = lua2Json.Lua2StringTable(obj)
+		result = result .. tostring(stringObj)
+	end
+	return result
+end
+
+local register = function(script: Script | ModuleScript | LocalScript | LuaSourceContainer): string
 	if startTick == nil then
 		startTick = tick()
-		print(string.format("%s setting startTick. %0.5f", s.Name, startTick))
+		print(string.format("%s setting startTick. %0.5f", script.Name, startTick))
 	end
 	local scriptType = ""
 	local sname = ""
-	if not s or s == nil then
+	if not script or script == nil then
 		scriptType = "Nil?"
 		sname = "missing"
 	else
-		scriptType = aliases[s.ClassName] or s.ClassName
-		sname = s.Name
+		scriptType = aliases[script.ClassName] or script.ClassName
+		sname = script.Name
 	end
 
 	local inheritanceTree = ""
-	local parent = s.Parent
+	local parent = script.Parent
 	while parent do
 		if parent.ClassName == "DataModel" then
 			break
@@ -120,7 +144,7 @@ local function matchWildcard(pattern, str)
 	return string.match(string.lower(str), string.lower(pattern)) ~= nil
 end
 
-local function ScriptShouldBeAnnotated(s: Script | ModuleScript | LocalScript)
+local function ScriptShouldBeAnnotated(s: Script | ModuleScript | LocalScript | LuaSourceContainer)
 	-- Check against badScripts first
 	for _, pattern in ipairs(badScripts) do
 		if matchWildcard(pattern, s.Name) then
@@ -138,15 +162,15 @@ local function ScriptShouldBeAnnotated(s: Script | ModuleScript | LocalScript)
 	return false
 end
 
-module.getAnnotater = function(s: Script | ModuleScript | LocalScript)
-	local myname: string = register(s)
-	local doAnnotation = ScriptShouldBeAnnotated(s)
+module.getAnnotater = function(script: Script | ModuleScript | LocalScript | LuaSourceContainer)
+	local myname: string = register(script)
+	local doAnnotation = ScriptShouldBeAnnotated(script)
 	if showAllRegardless then
 		doAnnotation = true
 	end
 
 	for _, pattern in ipairs(badScripts) do
-		if matchWildcard(pattern, s.Name) then
+		if matchWildcard(pattern, script.Name) then
 			-- exclusions overrides turning all on
 			doAnnotation = false
 		end
@@ -156,7 +180,7 @@ module.getAnnotater = function(s: Script | ModuleScript | LocalScript)
 		local s = 3
 	end
 
-	local label = s.Name
+	local label = script.Name
 	local theLabel = label
 	totalDone[myname] = false
 
@@ -168,11 +192,7 @@ module.getAnnotater = function(s: Script | ModuleScript | LocalScript)
 			end
 			local stringVersionOfInputObject = ""
 			if inputObject then
-				stringVersionOfInputObject = " "
-				for k, v in pairs(inputObject) do
-					stringVersionOfInputObject = stringVersionOfInputObject
-						.. string.format("\t%s=%s\r\n", tostring(k), tostring(v))
-				end
+				stringVersionOfInputObject = "\n" .. deepToString(inputObject, 0)
 			end
 			if myCopyOfDoAnnotation then
 				if typeof(inputString) == "string" then

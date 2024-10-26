@@ -10,7 +10,8 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local remotes = require(game.ReplicatedStorage.util.remotes)
-
+local settings = require(game.ReplicatedStorage.settings)
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
 local textHighlighting = require(game.ReplicatedStorage.gui.textHighlighting)
@@ -21,7 +22,7 @@ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 
 ---------- CHARACTER -------------
 local localPlayer: Player = game.Players.LocalPlayer
-local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+-- local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 
 local ClientRequestsWarpToRequestFunction = remotes.getRemoteFunction("ClientRequestsWarpToRequestFunction")
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
@@ -35,6 +36,7 @@ local movementIsReady = false
 local racingIsReady = false
 local morphingIsReady = false
 local marathonIsReady = false
+local globalAllowWarpBySetting = true
 
 -- when we get a warp request we set these to remember where to go.
 local currentWarpRequest: tt.serverWarpRequest | nil = nil
@@ -102,7 +104,11 @@ local function describeWarpRequest(request: tt.serverWarpRequest?): string
 end
 
 module.WarpToSignId = function(warpToSignId: number, highlightSignId: number?)
-	-- _annotate("warp to sign" .. tostring(warpToSignId) .. " highlight " .. tostring(highlightSignId))
+	if not globalAllowWarpBySetting then
+		_annotate("not allowing warp by setting: WarpToSignId")
+		return
+	end
+	_annotate("warp to sign" .. tostring(warpToSignId) .. " highlight " .. tostring(highlightSignId))
 	if doingAWarp then
 		local desc = describeWarpRequest(currentWarpRequest)
 		warn(string.format("already doing a warp, it is: %s", desc))
@@ -245,6 +251,10 @@ end
 
 local function handleServerRequestWarpLockEvent(request: tt.serverWarpRequest)
 	_annotate(describeWarpRequest(request))
+	if not globalAllowWarpBySetting then
+		_annotate("not allowing warp by setting")
+		return
+	end
 	if currentWarpRequest ~= nil then
 		warn("handleServerRequestWarpLockEvent: setting new warp request but one was already set.")
 		return
@@ -261,10 +271,17 @@ end
 
 local avatarEventConnection = nil
 
+local function handleUserSettingChanged(item: tt.userSettingValue)
+	if item.name == settingEnums.settingDefinitions.ALLOW_WARP.name then
+		globalAllowWarpBySetting = item.booleanValue or false
+	end
+	return
+end
+
 module.Init = function()
 	_annotate("init")
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-	humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	-- humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	debounceHandleAvatarEvent = false
 	if avatarEventConnection then
 		avatarEventConnection:Disconnect()
@@ -274,6 +291,13 @@ module.Init = function()
 	ServerRequestClientToWarpLockEvent.OnClientEvent:Connect(function(request: tt.serverWarpRequest)
 		handleServerRequestWarpLockEvent(request)
 	end)
+
+	settings.RegisterFunctionToListenForSettingName(
+		handleUserSettingChanged,
+		settingEnums.settingDefinitions.ALLOW_WARP.name,
+		"warper"
+	)
+
 	_annotate("init done")
 end
 

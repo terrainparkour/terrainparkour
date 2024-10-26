@@ -317,6 +317,8 @@ module.Init = function()
 
 	isRacingBlockedByWarp = false
 	clientTouchDebounce = {}
+
+	-- why are these loaded here and not more generally? hmm.
 	terrainTouchMonitor.Init()
 	dynamicRunning.Init()
 

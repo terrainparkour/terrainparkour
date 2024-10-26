@@ -3,19 +3,21 @@
 -- LLMGeneratedUIFunctions: Utility module for creating UI elements
 -- Used in both client and server scripts
 
+-- lets genericize my UI system.
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local module = {}
 
+export type Properties = { [string]: any }
+
 -- Add these global variables for text size constraints
 local globalTextSize = 20
 local globalMinTextSize = 8
 local globalMaxTextSize = 24
 local globalFixedWidthFontSize = 26
-
-export type Properties = { [string]: any }
 
 -- Add this new function to determine the appropriate font
 function module.getFont(isMonospaced: boolean?): Enum.Font
@@ -183,31 +185,6 @@ function module.addTextSizeConstraint(instance: GuiObject, maxTextSize: number?)
 	textSizeConstraint.Parent = instance
 end
 
-function module.formatDateGap(gapSeconds: number): (string, string)
-	if gapSeconds >= 3 * 24 * 60 * 60 then
-		return string.format("%.1fd", gapSeconds / (24 * 60 * 60)), "days"
-	elseif gapSeconds >= 60 * 60 then
-		return string.format("%.1fh", gapSeconds / (60 * 60)), "hours"
-	elseif gapSeconds >= 60 then
-		return string.format("%.1fm", gapSeconds / 60), "minutes"
-	else
-		return string.format("%.1fs", gapSeconds), "seconds"
-	end
-end
-
--- Add this new type definition
-export type DetailItem = {
-	name: string,
-	sizeProportion: number,
-	text: string?,
-	order: number,
-	color: Color3,
-	isButton: boolean?,
-	isPortrait: boolean?,
-	userId: number?,
-	onClick: (() -> ())?,
-}
-
 -- Add this new function
 function module.createDetailItem(detail: DetailItem, parent: Instance, totalSizeProportion: number): GuiObject
 	local sizeFraction = detail.sizeProportion / totalSizeProportion
@@ -302,6 +279,40 @@ function module.createHeaderChipsRow(chips: { tt.runChip }, properties: Properti
 	end
 
 	return frame
+end
+
+-- Add this new function to the module
+function module.createScaledTextLabel(properties: Properties): TextLabel
+	local outerLabel = module.createTextLabel({
+		Name = properties.Name,
+		Size = properties.Size,
+		BackgroundColor3 = properties.BackgroundColor3,
+		BorderSizePixel = properties.BorderSizePixel or 1,
+		BorderMode = properties.BorderMode or Enum.BorderMode.Outline,
+		BackgroundTransparency = properties.BackgroundTransparency or 0,
+		Parent = properties.Parent,
+		ZIndex = 1,
+		TextTransparency = 1,
+	})
+
+	local innerLabel = module.createTextLabel({
+		Name = "Inner",
+		Text = properties.Text,
+		TextColor3 = properties.TextColor3 or Color3.new(0, 0, 0),
+		Font = properties.Font or Enum.Font.Gotham,
+		TextXAlignment = properties.TextXAlignment or Enum.TextXAlignment.Center,
+		TextYAlignment = properties.TextYAlignment or Enum.TextYAlignment.Center,
+		Size = UDim2.new(1, -2 * (properties.Padding or 0), 1, -2 * (properties.Padding or 0)),
+		Position = UDim2.new(0, properties.Padding or 0, 0, properties.Padding or 0),
+		BackgroundTransparency = 1,
+		Parent = outerLabel,
+		ZIndex = 2,
+		TextScaled = true,
+	})
+
+	module.addTextSizeConstraint(innerLabel, properties.MaxTextSize)
+
+	return innerLabel
 end
 
 _annotate("end")

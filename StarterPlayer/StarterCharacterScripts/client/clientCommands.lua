@@ -12,15 +12,15 @@ local ShowSignsEvent = remotes.getRemoteEvent("ShowSignsEvent")
 local GenericClientUIEvent = remotes.getRemoteEvent("GenericClientUIEvent")
 local textHighlighting = require(game.ReplicatedStorage.gui.textHighlighting)
 
-local Players = game:GetService("Players")
+-- local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local drawRunResultsGuiCreator = require(ReplicatedStorage.gui.runresults.drawRunResultsGuiCreator)
-local localPlayer: Player = Players.LocalPlayer
-local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
-local humanoid = character:WaitForChild("Humanoid") :: Humanoid
+local drawRunResultsGui = require(ReplicatedStorage.gui.runresults.drawRunResultsGui)
+-- local localPlayer: Player = Players.LocalPlayer
+-- local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
+-- local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 local tt = require(ReplicatedStorage.types.gametypes)
-local playerGui = localPlayer:WaitForChild("PlayerGui")
+-- local playerGui = localPlayer:WaitForChild("PlayerGui")
 ----------- GLOBALS -----------
 
 local function showSigns(signIds: { number }, extraText: string?)
@@ -40,11 +40,12 @@ local function HandleGenericClientUIEvent(data: any)
 	_annotate("Client commands received: GenericClientUIEvent.", data)
 	if data.command == "wrProgressionRequest" then
 		local converted2: tt.WRProgressionEndpointResponse = data.data :: tt.WRProgressionEndpointResponse
-		drawWRHistoryProgressionGui.CreateWRHistoryProgressionGui(converted2)
+		if converted2.raceExists then
+			drawWRHistoryProgressionGui.CreateWRHistoryProgressionGui(converted2)
+		end
 	elseif data.command == "runResultsDelivery" then
-		local converted: tt.dcRunResponse = data.data.dcRunResponse :: tt.dcRunResponse
-		local runResultGui = drawRunResultsGuiCreator.DrawRunResultsGui(converted)
-		runResultGui.Parent = playerGui
+		local converted: tt.userFinishedRunResponse = data.data.userFinishedRunResponse :: tt.userFinishedRunResponse
+		drawRunResultsGui.DrawRunResultsGui(converted)
 	end
 end
 

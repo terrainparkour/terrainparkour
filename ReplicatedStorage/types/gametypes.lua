@@ -43,44 +43,74 @@ export type jsonBadgeStatus = {
 	hasBadge: boolean,
 }
 
--- equivalent to dcRunResponse:
-export type dcRunResponse = {
-	thisRunPlace: number,
-	runMilliseconds: number,
-	thisRunImprovedPlace: boolean,
+export type raceInfo = {
 	startSignId: number,
 	endSignId: number,
-	mode: number,
-	winGap: number?,
-	tied: boolean?,
 	distance: number,
-	speed: number,
 	raceName: string,
 	raceIsCompetitive: boolean,
-	yourText: string,
-	raceTotalHistoryText: string,
-
-	--metadata
-	kind: string,
-	userId: number,
-	username: string,
-	newFind: boolean,
-	createdRace: boolean,
-	createdMarathon: boolean,
-
-	userRaceRunCount: number,
-
-	-- info on the race or run.
-	totalRunsOfThisRaceCount: number,
-	totalRacersOfThisRaceCount: number,
-
-	lbUserStats: lbUserStats,
-
-	--relations, must be last to avoid dumb python typing
-	runEntries: { runEntry },
-	actionResults: { actionResult },
 }
 
+export type userFinishedRunOptions = {
+	userId: number,
+	startSignId: number,
+	endSignId: number,
+	runMilliseconds: number,
+	allPlayerUserIds: string,
+}
+
+-- generally you likely want to use jsonBestRun. But if you are displaying a run the user JUST RAN
+-- which may not have actually placed, then you sometimes want this.
+export type JsonRun = {
+	runId: number,
+	username: string,
+	userId: number,
+	runMilliseconds: number,
+	place: number?,
+	improvedPlace: boolean?,
+	mode: number,
+	kind: string,
+	tied: boolean,
+	isRun: boolean,
+	yourText: string,
+	winGap: number?,
+	runAgeSeconds: number,
+}
+
+-- a bestrun entry, including info which should be linked from the db directly but actually we have to look up the run to get it.
+export type jsonBestRun = {
+	runMilliseconds: number,
+	username: string,
+	userId: number,
+	place: number,
+	runAgeSeconds: number,
+	runTime: number,
+	raceId: number,
+	runId: number,
+	hasData: boolean,
+	gameVersion: string,
+}
+
+export type userRaceStats = {
+	userRaceRunCount: number,
+	totalRunsOfThisRaceCount: number,
+	totalRacersOfThisRaceCount: number,
+}
+
+export type userFinishedRunResponse = {
+	userId: number,
+	username: string,
+	raceInfo: raceInfo,
+	runUserJustDid: JsonRun?, -- this can be null, for example if we're more generally querying what the top10 for a race is.  We should rename this type though, something like runLeaders.
+	raceBestRuns: { jsonBestRun },
+	extraBestRuns: { jsonBestRun },
+	userRaceStats: userRaceStats,
+	lbUserStats: lbUserStats,
+	actionResults: { actionResult },
+	raceHistoryData: raceHistoryData,
+	isMarathon: boolean,
+	isFavoriteRace: boolean,
+}
 -- okay, now updates are just general and cover all possible lb stats.
 -- keep doing this til the db dies.
 export type lbUserStats = {
@@ -106,6 +136,7 @@ export type lbUserStats = {
 	wrsToday: number,
 	runsToday: number,
 	pinnedRace: string,
+	userFavoriteRaceCount: number,
 }
 
 export type genericLeaderboardUpdateDataType = {
@@ -122,23 +153,11 @@ export type ephemeralNotificationOptions = {
 	highlightSignId: number?,
 }
 
-export type userFinishedRunOptions = {
+export type raceDataQuery = {
 	userId: number,
+	allPlayerUserIds: string,
 	startSignId: number,
 	endSignId: number,
-	runMilliseconds: number,
-	allPlayerUserIds: string,
-}
-
---in runresult, describe a prior best result.
-export type runEntry = {
-	kind: string,
-	userId: number,
-	runMilliseconds: number,
-	username: string,
-	place: number, --1-10 mean normal. 0 means "insert visually in the order it appears in list"
-	virtualPlace: number,
-	runAgeSeconds: number, -- Add this new field
 }
 
 --specifier for a simple python-formatted message.
@@ -149,18 +168,6 @@ export type actionResult = {
 	userId: number, --the subject of the message
 	notifyAllExcept: boolean, --whether we should tell everyone else, or the target userId
 	warpToSignId: number,
-}
-
---add-on information when I talk to the server.  quite volatile.
-export type afterdata = {
-	kind: string,
-	userId: number,
-	banned: boolean?,
-	actionResults: { actionResult },
-	firstTimeJoining: boolean, --check if this still shows up.
-	success: boolean,
-	foundNew: boolean,
-	pyUserFinishedRunResponse: dcRunResponse?,
 }
 
 export type getNonTop10RacesByUser = {
@@ -291,7 +298,7 @@ export type runningServerEventUserBest = {
 export type robloxServerError = {
 	version: string,
 	code: string,
-	data: table, --any table, even a lua table with complex objects.
+	data: any,
 	message: string,
 	userId: number?,
 }
@@ -388,6 +395,7 @@ export type leaderboardUserDataChange = {
 	key: string,
 	oldValue: number | string,
 	newValue: number | string,
+	userId: number,
 }
 
 -- details on a server initiated server warp request
@@ -435,8 +443,8 @@ export type particleDescriptor = {
 export type RaceParseResult = {
 	signId1: number,
 	signId2: number,
-	signname1: string,
-	signname2: string,
+	signName1: string,
+	signName2: string,
 	error: string, -- if non"" then it's an error.
 }
 
@@ -495,27 +503,6 @@ export type JsonRace = {
 	distance: number,
 }
 
-export type JsonUserBooleanSetting = {
-	name: string,
-	booleanValue: boolean,
-	domain: string,
-	kind: "boolean",
-}
-
-export type JsonUserStringSetting = {
-	name: string,
-	stringValue: string,
-	domain: string,
-	kind: "string",
-}
-
-export type JsonUserLuaSetting = {
-	name: string,
-	luaValue: any,
-	domain: string,
-	kind: "lua",
-}
-
 export type JsonMarathonRun = {
 	runMilliseconds: number,
 	username: string,
@@ -530,23 +517,12 @@ export type JsonMarathonKindRun = {
 	place: number,
 }
 
-export type JsonUser = {
-	username: string,
-	userId: number,
-}
-
 export type JsonBadgeStatus = {
 	hasBadge: boolean,
 	badgeName: string,
 	userId: number,
 	badgeAssetId: number,
 	badgeTotalGrantCount: number,
-}
-
-export type JsonWr = {
-	username: string,
-	count: number,
-	userId: number,
 }
 
 export type JsonEvent = {
@@ -579,58 +555,33 @@ export type wrProgressionEntry = {
 	recordStood: number,
 }
 
--- when reporting a WR progression, we also throw in the user's fastest run ever. WE display it if it was never a WR.
-export type userFastestRun = {
-	gameVersion: string,
-	hasData: boolean,
-	runId: number,
-	raceId: number,
-	runTime: number,
-	runMilliseconds: number,
-	userId: number,
-	username: string,
-	contemporaneousPlace: number,
-}
-
+-- metadta about a race, not including best run info.
 export type raceHistoryData = {
 	raceId: number,
 	raceCreatedTime: number,
 	raceStartName: string,
-	raceEndName: string,
 	raceStartSignId: number,
+	raceEndName: string,
 	raceEndSignId: number,
 	raceRunCount: number,
 	raceRunnerCount: number,
 	raceLength: number,
-	raceFirstRun: JsonRun,
+	raceIsCompetitive: boolean,
+	raceFirstRun: JsonRun?,
+	firstRunnerUsername: string?,
+	firstRunnerUserId: number?,
+}
+
+export type userRaceInfo = {
 	userRunCount: number,
-	firstRunnerUsername: string,
-	firstRunnerUserId: number,
-	userFastestRun: userFastestRun,
-}
-
-export type JsonRun = {
-	runMilliseconds: number,
-	username: string,
-	userId: number,
-	place: number,
-	runAgeSeconds: number,
-}
-
-export type headerDefinition = {
-	text: string,
-	TextXAlignment: Enum.TextXAlignment,
-	width: number,
-	order: number,
-	isMonospaced: boolean,
+	userFastestRun: jsonBestRun?,
 }
 
 export type WRProgressionEndpointResponse = {
 	wrProgression: { wrProgressionEntry },
 	raceHistoryData: raceHistoryData,
 	raceExists: boolean,
-	headers: { headerDefinition },
-	userFastestRunObject: wrProgressionEntry,
+	userRaceInfo: userRaceInfo,
 }
 
 -- a simple object for adding chips to a row
@@ -649,6 +600,36 @@ export type lbConfig = {
 	minimized: boolean,
 	sortDirection: "ascending" | "descending",
 	sortColumn: string,
+}
+
+export type JsonUserFavoriteRace = {
+	raceId: number,
+	raceName: string,
+	startSignId: number,
+	endSignId: number,
+	userId: number,
+	username: string,
+	favoriteTime: number,
+	userTimesAndPlaces: { simpleJsonRun },
+	-- depending, we just throw in a bunch of user times and places so that
+	-- you can show them in the UI
+}
+
+-- probably should just get this globally? or use a shared object which already exists? but this is so simple...
+export type simpleJsonRun = {
+	raceName: string,
+	userId: number,
+	username: string,
+	runMilliseconds: number,
+	place: number,
+}
+
+-- we don't just want to list the favorites if you query about someonee else, we also want to know your best runs too.
+export type serverFavoriteRacesResponse = {
+	targetUserId: number,
+	requestingUserId: number,
+	otherUserIds: { number },
+	racesAndInfo: { { theRace: JsonUserFavoriteRace, theResults: { simpleJsonRun } } },
 }
 
 return {}

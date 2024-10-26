@@ -24,9 +24,9 @@ if false then
 			local player = PlayerService:GetPlayers()[1]
 			wait(1 / 1000.0)
 
-			if player == nil then
-				continue
-			end
+			-- if player == nil then
+			-- 	continue
+			-- end
 			if player.Character == nil then
 				continue
 			end
@@ -110,9 +110,13 @@ end
 --for dev only, if you forgot this.
 local function checkMissingSigns()
 	local signFolder = game.Workspace:FindFirstChild("Signs")
+	if signFolder == nil then
+		annotater.Error("no sign folder")
+		return
+	end
 	local badct = 0
 	for signId, signName in pairs(enums.signId2name) do
-		local exiSign = signFolder:FindFirstChild(signName)
+		local exiSign: Part? = signFolder:FindFirstChild(signName) :: Part
 		if not exiSign then
 			badct += 1
 			if badct > 1 then

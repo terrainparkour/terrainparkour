@@ -145,6 +145,13 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		userFacingName = "game days",
 		tooltip = "",
 	},
+	userFavoriteRaceCount = {
+		name = "userFavoriteRaceCount",
+		num = 57,
+		widthScaleImportance = 10,
+		userFacingName = "favs",
+		tooltip = "show this user's favorite races",
+	},
 	pinnedRace = {
 		name = "pinnedRace",
 		num = 60,

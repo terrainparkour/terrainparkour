@@ -10,7 +10,7 @@ annotater.Init()
 game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
 game.Workspace.CurrentCamera.FieldOfView = (70 + (5 * 2))
-local localPlayer: Player = game.Players.LocalPlayer
+local localPlayer: Player = game:GetService("Players").LocalPlayer
 
 localPlayer.CameraMaxZoomDistance = 11999
 
@@ -38,7 +38,7 @@ local localSignClickability = require(game.StarterPlayer.StarterPlayerScripts.gu
 local keyboard = require(game.StarterPlayer.StarterCharacterScripts.client.keyboard)
 -- local aet = require(game.ReplicatedStorage.avatarEventTypes)
 local resetCharacterSetup = require(game.StarterPlayer.StarterCharacterScripts.client.resetCharacterSetup)
-local drawRunResultsGuiCreator = require(game.ReplicatedStorage.gui.runresults.drawRunResultsGuiCreator)
+local drawRunResultsGui = require(game.ReplicatedStorage.gui.runresults.drawRunResultsGui)
 local drawWRHistoryProgressionGui = require(game.ReplicatedStorage.gui.menu.drawWRHistoryProgressionGui)
 local contestButtonGetter = require(game.StarterPlayer.StarterPlayerScripts.buttons.contestButtonGetter)
 
@@ -63,7 +63,7 @@ local setup = function()
 	localSignClickability.Init()
 	keyboard.Init()
 	resetCharacterSetup.Init()
-	drawRunResultsGuiCreator.Init()
+	drawRunResultsGui.Init()
 	drawWRHistoryProgressionGui.Init()
 	contestButtonGetter.Init()
 	-- you can't race til everything is set up.

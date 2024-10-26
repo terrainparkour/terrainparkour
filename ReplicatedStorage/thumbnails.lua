@@ -6,6 +6,8 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 local colors = require(game.ReplicatedStorage.util.colors)
 
+local UserInputService = game:GetService("UserInputService")
+
 local module = {}
 
 local thumbnailMaps: { [number]: { [Enum.ThumbnailType]: { [Enum.ThumbnailSize]: string } } } = {}
@@ -62,55 +64,76 @@ module.getBadgeAssetThumbnailContent = function(badgeAssetId: number): string
 	return content
 end
 
-module.createAvatarPortraitPopup = function(userId: number, parentFrame: Frame): Frame
+module.createAvatarPortraitPopup = function(
+	userId: number,
+	doPopup: boolean,
+	backgroundColor: Color3?,
+	borderSizePixel: number?
+): Frame
 	local portraitCell = Instance.new("Frame")
 	portraitCell.Size = UDim2.fromScale(1, 1)
 	portraitCell.BackgroundTransparency = 1
 	portraitCell.Name = "PortraitCell"
-	portraitCell.Parent = parentFrame
+	portraitCell.BorderSizePixel = borderSizePixel or 0
+	portraitCell.BorderMode = Enum.BorderMode.Inset
 
 	local img = Instance.new("ImageLabel")
 	img.Size = UDim2.new(1, 0, 1, 0)
-	img.BackgroundColor3 = colors.defaultGrey
+	img.BackgroundColor3 = backgroundColor or colors.defaultGrey
 	img.Name = "PortraitImage"
 	img.Parent = portraitCell
-	img.BorderMode = Enum.BorderMode.Outline
+	img.BorderMode = Enum.BorderMode.Inset
 	img.ScaleType = Enum.ScaleType.Crop
-	img.BorderSizePixel = 1
+	img.BorderSizePixel = 0
 	local content = module.getThumbnailContent(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 	img.Image = content
 
-	local avatarImages = Instance.new("Frame")
-	avatarImages.Size = UDim2.new(0, 420, 0, 420)
-	avatarImages.Position = UDim2.new(0, -440, 0, 0)
-	avatarImages.Parent = portraitCell
-	avatarImages.Visible = false
+	if doPopup then
+		portraitCell.MouseEnter:Connect(function()
+			local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+			local avatarImagesGui = Instance.new("ScreenGui")
+			avatarImagesGui.Name = "AvatarImagesGui"
+			avatarImagesGui.ResetOnSpawn = false
+			avatarImagesGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+			avatarImagesGui.Parent = playerGui
 
-	local vv = Instance.new("UIListLayout")
-	vv.FillDirection = Enum.FillDirection.Vertical
-	vv.Parent = avatarImages
-	vv.Name = "avatarVV"
+			local attribute = Instance.new("BoolValue")
+			attribute.Parent = avatarImagesGui
+			attribute.Name = "DismissableWithX"
+			attribute.Value = true
 
-	local allContents = {
-		module.getThumbnailContent(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420),
-	}
-	for _, content in pairs(allContents) do
-		local largeImg = Instance.new("ImageLabel")
-		largeImg.Size = UDim2.new(1, 0, 1, 0)
-		largeImg.BackgroundColor3 = colors.defaultGrey
-		largeImg.Visible = true
-		largeImg.ZIndex = 10
-		largeImg.Image = content
-		largeImg.Name = "LargeAvatarImage_" .. tostring(userId)
-		largeImg.Parent = avatarImages
+			local avatarImages = Instance.new("Frame")
+			avatarImages.Size = UDim2.fromScale(1, 1)
+			avatarImages.BackgroundTransparency = 1
+			avatarImages.Name = "AvatarImages"
+			avatarImages.Parent = avatarImagesGui
+
+			local largeImg = Instance.new("ImageLabel")
+			largeImg.Size = UDim2.fromOffset(420, 420)
+			largeImg.BackgroundColor3 = colors.defaultGrey
+			largeImg.Image = content
+			largeImg.Name = "LargeAvatarImage_" .. tostring(userId)
+			largeImg.Parent = avatarImages
+			local mouseLocation = UserInputService:GetMouseLocation()
+			local newPositionX = mouseLocation.X - largeImg.Size.X.Offset - 100
+			local newPositionY = mouseLocation.Y - (largeImg.Size.Y.Offset / 2)
+
+			-- Ensure the popup stays within the screen bounds
+			local screenSize = workspace.CurrentCamera.ViewportSize
+			newPositionX = math.max(0, math.min(newPositionX, screenSize.X - largeImg.Size.X.Offset))
+			newPositionY = math.max(0, math.min(newPositionY, screenSize.Y - largeImg.Size.Y.Offset))
+
+			largeImg.Position = UDim2.fromOffset(newPositionX, newPositionY)
+		end)
+
+		portraitCell.MouseLeave:Connect(function()
+			local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+			local avatarImagesGui = playerGui:FindFirstChild("AvatarImagesGui")
+			if avatarImagesGui then
+				avatarImagesGui:Destroy()
+			end
+		end)
 	end
-
-	portraitCell.MouseEnter:Connect(function()
-		avatarImages.Visible = true
-	end)
-	portraitCell.MouseLeave:Connect(function()
-		avatarImages.Visible = false
-	end)
 
 	return portraitCell
 end

@@ -1,54 +1,52 @@
 --!strict
 
 -- leaderboardButtons.lua on client.
--- draw an action button row with hints along the bottom of the local screen (popular, new, marathon settings, lb settings, random race.)
+-- draw buttons along the bottom of the local screen for marathon settings, lb settings, and user settings.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local module = {}
-
 local PlayersService = game:GetService("Players")
-
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
-
 local colors = require(game.ReplicatedStorage.util.colors)
-
---TYPE
-local gt = require(game.ReplicatedStorage.gui.guiTypes)
-
--- local vscdebug = require(game.ReplicatedStorage.vscdebug)
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 
-local popularButton = require(game.StarterPlayer.StarterPlayerScripts.buttons.popularButton)
-local newButton = require(game.StarterPlayer.StarterPlayerScripts.buttons.newButton)
-local contestButtonGetter = require(game.StarterPlayer.StarterPlayerScripts.buttons.contestButtonGetter)
-
 local editDomainSettingsButton = require(game.ReplicatedStorage.gui.menu.editDomainSettingsButton)
-local serverEventButton = require(game.ReplicatedStorage.gui.menu.serverEventButton)
-
-local localPlayer = PlayersService.LocalPlayer
--- local contestButtons = contestButtonGetter.getContestButtons({ localPlayer.UserId })
-
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
 
--- MAIN ----------------------------
+-- Add these new imports
+-- local popularButton = require(game.ReplicatedStorage.gui.popularButton)
+-- local newButton = require(game.ReplicatedStorage.gui.newButton)
+local serverEventButton = require(game.ReplicatedStorage.gui.menu.serverEventButton)
+-- local contestButtonGetter = require(game.ReplicatedStorage.gui.contestButtonGetter)
 
-local actionButtons: { gt.actionButton } = {
-	editDomainSettingsButton.getGenericSettingsEditor(settingEnums.settingDomains.MARATHONS),
-	editDomainSettingsButton.getGenericSettingsEditor(settingEnums.settingDomains.LEADERBOARD),
-	editDomainSettingsButton.getGenericSettingsEditor(settingEnums.settingDomains.USERSETTINGS),
-	popularButton.popularButton,
-	newButton.newButton,
-	serverEventButton.serverEventButton,
-	-- contestButtonGetter.contestButtonGetter,
+local module = {}
+
+local settingButtons = {
+	{
+		name = "Marathon Settings",
+		domain = settingEnums.settingDomains.MARATHONS,
+		hoverHint = "Configure Marathon Settings",
+	},
+	{
+		name = "Leaderboard Settings",
+		domain = settingEnums.settingDomains.LEADERBOARD,
+		hoverHint = "Configure Leaderboard Settings",
+	},
+	{
+		name = "User Settings",
+		domain = settingEnums.settingDomains.USERSETTINGS,
+		hoverHint = "Configure User Settings",
+	},
 }
 
--- if any contests are enabled, add them as action buttons.
-
--- for _, contestButton in ipairs(contestButtonGetter.getContestButtons()) do
--- 	table.insert(actionButtons, contestButton)
--- end
+local actionButtons = {
+	-- popularButton.popularButton,
+	-- newButton.newButton,
+	serverEventButton,
+	-- contestButtonGetter.contestButtonGetter,
+}
 
 module.initActionButtons = function(lbOuterFrame: Frame)
 	local actionButtonFrame = Instance.new("Frame")
@@ -58,7 +56,6 @@ module.initActionButtons = function(lbOuterFrame: Frame)
 	actionButtonFrame.Name = "LeaderboardActionButtonFrame"
 	actionButtonFrame.BackgroundTransparency = 1
 	actionButtonFrame.Parent = lbOuterFrame
-
 	actionButtonFrame.Size = UDim2.new(0.6, 0, 0, 17)
 
 	local h = Instance.new("UIListLayout")
@@ -66,46 +63,63 @@ module.initActionButtons = function(lbOuterFrame: Frame)
 	h.FillDirection = Enum.FillDirection.Horizontal
 	h.Parent = actionButtonFrame
 
-	local pgui = localPlayer:FindFirstChildOfClass("PlayerGui")
-	local totalXWeights = 0
-	for _, but in ipairs(actionButtons) do
-		totalXWeights = totalXWeights + but.widthXScale
-	end
+	local totalButtons = #settingButtons + #actionButtons
+	local buttonWidth = 1 / totalButtons
 
-	local bignum = 10000
-	for ii, but in ipairs(actionButtons) do
-		local myXScale = but.widthXScale / totalXWeights
-		local color = colors.defaultGrey
-		if but.getActive ~= nil then
-			if not but.getActive() then
-				color = colors.blueDone
-			end
-		end
-
-		local buttonName = tostring(bignum - ii) .. "." .. but.name
-		local buttonTb = guiUtil.getTb(buttonName, UDim2.new(myXScale, 0, 1, 0), 2, actionButtonFrame, color, 1)
-		buttonTb.Text = but.shortName
-
-		--reverse order they're listed in actionButtons above
-		buttonTb.Name = tostring(bignum - ii) .. "." .. but.name .. "_inner."
+	-- Create setting buttons
+	for i, buttonInfo in ipairs(settingButtons) do
+		local buttonTb =
+			guiUtil.getTb(buttonInfo.name, UDim2.new(buttonWidth, 0, 1, 0), 2, actionButtonFrame, colors.defaultGrey, 1)
+		buttonTb.Text = buttonInfo.name
+		buttonTb.Name = string.format("%d.%s_inner", i, buttonInfo.name)
 		buttonTb.BackgroundTransparency = 1
 		local par: TextLabel = buttonTb.Parent
 		par.BackgroundTransparency = 0
 
 		buttonTb.Activated:Connect(function()
-			task.spawn(function()
-				local userIds = {}
-				for _, pl in ipairs(PlayersService:GetPlayers()) do
-					table.insert(userIds, pl.UserId)
-				end
-				local content = but.contentsGetter(localPlayer, userIds)
-				if not content then
-					return
-				end
-				content.Parent = pgui
-			end)
+			local guiSpec = editDomainSettingsButton.CreateGenericSettingsEditor(buttonInfo.domain)
+			local theSgui = windows.CreatePopup(
+				guiSpec,
+				buttonInfo.name .. " Editor",
+				true,
+				true,
+				false,
+				false,
+				true,
+				false,
+				UDim2.new(0.5, 0, 0.5, 0)
+			)
+			local outerFrame = theSgui:FindFirstChildOfClass("Frame")
+			if outerFrame then
+				outerFrame.Position = UDim2.new(0.25, 0, 0.25, 0)
+			end
+			local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+			theSgui.Parent = playerGui
 		end)
-		toolTip.setupToolTip(buttonTb, but.hoverHint, UDim2.new(0, 200, 0, 40), false)
+
+		toolTip.setupToolTip(buttonTb, buttonInfo.hoverHint, UDim2.new(0, 200, 0, 40), false)
+	end
+
+	for i, buttonModule in pairs(actionButtons) do
+		local buttonTb = guiUtil.getTb(
+			buttonModule.Name,
+			UDim2.new(buttonWidth, 0, 1, 0),
+			2,
+			actionButtonFrame,
+			colors.defaultGrey,
+			1
+		)
+		buttonTb.Text = buttonModule.Name
+		buttonTb.Name = string.format("%d.%s_inner", i + #settingButtons, buttonModule.Name)
+		buttonTb.BackgroundTransparency = 1
+		local par: TextLabel = buttonTb.Parent
+		par.BackgroundTransparency = 0
+
+		buttonTb.Activated:Connect(buttonModule.Click)
+
+		if buttonModule.HoverHint then
+			toolTip.setupToolTip(buttonTb, buttonModule.HoverHint, UDim2.new(0, 200, 0, 40), false)
+		end
 	end
 end
 

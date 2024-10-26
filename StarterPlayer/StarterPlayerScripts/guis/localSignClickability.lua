@@ -13,9 +13,8 @@ local colors = require(game.ReplicatedStorage.util.colors)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
-
+local localRdb = require(game.ReplicatedStorage.localRdb)
 local PlayersService = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local localPlayer = PlayersService.LocalPlayer
 
@@ -41,13 +40,13 @@ local function getColorForSignItemKind(signItem): Color3
 		warn("nil. signitem.")
 	end
 	if signItem.kind == "nearestGlobalUnrun" then
-		return colors.lightBlue
+		return colors.warpColor
 	end
 	if signItem.kind == "MiddistGlobalUnrun" then
-		return colors.lightBlue
+		return colors.warpColor
 	end
 	if signItem.kind == "nearestPersonalUnrun" then
-		return colors.lightBlue
+		return colors.warpColor
 	end
 	if signItem.kind == "interesting" then
 		return colors.defaultGrey
@@ -56,10 +55,10 @@ local function getColorForSignItemKind(signItem): Color3
 		return colors.defaultGrey
 	end
 	if signItem.kind == "popular" then
-		return colors.lightBlue
+		return colors.warpColor
 	end
 	if signItem.kind == "linked" then
-		return colors.lightBlue
+		return colors.warpColor
 	end
 
 	warn("unhanelded kind" .. signItem.kind)
@@ -253,10 +252,7 @@ local function generateRowForRelatedSign(sign: any, ct: number, youlead: boolean
 	return row
 end
 
-local userid2username = {}
-
 local function addUsernames(chunks)
-	local threads = {}
 	for _, chunk in ipairs(chunks) do
 		if chunk == nil then
 			continue
@@ -269,46 +265,14 @@ local function addUsernames(chunks)
 			if candidateUserId == nil then
 				continue
 			else
-				if userid2username[candidateUserId] then
-					if el.best_userId == nil then
-						el.username = userid2username[candidateUserId]
-					else
-						el.best_username = userid2username[candidateUserId]
-					end
-				else
-					local thread = coroutine.create(function()
-						local username
-						if candidateUserId < 0 then
-							username = "player" .. candidateUserId
-						else
-							local s, e = pcall(function()
-								username = PlayersService:GetNameFromUserIdAsync(candidateUserId)
-							end)
-							if not s then
-								username = "Lookup Failed"
-							end
-						end
-						if el.best_userId == nil then
-							el.username = username
-						else
-							el.best_username = username
-						end
+				local actualUsername = localRdb.GetUsernameByUserId(candidateUserId)
 
-						userid2username[candidateUserId] = username
-					end)
-					table.insert(threads, thread)
-					coroutine.resume(thread)
+				if el.best_userId == nil then
+					el.username = actualUsername
+				else
+					el.best_username = actualUsername
 				end
 			end
-		end
-	end
-	for _, thread in ipairs(threads) do
-		while true do
-			if coroutine.status(thread) == "dead" then
-				break
-			end
-			wait(0.02)
-			_annotate("stuck in addUsernames")
 		end
 	end
 end

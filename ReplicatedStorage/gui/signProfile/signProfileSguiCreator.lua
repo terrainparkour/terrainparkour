@@ -14,13 +14,14 @@ local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
 local signProfileComponents = require(game.ReplicatedStorage.gui.signProfile.signProfileRows)
 local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
-
+local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
 --------------- FUNCTIONS -------------------------
 module.CreateSignProfileSGui = function(localPlayer: Player, data: tt.playerSignProfileData)
 	local signProfileSgui = Instance.new("ScreenGui")
 	signProfileSgui.IgnoreGuiInset = true
 
-	local signProfileSystemFrames = windows.SetupFrame("signProfile", true, true, true)
+	local signProfileSystemFrames =
+		windowFunctions.SetupFrame("signProfile", true, true, false, true, UDim2.new(0, 200, 0, 200))
 
 	local signProfileOuterFrame = signProfileSystemFrames.outerFrame
 	local signStatusContentFrame = signProfileSystemFrames.contentFrame
@@ -108,10 +109,10 @@ module.CreateSignProfileSGui = function(localPlayer: Player, data: tt.playerSign
 		thisRow.BorderMode = Enum.BorderMode.Inset
 		thisRow.BorderSizePixel = 1
 		thisRow.Name = string.format("%02d-chiprow", n)
-		local hh = Instance.new("UIListLayout")
-		hh.Parent = thisRow
-		hh.Name = "signProfileDataRow-hh" .. tostring(n)
-		hh.FillDirection = Enum.FillDirection.Horizontal
+		local hh3 = Instance.new("UIListLayout")
+		hh3.Parent = thisRow
+		hh3.Name = "signProfileDataRow-hh" .. tostring(n)
+		hh3.FillDirection = Enum.FillDirection.Horizontal
 		local labels: { TextLabel | TextButton } = rowGenerator(data)
 		for _, label in ipairs(labels) do
 			label.Parent = thisRow

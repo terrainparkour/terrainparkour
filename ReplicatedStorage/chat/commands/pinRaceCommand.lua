@@ -20,22 +20,26 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local leaderboardServer = require(game.ServerScriptService.leaderboardServer)
 
 local module = {}
-module.PinRace = function(speaker: Player, channel: TextChannel, text: string)
-	local ret: tt.RaceParseResult = tpUtil.AttemptToParseRaceFromInput(text)
-	if ret.error ~= "" then
-		sendMessage(channel, ret.error)
-		return true
-	end
 
+export type pinRaceResult = {
+	success: boolean,
+	message: string,
+}
+
+module.PinRace = function(player: Player, signId1: number, signId2: number): pinRaceResult
 	if
-		not playerData2.HasUserFoundSign(speaker.UserId, ret.signId1)
-		or not playerData2.HasUserFoundSign(speaker.UserId, ret.signId2)
+		not playerData2.HasUserFoundSign(player.UserId, signId1)
+		or not playerData2.HasUserFoundSign(player.UserId, signId2)
 	then
-		sendMessage(channel, "You must find both signs to pin a race")
-		return true
+		return {
+			success = false,
+			message = "You must find both signs to pin a race",
+		}
 	end
-	_annotate(string.format("speaker.Name=%s would pin: %s %s", speaker.Name, ret.signId1, ret.signId2))
-	local val = string.format("%d-%d", ret.signId1, ret.signId2)
+	local signName1 = tpUtil.signId2signName(signId1)
+	local signName2 = tpUtil.signId2signName(signId2)
+	_annotate(string.format("speaker.Name=%s would pin: %s %s", player.Name, signName1, signName2))
+	local val = string.format("%d-%d", signId1, signId2)
 	local setting: tt.userSettingValue = {
 		name = settingEnums.settingDefinitions.LEADERBOARD_PINNED_RACE.name,
 		domain = settingEnums.settingDomains.LEADERBOARD,
@@ -43,35 +47,36 @@ module.PinRace = function(speaker: Player, channel: TextChannel, text: string)
 		stringValue = val,
 	}
 
-	local res = userSettings.SetSettingFromServer(speaker, setting)
+	local res: tt.setSettingResponse = userSettings.SetSettingFromServer(player, setting)
 	if not res then
-		sendMessage(channel, string.format("failed to set setting: %s", res.error))
-		return true
+		return {
+			success = false,
+			message = string.format("failed to set setting: %s", res.error),
+		}
 	end
-
-	sendMessage(
-		channel,
-		string.format("%s pinned race %s-%s to their leaderboard.", speaker.Name, ret.signname1, ret.signname2)
-	)
 
 	-- interesting, so we just force redraw here, rather than having the other client monitor it.
 	-- that makes sense cause player A doesn't monitor player B's personal setting changes
-	leaderboardServer.UpdateAllAboutPlayerImmediate(speaker)
+	leaderboardServer.UpdateAllAboutPlayerImmediate(player)
+	return {
+		success = true,
+		message = string.format("%s pinned race %s-%s to their leaderboard.", player.Name, signName1, signName2),
+	}
 end
 
-module.UnpinRace = function(speaker: Player, channel: TextChannel)
+module.UnpinRace = function(speaker: Player): pinRaceResult
 	local setting: tt.userSettingValue = {
 		name = settingEnums.settingDefinitions.LEADERBOARD_PINNED_RACE.name,
 		domain = settingEnums.settingDomains.LEADERBOARD,
 		kind = settingEnums.settingKinds.STRING,
 		stringValue = "",
 	}
-	local res = userSettings.SetSettingFromServer(speaker, setting)
-	if not res then
-		sendMessage(channel, string.format("failed to set setting: %s", res.error))
-		return true
-	end
+	userSettings.SetSettingFromServer(speaker, setting)
 	leaderboardServer.UpdateAllAboutPlayerImmediate(speaker)
+	return {
+		success = true,
+		message = string.format("%s unpinned their leaderboard race.", speaker.Name),
+	}
 end
 
 _annotate("end")

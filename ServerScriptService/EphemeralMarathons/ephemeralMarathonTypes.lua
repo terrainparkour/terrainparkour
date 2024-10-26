@@ -35,7 +35,6 @@ export type emRunResults = {
 	raceName: string,
 	yourText: string,
 	-- personalRaceHistoryText: string,
-	-- raceTotalHistoryText: string,
 	runEntries: { ephemeralMarathonBestRun },
 	afterRunData: {},
 	username: string,

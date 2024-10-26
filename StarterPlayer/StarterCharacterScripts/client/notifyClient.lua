@@ -9,9 +9,9 @@ local module = {}
 local config = require(game.ReplicatedStorage.config)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
-local drawRunResultsGuiCreator = require(game.ReplicatedStorage.gui.runresults.drawRunResultsGuiCreator)
+local drawRunResultsGui = require(game.ReplicatedStorage.gui.runresults.drawRunResultsGui)
 
-local findResultsCreator = require(game.ReplicatedStorage.gui.runresults.findGuiCreator)
+local drawFindGui = require(game.ReplicatedStorage.gui.runresults.drawFindGui)
 local ephemeralNotifications = require(game.ReplicatedStorage.gui.ephemeralNotificationCreator)
 
 local PlayersService = game:GetService("Players")
@@ -28,18 +28,15 @@ local function clientReceiveNotification(pythonResponse: any)
 		_annotate("client receive notifications:" .. tostring(pythonResponse.kind))
 	end
 	if pythonResponse.kind == "race results" then
-		local thing = drawRunResultsGuiCreator.DrawRunResultsGui(pythonResponse)
-		thing.Parent = playerGui
+		drawRunResultsGui.DrawRunResultsGui(pythonResponse)
 		return
 	elseif pythonResponse.kind == "userFoundSign" then
 		local dcFindResponse = pythonResponse :: tt.dcFindResponse
-		local thing = findResultsCreator.createFindScreenGui(dcFindResponse)
-		thing.Parent = playerGui
+		drawFindGui.CreateFindScreenGui(dcFindResponse)
 		return
 	elseif pythonResponse.kind == "marathon results" then
-		pythonResponse = pythonResponse :: tt.dcRunResponse
-		local thing = drawRunResultsGuiCreator.DrawRunResultsGui(pythonResponse)
-		thing.Parent = playerGui
+		pythonResponse = pythonResponse :: tt.userFinishedRunResponse
+		drawRunResultsGui.DrawRunResultsGui(pythonResponse)
 		return
 	else
 		if pythonResponse.kind then

@@ -18,7 +18,7 @@ local fireEvent = avatarEventFiring.FireEvent
 local marathonStatic = require(game.ReplicatedStorage.marathon.marathonStatic)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
-
+local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
 -- local lbMarathonRowY = 18
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
@@ -517,7 +517,7 @@ module.Init = function()
 	marathonScreenGui.Parent = pgui
 	marathonScreenGui.IgnoreGuiInset = true
 
-	local marathonFrames = windows.SetupFrame("marathons", true, true, true)
+	local marathonFrames = windowFunctions.SetupFrame("marathons", true, true, false, true, UDim2.new(0, 200, 0, 200))
 	local marathonOuterFrame = marathonFrames.outerFrame
 	local marathonContentFrame = marathonFrames.contentFrame
 	marathonOuterFrame.Parent = marathonScreenGui

@@ -59,7 +59,7 @@ module.notify = function(options: tt.ephemeralNotificationOptions)
 	local firstRowFrame = Instance.new("Frame")
 	firstRowFrame.Parent = frame
 	local showWarp = false
-	if options.warpToSignId ~= 0 and options.warpToSignId ~= nil and options.warpToSignId ~= "" then
+	if options.warpToSignId ~= 0 and options.warpToSignId ~= nil then
 		showWarp = true
 	end
 
@@ -78,10 +78,11 @@ module.notify = function(options: tt.ephemeralNotificationOptions)
 	im.BorderMode = Enum.BorderMode.Outline
 	im.Parent = firstRowFrame
 	im.Size = UDim2.new(0.5, 0, 1, 0)
-	local useUserId = tonumber(options.userId)
-	if useUserId < 1 then
+	local useUserId: number = options.userId
+	if useUserId == nil or useUserId <= 0 then
 		useUserId = 261
 	end
+
 	local content =
 		thumbnails.getThumbnailContent(useUserId, Enum.ThumbnailType.AvatarBust, Enum.ThumbnailSize.Size420x420)
 	im.Position = UDim2.new(0, 0, 0.3, 0)
@@ -107,8 +108,8 @@ module.notify = function(options: tt.ephemeralNotificationOptions)
 		local signName = enums.signId2name[options.warpToSignId]
 		warpTl.Text = "Warp to " .. signName
 		warpTl.TextScaled = true
-		warpTl.Font = Enum.Font.Gotham
-		warpTl.BackgroundColor3 = colors.lightBlue
+		warpTl.FontFace = Font.new("rbxasset://fonts/families/Arimo.json")
+		warpTl.BackgroundColor3 = colors.warpColor
 		warpTl.Size = UDim2.new(1, 0, 0.2, 0)
 
 		warpTl.Position = UDim2.new(0, 0, 0.8, 0)

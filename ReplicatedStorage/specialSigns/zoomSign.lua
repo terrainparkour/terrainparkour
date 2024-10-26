@@ -27,8 +27,10 @@ specialSign.InformRunStarting = function()
 	localPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
 end
 
-specialSign.CanRunEnd = function()
-	return true
+specialSign.CanRunEnd = function(): tt.runEndExtraDataForRacing
+	return {
+		canRunEndNow = true,
+	}
 end
 
 specialSign.GetName = function()

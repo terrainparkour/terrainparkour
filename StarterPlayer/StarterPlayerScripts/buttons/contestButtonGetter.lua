@@ -49,7 +49,7 @@ local function getColorForTimeGap(gap: number)
 		useColor = colors.lightYellow
 	elseif gap < 10000 then
 		plus = "+"
-		useColor = colors.lightOrangeWRProgression
+		useColor = colors.WRProgressionColor
 	elseif gap < 20000 then
 		plus = "+"
 		useColor = colors.lightRed
@@ -241,7 +241,7 @@ local function makeContestRow(
 		youTl.Text = missingRunPlaceholder
 	end
 
-	local warp = guiUtil.getTb("21.ContestWarp", UDim2.new(widths.warp, 0, 1, 0), 1, fr, colors.lightBlue, 1)
+	local warp = guiUtil.getTb("21.ContestWarp", UDim2.new(widths.warp, 0, 1, 0), 1, fr, colors.warpColor, 1)
 	warp.Text = "Warp"
 
 	warp.Activated:Connect(function()

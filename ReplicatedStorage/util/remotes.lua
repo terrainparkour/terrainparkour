@@ -1,9 +1,9 @@
 --!strict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local refolder: Folder = ReplicatedStorage:WaitForChild("RemoteEvents")
-local rffolder: RemoteFunction = ReplicatedStorage:WaitForChild("RemoteFunctions")
-local befolder: Folder = ReplicatedStorage:WaitForChild("BindableEvents")
+local refolder: Folder = ReplicatedStorage:WaitForChild("RemoteEvents") :: Folder
+local rffolder: RemoteFunction = ReplicatedStorage:WaitForChild("RemoteFunctions") :: RemoteFunction
+local befolder: Folder = ReplicatedStorage:WaitForChild("BindableEvents") :: Folder
 
 local module = {}
 
@@ -32,7 +32,7 @@ local registerRemoteEvent = function(name: string): RemoteEvent
 		error("bad remote event name. " .. name)
 	end
 
-	local exi: RemoteEvent = refolder:FindFirstChild(name) :: RemoteEvent
+	local exi: RemoteEvent? = refolder:FindFirstChild(name) :: RemoteEvent
 	if exi == nil then
 		local re = Instance.new("RemoteEvent")
 		re.Name = name

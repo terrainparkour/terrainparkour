@@ -59,9 +59,10 @@ local function makeBadgeRowFrame(
 	img.BorderMode = Enum.BorderMode.Inset
 	img.Size = UDim2.new(0, rowHeightPixels, 1, 0)
 	img.Parent = badgeNameFrame
-	local badgeImageContent = thumbnails.getBadgeAssetThumbnailContent(badge.assetId)
 
+	local badgeImageContent = thumbnails.getBadgeAssetThumbnailContent(badge.assetId)
 	img.Image = badgeImageContent
+
 	img.BorderSizePixel = 0
 	img.BackgroundColor3 = colors.grey
 
@@ -118,15 +119,16 @@ local function makeBadgeRowFrame(
 				progressinTL.Text = "nope"
 			else
 				if not badge.baseNumber then
-					warn("Err")
+					annotater.Error("bad badge baseNumber")
+					error("bad badge baseNumber")
 				end
 				local prog = Instance.new("Frame")
 				prog.Size = UDim2.new(resultWidthScale, resultWidthPixel, 1, 0)
 				prog.Parent = subFrame
 				prog.Name = progressTileName
-				local hh = Instance.new("UIListLayout")
-				hh.Parent = prog
-				hh.FillDirection = Enum.FillDirection.Horizontal
+				local hh3 = Instance.new("UIListLayout")
+				hh3.Parent = prog
+				hh3.FillDirection = Enum.FillDirection.Horizontal
 				local remaining = badge.baseNumber - oAttainment.progress
 				local fsize = UDim2.new(oAttainment.progress / badge.baseNumber, 0, 1, 0)
 				local esize = UDim2.new(remaining / badge.baseNumber, 0, 1, 0)
@@ -221,7 +223,9 @@ local getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 
 		local s, e = pcall(function()
 			local player = PlayersService:GetPlayerByUserId(userId)
-			username = player.Name
+			if player ~= nil then
+				username = player.Name
+			end
 		end)
 		if e then
 			warn(e)
@@ -295,8 +299,9 @@ local getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	local sortedUserBadgeStatus: { [number]: { tt.badgeProgress } } = {}
 	for _, requestedUserIdInOrder in ipairs(orderedUserIdsInServer) do
 		for theUserId, item in pairs(badgeProgressInfo) do
-			if requestedUserIdInOrder == tonumber(theUserId) then
-				sortedUserBadgeStatus[tonumber(theUserId)] = item
+			theUserId = tonumber(theUserId)
+			if requestedUserIdInOrder == theUserId then
+				sortedUserBadgeStatus[theUserId] = item
 				break
 			end
 		end
@@ -305,11 +310,13 @@ local getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	for _, userId in ipairs(orderedUserIdsInServer) do
 		local oUserAttainments = sortedUserBadgeStatus[userId]
 		resultSections += 1
-		for _, oUserAttainment: tt.badgeProgress in ipairs(oUserAttainments) do
-			if badgeAttainmentMap[oUserAttainment.badge.name] == nil then
-				badgeAttainmentMap[oUserAttainment.badge.name] = { badge = oUserAttainment.badge, badgeStatus = {} }
+		if oUserAttainments then
+			for _, oUserAttainment: tt.badgeProgress in ipairs(oUserAttainments) do
+				if badgeAttainmentMap[oUserAttainment.badge.name] == nil then
+					badgeAttainmentMap[oUserAttainment.badge.name] = { badge = oUserAttainment.badge, badgeStatus = {} }
+				end
+				table.insert(badgeAttainmentMap[oUserAttainment.badge.name].badgeStatus, oUserAttainment)
 			end
-			table.insert(badgeAttainmentMap[oUserAttainment.badge.name].badgeStatus, oUserAttainment)
 		end
 	end
 	local badgeResultsRowNumber = 0

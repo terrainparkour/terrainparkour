@@ -19,8 +19,8 @@ local localPlayer = PlayersService.LocalPlayer
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
 local aet = require(game.ReplicatedStorage.avatarEventTypes)
-local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
+local _character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+-- local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 local module = {}
 
@@ -33,7 +33,7 @@ local seenTerrainFloorTypes: { [string]: boolean } = {}
 local timesSeenTerrainFloorTypeCounts: { [Enum.Material]: number } = {}
 local seenFloorCount = 0
 local currentRunSignName = ""
-local lastSeenTerrain = nil
+local lastSeenTerrain: Enum.Material? = nil
 
 --list of the types they've seen.
 local allOrderedSeenFloorTypeSet: { [number]: Enum.Material } = {}
@@ -166,8 +166,8 @@ module.CountNewFloorMaterial = function(fm: Enum.Material?)
 end
 
 module.Init = function()
-	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-	humanoid = character:WaitForChild("Humanoid")
+	local _character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	-- humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 	seenTerrainFloorTypes = {}
 

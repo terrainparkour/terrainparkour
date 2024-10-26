@@ -11,7 +11,7 @@ local module = {}
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 
-local GenericClientUIEvent = remotes.getRemoteEvent("GenericClientUIEvent")
+-- local GenericClientUIEvent = remotes.getRemoteEvent("GenericClientUIEvent")
 local GenericClientUIFunction = remotes.getRemoteFunction("GenericClientUIFunction")
 
 module.AnchorCharacter = function(_: Humanoid, character: Model)

@@ -12,7 +12,7 @@ local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatar
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local aet = require(game.ReplicatedStorage.avatarEventTypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
-local colors = require(game.ReplicatedStorage.util.colors)
+
 local settings = require(game.ReplicatedStorage.settings)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local particleEnums = require(game.StarterPlayer.StarterPlayerScripts.particleEnums)
@@ -21,7 +21,7 @@ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local localPlayer: Player = Players.LocalPlayer
 
 --- GLOBALS
@@ -32,7 +32,6 @@ local emitters: { [string]: ParticleEmitter } = {}
 local myDescriptors: { [string]: tt.particleDescriptor } = {}
 
 local particlesEnabledAtAll: boolean = true
-local connection: RBXScriptConnection? = nil
 
 ---START
 
@@ -208,8 +207,6 @@ local emitParticleForEvent = function(ev: aet.avatarEvent)
 		key = "runstart"
 	elseif ev.eventType == aet.avatarEventTypes.FLOOR_CHANGED then
 		key = "floorchanged"
-	elseif ev.eventType == aet.avatarEventTypes.AVATAR_RESET then
-		key = "reset"
 	elseif ev.eventType == aet.avatarEventTypes.KEYBOARD_WALK then
 		key = "keyboardwalk"
 	elseif ev.eventType == aet.avatarEventTypes.AVATAR_STARTED_MOVING then
@@ -218,10 +215,6 @@ local emitParticleForEvent = function(ev: aet.avatarEvent)
 		key = "stoppedmoving"
 	-- elseif ev.eventType == mt.avatarEventTypes.AVATAR_CHANGED_DIRECTION then
 	-- 	key = "changeddirection"
-	elseif ev.eventType == aet.avatarEventTypes.AVATAR_STARTED_MOVING then
-		key = "startedmoving"
-	elseif ev.eventType == aet.avatarEventTypes.AVATAR_STOPPED_MOVING then
-		key = "stoppedmoving"
 	elseif ev.eventType == aet.avatarEventTypes.GET_READY_FOR_WARP then
 		key = "startwarp"
 	elseif ev.eventType == aet.avatarEventTypes.STATE_CHANGED then

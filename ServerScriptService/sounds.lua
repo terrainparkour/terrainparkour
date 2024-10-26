@@ -45,7 +45,7 @@ end
 local function playSoundFromSign(sign: Part, soundName: string)
 	local sound = getSound(sounds[soundName])
 	sound.Name = soundName
-	local exi = sign:FindFirstChild(soundName) :: Sound
+	local exi: Sound? = sign:FindFirstChild(soundName) :: Sound
 	if exi then
 		_annotate(string.format("replaying old one. %s", sign.Name))
 		exi:Play()

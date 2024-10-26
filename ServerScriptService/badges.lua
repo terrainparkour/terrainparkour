@@ -171,7 +171,7 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 	-- all those guys should still wait. The first one will kick off checker then wait here.
 	-- the others will wait above and then return
 	local waited = 0
-	while userIdHasDataPrepared[userId] == nil do
+	while not userIdHasDataPrepared[userId] do
 		waited += task.wait(5)
 		annotater.Error(
 			string.format("Have waited so far %0.1f seconds to prepare badge data for user: %s", waited, username)
@@ -184,19 +184,20 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 	if userIdHasDataPrepared[userId] == false then
 		annotater.Error(
 			string.format(
-				"within badges, exited wait with false for user data preparation after time %0.1f seconds for user %s",
+				"within badges, exited wait with nil for user data preparation after time %0.1f seconds for user %s",
 				waited,
 				username
-			)
+			),
+			userId
 		)
-	end
-	if userIdHasDataPrepared[userId] == nil then
+	elseif userIdHasDataPrepared[userId] == nil then
 		annotater.Error(
 			string.format(
 				"within badges, exited wait with nil for user data preparation after time %0.1f seconds for user %s",
 				waited,
 				username
-			)
+			),
+			userId
 		)
 	end
 	deb[userId] = false
@@ -209,7 +210,7 @@ module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor, kind: 
 	local prepared = ensureBadgeDataGotten(userId, "UserHasBadge " .. badge.name)
 	local username = playerData2.GetUsernameByUserId(userId)
 	if not prepared then
-		annotater.Error(string.format("was unable to prepare badge data for player: %s %s", username, kind))
+		annotater.Error(string.format("was unable to prepare badge data for player: %s %s", username, kind), userId)
 		return nil
 	end
 	return badgeStatusesRAM[userId][badge.assetId]

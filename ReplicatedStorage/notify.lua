@@ -26,7 +26,7 @@ module.playerNotificationTypes = {
 
 --internal method to actually send notifications.
 
-module.notifyPlayerAboutMarathonResults = function(player: Player, options: tt.dcRunResponse)
+module.notifyPlayerAboutMarathonResults = function(player: Player, options: tt.userFinishedRunResponse)
 	ServerToClientEvent:FireClient(player, options)
 end
 

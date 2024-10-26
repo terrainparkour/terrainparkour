@@ -1,8 +1,10 @@
 --!strict
+local StarterPlayer = game:GetService("StarterPlayer")
 
 -- signProfileGrindingGui
 -- Grinding menu creation.
 
+local windowFunctions = require(StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 local module = {}
@@ -12,11 +14,11 @@ local colors = require(game.ReplicatedStorage.util.colors)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local textHighlighting = require(game.ReplicatedStorage.gui.textHighlighting)
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local colors = require(game.ReplicatedStorage.util.colors)
+
 local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
-local localPlayer = game.Players.LocalPlayer
-local character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
-local humanoid = character:WaitForChild("Humanoid") :: Humanoid
+local localPlayer = game:GetService("Players").LocalPlayer
+-- local character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
+-- local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 
 --------------- FUNCTIONS -------------------------
@@ -24,7 +26,7 @@ local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 -- we need to be very careful; if not rr.hasFoundSign, we need to make sure we don't let the player highlight the target.
 local function getIndividualGrindButton(startSignId: number, num: number, rr: tt.relatedRace): TextButton | nil
 	local name = string.format("%03d_GrindUIButtonTo %s", num, rr.signName)
-	local button = guiUtil.getTb(name, UDim2.new(0, 90, 0, 30), 1, nil, colors.lightBlue, 1)
+	local button = guiUtil.getTb(name, UDim2.new(0, 90, 0, 30), 1, nil, colors.warpColor, 1)
 
 	button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
 	button.BorderSizePixel = 0
@@ -37,9 +39,9 @@ local function getIndividualGrindButton(startSignId: number, num: number, rr: tt
 	button.Text = string.format("%s%s (%d)", rr.signName, hasFoundSignText, rr.totalRunnerCount)
 
 	button.MouseEnter:Connect(function()
-		local signProfileSgui: ScreenGui = localPlayer.PlayerGui:FindFirstChild("SignProfileSgui")
+		local signProfileSgui: ScreenGui = localPlayer.PlayerGui:FindFirstChild("SignProfileSgui") :: ScreenGui
 		if signProfileSgui then
-			local theBadFrame: Frame = signProfileSgui:FindFirstChild("content_signProfile")
+			local theBadFrame: Frame = signProfileSgui:FindFirstChild("content_signProfile") :: Frame
 			if theBadFrame then
 				theBadFrame.Visible = false
 			end
@@ -55,7 +57,9 @@ local function getIndividualGrindButton(startSignId: number, num: number, rr: tt
 		end)
 	end
 
-	return button.Parent
+	local par: TextButton = button.Parent :: TextButton
+
+	return par
 end
 
 -- make the permanent popup. for now just show tiles.
@@ -64,7 +68,7 @@ module.MakeSignProfileGrindingGui = function(
 	sourceName: string,
 	relatedUnrunRacesOfType: { tt.relatedRace }
 ): Frame
-	local d = windows.SetupFrame("signProfileGrinding", true, true, true)
+	local d = windowFunctions.SetupFrame("signProfileGrinding", true, true, false, true, UDim2.new(0, 200, 0, 200))
 	local outerFrame = d.outerFrame
 	local contentFrame = d.contentFrame
 

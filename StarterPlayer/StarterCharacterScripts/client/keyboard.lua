@@ -108,28 +108,26 @@ end
 local function KillPopups()
 	_annotate("kill popups")
 	for _, el in ipairs(localPlayer:WaitForChild("PlayerGui"):GetChildren()) do
-		if string.sub(el.Name, 0, 14) == "RaceResultSgui" then
+		local attr = el:FindFirstChild("DismissableWithX")
+		if attr and attr:IsA("BoolValue") then
+			if attr.Value then
+				el:Destroy()
+			end
+			continue
+		end
+		if string.sub(el.Name, 0, 11) == "RaceResults" then
+			el:Destroy()
+		elseif string.sub(el.Name, 0, 14) == "SignProfileSgui" then
+			el:Destroy()
+		elseif el.Name == "EphemeralNotificationSgui" then
+			el:Destroy()
+		elseif el.Name == "ToolTipGui" then
+			el:Destroy()
+		elseif el.Name == "NewFindSgui" then
+			el:Destroy()
+		elseif el.Name == "EphemeralTooltip" then
 			el:Destroy()
 		end
-		if string.sub(el.Name, 0, 14) == "SignProfileSgui" then
-			el:Destroy()
-		end
-
-		if el.Name == "EphemeralNotificationSgui" then
-			el:Destroy()
-		end
-		if el.Name == "ToolTipGui" then
-			el:Destroy()
-		end
-		if el.Name == "NewFindSgui" then
-			el:Destroy()
-		end
-		if el.Name == "EphemeralTooltip" then
-			el:Destroy()
-		end
-		-- if el.Name == "SignGrindUIScreenGui" then
-		-- 	el:Destroy()
-		-- end
 	end
 	if not ignoreChatWhenHittingX then
 		ToggleChat(false)

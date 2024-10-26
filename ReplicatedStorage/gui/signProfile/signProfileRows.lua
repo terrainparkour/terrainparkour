@@ -14,7 +14,6 @@ local signProfileGrindingGui = require(game.ReplicatedStorage.gui.signProfile.si
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
 
-local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
 local signGrindUIScreenGui: ScreenGui = nil
 
 -- for a list of relationships, creates a nice row with:"your results in this type of race from this sign including: your
@@ -30,17 +29,16 @@ local createPlacementRowForSetOfRaces = function(
 	local placementChips: { tt.signProfileChipType } = {}
 	local placementCounts = {}
 	local placementRelatedRaces: { [number]: { tt.userSignSignRelationship } } = {}
-	for _, rel in ipairs(relationships) do
-		if rel.bestPlace == nil or rel.bestPlace > 11 then
-			rel.bestPlace = 11
+	for _, rel: tt.userSignSignRelationship in ipairs(relationships) do
+		-- we either use the place or 11 if it's null or higher than 10.
+		local usingBestPlace = rel.bestPlace and rel.bestPlace < 10 and rel.bestPlace or 11
+		if placementCounts[usingBestPlace] == nil then
+			placementCounts[usingBestPlace] = 0
+			placementRelatedRaces[usingBestPlace] = {}
 		end
-		if placementCounts[rel.bestPlace] == nil then
-			placementCounts[rel.bestPlace] = 0
-			placementRelatedRaces[rel.bestPlace] = {}
-		end
-		placementCounts[rel.bestPlace] += 1
+		placementCounts[usingBestPlace] += 1
 
-		table.insert(placementRelatedRaces[rel.bestPlace], rel)
+		table.insert(placementRelatedRaces[usingBestPlace], rel)
 	end
 	local startSignId = tpUtil.signName2SignId(sourceSignName)
 	local ii = 1
@@ -90,6 +88,10 @@ local createPlacementRowForSetOfRaces = function(
 				local subwindowTitle =
 					string.format("Grinding %s races from %s where you place %s", sourceContext, sourceSignName, term)
 				local s = signProfileGrindingGui.MakeSignProfileGrindingGui(startSignId, subwindowTitle, fakeRrs)
+				local playerGui: PlayerGui? = localPlayer:FindFirstChildOfClass("PlayerGui") :: PlayerGui
+				if playerGui == nil then
+					return
+				end
 				signGrindUIScreenGui = playerGui:FindFirstChild("SignGrindUIScreenGui")
 
 				if not signGrindUIScreenGui then
@@ -125,13 +127,18 @@ local createPlacementRowForSetOfRaces = function(
 		yourUnrunClicker.Activated:Connect(function()
 			local subwindowTitle = string.format("Grinding your unrun %s from %s", sourceContext, sourceSignName)
 			local s = signProfileGrindingGui.MakeSignProfileGrindingGui(startSignId, subwindowTitle, unruns)
-			signGrindUIScreenGui = playerGui:FindFirstChild("SignGrindUIScreenGui")
+			local playerGui: PlayerGui? = localPlayer:FindFirstChildOfClass("PlayerGui") :: PlayerGui
+			if playerGui == nil then
+				return
+			end
+			signGrindUIScreenGui = playerGui:FindFirstChild("SignGrindUIScreenGui") :: ScreenGui
 
 			if not signGrindUIScreenGui then
-				signGrindUIScreenGui = Instance.new("ScreenGui")
-				signGrindUIScreenGui.Name = "SignGrindUIScreenGui"
-				signGrindUIScreenGui.Parent = playerGui
-				signGrindUIScreenGui.IgnoreGuiInset = true
+				local theSignGrindUIScreenGui = Instance.new("ScreenGui")
+				theSignGrindUIScreenGui.Name = "SignGrindUIScreenGui"
+				theSignGrindUIScreenGui.Parent = playerGui
+				theSignGrindUIScreenGui.IgnoreGuiInset = true
+				signGrindUIScreenGui = theSignGrindUIScreenGui
 			end
 			signGrindUIScreenGui.Enabled = true
 			s.Parent = signGrindUIScreenGui

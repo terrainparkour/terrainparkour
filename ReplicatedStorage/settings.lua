@@ -19,7 +19,7 @@ local remotes = require(game.ReplicatedStorage.util.remotes)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local GetUserSettingsFunction: RemoteFunction = remotes.getRemoteFunction("GetUserSettingsFunction")
 local UserSettingsChangedFunction = remotes.getRemoteFunction("UserSettingsChangedFunction") :: RemoteFunction
-local localPlayer = game.Players.LocalPlayer
+local localPlayer = game:GetService("Players").LocalPlayer
 local module = {}
 
 --local listeners send callbacks here for notification when other local settings changers change a setting, or when server receives the change.
@@ -112,9 +112,10 @@ local function LocalNotifySettingChange(setting: tt.userSettingValue)
 	elseif setting.kind == settingEnums.settingKinds.STRING then
 		_annotate(string.format("LocalNotifySettingChange: %s %s", setting.name, tostring(setting.stringValue)))
 	end
-	for name: string, funcWhichCaresAboutThisSettingChange: (tt.userSettingValue) -> nil in
+	for nameKey: string, funcWhichCaresAboutThisSettingChange: (tt.userSettingValue) -> nil in
 		pairs(settingChangeMonitoringFunctions)
 	do
+		local name = nameKey:split("|")[1]
 		if setting.name == name then
 			_annotate("APPLY " .. tostring(name) .. " " .. tostring(funcWhichCaresAboutThisSettingChange))
 			funcWhichCaresAboutThisSettingChange(setting)

@@ -57,7 +57,7 @@ local function showSignLeadersPopup(player: Player, signId: number)
 end
 
 module.Init = function()
-	ClickSignFunction.OnServerInvoke = function(player: Player, signClickMessage: tt.signClickMessage): any
+	ClickSignFunction.OnServerInvoke = function(player: Player, signClickMessage: tt.signClickMessage)
 		if signClickMessage.leftClick then
 			return showSignLeadersPopup(player, signClickMessage.signId)
 		else

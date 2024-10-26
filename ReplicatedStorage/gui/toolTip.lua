@@ -3,16 +3,10 @@
 --warning: 2022.10 sometimes needs to be loaded late for some reason.
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
-local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
-local colors = require(game.ReplicatedStorage.util.colors)
 
-local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
 ------------------ SETUP ------------------
-local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
-
 local module = {}
 
 module.enum = {}
@@ -85,14 +79,17 @@ module.setupToolTip = function(
 		right = true
 	end
 
-	local mouse: Mouse = localPlayer:GetMouse()
+	-- local mouse: Mouse = localPlayer:GetMouse()
 
 	local myAge = 0
 
 	target.MouseEnter:Connect(function()
 		tooltipAge += 1
 		myAge = tooltipAge
-		local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
+		local playerGui: PlayerGui? = localPlayer:FindFirstChildOfClass("PlayerGui") :: PlayerGui
+		if playerGui == nil then
+			return
+		end
 		local ttgui = playerGui:FindFirstChild("ToolTipGui")
 		if ttgui == nil then
 			ttgui = LLMGeneratedUIFunctions.createUIElement("ScreenGui", {

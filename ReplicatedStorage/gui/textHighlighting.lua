@@ -209,6 +209,9 @@ module.DoHighlightMultiple = function(signIds: { number })
 	_annotate(string.format("Highlighting multiple signs: %s", table.concat(signIds, ", ")))
 	for _, signId in pairs(signIds) do
 		local sign: Part? = tpUtil.signId2Sign(signId)
+		if sign == nil then
+			continue
+		end
 		innerDoHighlight(sign)
 	end
 end

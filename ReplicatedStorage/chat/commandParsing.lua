@@ -26,6 +26,8 @@ local signProfileCommand = require(game.ReplicatedStorage.commands.signProfileCo
 local wrProgressionCommand = require(game.ReplicatedStorage.commands.wrProgressionCommand)
 local runResultsCommand = require(game.ReplicatedStorage.commands.runResultsCommand)
 local showSignsCommand = require(game.ReplicatedStorage.commands.showSignsCommand)
+local pinRaceCommand = require(game.ReplicatedStorage.chat.commands.pinRaceCommand)
+local userFavoriteRacesCommand = require(game.ReplicatedStorage.commands.userFavoriteRacesCommand)
 
 local sendMessageModule = require(game.ReplicatedStorage.chat.sendMessage)
 local sendMessage = sendMessageModule.sendMessage
@@ -200,12 +202,19 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 	elseif verb == "uptime" then
 		return channelCommands.uptime(speaker, channel)
 	elseif verb == "pin" then
-		local pinRaceCommand = require(game.ReplicatedStorage.chat.commands.pinRaceCommand)
 		local userInput = textUtil.coalesceFrom(parts, 2)
-		return pinRaceCommand.PinRace(speaker, channel, userInput)
+		local ret: tt.RaceParseResult = tpUtil.AttemptToParseRaceFromInput(userInput)
+		if ret.error ~= "" then
+			sendMessage(channel, ret.error)
+			return true
+		end
+		local res = pinRaceCommand.PinRace(speaker, ret.signId1, ret.signId2)
+		sendMessage(channel, res.message)
+		return true
 	elseif verb == "unpin" then
-		local pinRaceCommand = require(game.ReplicatedStorage.chat.commands.pinRaceCommand)
-		return pinRaceCommand.UnpinRace(speaker, channel)
+		local res = pinRaceCommand.UnpinRace(speaker)
+		sendMessage(channel, res.message)
+		return true
 	elseif verb == "chomik" then
 		return channelCommands.chomik(speaker, channel)
 	elseif verb == "wrs" then
@@ -359,16 +368,45 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 			GrandCmdlineBadge(speaker.UserId)
 			return true
 		end
-		-- okay this is a race UI.
 
-		-- local userIdsInServer = {}
-		-- for _, player in ipairs(PlayersService:GetPlayers()) do
-		-- 	table.insert(userIdsInServer, player.UserId)
-		-- end
-		-- if config.isInStudio then
-		-- 	table.insert(userIdsInServer, enums.objects.BrouhahahaUserId)
-		-- end
 		return runResultsCommand.SendRunResults(speaker, res.signId1, res.signId2)
+	elseif verb == "sf" then --todo also make at argeted version for using on other people.
+		local otherUsersInServer = tpUtil.GetUserIdsInServer()
+		local theFavorites: tt.serverFavoriteRacesResponse =
+			userFavoriteRacesCommand.GetFavoriteRaces(speaker, speaker.UserId, speaker.UserId, otherUsersInServer)
+		for _, el in pairs(theFavorites.racesAndInfo) do
+			local raceHead = string.format("Favorite race: %s", el.theRace.raceName)
+			sendMessage(channel, raceHead)
+			for _2, simpleRunInfo in pairs(el.theResults) do
+				local theTime = (simpleRunInfo.runMilliseconds / 1000)
+				local line = string.format(
+					"\t%s %s %0.3f",
+					tpUtil.getCardinal(simpleRunInfo.place),
+					simpleRunInfo.username,
+					theTime
+				)
+				sendMessage(channel, line)
+			end
+		end
+		return true
+	elseif verb == "favorite" or verb == "fav" then
+		local rest = textUtil.coalesceFrom(parts, 2)
+		local res: tt.RaceParseResult = tpUtil.AttemptToParseRaceFromInput(rest)
+		if res.error ~= "" then
+			sendMessage(channel, res.error)
+			return true
+		end
+		sendMessage(channel, string.format("%s favorited %s-%s", speaker.Name, res.signName1, res.signName2))
+		return userFavoriteRacesCommand.AdjustFavoriteRace(speaker, res.signId1, res.signId2, true)
+	elseif verb == "unfavorite" or verb == "unfav" then
+		local rest = textUtil.coalesceFrom(parts, 2)
+		local res: tt.RaceParseResult = tpUtil.AttemptToParseRaceFromInput(rest)
+		if res.error ~= "" then
+			sendMessage(channel, res.error)
+			return true
+		end
+		sendMessage(channel, string.format("%s unfavorited %s-%s", speaker.Name, res.signName1, res.signName2))
+		return userFavoriteRacesCommand.AdjustFavoriteRace(speaker, res.signId1, res.signId2, false)
 	elseif verb == "found" then
 		local target: string
 		if #parts == 1 then

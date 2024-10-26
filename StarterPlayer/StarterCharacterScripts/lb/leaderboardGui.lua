@@ -16,8 +16,9 @@ local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 local LLMGeneratedUIFunctions = require(game.ReplicatedStorage.gui.menu.LLMGeneratedUIFunctions)
-
-local localPlayer = game:GetService("Players").LocalPlayer
+local drawFavoritesModal = require(game.ReplicatedStorage.gui.menu.drawFavoritesModal)
+local enums = require(game.ReplicatedStorage.util.enums)
+local tt = require(game.ReplicatedStorage.types.gametypes)
 
 ------------------FUNCTIONS--------------
 module.CalculateCellWidths = function(enabledDescriptors: { [string]: boolean }): { [string]: number }
@@ -106,18 +107,22 @@ module.MakeLeaderboardHeaderRow = function(enabledDescriptors: { [string]: boole
 	return headerRow
 end
 
-module.DrawRaceWarper = function(rowFrame: Frame, newPinnedRaceRawValue: string)
-	local oldChild: TextButton | nil = rowFrame:FindFirstChildOfClass("TextButton")
-	if oldChild then
-		oldChild:Destroy()
-	end
-	if newPinnedRaceRawValue == nil or newPinnedRaceRawValue == "" then
-		LLMGeneratedUIFunctions.createTextButton({
-			Text = "",
-			Parent = rowFrame,
-		})
+module.DrawRaceWarper = function(rowFrame: Frame | nil, change: tt.leaderboardUserDataChange)
+	if rowFrame == nil then
 		return
 	end
+
+	local oldCell = rowFrame:FindFirstChild("Inner")
+	if oldCell then
+		oldCell:Destroy()
+	end
+	local newPinnedRaceRawValue: string = change.newValue :: string
+
+	if newPinnedRaceRawValue == nil or newPinnedRaceRawValue == "" then
+		guiUtil.getTl("Inner", UDim2.fromScale(1, 1), 2, rowFrame, colors.defaultGrey, 1, 0)
+		return
+	end
+
 	local parts = textUtil.stringSplit(newPinnedRaceRawValue, "-")
 	local signId1 = tonumber(parts[1])
 	local signId2 = tonumber(parts[2])
@@ -125,24 +130,66 @@ module.DrawRaceWarper = function(rowFrame: Frame, newPinnedRaceRawValue: string)
 	local signName2 = tpUtil.signId2signName(signId2)
 
 	if not signName1 or not signName2 or signName1 == "" or signName2 == "" or signId1 == nil then
-		LLMGeneratedUIFunctions.createTextButton({
-			Text = "",
-			Parent = rowFrame,
-		})
+		guiUtil.getTl("Inner", UDim2.fromScale(1, 1), 2, rowFrame, colors.defaultGrey, 1, 0)
 		return
 	end
-	local warpCellName = string.format("9999_%s_warper_%s-%s", localPlayer.Name, signName1, signName2)
-	local warp = LLMGeneratedUIFunctions.createTextButton({
-		Name = warpCellName,
-		Size = UDim2.new(1, 0, 1, 0),
-		Parent = rowFrame,
-		BackgroundColor3 = colors.lightBlue,
-		BackgroundTransparency = 0,
-		Text = string.format("%s-%s", signName1, signName2),
-	})
 
-	warp.Activated:Connect(function()
+	local innerFrame = guiUtil.getTl("Inner", UDim2.fromScale(1, 1), 2, rowFrame, colors.warpColor, 1, 0)
+	innerFrame.Text = string.format("%s-%s", signName1, signName2)
+	innerFrame.TextScaled = true
+
+	local warpButton = Instance.new("TextButton")
+	warpButton.Name = "WarpButton"
+	warpButton.Size = UDim2.fromScale(1, 1)
+	warpButton.BackgroundTransparency = 1
+	warpButton.Text = ""
+	warpButton.Parent = innerFrame
+
+	warpButton.Activated:Connect(function()
 		warper.WarpToSignId(signId1, signId2)
+	end)
+end
+
+module.DrawShowFavoriteRacesButton = function(
+	rowFrame: Frame,
+	change: tt.leaderboardUserDataChange,
+	targetUserId: number,
+	requestingUserId: number
+)
+	_annotate("calling show favorite racesbutton.")
+	local newFavoriteRaceCount: number = change.newValue :: number
+
+	local oldCell = rowFrame:FindFirstChild("070.favs")
+	if oldCell then
+		oldCell:Destroy()
+	end
+
+	local innerFrame = guiUtil.getTl("070.favs", UDim2.fromScale(1, 1), 2, rowFrame, colors.defaultGrey, 1, 0)
+	innerFrame.Text = string.format("%d Favs", newFavoriteRaceCount)
+	innerFrame.TextScaled = true
+
+	local fb = Instance.new("TextButton")
+	fb.Name = string.format("ShowFavoritesButtonFor_%d", targetUserId)
+	fb.Size = UDim2.fromScale(1, 1)
+	fb.BackgroundTransparency = 1
+	fb.Text = ""
+	fb.Parent = innerFrame
+
+	-- for _, topPlayerUserId in ipairs(enums.objects.topPlayerUserIds) do
+	-- 	if topPlayerUserId ~= targetUserId and topPlayerUserId ~= requestingUserId then
+	-- 		table.insert(otherUserIds, topPlayerUserId)
+	-- 	end
+	-- end
+
+	-- local otherUserIds = {}
+	-- for _, topPlayerUserId in ipairs(enums.objects.topPlayerUserIds) do
+	-- 	if topPlayerUserId ~= targetUserId and topPlayerUserId ~= requestingUserId then
+	-- 		table.insert(otherUserIds, topPlayerUserId)
+	-- 	end
+	-- end
+
+	fb.Activated:Connect(function()
+		drawFavoritesModal.DrawFavoriteRacesModal(targetUserId, requestingUserId, otherUserIds)
 	end)
 end
 

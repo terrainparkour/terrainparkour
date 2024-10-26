@@ -37,7 +37,7 @@ local serverInvokeMarathonComplete = function(
 		},
 	}
 
-	local dcRunResponse: tt.dcRunResponse = rdb.MakePostRequest(request)
+	local userFinishedRunResponse: tt.userFinishedRunResponse = rdb.MakePostRequest(request)
 
 	local descTry = mds[marathonKind]
 	if descTry == nil then
@@ -49,12 +49,12 @@ local serverInvokeMarathonComplete = function(
 		end
 	end
 
-	dcRunResponse.kind = "marathon results"
+	userFinishedRunResponse.kind = "marathon results"
 
-	notify.notifyPlayerAboutMarathonResults(player, dcRunResponse)
+	notify.notifyPlayerAboutMarathonResults(player, userFinishedRunResponse)
 
 	for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
-		lbUpdaterServer.SendUpdateToPlayer(otherPlayer, dcRunResponse.lbUserStats)
+		lbUpdaterServer.SendUpdateToPlayer(otherPlayer, userFinishedRunResponse.lbUserStats)
 	end
 end
 

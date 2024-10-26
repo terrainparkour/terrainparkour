@@ -10,6 +10,7 @@ local module = {}
 
 local particleEnums = require(game.StarterPlayer.StarterPlayerScripts.particleEnums)
 local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
+local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
 
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
@@ -30,7 +31,7 @@ module.CreateParticleGui = function()
 	screenGui.IgnoreGuiInset = true
 	screenGui.Enabled = true
 
-	local s = windows.SetupFrame("keyboardShortcutsGui", true, true, true)
+	local s = windowFunctions.SetupFrame("keyboardShortcutsGui", true, true, false, true, UDim2.new(0, 200, 0, 200))
 	local outerFrame = s.outerFrame
 	local contentFrame = s.contentFrame
 

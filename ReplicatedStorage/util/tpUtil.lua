@@ -135,6 +135,20 @@ module.looseSignName2Sign = function(signSearchText: string): Part?
 	return game.Workspace:WaitForChild("Signs"):FindFirstChild(enums.signId2name[signId])
 end
 
+function module.formatDateGap(gapSeconds: number): (string, string)
+	if gapSeconds >= 365 * 24 * 60 * 60 then
+		return string.format("%.1fy", gapSeconds / (365 * 24 * 60 * 60)), "years"
+	elseif gapSeconds >= 3 * 24 * 60 * 60 then
+		return string.format("%.1fd", gapSeconds / (24 * 60 * 60)), "days"
+	elseif gapSeconds >= 60 * 60 then
+		return string.format("%.1fh", gapSeconds / (60 * 60)), "hours"
+	elseif gapSeconds >= 60 then
+		return string.format("%.1fm", gapSeconds / 60), "minutes"
+	else
+		return string.format("%.1fs", gapSeconds), "seconds"
+	end
+end
+
 module.signId2signName = function(signId: number?): string
 	if not signId then
 		annotater.Error("no signId.")
@@ -341,20 +355,21 @@ module.AttemptToParseRaceFromInput = function(message: string): tt.RaceParseResu
 		local sign1name = module.signId2signName(signId1)
 		local sign2name = module.signId2signName(signId2)
 
-		local error = false
+		local theError = ""
 
 		if signId1 == signId2 then
-			error = "Trol"
+			theError = "Trol"
 		end
-		if not signId1 or not signId2 then
-			error = "Enter race name like A-B (where A and B are signs, and you can just enter the prefix too.)"
+		if signId1 == nil or signId2 == nil then
+			theError = "Enter race name like A-B (where A and B are signs, and you can just enter the prefix too.)"
 		end
-		if error then
+
+		if theError ~= "" then
 			local ret: tt.RaceParseResult = {
 				signId1 = 0,
 				signId2 = 0,
-				signname1 = "",
-				signname2 = "",
+				signName1 = "",
+				signName2 = "",
 				error = error,
 			}
 
@@ -364,19 +379,46 @@ module.AttemptToParseRaceFromInput = function(message: string): tt.RaceParseResu
 		return {
 			signId1 = signId1,
 			signId2 = signId2,
-			signname1 = sign1name,
-			signname2 = sign2name,
+			signName1 = sign1name,
+			signName2 = sign2name,
 			error = "",
 		}
 	else
 		return {
 			signId1 = 0,
 			signId2 = 0,
-			signname1 = "",
-			signname2 = "",
+			signName1 = "",
+			signName2 = "",
 			error = "Enter race name like A-B (where A and B are signs, and you can just enter the prefix too.)",
 		}
 	end
+end
+
+-- calculates the max number of decimal places present within a list of numbers, and returns math.min(that value,3)
+-- Example: For the input {1.234, 5.6789, 3.1}, the function will return 3 since although there is a number with 4, there's a hardcoded limit 3
+module.GetMaxDecimalPlaces = function(numbers: { number }): number
+	local maxDecimals = 0
+	for _, num in ipairs(numbers) do
+		local _, fractionalPart = math.modf(num)
+		local decimals = 0
+		if fractionalPart ~= 0 then
+			decimals = math.min(#tostring(fractionalPart) - 2, 3) -- Subtract 2 for "0.", max 3 digits
+		end
+		maxDecimals = math.max(maxDecimals, decimals)
+	end
+	print("drawing decimals: ", maxDecimals, " probably should be at min 1?")
+	return maxDecimals
+end
+
+-- returns the max number of digits in the integer part of a list of numbers
+module.GetMaxIntegerDigits = function(numbers: { number }): number
+	local maxDigits = 0
+	for _, num in ipairs(numbers) do
+		local integerPart = math.floor(num)
+		local digits = #tostring(integerPart)
+		maxDigits = math.max(maxDigits, digits)
+	end
+	return maxDigits
 end
 
 _annotate("end")

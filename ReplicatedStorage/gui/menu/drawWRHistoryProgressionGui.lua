@@ -2,61 +2,131 @@
 
 -- this is the companion to the serverside command: WRProgressionCommand!
 -- there is a unified rpc name which clients can send as well as server. the next version is runResults
+-- let's think about whta this file really is. It's a drawer for a UI with the following elements:
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
-local colors = require(game.ReplicatedStorage.util.colors)
-local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
-local thumbnails = require(game.ReplicatedStorage.thumbnails)
-local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
-local LLMGeneratedUIFunctions = require(game.ReplicatedStorage.gui.menu.LLMGeneratedUIFunctions)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
-
-local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
-local settings = require(game.ReplicatedStorage.settings)
-local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
-local userWantsHighlightingWhenWarpingFromRunResults = true
-local PlayersService = game:GetService("Players")
-local localPlayer = PlayersService.LocalPlayer
 
 local module = {}
 
--- Add these global variables for text size constraints
-local globalTextSize = 16
-local globalMinTextSize = 8
-local globalMaxTextSize = 24
-local globalFixedWidthFontSize = 26
-local rowHeightPixels = 45
-
-local wrProgressionDataTableHeaders: { tt.headerDefinition } = {
-	{ text = "Best Time", width = 0.15, order = 1, isMonospaced = true, TextXAlignment = Enum.TextXAlignment.Right },
-	{ text = "Improvement", width = 0.15, order = 2, isMonospaced = true, TextXAlignment = Enum.TextXAlignment.Right },
-	{ text = "Username", width = 0.30, order = 3, isMonospaced = false, TextXAlignment = Enum.TextXAlignment.Right },
-	{
-		text = "Portrait",
-		width = rowHeightPixels,
-		order = 4,
-		isMonospaced = false,
-		TextXAlignment = Enum.TextXAlignment.Center,
-	},
-	{ text = "Lasted", width = 0.20, order = 5, isMonospaced = true, TextXAlignment = Enum.TextXAlignment.Right },
-	{ text = "Date Set", width = 0.20, order = 6, isMonospaced = true, TextXAlignment = Enum.TextXAlignment.Center },
-}
-
--- Use the imported functions
-local createUIElement = LLMGeneratedUIFunctions.createUIElement
-local createTextLabel = LLMGeneratedUIFunctions.createTextLabel
-local createImageLabel = LLMGeneratedUIFunctions.createImageLabel
-local createFrame = LLMGeneratedUIFunctions.createFrame
-local createLayout = LLMGeneratedUIFunctions.createLayout
-local createScrollingFrame = LLMGeneratedUIFunctions.createScrollingFrame
-local createButton = LLMGeneratedUIFunctions.createButton
+local colors = require(game.ReplicatedStorage.util.colors)
+local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
+local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
+local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 
 -- Add this near the top of the file, with the other imports
 local remotes = require(game.ReplicatedStorage.util.remotes)
-local GenericClientUIEvent = remotes.getRemoteEvent("GenericClientUIEvent")
+
+local settings = require(game.ReplicatedStorage.settings)
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+local PlayersService = game:GetService("Players")
+local localPlayer = PlayersService.LocalPlayer
 local GenericClientUIFunction = remotes.getRemoteFunction("GenericClientUIFunction")
+local wt = require(game.StarterPlayer.StarterPlayerScripts.guis.windowsTypes)
+
+--------------------- GLOBALS -------------------
+local rowHeightPixels = 30 -- Adjust this value as needed
+
+--------------------- DESCRIPTORS --------------------------------
+
+local bestTimeHeaderTile: wt.tileSpec = {
+	name = "BestTime",
+	order = 1,
+	width = UDim.new(2, 0),
+	spec = {
+		type = "text",
+		text = "Best Time",
+		isMonospaced = false,
+		isBold = false,
+		backgroundColor = colors.WRProgressionColor,
+		textColor = colors.black,
+		textXAlignment = Enum.TextXAlignment.Center,
+	},
+}
+
+local improvementHeaderTile: wt.tileSpec = {
+	name = "Improvement",
+	order = 2,
+	width = UDim.new(1, 0),
+	spec = {
+		type = "text",
+		text = "Improvement",
+		isMonospaced = false,
+		isBold = false,
+		backgroundColor = colors.WRProgressionColor,
+		textColor = colors.black,
+		textXAlignment = Enum.TextXAlignment.Center,
+	},
+}
+
+local usernameHeaderTile: wt.tileSpec = {
+	name = "Username",
+	order = 3,
+	width = UDim.new(2, 0),
+	spec = {
+		type = "text",
+		text = "Username",
+		isMonospaced = false,
+		isBold = false,
+		backgroundColor = colors.WRProgressionColor,
+		textColor = colors.black,
+		textXAlignment = Enum.TextXAlignment.Center,
+	},
+}
+
+local portraitHeaderTile: wt.tileSpec = {
+	name = "Portrait",
+	order = 4,
+	width = UDim.new(0, rowHeightPixels),
+	spec = {
+		type = "portrait",
+		userId = 123456,
+		doPopup = true,
+		width = UDim.new(0, rowHeightPixels),
+		backgroundColor = colors.WRProgressionColor,
+	},
+}
+
+local lastedHeaderTile: wt.tileSpec = {
+	name = "Lasted",
+	order = 5,
+	width = UDim.new(2, 0),
+	spec = {
+		type = "text",
+		text = "Lasted",
+		isMonospaced = false,
+		isBold = false,
+		backgroundColor = colors.WRProgressionColor,
+		textColor = colors.black,
+		textXAlignment = Enum.TextXAlignment.Center,
+	},
+}
+
+local dateSetHeaderTile: wt.tileSpec = {
+	name = "Date Set",
+	order = 6,
+	width = UDim.new(2, 0),
+	spec = {
+		type = "text",
+		text = "Date Set",
+		isMonospaced = false,
+		isBold = false,
+		backgroundColor = colors.WRProgressionColor,
+		textColor = colors.black,
+		textXAlignment = Enum.TextXAlignment.Center,
+	},
+}
+
+local wrProgressionDataTableHeaderTileSpec: { wt.tileSpec } = {
+	bestTimeHeaderTile,
+	improvementHeaderTile,
+	usernameHeaderTile,
+	portraitHeaderTile,
+	lastedHeaderTile,
+	dateSetHeaderTile,
+}
 
 local function requestWRProgression(startSignId: number, endSignId: number)
 	local success = GenericClientUIFunction:InvokeServer({
@@ -87,229 +157,413 @@ local function requestRunResults(startSignId: number, endSignId: number)
 	end
 end
 
-local function getMaxDecimalPlaces(numbers: { number }): number
-	local maxDecimals = 0
-	for _, num in ipairs(numbers) do
-		local _, fractionalPart = math.modf(num)
-		local decimals = 0
-		if fractionalPart ~= 0 then
-			decimals = math.min(#tostring(fractionalPart) - 2, 3) -- Subtract 2 for "0.", max 3 digits
-		end
-		maxDecimals = math.max(maxDecimals, decimals)
-	end
-	print("drawing decimals: ", maxDecimals, " probably should be at min 1?")
-	return maxDecimals
+local function createWarpButton(data: tt.WRProgressionEndpointResponse): wt.tileSpec
+	local buttonSpec: wt.buttonTileSpec = {
+		type = "button",
+		text = string.format("Warp to %s", data.raceHistoryData.raceStartName),
+		backgroundColor = colors.warpColor,
+		textColor = colors.black,
+		isMonospaced = false,
+		isBold = false,
+		textXAlignment = Enum.TextXAlignment.Center,
+		onClick = function(_: InputObject, _2: TextButton)
+			warper.WarpToSignId(data.raceHistoryData.raceStartSignId, data.raceHistoryData.raceEndSignId)
+		end,
+	}
+
+	local res: wt.tileSpec = {
+		name = "Warp",
+		order = 3,
+		width = UDim.new(1, 0),
+		spec = buttonSpec,
+	}
+	return res
 end
 
-local function getMaxIntegerDigits(numbers: { number }): number
-	local maxDigits = 0
-	for _, num in ipairs(numbers) do
-		local integerPart = math.floor(num)
-		local digits = #tostring(integerPart)
-		maxDigits = math.max(maxDigits, digits)
-	end
-	return maxDigits
-end
+local function getCommandRow(data: tt.WRProgressionEndpointResponse): wt.rowSpec
+	local tileSpecs: { wt.tileSpec } = {}
 
-local function calculateColumnWidths(totalWidth: number): { number }
-	local fixedWidth = 0
-	local flexibleWidthTotal = 0
-	local columnWidths = {}
-
-	-- First pass: calculate total fixed width and total flexible width
-	for _, header in ipairs(wrProgressionDataTableHeaders) do
-		if type(header.width) == "number" then
-			if header.width <= 1 then
-				flexibleWidthTotal = flexibleWidthTotal + header.width
+	local runResultsTile: wt.tileSpec = {
+		name = "RunResults",
+		order = 1,
+		width = UDim.new(1, 0),
+		spec = {
+			type = "button",
+			text = "Top 10",
+			isMonospaced = false,
+			isBold = false,
+			backgroundColor = colors.WRProgressionColor,
+			textColor = colors.black,
+			textXAlignment = Enum.TextXAlignment.Center,
+			onClick = function()
+				local startSignId = tpUtil.signName2SignId(data.raceHistoryData.raceStartName)
+				local endSignId = tpUtil.signName2SignId(data.raceHistoryData.raceEndName)
+				requestRunResults(startSignId, endSignId)
+			end,
+		},
+	}
+	local reverseSpec: wt.buttonTileSpec = {
+		type = "button",
+		text = "Reverse Race",
+		isMonospaced = false,
+		isBold = false,
+		backgroundColor = colors.WRProgressionColor,
+		textColor = colors.black,
+		textXAlignment = Enum.TextXAlignment.Center,
+		onClick = function(_: InputObject, theButton: TextButton)
+			local screenGui = theButton:FindFirstAncestorOfClass("ScreenGui")
+			if screenGui then
+				toolTip.KillFinalTooltip()
+				screenGui:Destroy()
 			else
-				fixedWidth = fixedWidth + header.width
+				warn("Could not find ScreenGui to close")
 			end
-		end
-	end
 
-	local remainingWidth = totalWidth - fixedWidth
+			local startSignId = tpUtil.signName2SignId(data.raceHistoryData.raceEndName)
+			local endSignId = tpUtil.signName2SignId(data.raceHistoryData.raceStartName)
+			requestWRProgression(startSignId, endSignId)
+		end,
+	}
 
-	-- Second pass: calculate actual widths
-	for _, header in ipairs(wrProgressionDataTableHeaders) do
-		local width
-		if type(header.width) == "number" then
-			if header.width <= 1 then
-				width = remainingWidth * (header.width / flexibleWidthTotal)
-			else
-				width = header.width
-			end
-		end
-		table.insert(columnWidths, math.floor(width))
-	end
+	local reverseRaceTile: wt.tileSpec = {
+		name = "ReverseRace",
+		order = 2,
+		width = UDim.new(1, 0),
+		spec = reverseSpec,
+	}
 
-	return columnWidths
+	table.insert(tileSpecs, runResultsTile)
+	table.insert(tileSpecs, reverseRaceTile)
+	table.insert(tileSpecs, createWarpButton(data))
+
+	return {
+		name = "CommandRow",
+		order = 2,
+		height = UDim.new(0, 40),
+		tileSpecs = tileSpecs,
+	}
 end
 
-local function createResponsiveHeader(header: tt.headerDefinition, parent: Instance, width: number)
-	local headerLabel
-	if header.text == "Portrait" then
-		headerLabel = createImageLabel({
-			Name = string.format("%02d", table.find(wrProgressionDataTableHeaders, header))
-				.. "_Header_"
-				.. header.text,
-			Size = UDim2.new(0, width, 0, width), -- Make it square
-			Parent = parent,
-			BackgroundColor3 = colors.lightOrangeWRProgression,
-		})
-	else
-		headerLabel = createTextLabel({
-			Name = string.format("%02d", table.find(wrProgressionDataTableHeaders, header))
-				.. "_Header_"
-				.. header.text,
-			Size = UDim2.new(0, width, 1, 0),
-			Text = header.text,
-			Parent = parent,
-			TextXAlignment = Enum.TextXAlignment.Center,
-			TextColor3 = colors.black,
-			Font = Enum.Font.SourceSansBold,
-			TextScaled = true,
-			BackgroundColor3 = colors.lightOrangeWRProgression,
-			isMonospaced = header.isMonospaced,
-		})
+local function getDetailRow(
+	data: tt.WRProgressionEndpointResponse,
+	currentPlayerNames: { [string]: boolean }
+): wt.rowSpec
+	local detailsTiles: { wt.tileSpec } = {}
 
-		if header.text ~= "Portrait" then
-			local textSizeConstraint = Instance.new("UITextSizeConstraint")
-			textSizeConstraint.MaxTextSize = globalTextSize
-			textSizeConstraint.MinTextSize = globalMinTextSize
-			textSizeConstraint.Parent = headerLabel
-		end
+	local lengthTile: wt.tileSpec = {
+		name = "Length",
+		order = 5,
+		width = UDim.new(3, 0),
+		spec = {
+			type = "text",
+			text = string.format("Length: %.1fd", data.raceHistoryData.raceLength),
+			isMonospaced = false,
+			isBold = false,
+			backgroundColor = colors.defaultGrey,
+			textColor = colors.black,
+			textXAlignment = Enum.TextXAlignment.Center,
+		},
+	}
+
+	local totalRunsTile: wt.tileSpec = {
+		name = "TotalRuns",
+		order = 6,
+		width = UDim.new(2, 0),
+		spec = {
+			type = "text",
+			text = string.format("Total Runs: %d", data.raceHistoryData.raceRunCount),
+			isMonospaced = false,
+			isBold = false,
+			backgroundColor = colors.defaultGrey,
+			textColor = colors.black,
+			textXAlignment = Enum.TextXAlignment.Center,
+		},
+	}
+
+	local totalRunnersTile: wt.tileSpec = {
+		name = "TotalRunners",
+		order = 7,
+		width = UDim.new(3, 0),
+		spec = {
+			type = "text",
+			text = string.format("Total Runners: %d", data.raceHistoryData.raceRunnerCount),
+			isMonospaced = false,
+			isBold = false,
+			backgroundColor = colors.defaultGrey,
+			textColor = colors.black,
+			textXAlignment = Enum.TextXAlignment.Center,
+		},
+	}
+
+	local yourRunsTile: wt.tileSpec = {
+		name = "YourRuns",
+		order = 8,
+		width = UDim.new(2, 0),
+		spec = {
+			type = "text",
+			text = string.format("Your Runs: %d", data.userRaceInfo.userRunCount),
+			isMonospaced = false,
+			isBold = false,
+			backgroundColor = colors.meColor,
+			textColor = colors.black,
+			textXAlignment = Enum.TextXAlignment.Center,
+		},
+	}
+
+	if data.raceHistoryData.firstRunnerUserId and data.raceHistoryData.firstRunnerUsername then
+		local firstRunTile: wt.tileSpec = {
+			name = "FirstRunTile",
+			order = 3,
+			width = UDim.new(4, 0),
+			spec = {
+				type = "text",
+				text = string.format("First run: %s", os.date("%Y-%m-%d", data.raceHistoryData.raceCreatedTime)),
+				isMonospaced = false,
+				isBold = false,
+				backgroundColor = colors.defaultGrey,
+				textColor = colors.black,
+				textXAlignment = Enum.TextXAlignment.Center,
+			},
+		}
+
+		local firstRunnerTile: wt.tileSpec = {
+			name = "FirstRunner",
+			order = 4,
+			width = UDim.new(4, 0),
+			spec = {
+				type = "text",
+				text = string.format("First Runner: %s", data.raceHistoryData.firstRunnerUsername or "N/A"),
+				isMonospaced = false,
+				isBold = false,
+				backgroundColor = (data.raceHistoryData.firstRunnerUserId == localPlayer.UserId and colors.meColor)
+					or (currentPlayerNames[data.raceHistoryData.firstRunnerUsername] and colors.WRProgressionColor)
+					or colors.defaultGrey,
+				textColor = colors.black,
+				textXAlignment = Enum.TextXAlignment.Center,
+			},
+		}
+
+		local portraitSpec: wt.portraitTileSpec = {
+			type = "portrait",
+			userId = data.raceHistoryData.firstRunnerUserId,
+			doPopup = true,
+			width = UDim.new(0, 40),
+			backgroundColor = colors.defaultGrey,
+		}
+
+		local firstRunnerPortraitTile: wt.tileSpec = {
+			name = "FirstRunnerPortrait",
+			order = 2,
+			spec = portraitSpec,
+			width = UDim.new(0, 40),
+		}
+
+		table.insert(detailsTiles, firstRunTile)
+		table.insert(detailsTiles, firstRunnerTile)
+		table.insert(detailsTiles, firstRunnerPortraitTile)
 	end
+	table.insert(detailsTiles, lengthTile)
+	table.insert(detailsTiles, totalRunsTile)
+	table.insert(detailsTiles, totalRunnersTile)
+	table.insert(detailsTiles, yourRunsTile)
 
-	return headerLabel
+	local detailsRow: wt.rowSpec = {
+		name = "DetailsRow",
+		order = 2,
+		height = UDim.new(0, rowHeightPixels),
+		tileSpecs = detailsTiles,
+	}
+	return detailsRow
 end
 
--- Modify the createColumn function
-local function createColumn(
-	header: tt.headerDefinition,
-	content: string | number,
-	entryFrame: Frame,
-	backgroundColor: Color3?,
-	width: number,
-	xalign: Enum.TextXAlignment
-): TextLabel | ImageLabel
-	local headerIndex = table.find(wrProgressionDataTableHeaders, header) or 0
-	if headerIndex == 0 then
-		_annotate(string.format("createColumn: header not found: %s", header.text))
-	end
-	local name = string.format("%02d%s", headerIndex, header.text)
-	local size = UDim2.new(0, width, 1, 0)
-	local layoutOrder = headerIndex
-
-	if header.text == "Portrait" then
-		return createImageLabel({
-			Name = name,
-			Size = size,
-			Parent = entryFrame,
-			LayoutOrder = layoutOrder,
-			Image = content,
-			BackgroundColor3 = backgroundColor,
-		})
-	else
-		return createTextLabel({
-			Name = name,
-			Size = size,
-			Text = tostring(content),
-			Parent = entryFrame,
-			TextXAlignment = xalign,
-			LayoutOrder = layoutOrder,
-			TextSize = header.text == "Username" and globalFixedWidthFontSize - 5 or globalFixedWidthFontSize,
-			BackgroundColor3 = backgroundColor,
-			isMonospaced = header.isMonospaced,
-		})
-	end
-end
-
-local function CreateWRProgressionEntry(
+local function createWRProgressionEntryRow(
 	entry: tt.wrProgressionEntry,
 	index: number,
-	formatString: string,
-	usernameBackgroundColor: Color3,
-	lastedCellUseColor: Color3,
-	columnWidths: { number },
-	kind: string -- either "normal" or "theUserSpecial"
-): Frame
-	local entryFrame = createFrame({
-		Size = UDim2.new(1, 0, 0, rowHeightPixels),
-		BackgroundColor3 = colors.defaultGrey,
-		LayoutOrder = index,
-		Name = string.format("%04d", index) .. "_WRProgressionEntry_" .. entry.username,
-	})
+	kind: string,
+	currentPlayerNames: { [string]: boolean },
+	formatString: string
+): wt.rowSpec
+	local tileSpecs: { wt.tileSpec } = {}
 
-	createLayout("UIListLayout", entryFrame, {
-		FillDirection = Enum.FillDirection.Horizontal,
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Padding = UDim.new(0, 0),
-	})
+	for _, headerTileSpec in ipairs(wrProgressionDataTableHeaderTileSpec) do
+		local tileSpecShell: any = {
+			name = headerTileSpec.name,
+			order = headerTileSpec.order,
+			width = headerTileSpec.width,
+		}
 
-	-- Create columns using the calculated widths
-	for i, header in ipairs(wrProgressionDataTableHeaders) do
-		local content
-		local backgroundColor = nil
+		if headerTileSpec.name == "Portrait" then
+			local portraitSpec: wt.portraitTileSpec = {
+				type = "portrait",
+				userId = entry.userId,
+				doPopup = true,
+				width = headerTileSpec.width,
+			}
+			tileSpecShell.spec = portraitSpec
+		else
+			local content = ""
+			local backgroundColor = colors.defaultGrey
+			local align: Enum.TextXAlignment = Enum.TextXAlignment.Center
+			local isMonospaced = false
 
-		local align: Enum.TextXAlignment = header.TextXAlignment
-
-		if header.text == "Best Time" then
-			content = string.format(formatString, entry.runMilliseconds / 1000) .. "s"
-		elseif header.text == "Improvement" then
-			if kind == "theUserSpecial" then
-				content = ""
-			else
-				content = entry.improvementMs and (string.format(formatString, entry.improvementMs / 1000) .. "s") or ""
-			end
-		elseif header.text == "Username" then
-			content = entry.username
-			backgroundColor = usernameBackgroundColor
-		elseif header.text == "Portrait" then
-			-- Use the new createAvatarPortraitPopup function here
-			local portraitCell = thumbnails.createAvatarPortraitPopup(entry.userId, entryFrame)
-			portraitCell.Size = UDim2.new(0, columnWidths[i], 1, 0)
-			portraitCell.LayoutOrder = i
-			portraitCell.Name = string.format("%02d%s", i, header.text)
-			continue -- Skip the rest of the loop for this column
-		elseif header.text == "Lasted" then
-			if kind == "theUserSpecial" then
-				content = ""
-			else
-				local formattedToDisplay, desc = LLMGeneratedUIFunctions.formatDateGap(entry.recordStood)
-
-				if desc == "seconds" or desc == "minutes" then
-					align = Enum.TextXAlignment.Left
-				elseif desc == "hours" then
-					align = Enum.TextXAlignment.Center
-				elseif desc == "days" then
-					align = Enum.TextXAlignment.Right
+			if headerTileSpec.name == "BestTime" then
+				content = string.format(formatString, entry.runMilliseconds / 1000) .. "s"
+				isMonospaced = true
+			elseif headerTileSpec.name == "Improvement" then
+				content = kind == "theUserSpecial" and ""
+					or (entry.improvementMs and (string.format(formatString, entry.improvementMs / 1000) .. "s") or "")
+				isMonospaced = true
+			elseif headerTileSpec.name == "Username" then
+				content = entry.username
+				backgroundColor = entry.userId == localPlayer.UserId and colors.meColor
+					or (currentPlayerNames[entry.username] and colors.WRProgressionColor or colors.defaultGrey)
+			elseif headerTileSpec.name == "Lasted" then
+				if kind == "theUserSpecial" then
+					content = ""
+				else
+					local formattedToDisplay, desc = tpUtil.formatDateGap(entry.recordStood)
+					content = entry.recordStood and formattedToDisplay or ""
+					backgroundColor = index == 1 and colors.greenGo or colors.defaultGrey
+					if desc == "seconds" or desc == "minutes" then
+						align = Enum.TextXAlignment.Left
+					elseif desc == "hours" or desc == "days" then
+						align = Enum.TextXAlignment.Center
+					else
+						align = Enum.TextXAlignment.Right
+					end
 				end
-				content = entry.recordStood and formattedToDisplay or ""
-				backgroundColor = lastedCellUseColor
+				isMonospaced = true
+			elseif headerTileSpec.name == "Date Set" then
+				content = os.date("%Y-%m-%d", entry.runTime)
+				isMonospaced = true
 			end
-		elseif header.text == "Date Set" then
-			content = os.date("%Y-%m-%d", entry.runTime)
+
+			local textSpec: wt.textTileSpec = {
+				type = "text",
+				text = content,
+				isMonospaced = isMonospaced,
+				isBold = false,
+				backgroundColor = backgroundColor,
+				textColor = colors.black,
+				textXAlignment = align,
+			}
+			tileSpecShell.spec = textSpec
 		end
 
-		local width = (columnWidths and columnWidths[i]) or header.width
-		if type(width) == "number" and width <= 1 then
-			width = width * entryFrame.AbsoluteSize.X
-		end
-		if header.text ~= "Portrait" then
-			local _column = createColumn(header, content, entryFrame, backgroundColor, width, align)
-		end
+		table.insert(tileSpecs, tileSpecShell)
 	end
 
-	return entryFrame
+	local rowSpec: wt.rowSpec = {
+		name = string.format("WRProgressionEntry_%d", index),
+		order = index,
+		height = UDim.new(0, rowHeightPixels),
+		tileSpecs = tileSpecs,
+	}
+	return rowSpec
 end
 
-local function createWRHistoryProgression(data: tt.WRProgressionEndpointResponse): Frame?
-	if not data.raceExists then
-		-- Race doesn't exist, return nil to indicate no GUI should be created
-		return nil
+local function createLastRow(): wt.rowSpec
+	local lastRow: wt.rowSpec = {
+		name = "ButtonRow",
+		order = 9000, -- Ensure it's at the bottom
+		height = UDim.new(0, rowHeightPixels),
+		tileSpecs = { windows.CloseButtonLeavingRoom },
+		horizontalAlignment = Enum.HorizontalAlignment.Right,
+	}
+	return lastRow
+end
+
+local function createWRProgressionScrollingFrameSpec(
+	data: tt.WRProgressionEndpointResponse,
+	currentPlayerNames: { [string]: boolean },
+	formatString: string
+): wt.scrollingFrameTileSpec
+	local headerRowSpec: wt.rowSpec = {
+		name = "HeaderRow",
+		order = 1,
+		height = UDim.new(0, rowHeightPixels),
+		tileSpecs = wrProgressionDataTableHeaderTileSpec,
+	}
+
+	local dataRowSpecs: { wt.rowSpec } = {}
+	local weStillNeedToDisplayUsersRun: boolean = false
+	if data.userRaceInfo.userFastestRun and data.userRaceInfo.userFastestRun.runId then
+		weStillNeedToDisplayUsersRun = true
 	end
 
-	-- Calculate format string for times and improvements
+	for i, entry in ipairs(data.wrProgression) do
+		if entry.userId == localPlayer.UserId then
+			weStillNeedToDisplayUsersRun = false
+		end
+		if
+			data.userRaceInfo.userFastestRun
+			and weStillNeedToDisplayUsersRun
+			and entry.runMilliseconds > data.userRaceInfo.userFastestRun.runMilliseconds
+		then
+			weStillNeedToDisplayUsersRun = false
+			local specialOverrideUserBestAttemptEverEntry: tt.wrProgressionEntry = {
+				runMilliseconds = data.userRaceInfo.userFastestRun.runMilliseconds,
+				username = localPlayer.Name,
+				userId = localPlayer.UserId,
+				runTime = data.userRaceInfo.userFastestRun.runTime,
+				improvementMs = 0,
+				recordStood = 0,
+				gameVersion = "",
+				hasData = true,
+				runId = 0,
+				raceId = 0,
+			}
+			local userBestRow = createWRProgressionEntryRow(
+				specialOverrideUserBestAttemptEverEntry,
+				i,
+				"theUserSpecial",
+				currentPlayerNames,
+				formatString
+			)
+			userBestRow.height = UDim.new(0, rowHeightPixels) -- Set the height for the user's best run row
+			table.insert(dataRowSpecs, userBestRow)
+		end
+		local wrRow = createWRProgressionEntryRow(entry, i, "normal", currentPlayerNames, formatString)
+		wrRow.height = UDim.new(0, rowHeightPixels) -- Set the height for each row
+		table.insert(dataRowSpecs, wrRow)
+	end
+
+	if weStillNeedToDisplayUsersRun and data.userRaceInfo.userFastestRun then
+		local specialOverrideUserBestAttemptEverEntry: tt.wrProgressionEntry = {
+			runMilliseconds = data.userRaceInfo.userFastestRun.runMilliseconds,
+			username = localPlayer.Name,
+			userId = localPlayer.UserId,
+			runTime = data.userRaceInfo.userFastestRun.runTime,
+			improvementMs = 0,
+			recordStood = 0,
+			gameVersion = "",
+			hasData = true,
+			runId = 0,
+			raceId = 0,
+		}
+		local userBestRow = createWRProgressionEntryRow(
+			specialOverrideUserBestAttemptEverEntry,
+			#dataRowSpecs + 1,
+			"theUserSpecial",
+			currentPlayerNames,
+			formatString
+		)
+		userBestRow.height = UDim.new(0, rowHeightPixels) -- Set the height for the user's best run row
+		table.insert(dataRowSpecs, userBestRow)
+	end
+
+	local scrollingFrameSpec: wt.scrollingFrameTileSpec = {
+		name = "WRProgressionScrollingFrame",
+		type = "scrollingFrame",
+		headerRow = headerRowSpec,
+		dataRows = dataRowSpecs,
+		rowHeight = rowHeightPixels,
+	}
+
+	return scrollingFrameSpec
+end
+
+module.CreateWRHistoryProgressionGui = function(data: tt.WRProgressionEndpointResponse)
 	local times = {}
 	local improvements = {}
 	for _, entry in ipairs(data.wrProgression) do
@@ -319,498 +573,126 @@ local function createWRHistoryProgression(data: tt.WRProgressionEndpointResponse
 		end
 	end
 
-	local maxDecimalPlaces = math.min(getMaxDecimalPlaces(times), getMaxDecimalPlaces(improvements), 3)
-	local maxIntegerDigits = math.max(getMaxIntegerDigits(times), getMaxIntegerDigits(improvements))
+	local maxDecimalPlaces = math.min(tpUtil.GetMaxDecimalPlaces(times), tpUtil.GetMaxDecimalPlaces(improvements), 3)
+	local maxIntegerDigits = math.max(tpUtil.GetMaxIntegerDigits(times), tpUtil.GetMaxIntegerDigits(improvements))
 	local formatString = string.format("%%%d.%df", maxIntegerDigits + maxDecimalPlaces + 1, maxDecimalPlaces)
 
-	-- Create main GUI elements
-	local pgui: PlayerGui = PlayersService.LocalPlayer:WaitForChild("PlayerGui") :: PlayerGui
-	local existingSgui = pgui:FindFirstChild("WRHistoryProgressionSgui")
-	if existingSgui then
-		existingSgui:Destroy()
-	end
-
-	local newWrHistorySgui = createUIElement("ScreenGui", {
-		IgnoreGuiInset = true,
-		Name = "WRHistoryProgressionSgui",
-		Parent = pgui,
-	})
-
-	local wrSystemFrames = windows.SetupFrame("wrhistory", true, true, true)
-	local wrOuterFrame = wrSystemFrames.outerFrame
-	local wrContentFrame = wrSystemFrames.contentFrame
-
-	wrOuterFrame.Parent = newWrHistorySgui
-
-	-- Create UIListLayout for wrContentFrame
-	local contentListLayout = createLayout("UIListLayout", wrContentFrame, {
-		FillDirection = Enum.FillDirection.Vertical,
-		Name = "UIListLayoutV",
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Padding = UDim.new(0, 0),
-	})
-
-	-- Modify the wrOuterFrame size calculation
-	local recordCount = #data.wrProgression
-	local minHeight = 0.3 -- Minimum height as a fraction of screen height
-	local maxHeight = 0.8 -- Maximum height as a fraction of screen height
-	local heightPerRecord = 0.05 -- Height increment per record
-	local calculatedHeight = math.min(maxHeight, math.max(minHeight, recordCount * heightPerRecord))
-
-	wrOuterFrame.Size = UDim2.new(0.6, 0, calculatedHeight, 0) -- Increased width from 0.5 to 0.6
-	wrOuterFrame.Position = UDim2.new(0.2, 0, (1 - calculatedHeight) / 2, 0) -- Adjusted position
-
-	createLayout("UIListLayout", wrContentFrame, {
-		FillDirection = Enum.FillDirection.Vertical,
-		Name = "UIListLayoutV",
-	})
-
-	-- Create title and race name row
-	local titleRaceFrame = createFrame({
-		Size = UDim2.new(1, 0, 0, rowHeightPixels),
-		BackgroundTransparency = 1,
-		Parent = wrContentFrame,
-		Name = "01TitleRace",
-	})
-
-	createLayout("UIListLayout", titleRaceFrame, {
-		FillDirection = Enum.FillDirection.Horizontal,
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Padding = UDim.new(0, 0),
-	})
-
-	local function createTitleTile(name: string, text: string, color: Color3, textColor: Color3, order: number)
-		local tile = guiUtil.getTl(name, UDim2.new(1 / 3, 0, 1, 0), 0.8, titleRaceFrame, color, 1)
-		tile.Text = text
-		tile.TextXAlignment = Enum.TextXAlignment.Center
-		tile.TextColor3 = textColor
-		tile.LayoutOrder = order
-		tile.Font = LLMGeneratedUIFunctions.getFont(false) -- Not monospaced
-	end
-
-	createTitleTile("01Title", "WR Progression: ", colors.lightOrangeWRProgression, colors.black, 1)
-	createTitleTile("02StartName", data.raceHistoryData.raceStartName, colors.signColor, colors.signTextColor, 2)
-	createTitleTile("03EndName", data.raceHistoryData.raceEndName, colors.signColor, colors.signTextColor, 3)
-
-	-- Create race details frame
-	local detailsFrame = createFrame({
-		Parent = wrContentFrame,
-		Name = "02Details",
-		Size = UDim2.new(1, 0, 0, rowHeightPixels),
-		BackgroundTransparency = 1,
-	})
-
-	createLayout("UIListLayout", detailsFrame, {
-		FillDirection = Enum.FillDirection.Horizontal,
-		SortOrder = Enum.SortOrder.Name,
-		Padding = UDim.new(0, 0),
-	})
-
-	-- Add this before creating the details frame
-	local currentPlayers = PlayersService:GetPlayers()
-	local currentPlayerNames = {}
-	for _, player in ipairs(currentPlayers) do
+	local currentPlayerNames: { [string]: boolean } = {}
+	for _, player in PlayersService:GetPlayers() do
 		currentPlayerNames[player.Name] = true
 	end
 
-	-- Modify the detailsData table to include the first runner information and portrait
-	type wrProgressionDetailButton = {
-		name: string,
-		text: string,
-		sizeProportion: number,
-		color: Color3,
-		isButton: boolean,
-		isPortrait: boolean,
-	}
-
-	local detailsData: { wrProgressionDetailButton } = {
+	local titleRowTileSpecs: { wt.tileSpec } = {
 		{
-			name = "03FirstRun",
-			text = string.format("First run: %s", os.date("%Y-%m-%d", data.raceHistoryData.raceCreatedTime)),
-			sizeProportion = 4,
-			color = colors.defaultGrey,
-			isButton = false,
-			isPortrait = false,
+			name = "TextIntro",
+			order = 1,
+			width = UDim.new(1 / 3, 0),
+			spec = {
+				type = "text",
+				text = "WR Progression: ",
+				isMonospaced = false,
+				isBold = true,
+				backgroundColor = colors.WRProgressionColor,
+				textColor = colors.black,
+				textXAlignment = Enum.TextXAlignment.Center,
+			},
 		},
 		{
-			name = "02FirstRunner",
-			sizeProportion = 3,
-			text = string.format("First Runner: %s", data.raceHistoryData.firstRunnerUsername or "N/A"),
-			color = (data.raceHistoryData.firstRunnerUserId == localPlayer.UserId and colors.meColor)
-				or (currentPlayerNames[data.raceHistoryData.firstRunnerUsername] and colors.lightOrangeWRProgression)
-				or colors.defaultGrey,
-			isButton = false,
-			isPortrait = false,
+			name = "FirstSignIntro",
+			order = 2,
+			width = UDim.new(1 / 3, 0),
+			spec = {
+				type = "text",
+				text = data.raceHistoryData.raceStartName,
+				isMonospaced = false,
+				isBold = true,
+				backgroundColor = colors.signColor,
+				textColor = colors.signTextColor,
+				textXAlignment = Enum.TextXAlignment.Center,
+			},
 		},
 		{
-			name = "01FirstRunnerPortrait",
-			isPortrait = true,
-			sizeProportion = 1,
-			text = "",
-			color = (data.raceHistoryData.firstRunnerUserId == localPlayer.UserId and colors.meColor)
-				or (currentPlayerNames[data.raceHistoryData.firstRunnerUsername] and colors.lightOrangeWRProgression)
-				or colors.defaultGrey,
-			isButton = false,
-		},
-		{
-			name = "06Length",
-			sizeProportion = 4,
-			text = string.format("Length: %.1fd", data.raceHistoryData.raceLength),
-
-			color = colors.defaultGrey,
-			isButton = false,
-			isPortrait = false,
-		},
-		{
-			name = "04TotalRuns",
-			sizeProportion = 4,
-			text = string.format("Total Runs: %d", data.raceHistoryData.raceRunCount),
-
-			color = colors.defaultGrey,
-			isButton = false,
-			isPortrait = false,
-		},
-		{
-			sizeProportion = 5,
-			name = "05TotalRunners",
-			text = string.format("Total Runners: %d", data.raceHistoryData.raceRunnerCount),
-			color = colors.defaultGrey,
-			isButton = false,
-			isPortrait = false,
-		},
-		{
-			name = "08YourRuns",
-			sizeProportion = 3,
-			text = string.format("Your Runs: %d", data.raceHistoryData.userRunCount),
-
-			color = colors.meColor,
-			isButton = false,
-			isPortrait = false,
-		},
-		{
-			name = "09RunResults",
-			text = "Top 10",
-			sizeProportion = 3,
-			color = colors.lightOrangeWRProgression,
-			isButton = true,
-			isPortrait = false,
-		},
-		{
-			name = "10ReverseRace",
-			text = "Reverse Race",
-			sizeProportion = 3,
-			color = colors.lightOrangeWRProgression,
-			isButton = true,
-			isPortrait = false,
+			name = "SecondSignIntro",
+			order = 3,
+			width = UDim.new(1 / 3, 0),
+			spec = {
+				type = "text",
+				text = data.raceHistoryData.raceEndName,
+				isMonospaced = false,
+				isBold = true,
+				backgroundColor = colors.signColor,
+				textColor = colors.signTextColor,
+				textXAlignment = Enum.TextXAlignment.Center,
+			},
 		},
 	}
 
-	local totalSizeProportion = 0
-	for _, detail in ipairs(detailsData) do
-		totalSizeProportion += detail.sizeProportion or 0
+	local titleRowSpec: wt.rowSpec = {
+		name = "TitleRow",
+		order = 1,
+		height = UDim.new(0, rowHeightPixels),
+		tileSpecs = titleRowTileSpecs,
+	}
+	local cmdRow = getCommandRow(data)
+	local detailsRowSpec = getDetailRow(data, currentPlayerNames)
+	local scrollingFrameSpec = createWRProgressionScrollingFrameSpec(data, currentPlayerNames, formatString)
+
+	local scrollingFrameRowSpec = {
+		name = "ScrollingFrameRow",
+		order = 3,
+		height = UDim.new(1, 0),
+		tileSpecs = {
+			{
+				name = "ScrollingFrameTile",
+				order = 1,
+				width = UDim.new(1, 0),
+				spec = scrollingFrameSpec,
+			},
+		},
+	}
+
+	local buttonRow = createLastRow()
+
+	local allRowSpecs: { wt.rowSpec } = {
+		titleRowSpec,
+		cmdRow,
+		detailsRowSpec,
+		scrollingFrameRowSpec,
+		buttonRow,
+	}
+
+	local guiSpec: wt.guiSpec = {
+		name = "WRProgressionEntry",
+		rowSpecs = allRowSpecs,
+	}
+
+	local wrHistoryScreenGui = windows.CreatePopup(
+		guiSpec,
+		string.format(
+			"WRHistoryProgression-%s-%s",
+			data.raceHistoryData.raceStartName,
+			data.raceHistoryData.raceEndName
+		),
+		true, -- draggable
+		true, -- resizable
+		true, -- minimizable
+		true, -- pinnable
+		true, -- dismissableWithX
+		false, -- dismissableByClick
+		UDim2.new(0.35, 0, 0.35, 0)
+	)
+	local outerFrame = wrHistoryScreenGui:FindFirstChildOfClass("Frame")
+	if outerFrame then
+		outerFrame.Position = UDim2.new(0.35, 0, 0.35, 0)
 	end
-
-	-- When creating each detail item, adjust the size and color accordingly
-	for _, detail in ipairs(detailsData) do
-		local sizeFraction = (detail.sizeProportion or 1) / totalSizeProportion
-		if detail.isPortrait then
-			local portraitFrame = createFrame({
-				Name = detail.name,
-				Size = UDim2.new(sizeFraction, 0, 1, 0),
-				Parent = detailsFrame,
-				BackgroundTransparency = 0, -- Opaque background
-				BackgroundColor3 = detail.color,
-			})
-			if data.raceHistoryData.firstRunnerUserId then
-				local portraitCell =
-					thumbnails.createAvatarPortraitPopup(data.raceHistoryData.firstRunnerUserId, portraitFrame)
-				portraitCell.Size = UDim2.new(1, 0, 1, 0)
-			end
-		else
-			if detail.name == "10ReverseRace" then
-				local reverseRaceButton = LLMGeneratedUIFunctions.createButton({
-					Size = UDim2.new(sizeFraction, 0, 1, 0),
-					Text = "Reverse Race",
-					TextColor3 = colors.black,
-					BackgroundColor3 = colors.lightOrangeWRProgression,
-					Parent = detailsFrame,
-					Name = "ReverseRaceButton",
-				})
-
-				-- Reverse race button functionality
-				reverseRaceButton.MouseButton1Click:Connect(function()
-					local startSignId = tpUtil.signName2SignId(data.raceHistoryData.raceEndName)
-					local endSignId = tpUtil.signName2SignId(data.raceHistoryData.raceStartName)
-					requestWRProgression(startSignId, endSignId)
-					newWrHistorySgui:Destroy()
-				end)
-			elseif detail.name == "09RunResults" then
-				local runResultsButton = LLMGeneratedUIFunctions.createButton({
-					Size = UDim2.new(sizeFraction, 0, 1, 0),
-					Text = "Top 10",
-					TextColor3 = colors.black,
-					BackgroundColor3 = colors.lightOrangeWRProgression,
-					Parent = detailsFrame,
-					Name = "RunResultsButton",
-				})
-
-				runResultsButton.MouseButton1Click:Connect(function()
-					local startSignId = tpUtil.signName2SignId(data.raceHistoryData.raceStartName)
-					local endSignId = tpUtil.signName2SignId(data.raceHistoryData.raceEndName)
-					requestRunResults(startSignId, endSignId)
-					newWrHistorySgui:Destroy()
-				end)
-			else
-				local label =
-					guiUtil.getTl(detail.name, UDim2.new(sizeFraction, 0, 1, 0), 0.7, detailsFrame, detail.color, 1)
-				label.Text = detail.text
-			end
-		end
-	end
-
-	-- Create header frame
-	local headerFrame = createFrame({
-		Name = "04Header",
-		Size = UDim2.new(1, 0, 0, rowHeightPixels),
-		BackgroundColor3 = colors.lightOrangeWRProgression,
-		Parent = wrContentFrame,
-	})
-
-	createLayout("UIListLayout", headerFrame, {
-		FillDirection = Enum.FillDirection.Horizontal,
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Padding = UDim.new(0, 0),
-	})
-
-	local function calculateAndUpdateColumnWidths()
-		local columnWidths = calculateColumnWidths(headerFrame.AbsoluteSize.X)
-		for i, header in ipairs(wrProgressionDataTableHeaders) do
-			local headerLabel = headerFrame:FindFirstChild(string.format("%02d", i) .. "_Header_" .. header.text)
-			if headerLabel then
-				if header.text == "Portrait" then
-					headerLabel.Size = UDim2.new(0, rowHeightPixels, 0, rowHeightPixels)
-				else
-					headerLabel.Size = UDim2.new(0, columnWidths[i], 1, 0)
-				end
-			end
-		end
-		return columnWidths
-	end
-
-	for i, header in ipairs(wrProgressionDataTableHeaders) do
-		createResponsiveHeader(header, headerFrame, header.text == "Portrait" and rowHeightPixels or 0)
-	end
-
-	local columnWidths = calculateAndUpdateColumnWidths()
-
-	-- Create record holder list frame
-	local recordHolderListFrame = createScrollingFrame({
-		Name = "05RecordHolderList",
-		Size = UDim2.new(1, 0, 1, -(rowHeightPixels * 3)),
-		BackgroundTransparency = 0,
-		BackgroundColor3 = colors.defaultGrey,
-		BorderSizePixel = 1,
-		Parent = wrContentFrame,
-		ScrollBarThickness = scrollbarThickness,
-	})
-
-	createLayout("UIListLayout", recordHolderListFrame, {
-		SortOrder = Enum.SortOrder.Name,
-		Padding = UDim.new(0, 0),
-	})
-
-	local weStillNeedToDisplayUsersRun = false
-	if data.raceHistoryData.userFastestRun and data.raceHistoryData.userFastestRun.runId then
-		weStillNeedToDisplayUsersRun = true
-	end
-
-	local function actuallyInsertUsersBestAttemptData(i: number)
-		local specialOverrideUserBestAttemptEverEntry: tt.wrProgressionEntry = {
-			runMilliseconds = data.raceHistoryData.userFastestRun.runMilliseconds,
-			username = localPlayer.Name,
-			userId = localPlayer.UserId,
-			runTime = data.raceHistoryData.userFastestRun.runTime,
-			-- Set other fields to nil or default values
-			improvementMs = nil,
-			recordStood = nil,
-		}
-
-		local userEntryFrame = CreateWRProgressionEntry(
-			specialOverrideUserBestAttemptEverEntry,
-			i,
-			formatString,
-			colors.meColor,
-			colors.defaultGrey,
-			columnWidths,
-			"theUserSpecial"
-		)
-		userEntryFrame.Name = string.format("%04d__USERoverride", i)
-		userEntryFrame.Parent = recordHolderListFrame
-
-		-- -- Customize the user entry frame
-		for _, child in ipairs(userEntryFrame:GetChildren()) do
-			if child:IsA("TextLabel") then
-				-- if child.Name:match("Improvement$") or child.Name:match("Lasted$") then
-
-				-- if child.Name:match("Best Time$") then
-				-- 	child.Text = string.format(
-				-- 		formatString,
-				-- 		specialOverrideUserBestAttemptEverEntry.runMilliseconds / 1000
-				-- 	) .. "s"
-				-- 	child.BackgroundColor3 = colors.meColor
-				if child.Name:match("Username$") then
-					child.BackgroundColor3 = colors.meColor
-					local placeText = ""
-					if data.raceHistoryData.userFastestRun.contemporaneousPlace == 0 then
-						placeText = "wasn't top 10."
-					else
-						placeText = "was "
-							.. tpUtil.getCardinal(data.raceHistoryData.userFastestRun.contemporaneousPlace)
-							.. " at the time."
-					end
-					child.Text = "Your best ever run " .. placeText
-				end
-			end
-		end
-	end
-
-	-- Create WR progression entries
-	for i = 1, #data.wrProgression do
-		local entry = data.wrProgression[i]
-		if entry.userId == localPlayer.UserId then
-			weStillNeedToDisplayUsersRun = false
-		end
-		if weStillNeedToDisplayUsersRun then
-			if entry.runMilliseconds > data.raceHistoryData.userFastestRun.runMilliseconds then
-				weStillNeedToDisplayUsersRun = false
-				actuallyInsertUsersBestAttemptData(i)
-			end
-		end
-		local isCurrentWR = (i == 1)
-		local lastedCellUseColor = isCurrentWR and colors.greenGo or colors.defaultGrey
-		local usernameCellUseColor = colors.defaultGrey
-		if entry.username == localPlayer.Name then
-			usernameCellUseColor = colors.meColor
-		elseif currentPlayerNames[entry.username] then
-			usernameCellUseColor = colors.lightOrangeWRProgression
-		end
-
-		if isCurrentWR then
-			entry.recordStood = os.time() - entry.runTime
-		end
-
-		local theEntryFrame = CreateWRProgressionEntry(
-			entry,
-			i,
-			formatString,
-			usernameCellUseColor,
-			lastedCellUseColor,
-			columnWidths,
-			"normal"
-		)
-		theEntryFrame.Parent = recordHolderListFrame
-	end
-
-	if weStillNeedToDisplayUsersRun then
-		actuallyInsertUsersBestAttemptData(#data.wrProgression)
-	end
-
-	-- Create a container for buttons
-	local buttonContainer = createFrame({
-		Name = "06ButtonContainer",
-		Size = UDim2.new(1, 0, 0, 40),
-		Position = UDim2.new(0, 0, 1, -40),
-		BackgroundTransparency = 1,
-		Parent = wrContentFrame,
-	})
-
-	-- Create layout for buttons
-	LLMGeneratedUIFunctions.createLayout("UIListLayout", buttonContainer, {
-		FillDirection = Enum.FillDirection.Horizontal,
-		Padding = UDim.new(0, 0),
-		HorizontalAlignment = Enum.HorizontalAlignment.Center,
-	})
-
-	local closeButton = LLMGeneratedUIFunctions.createButton({
-		Size = UDim2.new(1 / 2, 0, 1, 0),
-		Text = "Close",
-		TextColor3 = colors.black,
-		BackgroundColor3 = Color3.new(1, 0, 0),
-		Parent = buttonContainer,
-		Name = "CloseButton",
-	})
-
-	closeButton.MouseButton1Click:Connect(function()
-		newWrHistorySgui:Destroy()
-	end)
-
-	local warpButton = LLMGeneratedUIFunctions.createButton({
-		Size = UDim2.new(1 / 2, 0, 1, 0),
-		Text = "Warp",
-		TextColor3 = colors.black,
-		BackgroundColor3 = colors.lightBlue,
-		Parent = buttonContainer,
-		Name = "WarpButton",
-	})
-
-	-- Warp button functionality
-	warpButton.MouseButton1Click:Connect(function()
-		warper.WarpToSignId(data.raceHistoryData.raceStartSignId, data.raceHistoryData.raceEndSignId)
-		newWrHistorySgui:Destroy()
-	end)
-
-	for _, button in ipairs({ warpButton, closeButton }) do
-		LLMGeneratedUIFunctions.addTextSizeConstraint(button)
-	end
-
-	task.defer(function()
-		task.wait() -- Wait for the next frame to ensure all elements are properly sized
-		local totalContentHeight = contentListLayout.AbsoluteContentSize.Y
-		local viewportHeight = wrOuterFrame.AbsoluteSize.Y
-
-		if totalContentHeight < viewportHeight then
-			-- Content fits, adjust the outer frame size
-			wrOuterFrame.Size = UDim2.new(wrOuterFrame.Size.X.Scale, wrOuterFrame.Size.X.Offset, 0, totalContentHeight)
-		else
-			-- Content doesn't fit, keep the original size and enable scrolling
-			recordHolderListFrame.CanvasSize =
-				UDim2.new(0, 0, 0, recordHolderListFrame.UIListLayout.AbsoluteContentSize.Y)
-		end
-
-		-- Reposition the frame to be centered
-		wrOuterFrame.Position = UDim2.new(0.2, 0, 0.5, -wrOuterFrame.AbsoluteSize.Y / 2)
-	end)
-
-	-- Modify the resize connection to update both headers and rows
-	wrOuterFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-		local newColumnWidths = calculateAndUpdateColumnWidths()
-
-		-- Update widths for all entries in the recordHolderListFrame
-		for _, child in ipairs(recordHolderListFrame:GetChildren()) do
-			if child:IsA("Frame") and child.Name:match("^%d+_WRProgressionEntry_") then
-				for i, header in ipairs(wrProgressionDataTableHeaders) do
-					local column = child:FindFirstChild(string.format("%02d%s", i, header.text))
-					if column then
-						if header.text == "Portrait" then
-							column.Size = UDim2.new(0, rowHeightPixels, 0, rowHeightPixels)
-						else
-							column.Size = UDim2.new(0, newColumnWidths[i], 1, 0)
-						end
-					end
-				end
-			end
-		end
-	end)
-
-	return wrOuterFrame
+	local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+	wrHistoryScreenGui.Parent = playerGui
 end
 
-module.CreateWRHistoryProgressionGui = createWRHistoryProgression
-
 local function handleUserSettingChanged(item: tt.userSettingValue)
-	if item.name == settingEnums.settingDefinitions.HIGHLIGHT_ON_RUN_COMPLETE_WARP.name then
-		userWantsHighlightingWhenWarpingFromRunResults = item.booleanValue or false
-	end
+	-- if item.name == settingEnums.settingDefinitions.HIGHLIGHT_ON_RUN_COMPLETE_WARP.name then
+	-- 	userWantsHighlightingWhenWarpingFromRunResults = item.booleanValue or false
+	-- end
 	return
 end
 

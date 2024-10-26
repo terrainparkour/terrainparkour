@@ -354,7 +354,7 @@ module.userSentMessage = function(data: any): any
 		remoteActionName = "userSentMessage",
 		data = data,
 	}
-	return rdb.MakePostRequest(request) :: tt.dcRunResponse
+	return rdb.MakePostRequest(request) :: tt.userFinishedRunResponse
 end
 
 function methods:InternalPostMessage(fromSpeaker, message, extraData)

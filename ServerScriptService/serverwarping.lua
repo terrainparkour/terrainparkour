@@ -279,7 +279,11 @@ module.RequestClientToWarpToWarpRequest = function(player: Player, request: tt.s
 	ServerRequestClientToWarpLockEvent:FireClient(player, request)
 end
 
-local function CheckWarpingSecurityForPlayerAndSign(player: Player, signId: number): boolean
+local function CheckWarpingSecurityForPlayerAndSign(player: Player, signId: number?): boolean
+	if not signId then
+		annotater.Error(string.format("user %s had no signId", player.Name), player.UserId)
+		return false
+	end
 	if not playerData2.HasUserFoundSign(player.UserId, signId) then
 		local signName = tpUtil.signId2signName(signId)
 		annotater.Error(
@@ -324,9 +328,7 @@ module.Init = function()
 
 			local securityPass = CheckWarpingSecurityForPlayerAndSign(player, request.signId)
 			if not securityPass then
-				annotater.Error(
-					string.format("security pass failed %s %d", tostring(player.Name), tostring(request.signId))
-				)
+				annotater.Error(string.format("security pass failed %s %d", tostring(player.Name), request.signId))
 				return { didWarp = false }
 			end
 

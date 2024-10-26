@@ -16,7 +16,7 @@ local PlayersService = game:GetService("Players")
 
 local module = {}
 
-local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, n: number): Frame
+local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player?, n: number): Frame
 	local fr = Instance.new("Frame")
 	fr.Name = string.format("33-settingRow-%04d", n) .. "setting." .. setting.name
 	fr.Size = UDim2.new(1, 0, 0, 30)
@@ -54,7 +54,6 @@ local function makeSurveyRowFrame(setting: tt.userSettingValue, player: Player, 
 		nowValue = nil
 	end
 
-	local settings = require(game.ReplicatedStorage.settings)
 	noButton.Activated:Connect(function()
 		if nowValue == false then
 			nowValue = nil
@@ -144,20 +143,23 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 	scrollingFrame.Size = UDim2.new(1, 0, 1, -60)
 	scrollingFrame.VerticalScrollBarInset = Enum.ScrollBarInset.Always
 	scrollingFrame.CanvasSize = UDim2.new(1, 0, 1, 0)
-	local vv = Instance.new("UIListLayout")
-	vv.FillDirection = Enum.FillDirection.Vertical
-	vv.Parent = scrollingFrame
+	local vv3 = Instance.new("UIListLayout")
+	vv3.FillDirection = Enum.FillDirection.Vertical
+	vv3.Parent = scrollingFrame
 
-	local player: Player = PlayersService:GetPlayerByUserId(userId)
+	local player: Player? = PlayersService:GetPlayerByUserId(userId)
+	if player == nil then
+		player = localPlayer
+	end
 	local ii = 0
 
-	local settings = {}
+	local settingsHolder = {}
 	for _, setting in pairs(surveyData) do
-		table.insert(settings, setting)
+		table.insert(settingsHolder, setting)
 	end
-	table.sort(settings, settingSort.SettingSort)
+	table.sort(settingsHolder, settingSort.SettingSort)
 
-	for _, setting in pairs(settings) do
+	for _, setting in pairs(settingsHolder) do
 		ii += 1
 		if setting.domain ~= settingEnums.settingDomains.SURVEYS then
 			continue
