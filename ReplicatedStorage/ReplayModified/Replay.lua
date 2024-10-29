@@ -1,4 +1,4 @@
---strict
+--!strict
 
 local MovementLogger = {}
 MovementLogger.__index = MovementLogger
