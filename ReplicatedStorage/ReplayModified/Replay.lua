@@ -78,13 +78,13 @@ end
 
 function MovementLogger:visualizeLog()
 	local pathSize = #self.logData
-	
-	if pathSize < 2 then warn("Not enough data to visualize.") return end
+
+	if pathSize < 2 then  warn("Not enough data to visualize.")  return end
 
 	for i = 1, pathSize - 1 do
 		local pointA = self.logData[i]
 		local pointB = self.logData[i + 1]
-		
+
 		self:createPoint(pointA.Position)
 
 		local distance = (pointB.Position - pointA.Position).magnitude
@@ -93,10 +93,10 @@ function MovementLogger:visualizeLog()
 
 		local line = Instance.new("LineHandleAdornment")
 		
-		line.Adornee = workspace
+		line.Adornee = self.humanoidRootPart
 		line.Name = "PathLine" .. i
 		line.Length = distance
-		line.Thickness = 10
+		line.Thickness = 0.5
 		line.Color3 = color
 		line.Transparency = 0.5
 		line.AlwaysOnTop = true
