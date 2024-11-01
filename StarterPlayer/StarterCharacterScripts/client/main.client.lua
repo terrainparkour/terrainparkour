@@ -22,6 +22,8 @@ userData.Init()
 local notifyClient = require(game.StarterPlayer.StarterCharacterScripts.client.notifyClient)
 local serverEvents = require(game.StarterPlayer.StarterCharacterScripts.client.serverEvents)
 
+local MovementLogger = require(game.ReplicatedStorage.ReplayModified.Replay)
+
 local userDataClient = require(game.StarterPlayer.StarterPlayerScripts.userDataClient)
 local leaderboard = require(game.StarterPlayer.StarterCharacterScripts.lb.leaderboard)
 local marathonClient = require(game.StarterPlayer.StarterCharacterScripts.client.marathonClient)
@@ -51,6 +53,8 @@ local setup = function()
 	userDataClient.Init()
 	movement.Init()
 	morphs.Init()
+	MovementLogger.Init()
+	
 	particles.Init()
 	notifyClient.Init()
 	serverEvents.Init()
