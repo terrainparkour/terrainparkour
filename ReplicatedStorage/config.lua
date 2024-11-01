@@ -3,7 +3,7 @@
 local module = {}
 
 -- controlling which server endpoints/debugging status should be used.
-module.isInStudio = function()
+module.IsInStudio = function()
 	local forceProd = false
 	if forceProd then
 		return false

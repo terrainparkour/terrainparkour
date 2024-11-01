@@ -231,7 +231,7 @@ local AlphaUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, found
 	Tween2:Play()
 end
 
-local FindSetUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string): nil
+local FindSetUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string)
 	local targetName = marathonStatic.getMarathonComponentName(desc, foundSignName)
 	local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
 	if exiTile == nil then
@@ -356,7 +356,7 @@ local signsOfEveryLength: mt.marathonDescriptor = {
 	runningTimeTileUpdater = false,
 	timeTile = nil,
 	IsDone = function(desc: mt.marathonDescriptor)
-		return config.isInStudio() and desc.count == 6 or desc.count == desc.requiredCount
+		return config.IsInStudio() and desc.count == 6 or desc.count == desc.requiredCount
 	end,
 	AddSignToFinds = DefaultAddSignToFinds,
 	UpdateRow = SignsOfEveryLengthUpdateRow,
@@ -384,7 +384,7 @@ local alphaFree: mt.marathonDescriptor = {
 	runningTimeTileUpdater = false,
 	timeTile = nil,
 	IsDone = function(desc: mt.marathonDescriptor)
-		return config.isInStudio() and desc.count == 3 or desc.count == desc.requiredCount
+		return config.IsInStudio() and desc.count == 3 or desc.count == desc.requiredCount
 	end,
 	AddSignToFinds = DefaultAddSignToFinds,
 	UpdateRow = AlphaUpdateRow,
@@ -412,7 +412,7 @@ local alphaOrdered: mt.marathonDescriptor = {
 	runningTimeTileUpdater = false,
 	timeTile = nil,
 	IsDone = function(desc: mt.marathonDescriptor)
-		return config.isInStudio() and desc.count == 3 or desc.count == desc.requiredCount
+		return config.IsInStudio() and desc.count == 3 or desc.count == desc.requiredCount
 	end,
 	AddSignToFinds = DefaultAddSignToFinds,
 	UpdateRow = AlphaUpdateRow,
@@ -446,7 +446,7 @@ local alphaReverse: mt.marathonDescriptor = {
 	runningTimeTileUpdater = false,
 	timeTile = nil,
 	IsDone = function(desc: mt.marathonDescriptor)
-		return config.isInStudio() and desc.count == 3 or desc.count == desc.requiredCount
+		return config.IsInStudio() and desc.count == 3 or desc.count == desc.requiredCount
 	end,
 	AddSignToFinds = DefaultAddSignToFinds,
 	UpdateRow = AlphaUpdateRow,
@@ -477,7 +477,7 @@ local function mkFindN(n: number, badge: tt.badgeDescriptor | nil): mt.marathonD
 		runningTimeTileUpdater = false,
 		timeTile = nil,
 		IsDone = function(desc: mt.marathonDescriptor)
-			return config.isInStudio() and desc.count == 4 or desc.count == desc.requiredCount
+			return config.IsInStudio() and desc.count == 4 or desc.count == desc.requiredCount
 		end,
 		AddSignToFinds = DefaultAddSignToFinds,
 		UpdateRow = FindNUpdateRow,
@@ -529,7 +529,7 @@ local find10s: mt.marathonDescriptor = {
 	runningTimeTileUpdater = false,
 	timeTile = nil,
 	IsDone = function(desc: mt.marathonDescriptor)
-		return config.isInStudio() and desc.count == 5 or desc.count == desc.requiredCount
+		return config.IsInStudio() and desc.count == 5 or desc.count == desc.requiredCount
 	end,
 	AddSignToFinds = DefaultAddSignToFinds,
 	UpdateRow = FindNUpdateRow,
@@ -559,7 +559,7 @@ local find10t: mt.marathonDescriptor = {
 	runningTimeTileUpdater = false,
 	timeTile = nil,
 	IsDone = function(desc: mt.marathonDescriptor)
-		return config.isInStudio() and desc.count == 5 or desc.count == desc.requiredCount
+		return config.IsInStudio() and desc.count == 5 or desc.count == desc.requiredCount
 	end,
 	AddSignToFinds = DefaultAddSignToFinds,
 	UpdateRow = FindNUpdateRow,

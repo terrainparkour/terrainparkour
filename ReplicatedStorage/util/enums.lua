@@ -2,7 +2,7 @@
 
 local module = {}
 
-module.gameVersion = "0.308"
+module.gameVersion = "0.310"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {

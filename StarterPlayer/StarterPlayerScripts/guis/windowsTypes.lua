@@ -29,6 +29,7 @@ export type textTileSpec = {
 	backgroundColor: Color3?, --default backgroundColor grey
 	textColor: Color3?, --default textColor black
 	textXAlignment: Enum.TextXAlignment?, --default left
+	includeTextSizeConstraint: boolean?, --default true
 }
 
 export type portraitTileSpec = {
@@ -60,11 +61,18 @@ export type rowTileSpec = {
 
 --a type which has a scrolling frame within it
 export type scrollingFrameTileSpec = {
-	type: "scrollingFrame",
+	type: "scrollingFrameTileSpec",
 	name: string,
 	headerRow: rowSpec,
 	dataRows: { rowSpec },
+	stickyRows: { rowSpec },
 	rowHeight: number,
+	howManyRowsToShow: number?,
+}
+
+export type stickyScrollingFrameType = {
+	frame: Frame,
+	addElement: (element: Instance, order: number, isSticky: boolean, stickTo: "top" | "bottom" | nil) -> Instance,
 }
 
 return {}

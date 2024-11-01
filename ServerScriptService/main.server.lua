@@ -39,7 +39,7 @@ local sounds = require(game.ServerScriptService.sounds)
 sounds.Init()
 
 local pushSigns = require(game.ServerScriptService.pushSigns)
-pushSigns.checkSignsNeedingPushing()
+pushSigns.CheckSignsNeedingPushing()
 
 local presence = require(game.ServerScriptService.presence)
 presence.Init()
@@ -119,9 +119,12 @@ local function checkBadgesForBadIds()
 	end
 end
 
+local testing = require(game.ReplicatedStorage.testing)
+
 local config = require(game.ReplicatedStorage.config)
-if config.isInStudio() then
+if config.IsInStudio() then
 	checkBadgesForBadIds()
+	testing.TestAll()
 end
 
 _annotate("end")

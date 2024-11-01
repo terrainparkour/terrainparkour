@@ -53,9 +53,9 @@ local createPlacementRowForSetOfRaces = function(
 				relationshipsForThisPlacementRank,
 				function(a: tt.userSignSignRelationship, b: tt.userSignSignRelationship)
 					if a.runCount ~= b.runCount then
-						return a.runCount < b.runCount
+						return a.runCount > b.runCount
 					end
-					return a.endSignName < b.endSignName
+					return a.endSignName > b.endSignName
 				end
 			)
 		end

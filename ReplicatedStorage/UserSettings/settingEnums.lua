@@ -83,7 +83,7 @@ local settingDefinitions: { [string]: tt.userSettingValue } = {
 		name = "only have one run result popup at a time - if another one comes up, the existing one will be closed.",
 		domain = settingDomains.USERSETTINGS,
 		kind = settingKinds.BOOLEAN,
-		defaultBooleanValue = false,
+		defaultBooleanValue = true,
 	},
 	ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION = {
 		name = "when you're warping with an implied destination, rotate your avatar and camera to face the direction",
@@ -161,7 +161,7 @@ local settingDefinitions: { [string]: tt.userSettingValue } = {
 		name = "show awards",
 		domain = settingDomains.LEADERBOARD,
 		kind = settingKinds.BOOLEAN,
-		defaultBooleanValue = true,
+		defaultBooleanValue = false,
 	},
 	LEADERBOARD_ENABLE_TIX = {
 		name = "show tix",
@@ -185,13 +185,13 @@ local settingDefinitions: { [string]: tt.userSettingValue } = {
 		name = "show wr rank",
 		domain = settingDomains.LEADERBOARD,
 		kind = settingKinds.BOOLEAN,
-		defaultBooleanValue = true,
+		defaultBooleanValue = false,
 	},
 	LEADERBOARD_ENABLE_CWRS = {
 		name = "show cwrs",
 		domain = settingDomains.LEADERBOARD,
 		kind = settingKinds.BOOLEAN,
-		defaultBooleanValue = true,
+		defaultBooleanValue = false,
 	},
 	LEADERBOARD_ENABLE_WRS = {
 		name = "show wrs",
@@ -203,7 +203,7 @@ local settingDefinitions: { [string]: tt.userSettingValue } = {
 		name = "show cwrTop10s",
 		domain = settingDomains.LEADERBOARD,
 		kind = settingKinds.BOOLEAN,
-		defaultBooleanValue = true,
+		defaultBooleanValue = false,
 	},
 	LEADERBOARD_ENABLE_TOP10S = {
 		name = "show top10s",
@@ -215,13 +215,13 @@ local settingDefinitions: { [string]: tt.userSettingValue } = {
 		name = "show cwr rank",
 		domain = settingDomains.LEADERBOARD,
 		kind = settingKinds.BOOLEAN,
-		defaultBooleanValue = true,
+		defaultBooleanValue = false,
 	},
 	LEADERBOARD_ENABLE_RACES = {
 		name = "show races",
 		domain = settingDomains.LEADERBOARD,
 		kind = settingKinds.BOOLEAN,
-		defaultBooleanValue = true,
+		defaultBooleanValue = false,
 	},
 	LEADERBOARD_ENABLE_RUNS = {
 		name = "show runs",
@@ -261,7 +261,7 @@ local settingDefinitions: { [string]: tt.userSettingValue } = {
 		name = "show cwrs today",
 		domain = settingDomains.LEADERBOARD,
 		kind = settingKinds.BOOLEAN,
-		defaultBooleanValue = true,
+		defaultBooleanValue = false,
 	},
 	LEADERBOARD_ENABLE_RUNSTODAY_COLUMN = {
 		name = "show runs today",

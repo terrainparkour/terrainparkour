@@ -73,7 +73,7 @@ module.handleActionResults = function(actionResults: { tt.actionResult })
 			for _, op in ipairs(PlayersService:GetPlayers()) do
 				local useMessage = actionResult.message
 				if op.UserId == arSubjectPlayer.UserId then
-					if config.isInStudio() then
+					if config.IsInStudio() then
 						useMessage = actionResult.message .. " (studio only)"
 					else
 						continue

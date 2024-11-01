@@ -39,7 +39,7 @@ module.notify = function(options: tt.ephemeralNotificationOptions)
 		return
 	end
 
-	if config.isInStudio() then --already updated upstream
+	if config.IsInStudio() then --already updated upstream
 		_annotate("legacy notifier: " .. options.kind, options)
 	end
 

@@ -24,7 +24,7 @@ local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("Avatar
 
 --------- CONSTANTS ----------------
 local COLOR_CYCLE_TIME = 6
-local TOTAL_LIFETIME = 40
+local TOTAL_LIFETIME = 120
 local FADE_OUT_TIME = 6
 local BILLBOARD_WIDTH_PER_LETTER = 15
 local BILLBOARD_HEIGHT = 45

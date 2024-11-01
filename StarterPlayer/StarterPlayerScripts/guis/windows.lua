@@ -1,5 +1,4 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- windows.lua, used in clients
 -- generic module to add resize functionality to frames
@@ -26,7 +25,7 @@ local _annotate = annotater.getAnnotater(script)
 local colors = require(game.ReplicatedStorage.util.colors)
 local fonts = require(game.StarterPlayer.StarterPlayerScripts.guis.fonts)
 local wt = require(game.StarterPlayer.StarterPlayerScripts.guis.windowsTypes)
-
+local stickyScrollingFrame = require(game.StarterPlayer.StarterPlayerScripts.guis.stickyScrollingFrame)
 local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
 
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
@@ -133,15 +132,21 @@ module.CreateText = function(textSpec: wt.textTileSpec): TextLabel
 	res.FontFace = fonts.GetFont(textSpec.isMonospaced, textSpec.isBold)
 	res.Text = textSpec.text
 
-	local constraint = Instance.new("UITextSizeConstraint")
-	constraint.Name = "UITextSizeConstraint_Text"
-
-	if textSpec.isBold then
-		constraint.MaxTextSize = globalMaxTextSizeBold
-	else
-		constraint.MaxTextSize = globalMaxTextSize
+	if textSpec.includeTextSizeConstraint == nil then
+		textSpec.includeTextSizeConstraint = true
 	end
-	constraint.Parent = res
+
+	if textSpec.includeTextSizeConstraint then
+		local constraint = Instance.new("UITextSizeConstraint")
+		constraint.Name = "UITextSizeConstraint_Text"
+
+		if textSpec.isBold then
+			constraint.MaxTextSize = globalMaxTextSizeBold
+		else
+			constraint.MaxTextSize = globalMaxTextSize
+		end
+		constraint.Parent = res
+	end
 
 	return res
 end
@@ -150,19 +155,21 @@ local function addLayout(parent: Frame, direction: Enum.FillDirection): UIListLa
 	local res = Instance.new("UIListLayout")
 	res.Name = string.format("%s_layout", parent.Name)
 	res.HorizontalFlex = Enum.UIFlexAlignment.Fill
+	-- res.VerticalFlex = Enum.UIFlexAlignment.Fill
 	res.SortOrder = Enum.SortOrder.Name
 	res.Parent = parent
 	res.FillDirection = direction
 	return res
 end
 
-local function applyProportionalHeights(objects: { Frame })
+-- in a way which respects both absolute offset requirements, and propotionalizes that among the remaining rows which desire to be scaled.
+local function applyProportionalHeights(frames: { Frame })
 	local totalScale = 0
 	local totalFixed = 0
 
 	-- Calculate total scale and fixed offset
-	for _, obj in ipairs(objects) do
-		local size = obj.Size
+	for _, aFrameRow in ipairs(frames) do
+		local size = aFrameRow.Size
 		if size.Y.Scale > 0 then
 			totalScale = totalScale + size.Y.Scale
 		else
@@ -170,15 +177,15 @@ local function applyProportionalHeights(objects: { Frame })
 		end
 	end
 
-	for _, obj in ipairs(objects) do
-		local size = obj.Size
+	for _, aFrameRow in ipairs(frames) do
+		local size = aFrameRow.Size
 		local newScaleY = 0
 		local myNegative = 0
 		if totalScale > 0 then
 			newScaleY = size.Y.Scale / totalScale
 			myNegative = newScaleY * totalFixed * -1
 		end
-		obj.Size = UDim2.new(size.X.Scale, size.X.Offset, newScaleY, size.Y.Offset + myNegative)
+		aFrameRow.Size = UDim2.new(size.X.Scale, size.X.Offset, newScaleY, size.Y.Offset + myNegative)
 	end
 end
 
@@ -208,7 +215,60 @@ local function applyProportionalWidths(objects: { Frame | TextLabel | TextButton
 	end
 end
 
+--- actually it's a fake frame which manages itself.
 module.CreateScrollingFrame = function(scrollingFrameSpec: wt.scrollingFrameTileSpec): Frame
+	local contentFrame: Frame = Instance.new("Frame")
+	contentFrame.Name = string.format("%s_OuterFor_ScrollingFrame", scrollingFrameSpec.name)
+	contentFrame.BackgroundTransparency = 1
+	contentFrame.Size = UDim2.new(1, 0, 1, 0)
+	contentFrame.BorderSizePixel = frameBorderSizePixel
+	contentFrame.BorderMode = globalBorderMode
+
+	local headerRow: Frame = module.CreateRow(scrollingFrameSpec.headerRow)
+	headerRow.Parent = contentFrame
+	headerRow.Position = UDim2.new(0, 0, 0, 0)
+
+	local contentFrameLayout: UIListLayout = addLayout(contentFrame, Enum.FillDirection.Vertical)
+	contentFrameLayout.SortOrder = Enum.SortOrder.Name
+	contentFrameLayout.FillDirection = Enum.FillDirection.Vertical
+	contentFrameLayout.Parent = contentFrame
+
+	local theStickyFrameManager: wt.stickyScrollingFrameType = stickyScrollingFrame.CreateStickyScrollingFrame(
+		scrollingFrameSpec.rowHeight,
+		scrollingFrameSpec.howManyRowsToShow - 1
+	)
+	theStickyFrameManager.frame.Parent = contentFrame
+	theStickyFrameManager.frame.Name = string.format("%s_StickyFrame", scrollingFrameSpec.name)
+	theStickyFrameManager.frame.BorderMode = globalBorderMode
+	theStickyFrameManager.frame.BackgroundTransparency = 1
+	theStickyFrameManager.frame.BorderSizePixel = scrollingFrameBorderSizePixel
+	-- theStickyFrameManager.frame.ScrollBarThickness = 8
+	-- theStickyFrameManager.frame.VerticalScrollBarInset = Enum.ScrollBarInset.None
+	theStickyFrameManager.frame.Size = UDim2.new(1, 0, 1, 0)
+
+	for _, rowSpec in ipairs(scrollingFrameSpec.dataRows) do
+		local row: Frame = module.CreateRow(rowSpec)
+		theStickyFrameManager.addElement(row, rowSpec.order, false)
+		-- row.Parent = scrollingFrame
+	end
+
+	for _, rowSpec in ipairs(scrollingFrameSpec.stickyRows) do
+		rowSpec.name = string.format("%s_Sticky", rowSpec.name)
+		local row: Frame = module.CreateRow(rowSpec)
+		theStickyFrameManager.addElement(row, rowSpec.order, true)
+		-- row.Parent = scrollingFrame
+	end
+
+	-- Calculate content size
+	-- local contentHeight: number = #scrollingFrameSpec.dataRows * scrollingFrameSpec.rowHeight
+	-- contentFrame.Size = UDim2.new(1, 0, 1, 0)
+	-- theStickyFrameManager.frame.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
+	theStickyFrameManager.doneAdding()
+
+	return contentFrame
+end
+
+module.CreateScrollingFrameOrig = function(scrollingFrameSpec: wt.scrollingFrameTileSpec): scrollingFrameType
 	local contentFrame: Frame = Instance.new("Frame")
 	contentFrame.Name = string.format("%s_OuterFor_ScrollingFrame", scrollingFrameSpec.name)
 	contentFrame.BackgroundTransparency = 1
@@ -258,7 +318,7 @@ end
 -- Modify the CreateRow function to handle scrolling frames
 module.CreateRow = function(rowSpec: wt.rowSpec): Frame
 	local frame = Instance.new("Frame")
-	frame.Name = string.format("%06d_%s", rowSpec.order, rowSpec.name)
+	frame.Name = string.format("%d_%s", rowSpec.order, rowSpec.name)
 	frame.Size = UDim2.new(1, 0, 0, rowSpec.height.Offset)
 	frame.BorderSizePixel = frameBorderSizePixel
 	frame.BorderMode = globalBorderMode
@@ -308,7 +368,7 @@ module.CreateRow = function(rowSpec: wt.rowSpec): Frame
 				toolTip.setupToolTip(theImageLabel, tileSpec.tooltipText, toolTip.enum.toolTipSize.NormalText)
 			end
 			table.insert(items, imageFrame)
-		elseif tileSpec.spec.type == "scrollingFrame" then
+		elseif tileSpec.spec.type == "scrollingFrameTileSpec" then
 			local scrollingFrameFrame = module.CreateScrollingFrame(tileSpec.spec)
 			scrollingFrameFrame.Name = string.format("%04d_%s", tileSpec.order, tileSpec.name)
 			local useWidth = tileSpec.width or UDim.new(1, 0)
@@ -331,7 +391,7 @@ module.CreateRow = function(rowSpec: wt.rowSpec): Frame
 			error("Unknown tile type")
 		end
 	end
-	_annotate(string.format("applyng prop widths on %s - %s", frame.Name, rowSpec.name))
+	-- _annotate(string.format("applying prop widths on %s - %s", frame.Name, rowSpec.name))
 
 	--- dataRows inherit the exact current width of the header row (which, if the header row has a fixed height item like a portrait, will already be a combination of scale and offset)
 	-- therefore we can't re-proportionalize them.
@@ -406,34 +466,34 @@ module.CreatePopup = function(
 
 	--okay so i'm thinking, this might work, but OTOH maybe it'd be better to specify it in the actual rowSpec for the scorlling frame.
 	-- because he knows his own data counts? but
-	local function calculateTotalHeight()
-		local minVisibleRows = 1
-		local maxVisibleRows = intendedRowsOfScrollingFrameToShow
-		local totalHeight = 0
-		local scrollingFrameHeight = 0
+	-- local function calculateTotalHeight()
+	-- 	local minVisibleRows = 1
+	-- 	local maxVisibleRows = intendedRowsOfScrollingFrameToShow
+	-- 	local totalHeight = 0
+	-- 	local scrollingFrameHeight = 0
 
-		for _, rowSpec in ipairs(guiSpec.rowSpecs) do
-			for _, tileSpec in ipairs(rowSpec.tileSpecs) do
-				if tileSpec.spec.type == "scrollingFrame" then
-					local scrollingFrameSpec = tileSpec.spec :: scrollingFrameTileSpec
-					local dataRowCount = #scrollingFrameSpec.dataRows + 1 -- plusone for header.
-					local visibleRows = math.min(math.max(minVisibleRows, dataRowCount), maxVisibleRows)
-					scrollingFrameHeight = visibleRows * scrollingFrameSpec.rowHeight
-					totalHeight += scrollingFrameHeight + 4
-				end
-			end
-			totalHeight += rowSpec.height.Offset
-		end
+	-- 	for _, rowSpec in ipairs(guiSpec.rowSpecs) do
+	-- 		for _, tileSpec in ipairs(rowSpec.tileSpecs) do
+	-- 			if tileSpec.spec.type == "scrollingFrameTileSpec" then
+	-- 				local scrollingFrameSpec = tileSpec.spec :: scrollingFrameTileSpec
+	-- 				local dataRowCount = #scrollingFrameSpec.dataRows + 1 -- plusone for header.
+	-- 				local visibleRows = math.min(math.max(minVisibleRows, dataRowCount), maxVisibleRows)
+	-- 				scrollingFrameHeight = visibleRows * scrollingFrameSpec.rowHeight
+	-- 				totalHeight += scrollingFrameHeight + 4
+	-- 			end
+	-- 		end
+	-- 		totalHeight += rowSpec.height.Offset
+	-- 	end
 
-		return totalHeight, scrollingFrameHeight
-	end
+	-- 	return totalHeight, scrollingFrameHeight
+	-- end
 
-	local totalHeight, scrollingFrameHeight = calculateTotalHeight()
-	local contentHeight = contentFrame.AbsoluteSize.Y
+	-- local totalHeight, scrollingFrameHeight = calculateTotalHeight()
+	-- local contentHeight = contentFrame.AbsoluteSize.Y
 
-	-- Ensure we're showing at least the scrolling frame height or all content if it's less
-	local finalHeight = math.max(totalHeight, contentHeight, scrollingFrameHeight)
-	outerFrame.Size = UDim2.new(outerFrame.Size.X.Scale, outerFrame.Size.X.Offset, 0, finalHeight)
+	-- -- Ensure we're showing at least the scrolling frame height or all content if it's less
+	-- local finalHeight = math.max(totalHeight, contentHeight, scrollingFrameHeight)
+	-- outerFrame.Size = UDim2.new(outerFrame.Size.X.Scale, outerFrame.Size.X.Offset, 0, finalHeight)
 
 	local attribute = Instance.new("BoolValue")
 	attribute.Parent = outerFrame.Parent

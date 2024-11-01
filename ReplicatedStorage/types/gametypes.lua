@@ -66,13 +66,13 @@ export type JsonRun = {
 	username: string,
 	userId: number,
 	runMilliseconds: number,
-	place: number?,
-	improvedPlace: boolean?,
+	place: number, --0 means didn't end up part of the topX
 	mode: number,
 	kind: string,
 	tied: boolean,
 	isRun: boolean,
 	yourText: string,
+	yourColor: Color3,
 	winGap: number?,
 	runAgeSeconds: number,
 }
@@ -269,9 +269,10 @@ export type DynamicRunFrame = {
 	targetSignId: number,
 	targetSignName: string,
 	places: { DynamicPlace },
-	myplace: DynamicPlace?, --requesting user's place
+	myPriorPlace: DynamicPlace, --requesting user's place
 	myfound: boolean,
 }
+
 export type dynamicRunFromData = {
 	kind: string,
 	fromSignName: string,
@@ -592,6 +593,7 @@ export type runChip = {
 
 export type warpResult = {
 	didWarp: boolean,
+	reason: string,
 }
 
 export type lbConfig = {
@@ -630,6 +632,18 @@ export type serverFavoriteRacesResponse = {
 	requestingUserId: number,
 	otherUserIds: { number },
 	racesAndInfo: { { theRace: JsonUserFavoriteRace, theResults: { simpleJsonRun } } },
+}
+
+export type interleavedResult = {
+	priorTimeMs: number, -- 0 if no prior run
+	newTimeMs: number,
+	priorPlace: number, -- 0 if no prior run
+	newPlace: number, -- if this is >1 then we definitely improved time. so really, this means whether the run is included in the new topX
+	newRun: boolean, -- for this user
+	newRace: boolean, -- for anyone, nobody has run this race ever.
+	missedNextPlaceByMs: number, --how many ms faster you'd have to be to have the next place (if not already 1st. logically takes into account self-ties etc.)
+	beatNextPlaceByMs: number, --if you improvedPlace, how much did you improve by? self-tie places which improve time must be zero here.
+	missedImprovementByMs: number, --how many ms slower you'd have to be to have not improved.  this is distinguished from missedNextPlaceByMs because this is about raw ms improvement including place self-ties which can still be improved.
 }
 
 return {}

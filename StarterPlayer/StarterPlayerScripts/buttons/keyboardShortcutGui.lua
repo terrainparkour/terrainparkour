@@ -58,6 +58,7 @@ module.CreateShortcutGui = function()
 	listLayout2.Name = "KeyboardHH"
 
 	local shortcuts = {
+		{ key = "r", desc = "Warp to last completed run", icon = "🏃" },
 		{ key = "1", desc = "Warp to last completed run", icon = "🏃" },
 		{ key = "2", desc = "Warp to last sign you started a race from", icon = "🏃" },
 		{ key = "h", desc = "Remove sign highlights", icon = "🚫" },

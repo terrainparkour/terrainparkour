@@ -244,7 +244,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 
 		signId = tpUtil.looseSignName2SignId(signName)
 
-		if not signId and not config.isInStudio() then
+		if not signId and not config.IsInStudio() then
 			warn("no sign." .. signName)
 			return false
 		end
@@ -370,7 +370,7 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 		end
 
 		return runResultsCommand.SendRunResults(speaker, res.signId1, res.signId2)
-	elseif verb == "sf" then --todo also make at argeted version for using on other people.
+	elseif verb == "sf" then --todo also make a targeted version for using on other people.
 		local otherUsersInServer = tpUtil.GetUserIdsInServer()
 		local theFavorites: tt.serverFavoriteRacesResponse =
 			userFavoriteRacesCommand.GetFavoriteRaces(speaker, speaker.UserId, speaker.UserId, otherUsersInServer)
@@ -485,10 +485,10 @@ module.DataAdminFunc = function(speakerName: string, message: string, channelNam
 	-- okay this is a race UI.
 
 	local userIdsInServer = {}
-	for _, player in ipairs(PlayersService:GetPlayers()) do
-		table.insert(userIdsInServer, player.UserId)
+	for _, oPlayer in ipairs(PlayersService:GetPlayers()) do
+		table.insert(userIdsInServer, oPlayer.UserId)
 	end
-	if config.isInStudio then
+	if config.IsInStudio then
 		table.insert(userIdsInServer, enums.objects.BrouhahahaUserId)
 	end
 	local entries =

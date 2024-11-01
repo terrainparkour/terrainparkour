@@ -18,6 +18,7 @@ local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 local LLMGeneratedUIFunctions = require(game.ReplicatedStorage.gui.menu.LLMGeneratedUIFunctions)
 local drawFavoritesModal = require(game.ReplicatedStorage.gui.menu.drawFavoritesModal)
 local enums = require(game.ReplicatedStorage.util.enums)
+local PlayersService: Players = game:GetService("Players")
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
 ------------------FUNCTIONS--------------
@@ -175,18 +176,12 @@ module.DrawShowFavoriteRacesButton = function(
 	fb.Text = ""
 	fb.Parent = innerFrame
 
-	-- for _, topPlayerUserId in ipairs(enums.objects.topPlayerUserIds) do
-	-- 	if topPlayerUserId ~= targetUserId and topPlayerUserId ~= requestingUserId then
-	-- 		table.insert(otherUserIds, topPlayerUserId)
-	-- 	end
-	-- end
-
-	-- local otherUserIds = {}
-	-- for _, topPlayerUserId in ipairs(enums.objects.topPlayerUserIds) do
-	-- 	if topPlayerUserId ~= targetUserId and topPlayerUserId ~= requestingUserId then
-	-- 		table.insert(otherUserIds, topPlayerUserId)
-	-- 	end
-	-- end
+	local otherUserIds = {}
+	for _, oplayer in ipairs(PlayersService:GetPlayers()) do
+		if oplayer.UserId ~= targetUserId and oplayer.UserId ~= requestingUserId then
+			table.insert(otherUserIds, oplayer.UserId)
+		end
+	end
 
 	fb.Activated:Connect(function()
 		drawFavoritesModal.DrawFavoriteRacesModal(targetUserId, requestingUserId, otherUserIds)

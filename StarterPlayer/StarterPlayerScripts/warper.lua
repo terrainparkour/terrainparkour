@@ -209,7 +209,7 @@ local function handleAvatarEvent(ev: aet.avatarEvent)
 		-- note that this is a function so that we won't proceed until the warping is done on the server.
 		local res: tt.warpResult = ClientRequestsWarpToRequestFunction:InvokeServer(currentWarpRequest)
 		if not res or not res.didWarp then
-			annotater.Error("derailed from warping")
+			annotater.Error(string.format("derailed from warping: %s", res.reason))
 			debounceHandleAvatarEvent = false
 			TeardownWarpSetup()
 			return

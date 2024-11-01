@@ -24,7 +24,7 @@ type legacyOptions = {}
 --notify player of something.
 -- note: 2024, I am taking this over and instead generically probably going ot handle it in clientCommands.
 local function clientReceiveNotification(pythonResponse: any)
-	if config.isInStudio() then
+	if config.IsInStudio() then
 		_annotate("client receive notifications:" .. tostring(pythonResponse.kind))
 	end
 	if pythonResponse.kind == "race results" then

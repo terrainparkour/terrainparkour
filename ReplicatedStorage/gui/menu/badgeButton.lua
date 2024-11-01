@@ -176,9 +176,9 @@ local getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	headerFrame.Parent = outerFrame
 	headerFrame.Name = "01.badges.HeaderRow"
 	headerFrame.Size = UDim2.new(1, 0, 0, 45)
-	local vv = Instance.new("UIListLayout")
-	vv.FillDirection = Enum.FillDirection.Horizontal
-	vv.Parent = headerFrame
+	local vv2 = Instance.new("UIListLayout")
+	vv2.FillDirection = Enum.FillDirection.Horizontal
+	vv2.Parent = headerFrame
 	local typeLabelTl =
 		guiUtil.getTl("1.header.type", UDim2.new(sectionWidthsScale.type, 0, 1, 0), 4, headerFrame, colors.blueDone, 1)
 	typeLabelTl.Text = "Type"
@@ -221,7 +221,7 @@ local getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	for ii, userId in ipairs(orderedUserIdsInServer) do
 		local username = "usernameFor:" .. tostring(userId)
 
-		local s, e = pcall(function()
+		local _s, e = pcall(function()
 			local player = PlayersService:GetPlayerByUserId(userId)
 			if player ~= nil then
 				username = player.Name
@@ -237,9 +237,9 @@ local getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 			useColor = colors.meColor
 		end
 		local thisUserFrame = Instance.new("Frame")
-		local hh = Instance.new("UIListLayout")
-		hh.Parent = thisUserFrame
-		hh.FillDirection = Enum.FillDirection.Horizontal
+		local hh2 = Instance.new("UIListLayout")
+		hh2.Parent = thisUserFrame
+		hh2.FillDirection = Enum.FillDirection.Horizontal
 
 		thisUserFrame.Name = string.format("%02d-thisUserFrame-Header-%s", ii, username)
 		thisUserFrame.Size = UDim2.new(perPlayerWidthScale, 0, 1, 0)
@@ -286,9 +286,9 @@ local getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	badgeScrollingFrame.Parent = outerFrame
 	badgeScrollingFrame.Size = UDim2.new(1, 0, 1, 0)
 
-	local vv = Instance.new("UIListLayout")
-	vv.FillDirection = Enum.FillDirection.Vertical
-	vv.Parent = badgeScrollingFrame
+	local vv3 = Instance.new("UIListLayout")
+	vv3.FillDirection = Enum.FillDirection.Vertical
+	vv3.Parent = badgeScrollingFrame
 
 	----------PIVOT user=>badgeStatus to badge=> {userId:status}--------
 	local badgeAttainmentMap: { [string]: { badge: tt.badgeDescriptor, badgeStatus: { [number]: tt.badgeProgress } } } =

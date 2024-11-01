@@ -1,6 +1,6 @@
-local oldName = "Gold Pond"
-local newName = "A"
-local signsFolder = game.workspace:FindFirstChild("Signs")
+local oldName = "B"
+local newName = "3d cube"
+local signsFolder = game.Workspace:FindFirstChild("Signs")
 
 local function makeSign(part)
 	part.Name = newName

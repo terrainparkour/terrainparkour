@@ -13,7 +13,7 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
 local signProfileComponents = require(game.ReplicatedStorage.gui.signProfile.signProfileRows)
-local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
+
 local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
 --------------- FUNCTIONS -------------------------
 module.CreateSignProfileSGui = function(localPlayer: Player, data: tt.playerSignProfileData)

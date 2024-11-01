@@ -120,7 +120,7 @@ local function saveLeaderboardConfiguration()
 	end)
 end
 
-local MIN_LEADERBOARD_HEIGHT = 200 -- Set a minimum height in pixels
+local MIN_LEADERBOARD_HEIGHT = 60 -- Set a minimum height in pixels
 
 local function ensureLeaderboardOnScreen(reason: string?)
 	_annotate("ensureLeaderboardOnScreen " .. (reason or ""))
@@ -145,10 +145,23 @@ local function ensureLeaderboardOnScreen(reason: string?)
 	-- Calculate boundaries
 	local minX = 0
 	local minY = 0
-	local maxX = viewportSize.X - sizeX
-	local maxY = viewportSize.Y - sizeY
 
-	-- Clamp position within boundaries
+	-- if the screen is smaller than the desired size
+	local maxX = math.max(0, viewportSize.X - sizeX)
+	local maxY = math.max(0, viewportSize.Y - sizeY)
+
+	-- -- Clamp position within boundaries
+	-- if maxX > minX then
+	-- 	annotater.Error(
+	-- 		string.format(
+	-- 			"maxX > minX %f > %f for user %s in this situation ensureLeaderboardOnScreen: %s",
+	-- 			maxX,
+	-- 			minX,
+	-- 			Players.LocalPlayer.Name,
+	-- 			reason or ""
+	-- 		)
+	-- 	)
+	-- end
 	local newX = math.clamp(positionX, minX, maxX)
 	local newY = math.clamp(positionY, minY, maxY)
 
@@ -1074,7 +1087,7 @@ module.Init = function()
 	settings.RegisterFunctionToListenForDomain(function(item: tt.userSettingValue): any
 		return handleUserSettingChanged(item, false)
 	end, settingEnums.settingDomains.LEADERBOARD)
-	if config.isInStudio() and false then
+	if config.IsInStudio() and false then
 		task.wait(0.2)
 		module.ClientReceiveNewLeaderboardData(fakeUserStats)
 		task.wait(0.2)

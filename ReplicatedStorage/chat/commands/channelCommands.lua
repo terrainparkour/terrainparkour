@@ -171,7 +171,7 @@ module.describeSingleSign = function(speaker: Player, signId: number, channel)
 	for _, player in ipairs(PlayersService:GetPlayers()) do
 		userIdsInServer[player.UserId] = true
 	end
-	if config.isInStudio() then
+	if config.IsInStudio() then
 		userIdsInServer[enums.objects.BrouhahahaUserId] = true
 	end
 	local request: tt.postRequest = {
@@ -341,7 +341,7 @@ module.beckon = function(speaker: Player, channel): boolean
 	if beckontimes[speaker.UserId] then
 		local gap = tick() - beckontimes[speaker.UserId]
 		local limit = 180
-		if config.isInStudio() then
+		if config.IsInStudio() then
 			limit = 3
 		end
 		if gap < limit then
@@ -672,7 +672,7 @@ local runTimeInSecondsWithoutBump = 50 --todo lengthen  this
 -- runTimeInSecondsWithoutBump = 0.1
 
 module.randomRace = function(speaker: Player, channel): boolean
-	if config.isInStudio() then
+	if config.IsInStudio() then
 		runTimeInSecondsWithoutBump = 1
 	end
 	local candidateSignId1: number
@@ -695,7 +695,7 @@ module.randomRace = function(speaker: Player, channel): boolean
 
 		--if we are in test mode game, we need to do this filter also:
 		local signFolder = game.Workspace:FindFirstChild("Signs")
-		if config.isInStudio() then
+		if config.IsInStudio() then
 			local existingSignIdChoices = {}
 			for _, signId in ipairs(signIdChoices) do
 				local sn = tpUtil.signId2signName(signId)
@@ -749,7 +749,7 @@ module.randomRace = function(speaker: Player, channel): boolean
 		for _, player in ipairs(PlayersService:GetPlayers()) do
 			table.insert(userIdsInServer, player.UserId)
 		end
-		if config.isInStudio then
+		if config.IsInStudio then
 			table.insert(userIdsInServer, enums.objects.BrouhahahaUserId)
 		end
 

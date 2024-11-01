@@ -9,6 +9,7 @@ local notify = require(game.ReplicatedStorage.notify)
 local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local mt = require(game.ServerScriptService.EphemeralMarathons.ephemeralMarathonTypes)
 local PlayerService = game:GetService("Players")
+local colors = require(game.ReplicatedStorage.util.colors)
 
 local module = {}
 
@@ -26,6 +27,7 @@ local integrateRun = function(run: mt.lbUpdateFromEphemeralMarathonRun): mt.emRu
 		kind = "",
 		raceName = "",
 		yourText = "",
+		yourColor = colors.defaultGrey,
 		runEntries = {},
 		afterRunData = {},
 		username = "Username",

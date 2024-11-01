@@ -10,11 +10,9 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local PlayersService = game:GetService("Players")
-local playerData2 = require(game.ServerScriptService.playerData2)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local rdb = require(game.ServerScriptService.rdb)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
-local config = require(game.ReplicatedStorage.config)
 local serverUtil = require(game.ServerScriptService.serverUtil)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local remotes = require(game.ReplicatedStorage.util.remotes)
@@ -98,29 +96,48 @@ local dynamicRunFrom = function(
 			targetSignIds = textUtil.stringJoin(",", targetSignIdsString),
 		},
 	}
-	local res: tt.dynamicRunFromData = rdb.MakePostRequest(request)
+	local res = rdb.MakePostRequest(request)
 
 	if res == nil then
 		return nil
 	end
 
+	local correctRes: tt.dynamicRunFromData = {
+		kind = res.kind,
+		fromSignName = res.fromSignName,
+		frames = {},
+	}
+
 	--this has string keys on the wire. how to generally make them show up as number, so types match?
 	for k, frame: tt.DynamicRunFrame in ipairs(res.frames) do
-		frame.targetSignId = tonumber(frame.targetSignId)
-		if frame.myplace ~= nil then
-			frame.myplace.place = tonumber(frame.myplace.place)
-			frame.myplace.userId = tonumber(frame.myplace.userId)
-			frame.myplace.timeMs = tonumber(frame.myplace.timeMs)
+		local newFrame: tt.DynamicRunFrame = {
+			targetSignId = tonumber(frame.targetSignId),
+			targetSignName = frame.targetSignName,
+			places = {},
+			myPriorPlace = nil,
+			myfound = frame.myfound,
+		}
+		if frame.myPriorPlace then
+			newFrame.myPriorPlace = {
+				place = tonumber(frame.myPriorPlace.place),
+				userId = tonumber(frame.myPriorPlace.userId),
+				timeMs = tonumber(frame.myPriorPlace.timeMs),
+			}
 		end
+
 		for place, p in pairs(frame.places) do
-			p.place = tonumber(p.place)
-			p.timeMs = tonumber(p.timeMs)
-			p.userId = tonumber(p.userId)
-			frame.places[tonumber(place)] = p
+			local thePlace: tt.DynamicPlace = {
+				place = tonumber(p.place),
+				username = p.username,
+				userId = tonumber(p.userId),
+				timeMs = tonumber(p.timeMs),
+			}
+			newFrame.places[tonumber(place)] = thePlace
 		end
+		table.insert(correctRes.frames, newFrame)
 	end
 
-	return res
+	return correctRes
 end
 
 local function dynamicControlServer(player: Player, input: tt.dynamicRunningControlType)
@@ -142,7 +159,7 @@ local function dynamicControlServer(player: Player, input: tt.dynamicRunningCont
 			local sentSignIds: { [number]: boolean } = {}
 			_annotate("starting dynamic run for: " .. tostring(player.Name .. tostring(input.fromSignId)))
 			while true do
-				-- _annotate("looping sending")
+				_annotate("looping sending")
 				if activeLoopMarkers[userId] ~= input.fromSignId then
 					_annotate("breaking sending dyanmic info from server.")
 					break
@@ -166,10 +183,12 @@ local function dynamicControlServer(player: Player, input: tt.dynamicRunningCont
 					if signId == input.fromSignId then
 						continue
 					end
+					local signName = tpUtil.signId2signName(signId)
 					if sentSignIds[signId] then
-						-- _annotate("sign already sent " .. tostring(signId))
+						_annotate("sign already sent " .. tostring(signName))
 						continue
 					end
+					_annotate("preparing data on sign " .. tostring(signName))
 					table.insert(todoSignIds, signId)
 					sentSignIds[signId] = true
 				end
@@ -181,13 +200,20 @@ local function dynamicControlServer(player: Player, input: tt.dynamicRunningCont
 						continue
 					end
 					--send frames out.
-					local player = PlayersService:GetPlayerByUserId(userId)
+					local oPlayer = PlayersService:GetPlayerByUserId(userId)
+					if oPlayer == nil then
+						_annotate("player left during dynamic sending" .. tostring(userId))
+						break
+					end
+					print(dynamicRunFromDataFrames)
 					local s, e = pcall(function()
 						_annotate("fire frames to client.")
-						dynamicRunningEvent:FireClient(player, dynamicRunFromDataFrames)
+						dynamicRunningEvent:FireClient(oPlayer, dynamicRunFromDataFrames)
 					end)
 					if not s then
-						_annotate("player left during dynamic sending" .. tostring(userId))
+						_annotate(
+							string.format("player left during dynamic sending, %s ,%s", tostring(userId), tostring(e))
+						)
 						break
 					end
 				else

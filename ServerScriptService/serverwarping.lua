@@ -317,24 +317,24 @@ module.Init = function()
 			local pos: Vector3 | nil = tpUtil.signId2Position(request.signId)
 			if not pos then
 				_annotate("no POS?" .. tostring(request.signId))
-				return { didWarp = false }
+				return { didWarp = false, reason = "no POS" }
 			end
 
 			local sign: BasePart | nil = tpUtil.signId2Sign(request.signId)
 			if not sign then
 				_annotate("no SIGN?" .. tostring(request.signId))
-				return { didWarp = false }
+				return { didWarp = false, reason = "no SIGN" }
 			end
 
 			local securityPass = CheckWarpingSecurityForPlayerAndSign(player, request.signId)
 			if not securityPass then
 				annotater.Error(string.format("security pass failed %s %d", tostring(player.Name), request.signId))
-				return { didWarp = false }
+				return { didWarp = false, reason = "security pass failed" }
 			end
 
 			local innerWarpRes = ServerDoWarpToPosition(player, pos, true, sign)
 			if not innerWarpRes then
-				return { didWarp = false }
+				return { didWarp = false, reason = "inner warp failed" }
 			end
 
 			_annotate(
@@ -344,7 +344,7 @@ module.Init = function()
 					tostring(innerWarpRes)
 				)
 			)
-			return { didWarp = true }
+			return { didWarp = true, reason = "all seems okay" }
 		elseif request.kind == "position" then
 			local res = ServerDoWarpToPosition(player, request.position, false)
 			_annotate(
@@ -354,10 +354,10 @@ module.Init = function()
 					tostring(res)
 				)
 			)
-			return res
+			return { didWarp = res, reason = "returning serverWarp results" }
 		else
 			warn("unknown kind of warp request: " .. tostring(request.kind))
-			return false
+			return { didWarp = false, reason = "unknown kind of warp request" }
 		end
 	end
 	_annotate("init done")

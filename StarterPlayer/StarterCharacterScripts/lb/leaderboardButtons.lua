@@ -87,7 +87,7 @@ module.initActionButtons = function(lbOuterFrame: Frame)
 				false,
 				true,
 				false,
-				UDim2.new(0.5, 0, 0.5, 0)
+				UDim2.new(0.5, 0, 0, 400)
 			)
 			local outerFrame = theSgui:FindFirstChildOfClass("Frame")
 			if outerFrame then

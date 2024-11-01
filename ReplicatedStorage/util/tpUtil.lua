@@ -151,7 +151,7 @@ end
 
 module.signId2signName = function(signId: number?): string
 	if not signId then
-		annotater.Error("no signId.")
+		annotater.Error("signId is null?")
 		return ""
 	end
 	local res = enums.signId2name[signId]

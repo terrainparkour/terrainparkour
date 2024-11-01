@@ -554,14 +554,18 @@ local function createWRProgressionScrollingFrameSpec(
 
 	local scrollingFrameSpec: wt.scrollingFrameTileSpec = {
 		name = "WRProgressionScrollingFrame",
-		type = "scrollingFrame",
+		type = "scrollingFrameTileSpec",
 		headerRow = headerRowSpec,
 		dataRows = dataRowSpecs,
+		stickyRows = {},
 		rowHeight = rowHeightPixels,
+		howManyRowsToShow = 12,
 	}
 
 	return scrollingFrameSpec
 end
+
+-------------------- THE ACTUAL DRAWING FUNCTION -----------------------------
 
 module.CreateWRHistoryProgressionGui = function(data: tt.WRProgressionEndpointResponse)
 	local times = {}
@@ -688,6 +692,8 @@ module.CreateWRHistoryProgressionGui = function(data: tt.WRProgressionEndpointRe
 	local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 	wrHistoryScreenGui.Parent = playerGui
 end
+
+-------------------- SETTINGS MANAGEMENT -----------------------------
 
 local function handleUserSettingChanged(item: tt.userSettingValue)
 	-- if item.name == settingEnums.settingDefinitions.HIGHLIGHT_ON_RUN_COMPLETE_WARP.name then

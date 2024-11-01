@@ -86,6 +86,7 @@ end
 module.GetPlayerPosition = function(): (Vector3, Vector3, number)
 	local character = game.Players.LocalPlayer.Character
 	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	-- TODO this line 90 can error (wheN? if player leaves? .309+)
 	local lookVector = rootPart.CFrame.LookVector
 	return rootPart.Position, lookVector, character:FindFirstChild("Humanoid").WalkSpeed
 end

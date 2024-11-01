@@ -17,6 +17,7 @@ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local rdb = require(game.ServerScriptService.rdb)
 local banning = require(game.ServerScriptService.banning)
 local notify = require(game.ReplicatedStorage.notify)
+local tpPlacementLogic = require(game.ReplicatedStorage.product.tpPlacementLogic)
 
 local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
@@ -31,13 +32,6 @@ local ServerEventBindableEvent = remotes.getBindableEvent("ServerEventBindableEv
 local NEW = 1
 local BETTER = 2
 local WORSE = 3
-
-local function setYourText(val: string, existingYourText: string, marker: string)
-	if existingYourText ~= "" and existingYourText ~= nil then
-		warn("resetting yt from '" .. existingYourText .. "' to '" .. val .. "'" .. " \tMarker: " .. marker)
-	end
-	return val
-end
 
 -- calculate a ton of text strings and send them eventually to a user localscript for display there.
 -- TODO 2022 3 19 massive refactor to make this dumb and dependent on python only.
@@ -80,223 +74,57 @@ module.showBestTimes = function(
 			pastRun = br
 		end
 	end
-	local yourText = "disabling yourtext setup temporarily"
+
 	if userFinishedRunResponse.runUserJustDid then
-		yourText = userFinishedRunResponse.runUserJustDid.yourText
-			.. " although tehre was a run we still dont calculate it."
+		if false and true then
+			local fakePlaces: { tt.DynamicPlace } = {}
+			for _, thePriorBestRun: tt.jsonBestRun in ipairs(userFinishedRunResponse.raceBestRuns) do
+				local fakePlace: tt.DynamicPlace = {
+					place = thePriorBestRun.place,
+					timeMs = thePriorBestRun.runMilliseconds,
+					userId = thePriorBestRun.userId,
+					username = thePriorBestRun.username,
+				}
+				-- the interleaving method we are about to use was
+				-- designed for dynamc running where the carryalong "your current run" stuff
+				-- wasn't saved yet (since the user is playing at the time deciding where to go!)
+				-- so to use it here, where actually the run is already over, and the user's past is in history,
+				-- how can we safely make it work?
+
+				-- ugh we can't just nuke it because they may have had even more prior runs before that.
+				if thePriorBestRun.runAgeSeconds < 1 then
+					continue
+				end
+				table.insert(fakePlaces, fakePlace)
+			end
+			local myPriorPlace: tt.DynamicPlace = {
+				place = userFinishedRunResponse.runUserJustDid.place,
+				username = userFinishedRunResponse.runUserJustDid.username,
+				userId = userFinishedRunResponse.runUserJustDid.userId,
+				timeMs = userFinishedRunResponse.runUserJustDid.runMilliseconds,
+			}
+
+			local fakeDynamics: tt.DynamicRunFrame = {
+				places = fakePlaces,
+				myPriorPlace = myPriorPlace,
+				myfound = true,
+				targetSignId = userFinishedRunResponse.raceInfo.endSignId,
+				targetSignName = endSignName,
+			}
+			local placementAmongRuns = tpPlacementLogic.GetPlacementAmongRuns(
+				fakeDynamics,
+				racerUserId,
+				userFinishedRunResponse.runUserJustDid.runMilliseconds
+			)
+
+			userFinishedRunResponse.runUserJustDid.place = placementAmongRuns.newPlace
+			local yourTextActual, yourColor = tpPlacementLogic.InterleavedToText(placementAmongRuns)
+
+			userFinishedRunResponse.runUserJustDid.yourText = yourTextActual
+			userFinishedRunResponse.runUserJustDid.yourColor = yourColor
+		end
 	end
-	yourText = "-"
-	--now we have set the user's yourPlace representing thei
-	-- if thisRun then
-	-- 	local placeText = tpUtil.getPlaceText(thisRun.place)
 
-	-- 	local otherText = "" --same from other's POV
-	-- 	local otherKind = ""
-	-- 	local knockoutText = "" --description of knockout "X was knocked out of top 10"
-
-	-- 	--TODO fix
-	-- 	-- if otherRunnerCount == 0 then
-	-- 	-- 	grantBadge.GrantBadge(racerUserId, badgeEnums.badges.NewRace)
-	-- 	-- end
-
-	-- 	--- if this is a contextual display (i.e. we show a run which just happened to the user.)
-
-	-- 	if userFinishedRunResponse.raceHistoryData.raceRunCount == 1 then
-	-- 		yourText = setYourText("Found a new race", yourText, "a")
-	-- 		otherText = string.format("%s ran the race %s for the first time", racerUsername, raceName)
-	-- 		otherKind = "first time WR"
-	-- 	else
-	-- 		if userFinishedRunResponse.runUserJustDid.mode == NEW then
-	-- 			if thisRun.place == 1 then --you got WR
-	-- 				yourText = setYourText("First time WR!", yourText, "b")
-	-- 				otherText = racerUsername .. " got a WR on his or her first run of " .. raceName
-	-- 				otherKind = "first time WR"
-	-- 			elseif thisRun.place > 0 and thisRun.place < 11 then
-	-- 				if thisRun.place == 1 then
-	-- 					yourText = setYourText("You got a World Record!", yourText, "c")
-	-- 					otherText = string.format("%s got a WR in %s!", racerUsername, raceName)
-	-- 				else
-	-- 					yourText = setYourText("You finished " .. placeText .. "! Very nice!", yourText, "d")
-	-- 					otherText = string.format("%s got %s in %s!", racerUsername, placeText, raceName)
-	-- 				end
-
-	-- 				otherKind = "got place"
-	-- 			end
-	-- 			if thisRun.place > 10 or thisRun.place == 0 then
-	-- 				local yt = "You didn't finish in the top 10. You missed tenth place by "
-	-- 					.. tpUtil.fmt(thisRun.runMilliseconds - legitEntries[10].runMilliseconds)
-	-- 					.. "! Don't give up!"
-	-- 				yourText = setYourText(yt, yourText, "e")
-	-- 			end
-	-- 		end
-	-- 	end
-
-	-- 	if userFinishedRunResponse.runUserJustDid.mode == BETTER then
-	-- 		local improvementMilliseconds = pastRun.runMilliseconds - thisRun.runMilliseconds
-	-- 		if thisRun.place == 1 then
-	-- 			if pastRun.virtualPlace == 1 then --had WR before
-	-- 				yourText = setYourText(
-	-- 					"Better world record! Your time was " .. tpUtil.fmt(improvementMilliseconds) .. " better!",
-	-- 					yourText,
-	-- 					"f"
-	-- 				)
-	-- 				otherText = racerUsername
-	-- 					.. " improved their world record in the race from "
-	-- 					.. raceName
-	-- 					.. " by "
-	-- 					.. tpUtil.fmt(improvementMilliseconds)
-	-- 				otherKind = "improved WR"
-	-- 			else --didn't have WR before but had run beforex
-	-- 				local yt = "World record! Amazing! Your time was "
-	-- 					.. tpUtil.fmt(improvementMilliseconds)
-	-- 					.. " faster, improving your prior "
-	-- 					.. tpUtil.getCardinalEmoji(pastRun.virtualPlace - 1)
-	-- 					.. ", and you took the WR from "
-	-- 					.. legitEntries[2].username
-	-- 					.. "!"
-	-- 				yourText = setYourText(yt, yourText, "g")
-
-	-- 				otherText = racerUsername
-	-- 					.. " took the world record away from "
-	-- 					.. legitEntries[2].username
-	-- 					.. " in the race from "
-	-- 					.. raceName
-	-- 					.. "! (by "
-	-- 					.. tpUtil.fmt(improvementMilliseconds)
-	-- 					.. ")"
-	-- 				otherKind = "took WR"
-	-- 			end
-	-- 		end
-	-- 		if thisRun.place < 11 and thisRun.place > 1 and pastRun ~= nil then
-	-- 			--finished in a place for the first time
-	-- 			if thisRun.place == pastRun.virtualPlace then --same place, slight improvement
-	-- 				local yt = "You got another "
-	-- 					.. tpUtil.getCardinalEmoji(thisRun.place)
-	-- 					.. ", and improved your time by "
-	-- 					.. tpUtil.fmt(pastRun.runMilliseconds - thisRun.runMilliseconds)
-	-- 				yourText = setYourText(yt, yourText, "h")
-
-	-- 				otherText = racerUsername
-	-- 					.. " improved their "
-	-- 					.. tpUtil.getCardinalEmoji(thisRun.place)
-	-- 					.. " time in the race from "
-	-- 					.. raceName
-	-- 					.. " by "
-	-- 					.. tpUtil.fmt(pastRun.runMilliseconds - thisRun.runMilliseconds)
-	-- 				otherKind = "improved time"
-	-- 			end
-	-- 			if thisRun.place < pastRun.virtualPlace then --beat past place
-	-- 				local yt = "You finished in "
-	-- 					.. tpUtil.getCardinalEmoji(thisRun.place)
-	-- 					.. ", better than your previous best of "
-	-- 					.. tpUtil.getCardinalEmoji(pastRun.virtualPlace)
-	-- 					.. "! Your time improved by "
-	-- 					.. tpUtil.fmt(pastRun.runMilliseconds - thisRun.runMilliseconds)
-	-- 					.. "!"
-	-- 				yourText = setYourText(yt, yourText, "i")
-	-- 				otherText = racerUsername
-	-- 					.. " got "
-	-- 					.. tpUtil.getCardinalEmoji(thisRun.place)
-	-- 					.. " place in the race from "
-	-- 					.. raceName
-	-- 					.. "!  (previously "
-	-- 					.. tpUtil.getCardinalEmoji(pastRun.virtualPlace)
-	-- 					.. ")"
-	-- 				otherKind = "improved place"
-	-- 			end
-	-- 		end
-	-- 		if thisRun.place > 10 or thisRun.place == 0 then
-	-- 			local yt = "You didn't finish in the top 10. You missed tenth place by "
-	-- 				.. tpUtil.fmt(thisRun.runMilliseconds - legitEntries[10].runMilliseconds)
-	-- 				.. "! Don't give up!"
-	-- 			yourText = setYourText(yt, yourText, "j")
-	-- 		end
-	-- 	end
-
-	-- 	if userFinishedRunResponse.runUserJustDid.mode == WORSE then
-	-- 		if (thisRun.place < 11 and thisRun.place > 1) or (thisRun.virtualPlace > 0) then
-	-- 			if thisRun.virtualPlace == nil then
-	-- 				warn("weirdly nil virtualrun.")
-	-- 			else
-	-- 				-- same vp == place but time worse.
-	-- 				if thisRun.virtualPlace == pastRun.place and thisRun.place < 11 and thisRun.place > 1 then
-	-- 					local yt = "You got another "
-	-- 						.. tpUtil.getCardinalEmoji(thisRun.virtualPlace)
-	-- 						.. ", with a worse time by "
-	-- 						.. tpUtil.fmt(thisRun.runMilliseconds - pastRun.runMilliseconds)
-	-- 					yourText = setYourText(yt, yourText, "k")
-	-- 					-- vp is worse than p, still top 10
-	-- 				elseif thisRun.virtualPlace < 11 then --you were 2-10th
-	-- 					local yt = "You finished in "
-	-- 						.. tpUtil.getCardinalEmoji(thisRun.virtualPlace)
-	-- 						.. " which didn't beat your previous best of "
-	-- 						.. tpUtil.getCardinalEmoji(pastRun.place)
-	-- 						.. ". Your time was worse by "
-	-- 						.. tpUtil.fmt(thisRun.runMilliseconds - pastRun.runMilliseconds)
-	-- 						.. "."
-	-- 					yourText = setYourText(yt, yourText, "l")
-	-- 				elseif thisRun.virtualPlace > 10 or thisRun.virtualPlace == 0 then
-	-- 					local yt = "You didn't finish in the top 10. You missed tenth place by "
-	-- 						.. tpUtil.fmt(thisRun.runMilliseconds - legitEntries[10].runMilliseconds)
-	-- 						.. "and you missed beating your best time by "
-	-- 						.. tpUtil.fmt(thisRun.runMilliseconds - pastRun.runMilliseconds)
-	-- 						.. "! Don't give up!"
-	-- 					yourText = setYourText(yt, yourText, "m")
-	-- 				end
-	-- 			end
-	-- 		end
-	-- 	end
-
-	-- 	--todo also think about specific text for the recipient. i.e. "YOU were knocked out by X".
-	-- 	if #legitEntries >= 11 then
-	-- 		knockoutText = string.format("%s was knocked out of the top 10 on %s!", legitEntries[11].username, raceName)
-	-- 	end
-
-	-- 	if otherText ~= "" then
-	-- 		for _, op in ipairs(PlayersService:GetPlayers()) do
-	-- 			if player.UserId == op.UserId then
-	-- 				continue
-	-- 			end
-
-	-- 			--TODO inline import this, not really valid at top due to conflicts.
-
-	-- 			local useWarpToSignId = (
-	-- 				startSignId
-	-- 				and playerData2.HasUserFoundSign(op.UserId, startSignId)
-	-- 				and not enums.SignIdIsExcludedFromStart[startSignId]
-	-- 				and startSignId
-	-- 			) or 0
-
-	-- 			local useHighlightTargetSignId = endSignId
-	-- 			if
-	-- 				enums.SignIdIsExcludedFromStart[endSignId] or not playerData2.HasUserFoundSign(op.UserId, endSignId)
-	-- 			then
-	-- 				useHighlightTargetSignId = nil
-	-- 			end
-	-- 			if knockoutText ~= "" then
-	-- 				notify.notifyPlayerAboutActionResult(op, {
-	-- 					userId = player.UserId,
-	-- 					text = knockoutText,
-	-- 					kind = "knockout notification",
-	-- 					warpToSignId = useWarpToSignId,
-	-- 				})
-	-- 			end
-
-	-- 			--notify otherplayer OP about user's race to startSignId
-	-- 			notify.notifyPlayerAboutActionResult(op, {
-	-- 				userId = player.UserId,
-	-- 				text = otherText,
-	-- 				kind = otherKind,
-	-- 				warpToSignId = useWarpToSignId,
-	-- 				highlightSignId = useHighlightTargetSignId,
-	-- 			})
-	-- 		end
-	-- 	end
-	-- end
-	if userFinishedRunResponse.runUserJustDid then
-		userFinishedRunResponse.runUserJustDid.kind = "race results"
-		userFinishedRunResponse.runUserJustDid.yourText = yourText
-	end
 	return userFinishedRunResponse
 end
 

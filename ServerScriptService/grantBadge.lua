@@ -38,7 +38,7 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 			string.format("GrantBadge to user: %s but user ownership status is nil. %s", username, badge.name),
 			userId
 		)
-		if config.isInStudio() then
+		if config.IsInStudio() then
 			_annotate("in studio, has is nil, why are we bailing" .. badge.name)
 		else
 			warn("failed to grant badge " .. tostring(userId) .. "  " .. badge.name)

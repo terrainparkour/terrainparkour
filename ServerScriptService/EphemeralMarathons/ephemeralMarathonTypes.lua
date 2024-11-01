@@ -34,6 +34,7 @@ export type emRunResults = {
 	kind: string,
 	raceName: string,
 	yourText: string,
+	yourColor: Color3,
 	-- personalRaceHistoryText: string,
 	runEntries: { ephemeralMarathonBestRun },
 	afterRunData: {},

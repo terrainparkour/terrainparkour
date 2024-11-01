@@ -14,6 +14,7 @@ local settings = require(game.ReplicatedStorage.settings)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 local tt = require(game.ReplicatedStorage.types.gametypes)
+local wt = require(game.StarterPlayer.StarterPlayerScripts.guis.windowsTypes)
 local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
 
 local PlayersService = game:GetService("Players")
@@ -36,6 +37,67 @@ local theLastGui: ScreenGui? = nil
 local theLastGuiPosition: UDim2? = nil
 
 local module = {}
+
+------------------ COLUMN SPECS -----------------------------
+
+local columnSpecs: { wt.tileSpec } = {
+	{
+		name = "Place",
+		order = 1,
+		width = UDim.new(1, 0),
+		spec = {
+			type = "text",
+			text = "#",
+			isMonospaced = false,
+			isBold = false,
+			backgroundColor = colors.blueDone,
+			textColor = colors.black,
+			textXAlignment = Enum.TextXAlignment.Center,
+		},
+	},
+	{
+		name = "Portrait",
+		order = 2,
+		width = UDim.new(0, generalRowHeight),
+		spec = {
+			type = "portrait",
+			doPopup = true,
+			userId = 1,
+			backgroundColor = colors.blueDone,
+			width = UDim.new(0, generalRowHeight),
+		},
+	},
+	{
+		name = "Username",
+		order = 3,
+		width = UDim.new(8, 0),
+		spec = {
+			type = "text",
+			text = "Username",
+			isMonospaced = false,
+			isBold = false,
+			backgroundColor = colors.blueDone,
+			textColor = colors.black,
+			textXAlignment = Enum.TextXAlignment.Center,
+		},
+	},
+	{
+		name = "Time",
+		order = 4,
+		width = UDim.new(5, 0),
+		spec = {
+			type = "text",
+			text = "Time",
+			isMonospaced = false,
+			isBold = false,
+			backgroundColor = colors.blueDone,
+			textColor = colors.black,
+			textXAlignment = Enum.TextXAlignment.Center,
+		},
+	},
+}
+
+------------- GUI HELPERS -----------------------------
 
 local function formatRunAgeTooltip(runAgeSeconds: number): string
 	local formattedRunAge, _ageDescriptor = tpUtil.formatDateGap(runAgeSeconds)
@@ -99,8 +161,10 @@ local function requestReverseResults(startSignId: number, endSignId: number)
 	end
 end
 
-local function createInverseTop10Button(options: tt.userFinishedRunResponse): windows.tileSpec
-	local x: windows.tileSpec = {
+------------------ BUTTONS, ROWS ETC spec makers. ---------
+
+local function createInverseTop10Button(options: tt.userFinishedRunResponse): wt.tileSpec
+	local x: wt.tileSpec = {
 		name = "InverseTop10",
 		order = 2,
 		width = UDim.new(1, 0),
@@ -120,8 +184,8 @@ local function createInverseTop10Button(options: tt.userFinishedRunResponse): wi
 	return x
 end
 
-local function createWRProgressionButton(options: tt.userFinishedRunResponse): windows.tileSpec
-	local x: windows.tileSpec = {
+local function createWRProgressionButton(options: tt.userFinishedRunResponse): wt.tileSpec
+	local x: wt.tileSpec = {
 		name = "WRProgression",
 		order = 1,
 		width = UDim.new(1, 0),
@@ -141,8 +205,8 @@ local function createWRProgressionButton(options: tt.userFinishedRunResponse): w
 	return x
 end
 
-local function createPinRaceButton(options: tt.userFinishedRunResponse): windows.tileSpec
-	local x: windows.tileSpec = {
+local function createPinRaceButton(options: tt.userFinishedRunResponse): wt.tileSpec
+	local x: wt.tileSpec = {
 		name = "PinRace",
 		order = 1,
 		width = UDim.new(1, 0),
@@ -162,11 +226,11 @@ local function createPinRaceButton(options: tt.userFinishedRunResponse): windows
 	return x
 end
 
-local function createWarpButton(userFinishedRunResponse: tt.userFinishedRunResponse): windows.tileSpec
+local function createWarpButton(userFinishedRunResponse: tt.userFinishedRunResponse): wt.tileSpec
 	local canWarp = userFinishedRunResponse.raceInfo.startSignId and not userFinishedRunResponse.isMarathon
 	local startSign = canWarp and tpUtil.signId2Sign(userFinishedRunResponse.raceInfo.startSignId) or nil
 	local canHighlight = startSign and tpUtil.SignCanBeHighlighted(startSign)
-	local buttonSpec: windows.buttonTileSpec = {
+	local buttonSpec: wt.buttonTileSpec = {
 		type = "button",
 		text = canHighlight
 				and string.format("Warp to %s", enums.signId2name[userFinishedRunResponse.raceInfo.startSignId])
@@ -187,7 +251,7 @@ local function createWarpButton(userFinishedRunResponse: tt.userFinishedRunRespo
 		end,
 	}
 
-	local res: windows.tileSpec = {
+	local res: wt.tileSpec = {
 		name = "Warp",
 		order = 3,
 		width = UDim.new(1, 0),
@@ -196,10 +260,10 @@ local function createWarpButton(userFinishedRunResponse: tt.userFinishedRunRespo
 	return res
 end
 
-local function createFavoriteRaceButton(options: tt.userFinishedRunResponse): windows.tileSpec
+local function createFavoriteRaceButton(options: tt.userFinishedRunResponse): wt.tileSpec
 	local isFavorite = options.isFavoriteRace
 	local useColor = isFavorite and colors.subtlePink or colors.defaultGrey
-	local x: windows.tileSpec = {
+	local x: wt.tileSpec = {
 		name = "favoriteRaceButton",
 		order = 1,
 		width = UDim.new(1, 0),
@@ -223,7 +287,7 @@ local function createFavoriteRaceButton(options: tt.userFinishedRunResponse): wi
 end
 
 -- we fork our own close button since we have to also remember the lastGuiPosition.
-local closeButtonTextButtonTileSpec: windows.buttonTileSpec = {
+local closeButtonTextButtonTileSpec: wt.buttonTileSpec = {
 	type = "button",
 	text = "Close",
 	onClick = function(_: InputObject, theButton: TextButton)
@@ -256,15 +320,15 @@ local closeButtonTextButtonTileSpec: windows.buttonTileSpec = {
 	textXAlignment = Enum.TextXAlignment.Center,
 }
 
-local closeButtonLeavingroom: tileSpec = {
+local closeButtonLeavingroom: wt.tileSpec = {
 	name = "Close",
 	order = 1,
 	width = UDim.new(1, -15),
 	spec = closeButtonTextButtonTileSpec,
 }
 
-local function createLastRow(): windows.rowSpec
-	local lastRow: windows.rowSpec = {
+local function createLastRow(): wt.rowSpec
+	local lastRow: wt.rowSpec = {
 		name = "ButtonRow",
 		order = 9000, -- Ensure it's at the bottom
 		height = UDim.new(0, 30),
@@ -274,13 +338,13 @@ local function createLastRow(): windows.rowSpec
 	return lastRow
 end
 
-local function createDataRow(userFinishedRunResponse: tt.userFinishedRunResponse): windows.rowSpec
-	local res: { windows.tileSpec } = {}
+local function createDataRow(userFinishedRunResponse: tt.userFinishedRunResponse): wt.rowSpec
+	local res: { wt.tileSpec } = {}
 	local meRunsText = string.format("You've run %d times", userFinishedRunResponse.userRaceStats.userRaceRunCount)
 	if userFinishedRunResponse.userRaceStats.userRaceRunCount == 1 then
 		meRunsText = "You've run once"
 	end
-	local mySpec: windows.textTileSpec = {
+	local mySpec: wt.textTileSpec = {
 		type = "text",
 		text = meRunsText,
 		isMonospaced = false,
@@ -289,7 +353,7 @@ local function createDataRow(userFinishedRunResponse: tt.userFinishedRunResponse
 		textColor = colors.black,
 		textXAlignment = Enum.TextXAlignment.Center,
 	}
-	local meTile: windows.tileSpec = {
+	local meTile: wt.tileSpec = {
 		name = "meRunCount",
 		order = 1,
 		width = UDim.new(0.25, 0),
@@ -302,7 +366,7 @@ local function createDataRow(userFinishedRunResponse: tt.userFinishedRunResponse
 		racersText = "1 racer"
 	end
 
-	local racersSpec: windows.textTileSpec = {
+	local racersSpec: wt.textTileSpec = {
 		type = "text",
 		text = racersText,
 		isMonospaced = false,
@@ -312,7 +376,7 @@ local function createDataRow(userFinishedRunResponse: tt.userFinishedRunResponse
 		textXAlignment = Enum.TextXAlignment.Center,
 	}
 
-	local racersTile: windows.tileSpec = {
+	local racersTile: wt.tileSpec = {
 		name = "Racers",
 		order = 3,
 		width = UDim.new(0.1, 0),
@@ -330,7 +394,7 @@ local function createDataRow(userFinishedRunResponse: tt.userFinishedRunResponse
 		raceLevelText = "competitive"
 	end
 
-	local compSpec: windows.textTileSpec = {
+	local compSpec: wt.textTileSpec = {
 		type = "text",
 		text = raceLevelText,
 		isMonospaced = false,
@@ -340,7 +404,7 @@ local function createDataRow(userFinishedRunResponse: tt.userFinishedRunResponse
 		textXAlignment = Enum.TextXAlignment.Center,
 	}
 
-	local compTile: windows.tileSpec = {
+	local compTile: wt.tileSpec = {
 		name = "CompetitionLevel",
 		order = 2,
 		width = UDim.new(0.19, 0),
@@ -349,7 +413,7 @@ local function createDataRow(userFinishedRunResponse: tt.userFinishedRunResponse
 	table.insert(res, compTile)
 
 	local otherRunsText = string.format("%d runs total", userFinishedRunResponse.userRaceStats.totalRunsOfThisRaceCount)
-	local otherRunsSpec: windows.textTileSpec = {
+	local otherRunsSpec: wt.textTileSpec = {
 		type = "text",
 		text = otherRunsText,
 		isMonospaced = false,
@@ -358,7 +422,7 @@ local function createDataRow(userFinishedRunResponse: tt.userFinishedRunResponse
 		textColor = colors.black,
 		textXAlignment = Enum.TextXAlignment.Center,
 	}
-	local otherRunsTile: windows.tileSpec = {
+	local otherRunsTile: wt.tileSpec = {
 		name = "OtherRuns",
 		order = 4,
 		width = UDim.new(0.1, 0),
@@ -367,7 +431,7 @@ local function createDataRow(userFinishedRunResponse: tt.userFinishedRunResponse
 	table.insert(res, otherRunsTile)
 
 	local distText = string.format("%0.1fd", userFinishedRunResponse.raceInfo.distance)
-	local distSpec: windows.textTileSpec = {
+	local distSpec: wt.textTileSpec = {
 		type = "text",
 		text = distText,
 		isMonospaced = true,
@@ -377,7 +441,7 @@ local function createDataRow(userFinishedRunResponse: tt.userFinishedRunResponse
 		textXAlignment = Enum.TextXAlignment.Center,
 	}
 
-	local distTile: windows.tileSpec = {
+	local distTile: wt.tileSpec = {
 		name = "Distance",
 		order = 7,
 		width = UDim.new(0.1, 0),
@@ -390,7 +454,7 @@ local function createDataRow(userFinishedRunResponse: tt.userFinishedRunResponse
 			"%0.1fd/s",
 			userFinishedRunResponse.raceInfo.distance / userFinishedRunResponse.runUserJustDid.runMilliseconds * 1000
 		)
-		local spdSpec: windows.textTileSpec = {
+		local spdSpec: wt.textTileSpec = {
 			type = "text",
 			text = spdText,
 			isMonospaced = true,
@@ -399,16 +463,16 @@ local function createDataRow(userFinishedRunResponse: tt.userFinishedRunResponse
 			textColor = colors.black,
 			textXAlignment = Enum.TextXAlignment.Center,
 		}
-		local spdTile: windows.tileSpec = {
+		local spdTile: wt.tileSpec = {
 			name = "Speed",
 			order = 5,
-			width = UDim.new(0.1, 0),
+			width = UDim.new(0.12, 0),
 			spec = spdSpec,
 		}
 		table.insert(res, spdTile)
 	end
 
-	local row: windows.rowSpec = {
+	local row: wt.rowSpec = {
 		name = "DataRow",
 		order = 2,
 		height = UDim.new(0, 45),
@@ -418,66 +482,8 @@ local function createDataRow(userFinishedRunResponse: tt.userFinishedRunResponse
 	return row
 end
 
--- Near the top of the file, replace the existing columnSpecs with this:
-local columnSpecs: { windows.tileSpec } = {
-	{
-		name = "Place",
-		order = 1,
-		width = UDim.new(1, 0),
-		spec = {
-			type = "text",
-			text = "#",
-			isMonospaced = false,
-			isBold = false,
-			backgroundColor = colors.blueDone,
-			textColor = colors.black,
-			textXAlignment = Enum.TextXAlignment.Center,
-		},
-	},
-	{
-		name = "Portrait",
-		order = 2,
-		width = UDim.new(0, generalRowHeight),
-		spec = {
-			type = "portrait",
-			doPopup = true,
-			userId = 1,
-			backgroundColor = colors.blueDone,
-			width = UDim.new(0, generalRowHeight),
-		},
-	},
-	{
-		name = "Username",
-		order = 3,
-		width = UDim.new(8, 0),
-		spec = {
-			type = "text",
-			text = "Username",
-			isMonospaced = false,
-			isBold = false,
-			backgroundColor = colors.blueDone,
-			textColor = colors.black,
-			textXAlignment = Enum.TextXAlignment.Center,
-		},
-	},
-	{
-		name = "Time",
-		order = 4,
-		width = UDim.new(5, 0),
-		spec = {
-			type = "text",
-			text = "Time",
-			isMonospaced = false,
-			isBold = false,
-			backgroundColor = colors.blueDone,
-			textColor = colors.black,
-			textXAlignment = Enum.TextXAlignment.Center,
-		},
-	},
-}
-
-local function createJsonRunRow(jsonBestRun: tt.jsonBestRun, useColor: Color3, index: number): windows.rowSpec
-	local tileSpecs: { windows.tileSpec } = {}
+local function createJsonRunRow(jsonBestRun: tt.jsonBestRun, useColor: Color3): wt.rowSpec
+	local tileSpecs: { wt.tileSpec } = {}
 
 	for _, columnSpec in ipairs(columnSpecs) do
 		local tileSpecShell: any = {
@@ -489,7 +495,7 @@ local function createJsonRunRow(jsonBestRun: tt.jsonBestRun, useColor: Color3, i
 		if columnSpec.name == "Place" then
 			local usePlace = tostring(jsonBestRun.place)
 			if jsonBestRun.place == 0 then
-				usePlace = "x"
+				usePlace = "-"
 			end
 			tileSpecShell.spec = {
 				type = "text",
@@ -535,15 +541,15 @@ local function createJsonRunRow(jsonBestRun: tt.jsonBestRun, useColor: Color3, i
 	end
 
 	return {
-		name = "RunEntry" .. index,
+		name = string.format("RunEntry_%s", jsonBestRun.username),
 		height = UDim.new(0, generalRowHeight),
-		order = index,
+		order = jsonBestRun.runMilliseconds,
 		tileSpecs = tileSpecs,
 	}
 end
 
-local function createRelationshipRow(userFinishedRunResponse: tt.userFinishedRunResponse): windows.rowSpec
-	local tileSpecs: { windows.tileSpec } = {}
+local function createRelationshipRow(userFinishedRunResponse: tt.userFinishedRunResponse): wt.rowSpec
+	local tileSpecs: { wt.tileSpec } = {}
 
 	-- WR Progression button
 	table.insert(tileSpecs, createWRProgressionButton(userFinishedRunResponse))
@@ -556,54 +562,59 @@ local function createRelationshipRow(userFinishedRunResponse: tt.userFinishedRun
 
 	return {
 		name = "RelationshipRow",
+		order = 3,
+		height = UDim.new(0, generalRowHeight),
+		tileSpecs = tileSpecs,
+	}
+end
+
+local function createTimeRow(userFinishedRunResponse: tt.userFinishedRunResponse): wt.rowSpec
+	local tileSpecs: { wt.tileSpec } = {}
+
+	if userFinishedRunResponse.runUserJustDid then
+		-- Time display
+		table.insert(tileSpecs, {
+			name = "TimeDisplay",
+			order = 1,
+			width = UDim.new(0.5, 0),
+			spec = {
+				type = "text",
+				text = string.format("%0.3fs", userFinishedRunResponse.runUserJustDid.runMilliseconds / 1000),
+				isMonospaced = true,
+				isBold = true,
+				backgroundColor = colors.meColor,
+				textColor = colors.black,
+				textXAlignment = Enum.TextXAlignment.Center,
+			},
+		})
+		-- Your text display is actually not really calculable using the interleaving stuff from dynamic til I think about a better way to do it.
+		if false and true then
+			table.insert(tileSpecs, {
+				name = "YourTextDisplay",
+				order = 2,
+				width = UDim.new(0.5, 0),
+				spec = {
+					type = "text",
+					text = userFinishedRunResponse.runUserJustDid.yourText,
+					isMonospaced = false,
+					isBold = false,
+					backgroundColor = userFinishedRunResponse.runUserJustDid.yourColor,
+					textColor = colors.black,
+					textXAlignment = Enum.TextXAlignment.Center,
+				},
+			})
+		end
+	end
+
+	return {
+		name = "TimeRow",
 		order = 4,
 		height = UDim.new(0, generalRowHeight),
 		tileSpecs = tileSpecs,
 	}
 end
 
-local function createTimeRow(userFinishedRunResponse: tt.userFinishedRunResponse): windows.rowSpec
-	local tileSpecs: { windows.tileSpec } = {}
-
-	-- Time display
-	table.insert(tileSpecs, {
-		name = "TimeDisplay",
-		order = 1,
-		width = UDim.new(0.5, 0),
-		spec = {
-			type = "text",
-			text = string.format("%0.3fs", userFinishedRunResponse.runUserJustDid.runMilliseconds / 1000),
-			isMonospaced = true,
-			isBold = true,
-			backgroundColor = colors.meColor,
-			textColor = colors.black,
-			textXAlignment = Enum.TextXAlignment.Center,
-		},
-	})
-
-	-- Your text display
-	table.insert(tileSpecs, {
-		name = "YourTextDisplay",
-		order = 2,
-		width = UDim.new(0.1, 0),
-		spec = {
-			type = "text",
-			text = userFinishedRunResponse.runUserJustDid.yourText,
-			isMonospaced = false,
-			isBold = false,
-			backgroundColor = colors.meColor,
-			textColor = colors.black,
-			textXAlignment = Enum.TextXAlignment.Center,
-		},
-	})
-
-	return {
-		name = "TimeRow",
-		order = 3,
-		height = UDim.new(0, generalRowHeight),
-		tileSpecs = tileSpecs,
-	}
-end
+------------- The actual drawing function -----------------------------
 
 module.DrawRunResultsGui = function(userFinishedRunResponse: tt.userFinishedRunResponse)
 	if not globalSettingShowRunResultPopups then
@@ -611,7 +622,7 @@ module.DrawRunResultsGui = function(userFinishedRunResponse: tt.userFinishedRunR
 		return
 	end
 
-	local guiSpec: windows.guiSpec = {
+	local guiSpec: wt.guiSpec = {
 		name = "RaceResult",
 		rowSpecs = {},
 	}
@@ -630,9 +641,9 @@ module.DrawRunResultsGui = function(userFinishedRunResponse: tt.userFinishedRunR
 					text = userFinishedRunResponse.raceInfo.raceName,
 					backgroundColor = colors.signColor,
 					textColor = colors.white,
-					isMonospaced = false,
 					isBold = true,
 					textXAlignment = Enum.TextXAlignment.Center,
+					includeTextSizeConstraint = false,
 				},
 			},
 		},
@@ -643,13 +654,16 @@ module.DrawRunResultsGui = function(userFinishedRunResponse: tt.userFinishedRunR
 		table.insert(guiSpec.rowSpecs, timeRow)
 	end
 
+	local relationshipRow = createRelationshipRow(userFinishedRunResponse)
+	table.insert(guiSpec.rowSpecs, relationshipRow)
+
 	local dataRow = createDataRow(userFinishedRunResponse)
 	table.insert(guiSpec.rowSpecs, dataRow)
 
 	-- Create a scrolling frame for user entries
-	local scrollingFrameSpec: windows.scrollingFrameTileSpec = {
+	local scrollingFrameSpec: wt.scrollingFrameTileSpec = {
 		name = "UserEntriesScrollingFrame",
-		type = "scrollingFrame",
+		type = "scrollingFrameTileSpec",
 		headerRow = {
 			name = "HeaderRow",
 			order = 1,
@@ -657,27 +671,15 @@ module.DrawRunResultsGui = function(userFinishedRunResponse: tt.userFinishedRunR
 			tileSpecs = columnSpecs,
 		},
 		dataRows = {},
+		stickyRows = {},
 		rowHeight = generalRowHeight,
+		howManyRowsToShow = 1,
 	}
 
 	local alreadyShownUserIds: { [number]: boolean } = {}
-	local timesAndIndices: { { timeMs: number, index: number } } = {}
-
-	local function FindAppropriateIndex(runtimeMs): number
-		local lastSeenIndex = 0
-		for _, entry in ipairs(timesAndIndices) do
-			if entry.timeMs > runtimeMs then
-				local middle = (lastSeenIndex + entry.index) / 2
-				return math.floor(middle)
-			end
-			lastSeenIndex = entry.index
-		end
-
-		return lastSeenIndex + 50000
-	end
 
 	-- Add race best runs to the scrolling frame
-	for index, jsonBestRun in ipairs(userFinishedRunResponse.raceBestRuns) do
+	for _, jsonBestRun in ipairs(userFinishedRunResponse.raceBestRuns) do
 		if not jsonBestRun.place then
 			annotater.Error(
 				"a jsonBestRun showed up without any place. probably failed pathinc it",
@@ -708,30 +710,48 @@ module.DrawRunResultsGui = function(userFinishedRunResponse: tt.userFinishedRunR
 
 		alreadyShownUserIds[jsonBestRun.userId] = true
 
-		local rowSpec = createJsonRunRow(jsonBestRun, useColor, index * 100)
+		local rowSpec = createJsonRunRow(jsonBestRun, useColor)
 		if rowSpec then
-			table.insert(timesAndIndices, { timeMs = jsonBestRun.runMilliseconds, index = index * 100 })
-			table.insert(scrollingFrameSpec.dataRows, rowSpec)
+			if jsonBestRun.place == 0 then
+				table.insert(scrollingFrameSpec.stickyRows, rowSpec)
+			elseif jsonBestRun.userId == userFinishedRunResponse.userId then
+				table.insert(scrollingFrameSpec.stickyRows, rowSpec)
+			else
+				table.insert(scrollingFrameSpec.dataRows, rowSpec)
+			end
 		end
 	end
 
 	-- Add extra best runs to the scrolling frame
+	-- if it's the same user it's complex.
 	for index, jsonBestRun in ipairs(userFinishedRunResponse.extraBestRuns) do
 		if jsonBestRun.userId ~= userFinishedRunResponse.userId and alreadyShownUserIds[jsonBestRun.userId] then
 			continue
 		end
 
-		local useColor = jsonBestRun.userId == userFinishedRunResponse.userId and colors.meColor
-			or colors.otherGuyPresentColor
-		local usingIndex = FindAppropriateIndex(jsonBestRun.runMilliseconds)
-		table.insert(timesAndIndices, { timeMs = jsonBestRun.runMilliseconds, index = usingIndex })
-		table.sort(timesAndIndices, function(a, b)
-			return a.timeMs < b.timeMs
-		end)
+		local useColor
 
-		local rowSpec = createJsonRunRow(jsonBestRun, useColor, usingIndex)
+		-- the system doesn't actually clearly tell you if a run showing up in extraBestRuns was your old time which you jsut beat (and hence should be blue/old)
+		-- vs your new time.
+		if jsonBestRun.userId == userFinishedRunResponse.userId then
+			if jsonBestRun.runAgeSeconds < 4 then
+				useColor = colors.meColor
+			else
+				useColor = colors.otherGuyPresentColor
+			end
+		else
+			useColor = colors.otherGuyPresentColor
+		end
+
+		local rowSpec = createJsonRunRow(jsonBestRun, useColor)
 		if rowSpec then
-			table.insert(scrollingFrameSpec.dataRows, rowSpec)
+			if jsonBestRun.place == 0 then
+				table.insert(scrollingFrameSpec.stickyRows, rowSpec)
+			elseif jsonBestRun.userId == userFinishedRunResponse.userId then
+				table.insert(scrollingFrameSpec.stickyRows, rowSpec)
+			else
+				table.insert(scrollingFrameSpec.dataRows, rowSpec)
+			end
 		end
 	end
 
@@ -740,11 +760,33 @@ module.DrawRunResultsGui = function(userFinishedRunResponse: tt.userFinishedRunR
 		return a.order < b.order
 	end)
 
+	table.sort(scrollingFrameSpec.stickyRows, function(a, b)
+		return a.order < b.order
+	end)
+
+	local maxIntendedRowsOfScrollingFrameToShow = 12
+	if globalSettingShrinkRunResultPopups then
+		maxIntendedRowsOfScrollingFrameToShow = 4
+	end
+	local actualRowsAvailable = #scrollingFrameSpec.dataRows + #scrollingFrameSpec.stickyRows
+	local usingHowManyRowsToShow = math.min(actualRowsAvailable + 1, maxIntendedRowsOfScrollingFrameToShow)
+	-- +1 for the header
+	local scrollFramePixelHeight: number = usingHowManyRowsToShow * generalRowHeight
+
+	scrollingFrameSpec.howManyRowsToShow = usingHowManyRowsToShow
+	_annotate(string.format("set howManyRowsToShow to %d", usingHowManyRowsToShow))
+
+	local totalHeight = scrollFramePixelHeight + 171
+	if userFinishedRunResponse.runUserJustDid and userFinishedRunResponse.runUserJustDid.runMilliseconds then
+		totalHeight = totalHeight + 36
+	end
+	_annotate(string.format("set totalHeight to %d", totalHeight))
+
 	-- Add the scrolling frame to the guiSpec
 	table.insert(guiSpec.rowSpecs, {
 		name = "ScrollingFrameRow",
 		order = 5,
-		height = UDim.new(1, 0),
+		height = UDim.new(0, scrollFramePixelHeight),
 		tileSpecs = {
 			{
 				name = "ScrollingFrameContainer",
@@ -755,43 +797,39 @@ module.DrawRunResultsGui = function(userFinishedRunResponse: tt.userFinishedRunR
 		},
 	})
 
-	local relationshipRow = createRelationshipRow(userFinishedRunResponse)
-	table.insert(guiSpec.rowSpecs, relationshipRow)
-
 	local buttonRow = createLastRow()
 	table.insert(guiSpec.rowSpecs, buttonRow)
 
-	local popupName = string.format("RunResults-%s", userFinishedRunResponse.raceInfo.raceName)
-	local intendedRowsOfScrollingFrameToShow = 11
-	if globalSettingShrinkRunResultPopups then
-		intendedRowsOfScrollingFrameToShow = 4
-	end
+	local runResultsFrameOuterName = string.format("RunResults-%s", userFinishedRunResponse.raceInfo.raceName)
+
 	local raceResultSgui = windows.CreatePopup(
 		guiSpec,
-		popupName,
+		runResultsFrameOuterName,
 		true, -- draggable
-		true, -- resizable
+		false, -- resizable
 		false, -- minimizable
 		true, -- pinnable
 		true, -- dismissableWithX
 		false, -- dismissableByClick
-		UDim2.new(0.27, 0, 0.28, 0),
-		intendedRowsOfScrollingFrameToShow
+		UDim2.new(0.27, 0, 0, totalHeight),
+		maxIntendedRowsOfScrollingFrameToShow
 	)
 	local outerFrame = raceResultSgui:FindFirstChildOfClass("Frame")
 	if outerFrame then
 		if theLastGui then --if the last gui lives, we prefer that.
 			local lastGuiOuterFrame = theLastGui:FindFirstChildOfClass("Frame")
 			if lastGuiOuterFrame then
-				_annotate("set outerFrame.Position to lastGuiOuterFrame.Position")
+				_annotate("\tRunResult positioning: set outerFrame.Position to lastGuiOuterFrame.Position")
 				theLastGuiPosition = lastGuiOuterFrame.Position
 				outerFrame.Position = theLastGuiPosition
 			else
 				if theLastGuiPosition then --if its been closed, then just use that.
 					outerFrame.Position = theLastGuiPosition
-					_annotate("set outerFrame.Position to theLastGuiPosition")
+					_annotate("\tRunResult positioning: set outerFrame.Position to theLastGuiPosition")
 				else
-					_annotate("no lastGuiOuterFrame found, AND no lastGuiPosition so default..")
+					_annotate(
+						"\tRunResult positioning: no lastGuiOuterFrame found, AND no lastGuiPosition so default.."
+					)
 					outerFrame.Position = UDim2.new(0.70, -5, 0.18, 0) --the default. end
 				end
 			end
@@ -800,34 +838,36 @@ module.DrawRunResultsGui = function(userFinishedRunResponse: tt.userFinishedRunR
 			_annotate("set outerFrame.Position to theLastGuiPosition")
 		else
 			outerFrame.Position = UDim2.new(0.70, -5, 0.18, 0) --the default.
-			_annotate("set outerFrame.Position to default")
+			_annotate("\tRunResult positioning: outerFrame.Position to default")
 		end
 	else
-		_annotate("no outerFrame found")
+		_annotate("\tRunResult positioning: no outerFrame found")
 	end
 
 	if globalSettingOnlyHaveOneRunResultPopupAtATime then
 		if theLastGui then
-			_annotate("destroy lastGui")
+			_annotate("\tRunResult positioning: destroy lastGui")
 			theLastGui:Destroy()
 			theLastGui = nil
 		end
 	end
 
 	if theLastGui then
-		local outerFrame = raceResultSgui:FindFirstChildOfClass("Frame")
-		if outerFrame then
-			_annotate("set lastGuiPosition to", outerFrame.Position)
-			theLastGuiPosition = outerFrame.Position
+		local outerFrame2 = raceResultSgui:FindFirstChildOfClass("Frame")
+		if outerFrame2 then
+			_annotate("\tRunResult positioning: set lastGuiPosition to", outerFrame2.Position)
+			theLastGuiPosition = outerFrame2.Position
 		end
 	end
 
-	_annotate("set lastGui to", raceResultSgui.Name)
+	_annotate("\tRunResult positioning: set lastGui to", raceResultSgui.Name)
 	theLastGui = raceResultSgui
 
 	local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 	raceResultSgui.Parent = playerGui
 end
+
+--------------------- SETTINGS MANAGEMENT -----------------------------
 
 local function handleUserSettingChanged(item: tt.userSettingValue)
 	if item.name == settingEnums.settingDefinitions.HIGHLIGHT_ON_RUN_COMPLETE_WARP.name then

@@ -109,7 +109,7 @@ module.Init = function()
 		end)
 	end
 
-	if config.isInStudio() then
+	if config.IsInStudio() then
 		if isServer() then
 			module.Error("test error sent from server")
 		else

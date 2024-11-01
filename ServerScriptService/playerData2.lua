@@ -401,9 +401,6 @@ module.describeRaceHistoryMultilineText = function(
 			break
 		end
 		local placeText = tpUtil.getCardinalEmoji(ii)
-		if ii > 10 then
-			placeText = emojis.emojis.BOMB
-		end
 		local speed = dist / entry.runMilliseconds * 1000
 		local row = string.format(
 			"%s %s - %s - (%0.1fd/s)",

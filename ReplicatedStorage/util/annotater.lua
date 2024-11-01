@@ -23,22 +23,10 @@ local aliases = { LocalScript = "local", Script = "script", ModuleScript = "modu
 
 -- this controls which annotate calls are actually shown. Enter the minimal script name here regardless of client/module/script etc.
 local goodScripts = { "warper", "serverWarping", "ghostSign", "morphs", "avatarEventFiring", "avatarManipulation" }
-goodScripts = { "windows", "marathonClient", "marathonStatic", "marathon" }
-goodScripts = { "textHighlighting" }
-goodScripts = { "dynamicServer", "dynamicRunning" }
-goodScripts = { "movement", "avatarEventMonitor", "avatarEventFiring", "avatarManipulation", "particleEnums" }
-goodScripts = { "particleEnums", "avatarEventFiring" }
-goodScripts = { "particleEnums", "movement", "avatarEventMonitor" }
-goodScripts = { "leaderboard" }
-goodScripts = { "*Chat*", "*channel*", "*ShiftGUI*" }
-goodScripts = { "serverWarping", "warper" }
-goodScripts = { "*keyboard*", "serverWarping" }
-goodScripts = { "*windows*", "rdb" }
-goodScripts = { "*chat*", "*lead*" }
-goodScripts = { "*leaderb*" }
-goodScripts = {}
+goodScripts = { "*draw*", "*sticky*" }
+-- goodScripts = {}
 
-if config.isInStudio() then
+if config.IsInStudio() then
 	-- table.insert(goodScripts, "httpService")
 	-- table.insert(goodScripts, "rdb")
 	-- table.insert(goodScripts, "receiveClientEventServer")

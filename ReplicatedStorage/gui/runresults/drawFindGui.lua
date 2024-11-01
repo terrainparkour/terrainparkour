@@ -15,7 +15,8 @@ local wt = require(game.StarterPlayer.StarterPlayerScripts.guis.windowsTypes)
 module.CreateFindScreenGui = function(options: tt.dcFindResponse): ScreenGui
 	local detailsMessage =
 		string.format("You've found %d out of %d signs!", options.userFindCount, options.totalSignsInGame)
-	local finderMessage = string.format("You are the %s finder!", tpUtil.getCardinalEmoji(options.signTotalFinds))
+	local finderMessage =
+		string.format("You are the %s finder of %s!", tpUtil.getCardinalEmoji(options.signTotalFinds), options.signName)
 
 	local daysAgo = math.floor(options.lastFindAgoSeconds / 86400)
 	local hoursAgo = math.floor((options.lastFindAgoSeconds - (daysAgo * 86400)) / 3600)
@@ -51,6 +52,7 @@ module.CreateFindScreenGui = function(options: tt.dcFindResponse): ScreenGui
 							textColor = colors.black,
 							backgroundColor = colors.meColor,
 							textXAlignment = Enum.TextXAlignment.Center,
+							includeTextSizeConstraint = false,
 						},
 					},
 				},
@@ -72,6 +74,7 @@ module.CreateFindScreenGui = function(options: tt.dcFindResponse): ScreenGui
 							backgroundColor = colors.signColor,
 							textColor = colors.white,
 							textXAlignment = Enum.TextXAlignment.Center,
+							includeTextSizeConstraint = false,
 						},
 					},
 				},

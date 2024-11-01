@@ -37,7 +37,7 @@ local getKnownSignIds = function(): { [number]: boolean }
 end
 
 --set them according to their positiong in generated.
-module.checkSignsNeedingPushing = function()
+module.CheckSignsNeedingPushing = function()
 	local knownSignIds: { [number]: boolean } = getKnownSignIds()
 
 	-- note that the server will not fully register new signs in its cache until its been restarted.
@@ -54,7 +54,7 @@ module.checkSignsNeedingPushing = function()
 
 			local signPart: Part = signs:FindFirstChild(signName)
 			if signPart == nil then
-				if not config.isInStudio() then
+				if not config.IsInStudio() then
 					annotater.Error("checkSignsNeedingPushing: fail to find sign " .. signName)
 				end
 				continue
@@ -64,7 +64,7 @@ module.checkSignsNeedingPushing = function()
 			-- even after they've been uploaded already?
 			-- it's because the db server has an in-ram cache of known signids
 			-- which is what is returned by getKnownSignIds above.
-			annotater.Error("posting data on new sign:" .. signName)
+			_annotate("posting data on new sign:" .. signName)
 			local pos = signPart.Position
 			local data = {
 				signId = signId,

@@ -16,7 +16,7 @@ local config = require(game.ReplicatedStorage.config)
 local module = {}
 
 module.rotate = function(sign: Part)
-	if not sign and not config.isInStudio() then
+	if not sign and not config.IsInStudio() then
 		return
 	end
 	task.spawn(function()
@@ -33,7 +33,7 @@ module.rotate = function(sign: Part)
 end
 
 module.rotateMeshpart = function(sign: MeshPart)
-	if not sign and not config.isInStudio() then
+	if not sign and not config.IsInStudio() then
 		return
 	end
 	task.spawn(function()
@@ -50,7 +50,7 @@ module.rotateMeshpart = function(sign: MeshPart)
 end
 
 module.riseandspin = function(sign: Part)
-	if not sign and config.isInStudio() then
+	if not sign and config.IsInStudio() then
 		return
 	end
 	task.spawn(function()
@@ -77,7 +77,7 @@ end
 --following for 007 mystery sign.
 module.fadeInSign = function(sign: Part)
 	if not sign then
-		if config.isInStudio() and not config.isTestGame() then
+		if config.IsInStudio() and not config.isTestGame() then
 		end
 		return
 	end

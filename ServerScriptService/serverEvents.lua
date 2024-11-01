@@ -32,7 +32,7 @@ local serverEventLimitCount = 3
 --------------- GLOBALS ----------------------
 local debounceEventUpdater = false
 local serverEventMaxLength = 750
-if config.isInStudio() then
+if config.IsInStudio() then
 	serverEventMaxLength = 645
 end
 local serverEventNumberCounter = 1

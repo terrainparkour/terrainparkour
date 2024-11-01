@@ -1,18 +1,19 @@
 --!strict
 
--- Player localscripts call this to generate a raceresult UI.
+-- localscript, drawer for the favorite races GUI
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local enums = require(game.ReplicatedStorage.util.enums)
 local colors = require(game.ReplicatedStorage.util.colors)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
 local localRdb = require(game.ReplicatedStorage.localRdb)
 local wt = require(game.StarterPlayer.StarterPlayerScripts.guis.windowsTypes)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
+local textUtil = require(game.ReplicatedStorage.util.textUtil)
 
 local PlayersService = game:GetService("Players")
 
@@ -22,13 +23,20 @@ local module = {}
 
 local GenericClientUIFunction = remotes.getRemoteFunction("GenericClientUIFunction")
 
-local rowHeightPixel = 35
+--------------------- GLOBALS --------------
+
+local theLastGui: ScreenGui? = nil
+local theLastGuiPosition: UDim2? = nil
+
+local generalRowHeight = 36
+
+----------------- SPEC CREATORS ---------------------
 
 local function createTitleRow(userId: number): wt.rowSpec
 	return {
 		name = "TitleRow",
 		order = 1,
-		height = UDim.new(0, rowHeightPixel),
+		height = UDim.new(0, generalRowHeight),
 		tileSpecs = {
 			{
 				name = "Title",
@@ -47,6 +55,10 @@ local function createTitleRow(userId: number): wt.rowSpec
 end
 
 local function createDataRow(favoriteResponse: tt.serverFavoriteRacesResponse): wt.rowSpec
+	if not favoriteResponse or not favoriteResponse.racesAndInfo then
+		annotater.Error("no racesAndInfo")
+		error("no racesAndInfo")
+	end
 	local totalFavorites = #favoriteResponse.racesAndInfo
 	-- map of user => map of place => count
 	local userPlaceCounts: { [number]: { [number]: number } } = {}
@@ -67,18 +79,15 @@ local function createDataRow(favoriteResponse: tt.serverFavoriteRacesResponse): 
 		end
 	end
 
-	local placeText = ""
-
+	local placeText = "Your total results:\n"
 	for position: number = 1, 100 do
 		if userPlaceCounts and userPlaceCounts[favoriteResponse.targetUserId] then
 			local count = userPlaceCounts[favoriteResponse.targetUserId][position] or 0
 			if count and count > 0 then
-				placeText = placeText .. string.format("%s: %d\n", tpUtil.getCardinalEmoji(position), count)
+				placeText = placeText .. string.format("%s: %d, ", tpUtil.getCardinalEmoji(position), count)
 			end
 		end
 	end
-
-	placeText = "Your total results:\n" .. placeText
 
 	return {
 		name = "DataRow",
@@ -100,7 +109,7 @@ local function createDataRow(favoriteResponse: tt.serverFavoriteRacesResponse): 
 				spec = {
 					type = "text",
 					text = placeText,
-					textXAlignment = Enum.TextXAlignment.Center,
+					textXAlignment = Enum.TextXAlignment.Left,
 				},
 			},
 		},
@@ -116,7 +125,7 @@ local function createScrollingFrameHeaderRow(
 	local raceSpec: wt.tileSpec = {
 		name = "FavoriteRaces",
 		order = 1,
-		width = UDim.new(2.5, 0),
+		width = UDim.new(1, 0),
 		spec = {
 			type = "text",
 			text = "Race",
@@ -150,7 +159,7 @@ local function createScrollingFrameHeaderRow(
 			type = "portrait",
 			userId = theUserId,
 			doPopup = false,
-			width = UDim.new(0, 50),
+			width = UDim.new(0, generalRowHeight),
 			backgroundColor = useColor,
 		}
 
@@ -158,6 +167,7 @@ local function createScrollingFrameHeaderRow(
 			type = "text",
 			text = localRdb.GetUsernameByUserId(theUserId),
 			backgroundColor = useColor,
+			textXAlignment = Enum.TextXAlignment.Center,
 		}
 
 		local playerHeaderPortraitAndNameTileSpec: wt.rowTileSpec = {
@@ -192,7 +202,7 @@ local function createScrollingFrameHeaderRow(
 	return {
 		name = "ScrollingFrameHeaderRow",
 		order = 1,
-		height = UDim.new(0, 70),
+		height = UDim.new(0, generalRowHeight),
 		tileSpecs = theHeaderTileSpecs,
 	}
 end
@@ -207,24 +217,44 @@ local function createScrollingFrameDataRows(
 
 	for i, thisRaceInfo in ipairs(favoriteResponse.racesAndInfo) do
 		local theTiles: { wt.tileSpec } = {}
-		local theRaceNameTextTileSpec: wt.textTileSpec = {
+		local sp = textUtil.stringSplit(thisRaceInfo.theRace.raceName, "-")
+		local sn = sp[1]
+		local en = sp[2]
+		local signSpecStart: wt.textTileSpec = {
 			type = "text",
-			text = thisRaceInfo.theRace.raceName,
+			text = sn,
+			backgroundColor = colors.signColor,
+			textColor = colors.white,
+			textXAlignment = Enum.TextXAlignment.Center,
+		}
+		local signSpecEnd: wt.textTileSpec = {
+			type = "text",
+			text = en,
 			backgroundColor = colors.signColor,
 			textColor = colors.white,
 			textXAlignment = Enum.TextXAlignment.Center,
 		}
 
-		local theRacenameTile: wt.tileSpec = {
-			name = "RaceName",
+		local sTile: wt.tileSpec = {
+			name = "Start",
 			order = 1,
-			width = UDim.new(2.5, 0),
-			spec = theRaceNameTextTileSpec,
+			width = UDim.new(0.5, 0),
+			spec = signSpecStart,
+			includeTextSizeConstraint = false,
 		}
+
+		local eTile: wt.tileSpec = {
+			name = "End",
+			order = 2,
+			width = UDim.new(0.5, 0),
+			spec = signSpecEnd,
+			includeTextSizeConstraint = false,
+		}
+
 		local warpTileButtonSpec: wt.buttonTileSpec = {
 			type = "button",
 			text = "Warp",
-			backgroundColor = colors.warpColor,
+			backgroundColor = colors.defaultGrey,
 			isBold = false,
 			onClick = function()
 				warper.WarpToSignId(thisRaceInfo.theRace.startSignId, thisRaceInfo.theRace.endSignId)
@@ -241,7 +271,8 @@ local function createScrollingFrameDataRows(
 			textColor = colors.black,
 		}
 
-		table.insert(theTiles, theRacenameTile)
+		table.insert(theTiles, sTile)
+		table.insert(theTiles, eTile)
 
 		table.insert(theTiles, theWarpTile)
 		for n, theColumnUserId in ipairs(otherUserIds) do
@@ -322,7 +353,7 @@ local function createScrollingFrameDataRows(
 		local rowSpec: wt.rowSpec = {
 			name = string.format("DataRow_%d", i),
 			order = i,
-			height = UDim.new(0, 25),
+			height = UDim.new(0, generalRowHeight),
 			horizontalAlignment = Enum.HorizontalAlignment.Left,
 			tileSpecs = theTiles,
 		}
@@ -332,6 +363,8 @@ local function createScrollingFrameDataRows(
 
 	return dataRows
 end
+
+-------------------- DRAWING FUNCTION ---------------------
 
 module.DrawFavoriteRacesModal = function(targetUserId: number?, requestingUserId: number?, otherUserIds: { number })
 	local pgui = localPlayer:WaitForChild("PlayerGui")
@@ -387,11 +420,13 @@ module.DrawFavoriteRacesModal = function(targetUserId: number?, requestingUserId
 		createScrollingFrameDataRows(targetUserId, requestingUserId, otherUserIds, favoriteResponse)
 
 	local scrollingFrameSpec: wt.scrollingFrameTileSpec = {
-		type = "scrollingFrame",
+		type = "scrollingFrameTileSpec",
 		name = "FavoritesScrollingFrame",
 		headerRow = scrollingFrameHeaderRow,
 		dataRows = scrollingFrameDataRows,
-		rowHeight = 25,
+		stickyRows = {},
+		rowHeight = generalRowHeight,
+		howManyRowsToShow = 12,
 	}
 
 	local scrollingFrameRowSpec: wt.rowSpec = {
@@ -408,12 +443,54 @@ module.DrawFavoriteRacesModal = function(targetUserId: number?, requestingUserId
 			},
 		},
 	}
+
+	-- we fork our own close button since we have to also remember the lastGuiPosition.
+	local closeButtonTextButtonTileSpec: wt.buttonTileSpec = {
+		type = "button",
+		text = "Close",
+		onClick = function(_: InputObject, theButton: TextButton)
+			local screenGui = theButton:FindFirstAncestorOfClass("ScreenGui")
+
+			if screenGui then
+				local outerFrame = screenGui:FindFirstChildOfClass("Frame")
+				if outerFrame then
+					theLastGuiPosition = outerFrame.Position
+					_annotate(
+						string.format(
+							"set theLastGuiPosition to %s based on %s",
+							tostring(theLastGuiPosition),
+							outerFrame.Name
+						)
+					)
+				end
+				theLastGui = nil
+				_annotate("destroying lastGui")
+				toolTip.KillFinalTooltip()
+				screenGui:Destroy()
+			else
+				warn("Could not find ScreenGui to close")
+			end
+		end,
+		backgroundColor = colors.redSlowDown,
+		textColor = colors.white,
+		isMonospaced = false,
+		isBold = true,
+		textXAlignment = Enum.TextXAlignment.Center,
+	}
+
+	local closeButtonLeavingroom: wt.tileSpec = {
+		name = "Close",
+		order = 1,
+		width = UDim.new(1, -15),
+		spec = closeButtonTextButtonTileSpec,
+	}
+
 	local closeRow = {
 		name = "CloseButtonRow",
 		order = 4,
-		height = UDim.new(0, 40),
+		height = UDim.new(0, generalRowHeight),
 		horizontalAlignment = Enum.HorizontalAlignment.Center,
-		tileSpecs = { windows.StandardCloseButton },
+		tileSpecs = { closeButtonLeavingroom },
 	}
 
 	local guiSpec: wt.guiSpec = {
@@ -426,23 +503,93 @@ module.DrawFavoriteRacesModal = function(targetUserId: number?, requestingUserId
 		},
 	}
 
-	local xScale = math.min(0.7, 0.3 + 0.06 * #otherUserIds)
-	local yScale = math.min(0.2, 0.2 + 0.15 * #favoriteResponse.racesAndInfo)
+	local maxIntendedRowsOfScrollingFrameToShow = 12
 
-	local screenGui = windows.CreatePopup(
+	local actualRowsAvailable = #favoriteResponse.racesAndInfo
+	local usingHowManyRowsToShow = math.min(actualRowsAvailable + 1, maxIntendedRowsOfScrollingFrameToShow)
+	-- +1 for the header
+	local scrollFramePixelHeight: number = usingHowManyRowsToShow * generalRowHeight
+
+	scrollingFrameSpec.howManyRowsToShow = usingHowManyRowsToShow
+	_annotate(string.format("set howManyRowsToShow to %d", usingHowManyRowsToShow))
+
+	local totalHeight = scrollFramePixelHeight + 136
+
+	local xScale = math.min(0.9, math.min(0.7, 0.3 + 0.06 * #otherUserIds))
+	_annotate(
+		string.format(
+			"all details on the size calculation: \nxScale: %0.1f, \n%d other userIds. \nactualRowsAvailable: %d, \nmaxRowsVisibleByDefault: %d, \nrowsToShow: %d, \nfinalAbsolutelyFavoriteWindowHeightYPixels: %d",
+			xScale,
+			#otherUserIds,
+			actualRowsAvailable,
+			maxIntendedRowsOfScrollingFrameToShow,
+			usingHowManyRowsToShow,
+			totalHeight
+		)
+	)
+	local theGui = windows.CreatePopup(
 		guiSpec,
 		"FavoritesGui",
-		true,
-		true,
-		false,
-		true,
-		true,
-		false,
-		UDim2.new(xScale, 0, yScale, 135),
-		11
+		true, --draggable
+		false, --resizable
+		false, --minimizable
+		true, --pinnable
+		true, --dismissableWithX
+		false, --dismissableByClick
+		UDim2.new(xScale, 0, 0, totalHeight),
+		usingHowManyRowsToShow
 	)
+	local outerFrame = theGui:FindFirstChildOfClass("Frame")
+	if outerFrame then
+		if theLastGui then --if the last gui lives, we prefer that.
+			local lastGuiOuterFrame = theLastGui:FindFirstChildOfClass("Frame")
+			if lastGuiOuterFrame then
+				_annotate("\tRunResult positioning: set outerFrame.Position to lastGuiOuterFrame.Position")
+				theLastGuiPosition = lastGuiOuterFrame.Position
+				outerFrame.Position = theLastGuiPosition
+			else
+				if theLastGuiPosition then --if its been closed, then just use that.
+					outerFrame.Position = theLastGuiPosition
+					_annotate("\tRunResult positioning: set outerFrame.Position to theLastGuiPosition")
+				else
+					_annotate(
+						"\tRunResult positioning: no lastGuiOuterFrame found, AND no lastGuiPosition so default.."
+					)
+					outerFrame.Position = UDim2.new(0.70, -5, 0.18, 0) --the default. end
+				end
+			end
+		elseif theLastGuiPosition then --if its been closed, then just use that.
+			outerFrame.Position = theLastGuiPosition
+			_annotate("set outerFrame.Position to theLastGuiPosition")
+		else
+			outerFrame.Position = UDim2.new(0.15, 0, 0.28, 0) --the default.
+			_annotate("\tRunResult positioning: outerFrame.Position to default")
+		end
+	else
+		_annotate("\tRunResult positioning: no outerFrame found")
+	end
 
-	screenGui.Parent = pgui
+	-- if globalSettingOnlyHaveOneRunResultPopupAtATime then
+	-- 	if theLastGui then
+	-- 		_annotate("\tRunResult positioning: destroy lastGui")
+	-- 		theLastGui:Destroy()
+	-- 		theLastGui = nil
+	-- 	end
+	-- end
+
+	if theLastGui then
+		local outerFrame2 = theGui:FindFirstChildOfClass("Frame")
+		if outerFrame2 then
+			_annotate("\tRunResult positioning: set lastGuiPosition to", outerFrame2.Position)
+			theLastGuiPosition = outerFrame2.Position
+		end
+	end
+
+	_annotate("\tRunResult positioning: set lastGui to", theGui.Name)
+	theLastGui = theGui
+
+	local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+	theGui.Parent = playerGui
 end
 
 _annotate("end")

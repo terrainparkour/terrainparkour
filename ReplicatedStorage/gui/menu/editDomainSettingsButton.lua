@@ -12,12 +12,13 @@ local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local settingSort = require(game.ReplicatedStorage.settingSort)
 local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
-local PlayersService = game:GetService("Players")
+local wt = require(game.StarterPlayer.StarterPlayerScripts.guis.windowsTypes)
+local generalRowHeight = 36
 
 local module = {}
 
-local function createSettingRowSpec(setting: tt.userSettingValue, n: number): windows.rowSpec
-	local toggleButtonSpec: windows.buttonTileSpec = {
+local function createSettingRowSpec(setting: tt.userSettingValue, n: number): wt.rowSpec
+	local toggleButtonSpec: wt.buttonTileSpec = {
 		type = "button",
 		text = setting.booleanValue and "Yes" or "No",
 		isMonospaced = false,
@@ -34,10 +35,10 @@ local function createSettingRowSpec(setting: tt.userSettingValue, n: number): wi
 		end,
 	}
 
-	local x: windows.rowSpec = {
+	local x: wt.rowSpec = {
 		name = string.format("%04d-%s", n, setting.name),
 		order = n,
-		height = UDim.new(0, 30),
+		height = UDim.new(0, generalRowHeight),
 		tileSpecs = {
 			{
 				name = "SettingName",
@@ -64,7 +65,7 @@ local function createSettingRowSpec(setting: tt.userSettingValue, n: number): wi
 	return x
 end
 
-function module.CreateGenericSettingsEditor(domain: string): windows.guiSpec
+function module.CreateGenericSettingsEditor(domain: string): wt.guiSpec
 	local userSettings: { [string]: tt.userSettingValue } =
 		settings.GetSettingByDomainAndKind(domain, settingEnums.settingKinds.BOOLEAN)
 
@@ -74,13 +75,13 @@ function module.CreateGenericSettingsEditor(domain: string): windows.guiSpec
 	end
 	table.sort(settingsToDisplay, settingSort.SettingSort)
 
-	local settingSpecs: { windows.rowSpec } = {}
+	local settingSpecs: { wt.rowSpec } = {}
 	for i, setting in ipairs(settingsToDisplay) do
 		table.insert(settingSpecs, createSettingRowSpec(setting, i))
 	end
 
 	-- Define individual tile specs
-	local titleTextSpec: windows.textTileSpec = {
+	local titleTextSpec: wt.textTileSpec = {
 		type = "text",
 		text = "Modify your " .. domain .. " Settings",
 		isMonospaced = false,
@@ -90,7 +91,7 @@ function module.CreateGenericSettingsEditor(domain: string): windows.guiSpec
 		textXAlignment = Enum.TextXAlignment.Center,
 	}
 
-	local nameHeaderSpec: windows.textTileSpec = {
+	local nameHeaderSpec: wt.textTileSpec = {
 		type = "text",
 		text = "Settings",
 		isMonospaced = false,
@@ -101,30 +102,32 @@ function module.CreateGenericSettingsEditor(domain: string): windows.guiSpec
 	}
 
 	-- Define scrollingFrame components
-	local scrollingFrameHeaderTileSpec: windows.tileSpec = {
+	local scrollingFrameHeaderTileSpec: wt.tileSpec = {
 		name = "NameHeader",
 		order = 1,
 		width = UDim.new(1, 0),
 		spec = nameHeaderSpec,
 	}
 
-	local scrollingFrameHeaderRowSpec: windows.rowSpec = {
+	local scrollingFrameHeaderRowSpec: wt.rowSpec = {
 		name = "SettingsHeader",
 		order = 1,
 		tileSpecs = { scrollingFrameHeaderTileSpec },
-		height = UDim.new(0, 30),
+		height = UDim.new(0, generalRowHeight),
 	}
 
-	local scrollingFrameSpec: windows.scrollingFrameTileSpec = {
-		type = "scrollingFrame",
-		name = "SettingsScrollingFrame",
+	local scrollingFrameSpec: wt.scrollingFrameTileSpec = {
+		type = "scrollingFrameTileSpec",
+		name = "SettingsScrollingFrame_" .. domain,
 		headerRow = scrollingFrameHeaderRowSpec,
 		dataRows = settingSpecs,
-		rowHeight = 30,
+		stickyRows = {},
+		rowHeight = generalRowHeight,
+		howManyRowsToShow = 22,
 	}
 
 	-- Define row specs
-	local titleRowSpec: windows.rowSpec = {
+	local titleRowSpec: wt.rowSpec = {
 		name = "Title",
 		order = 1,
 		tileSpecs = {
@@ -135,10 +138,10 @@ function module.CreateGenericSettingsEditor(domain: string): windows.guiSpec
 				spec = titleTextSpec,
 			},
 		},
-		height = UDim.new(0, 45),
+		height = UDim.new(0, generalRowHeight),
 	}
 
-	local settingsContentRowSpec: windows.rowSpec = {
+	local settingsContentRowSpec: wt.rowSpec = {
 		name = "SettingsContent",
 		order = 2,
 		tileSpecs = {
@@ -153,7 +156,7 @@ function module.CreateGenericSettingsEditor(domain: string): windows.guiSpec
 	}
 
 	-- Assemble the final guiSpec
-	local guiSpec: windows.guiSpec = {
+	local guiSpec: wt.guiSpec = {
 		name = domain .. "SettingsEditor",
 		rowSpecs = {
 			titleRowSpec,

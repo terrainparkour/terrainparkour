@@ -80,8 +80,8 @@ module.MakeSignProfileGrindingGui = function(
 			continue
 		end
 
-		local button = getIndividualGrindButton(startSignId, realGuyCount, unrunRelationship)
 		if button then
+			local button = getIndividualGrindButton(startSignId, realGuyCount, unrunRelationship)
 			table.insert(buttons, button)
 			realGuyCount += 1
 		end

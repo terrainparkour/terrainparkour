@@ -154,7 +154,7 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 			if lastCompleteRunStart ~= nil and lastCompleteRunEnd ~= nil then
 				warper.WarpToSignId(lastCompleteRunStart, useLastRunEnd)
 			end
-		elseif inputObject.KeyCode == Enum.KeyCode.Two then
+		elseif inputObject.KeyCode == Enum.KeyCode.Two or inputObject.KeyCode == Enum.KeyCode.R then
 			_annotate("hit 2, doing warp to last run start.")
 			if lastRunStartSignId ~= nil then
 				warper.WarpToSignId(lastRunStartSignId)
