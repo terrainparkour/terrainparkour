@@ -1,5 +1,7 @@
 --!strict
 
+local CommandService = {}
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
@@ -20,15 +22,39 @@ local serverWarping = require(game.ServerScriptService.serverWarping)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local PopularResponseTypes = require(game.ReplicatedStorage.types.PopularResponseTypes)
 local popular = require(game.ServerScriptService.data.popularRaces)
+
 local sendMessageModule = require(game.ReplicatedStorage.chat.sendMessage)
-local sendMessage = sendMessageModule.sendMessage
+local ChannelManager = require(game.ReplicatedStorage.ChatSystem.ChannelManager)
+
+local RemoteEvent = game.ReplicatedStorage.RemoteEvents.DisplaySystemMessage
 
 local PlayersService = game:GetService("Players")
 
-local module = {}
+local function sendMessage(message: string, player: Player)
+	local dataChannel: TextChannel? = ChannelManager:GetChannel("Data")
 
-local function Usage(channel)
-	sendMessage(channel, sendMessageModule.usageCommandDesc)
+	if dataChannel then
+		RemoteEvent:FireClient(player, message, "Data")
+	else
+		warn("Data channel not found!")
+	end
+end
+
+local beckontimes = {}
+local bootTime = tick()
+
+local lastRandomSignId1: number
+local lastRandomSignId2: number
+local lastRandomTicks: number
+
+CommandService.Commands = {
+	help = function(player)
+		return sendMessageModule.usageCommandDesc
+	end,
+}
+
+local function Usage(channel, speaker)
+	sendMessage(sendMessageModule.usageCommandDesc, speaker)
 end
 
 local function GrandCmdlineBadge(userId: number)
@@ -40,12 +66,11 @@ local function GrandUndocumentedCommandBadge(userId: number)
 	GrandCmdlineBadge(userId)
 end
 
-module.hint = function(speaker: Player, channel, parts: { string }): boolean
+CommandService.Commands.hint = function(speaker: Player, channel: any, parts: { string }): boolean
 	local target: string
 	if #parts == 1 then
 		target = speaker.Name
-	end
-	if #parts == 2 then
+	elseif #parts == 2 then
 		local ctarget = tpUtil.looseGetPlayerFromUsername(parts[2])
 		if ctarget == nil then
 			return false
@@ -55,30 +80,26 @@ module.hint = function(speaker: Player, channel, parts: { string }): boolean
 	if target then
 		local res = text.describeRemainingSigns(target, true, 100)
 		if res ~= "" then
-			sendMessage(channel, res)
+			sendMessage(res, speaker)
 			GrandCmdlineBadge(speaker.UserId)
 			return true
 		end
 	end
 
-	--target player not in server.
+	-- Target player not in server.
 	if not target then
 		local res = "Player not found in server."
-		sendMessage(channel, res)
+		sendMessage(res, speaker)
 		return true
 	end
 
-	_annotate("fallthrough.")
 	return false
 end
 
-module.awards = function(speaker: Player, channel: any, username: string): boolean
+CommandService.Commands.awards = function(speaker: Player, channel: any, username: string): boolean
 	local request: tt.postRequest = {
 		remoteActionName = "getAwardsByUser",
-		data = {
-			username = username,
-			userId = speaker.UserId,
-		},
+		data = { username = username, userId = speaker.UserId }
 	}
 	local data: { tt.userAward } = rdb.MakePostRequest(request)
 	local res = {}
@@ -94,19 +115,17 @@ module.awards = function(speaker: Player, channel: any, username: string): boole
 	end
 
 	local msg = textUtil.stringJoin("\n", res)
-	sendMessage(channel, msg)
+	sendMessage(msg, speaker)
 	return true
 end
 
-module.wrs = function(speaker: Player, channel): boolean
+CommandService.Commands.wrs = function(speaker: Player, channel: any): boolean
 	local request: tt.postRequest = {
 		remoteActionName = "getWRLeaders",
-		data = {
-			userId = speaker.UserId,
-		},
+		data = { userId = speaker.UserId }
 	}
 	local data = rdb.MakePostRequest(request)
-	sendMessage(channel, "Top World Record Holders (including CWRs):")
+	sendMessage("Top World Record Holders (including CWRs):", speaker)
 	local playersInServer = {}
 	for _, player in ipairs(PlayersService:GetPlayers()) do
 		playersInServer[player.UserId] = true
@@ -117,20 +136,18 @@ module.wrs = function(speaker: Player, channel): boolean
 	end
 	local res = text.generateTextForRankedList(data, playersInServer, speaker.UserId, getter)
 	for _, el in ipairs(res) do
-		sendMessage(channel, el.message, el.options)
+		sendMessage(el.message, speaker)
 	end
 
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end
 
-module.cwrs = function(speaker: Player, channel): boolean
-	sendMessage(channel, "Top Competitive World Record Holders:")
+CommandService.Commands.cwrs = function(speaker: Player, channel: any): boolean
+	sendMessage("Top Competitive World Record Holders:", speaker)
 	local request: tt.postRequest = {
 		remoteActionName = "getCWRLeaders",
-		data = {
-			userId = speaker.UserId,
-		},
+		data = { userId = speaker.UserId }
 	}
 	local data = rdb.MakePostRequest(request)
 
@@ -144,7 +161,7 @@ module.cwrs = function(speaker: Player, channel): boolean
 			message = string.format("%d total, or maybe %d?", a, b)
 		end
 	end
-	sendMessage(channel, message)
+	sendMessage(message, speaker)
 
 	local playersInServer = {}
 	for _, player in ipairs(PlayersService:GetPlayers()) do
@@ -158,20 +175,19 @@ module.cwrs = function(speaker: Player, channel): boolean
 
 	local res = text.generateTextForRankedList(data.leaders, playersInServer, speaker.UserId, getter)
 	for _, el in ipairs(res) do
-		sendMessage(channel, el.message, el.options)
+		sendMessage(el.message, speaker)
 	end
 
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end
 
---e.g. (sign leaders for X with highlights, to/from WR summaries)
-module.describeSingleSign = function(speaker: Player, signId: number, channel)
+CommandService.Commands.describeSingleSign = function(speaker: Player, signId: number, channel)
 	local userIdsInServer = {}
 	for _, player in ipairs(PlayersService:GetPlayers()) do
 		userIdsInServer[player.UserId] = true
 	end
-	if config.IsInStudio() then
+	if config.isInStudio() then
 		userIdsInServer[enums.objects.BrouhahahaUserId] = true
 	end
 	local request: tt.postRequest = {
@@ -186,7 +202,7 @@ module.describeSingleSign = function(speaker: Player, signId: number, channel)
 			signName,
 			signTotalFinds
 		)
-		sendMessage(channel, ret)
+		sendMessage(ret, speaker)
 		return
 	end
 
@@ -210,7 +226,7 @@ module.describeSingleSign = function(speaker: Player, signId: number, channel)
 		.. " players have found "
 		.. signName
 		.. "\nrank name total (from/to)"
-	sendMessage(channel, leaderText)
+	sendMessage(leaderText, speaker)
 	for _, leader in ipairs(fromleaders) do
 		local username: string
 		if leader.userId < 0 then
@@ -264,12 +280,12 @@ module.describeSingleSign = function(speaker: Player, signId: number, channel)
 			options.ChatColor = colors.greenGo
 		end
 		local line = string.format("%d. %s - %d (%d/%d)", ii, item.username, item.to + item.from, item.from, item.to)
-		sendMessage(channel, line, options)
+		sendMessage(line, speaker)
 	end
 end
 
-module.missingTop10s = function(speaker: Player, channel): boolean
-	sendMessage(channel, "NonTop10 races for: " .. speaker.Name)
+CommandService.Commands.missingTop10s = function(speaker: Player, channel): boolean
+	sendMessage("NonTop10 races for: " .. speaker.Name, speaker)
 	local data: tt.getNonTop10RacesByUser = playerData2.getNonTop10RacesByUserId(speaker.UserId, "nontop10_command")
 	for _, runDesc in ipairs(data.raceDescriptions) do
 		channel:SendSystemMessage(" * " .. runDesc, {
@@ -280,13 +296,13 @@ module.missingTop10s = function(speaker: Player, channel): boolean
 	return true
 end
 
-module.missingWrs = function(speaker: Player, to: string, signId: number, channel): boolean
+CommandService.Commands.missingWrs = function(speaker: Player, to: string, signId: number, channel): boolean
 	local signName = tpUtil.signId2signName(signId)
 	local totext = to
 	if to == "both" then
 		totext = "to/from"
 	end
-	sendMessage(channel, "NonWR races " .. totext .. " " .. signName .. " for: " .. speaker.Name)
+	sendMessage("NonWR races " .. totext .. " " .. signName .. " for: " .. speaker.Name, speaker)
 	local data: tt.getNonTop10RacesByUser =
 		playerData2.getNonWRsByToSignIdAndUserId(to, signId, speaker.UserId, "nonwr_command")
 	for _, runDesc in ipairs(data.raceDescriptions) do
@@ -324,28 +340,28 @@ local function getClosestSignToPlayer(player: Player): Instance?
 	return bestSign
 end
 
--- module.RemoveUserTopRun = function(speaker: Player, channel, argumentToCommand): boolean
+-- CommandService.Commands.RemoveUserTopRun = function(speaker: Player, channel, argumentToCommand): boolean
 -- 	local res: tt.RaceParseResult = tpUtil.AttemptToParseRaceFromInput(argumentToCommand)
 
 -- 	if res.error then
 -- 		sendMessage(channel, res.error)
 -- 		return true
 -- 	end
--- 	local res = module.RemoveUserTopRun(speaker.UserId, res.signId1, res.signId2)
+-- 	local res = CommandService.Commands.RemoveUserTopRun(speaker.UserId, res.signId1, res.signId2)
 
 -- 	return true
 -- end
 
 local beckontimes = {}
-module.beckon = function(speaker: Player, channel): boolean
+CommandService.Commands.beckon = function(speaker: Player, channel): boolean
 	if beckontimes[speaker.UserId] then
 		local gap = tick() - beckontimes[speaker.UserId]
 		local limit = 180
-		if config.IsInStudio() then
+		if config.isInStudio() then
 			limit = 3
 		end
 		if gap < limit then
-			sendMessage(channel, "You can beckon every 3 minutes.")
+			sendMessage("You can beckon every 3 minutes.", speaker)
 			return true
 		end
 	end
@@ -383,14 +399,14 @@ module.beckon = function(speaker: Player, channel): boolean
 		grantBadge.GrantBadge(speaker.UserId, badgeEnums.badges.Beckoner)
 	end
 
-	sendMessage(channel, speaker.Name .. " beckons distant friends to join.")
+	sendMessage(speaker.Name .. " beckons distant friends to join.", speaker)
 
 	return true
 end
 
-module.badges = function(speaker: Player, channel): boolean
+CommandService.Commands.badges = function(speaker: Player, channel): boolean
 	local allBadgeStatuses = badges.GetAllBadgeProgressDetailsForUserId(speaker.UserId, "cmdline")
-	sendMessage(channel, "Badge status for: " .. speaker.Name)
+	sendMessage("Badge status for: " .. speaker.Name, speaker)
 	local gotStr = "BADGES GOTTEN:"
 	local ungotStr = "BADGES NOT GOTTEN:"
 	local gotct = 0
@@ -423,11 +439,11 @@ module.badges = function(speaker: Player, channel): boolean
 		end
 	end
 
-	sendMessage(channel, gotStr)
-	sendMessage(channel, ungotStr)
+	sendMessage(gotStr, speaker)
+	sendMessage(ungotStr, speaker)
 
 	local total = "Got: " .. gotct .. " Not got: " .. ungotct
-	sendMessage(channel, total)
+	sendMessage(total, speaker)
 
 	local badgecount = badges.getBadgeCountByUser(speaker.UserId, "channelCommands.badges")
 	for _, otherPlayer: Player in ipairs(PlayersService:GetPlayers()) do
@@ -437,7 +453,7 @@ module.badges = function(speaker: Player, channel): boolean
 	return true
 end
 
-module.anyBan = function(cmd, object): boolean
+CommandService.Commands.anyBan = function(cmd, object): boolean
 	local target = tpUtil.looseGetPlayerFromUsername(object)
 	if not target then
 		return false
@@ -455,7 +471,7 @@ module.anyBan = function(cmd, object): boolean
 end
 
 -- warp to either a sign or a player by username.
-module.AdminOnlyWarp = function(cmd, object, speaker): boolean
+CommandService.Commands.AdminOnlyWarp = function(cmd, object, speaker): boolean
 	local signId = tpUtil.looseSignName2SignId(object)
 	if signId then
 		local request: tt.serverWarpRequest = {
@@ -487,7 +503,7 @@ module.AdminOnlyWarp = function(cmd, object, speaker): boolean
 	return true
 end
 
-module.secret = function(speaker: Player, channel: any): boolean
+CommandService.Commands.secret = function(speaker: Player, channel: any): boolean
 	local got = grantBadge.GrantBadge(speaker.UserId, badgeEnums.badges.Secret)
 	if got then
 		channel.SendSystemMessage(speaker.Name .. " has found the secret badge!")
@@ -495,14 +511,14 @@ module.secret = function(speaker: Player, channel: any): boolean
 	return true
 end
 
-module.time = function(speaker: Player, channel: any): boolean
+CommandService.Commands.time = function(speaker: Player, channel: any): boolean
 	local serverTime = os.date("Server Time - %H:%M %d-%m-%Y", tick())
-	sendMessage(channel, serverTime)
+	sendMessage(serverTime, speaker)
 	GrandUndocumentedCommandBadge(speaker.UserId)
 	return true
 end
 
-module.chomik = function(speaker: Player, channel: any): boolean
+CommandService.Commands.chomik = function(speaker: Player, channel: any): boolean
 	local character: Model? = speaker.Character or speaker.CharacterAdded:Wait() :: Model
 	if not character then
 		annotater.Error("no character.")
@@ -515,27 +531,27 @@ module.chomik = function(speaker: Player, channel: any): boolean
 	local chomik: Part = signs:FindFirstChild("Chomik") :: Part
 	local dist = tpUtil.getDist(root.Position, chomik.Position)
 	local message = string.format("The Chomik is %dd away from %s", dist, speaker.Name)
-	sendMessage(channel, message)
+	sendMessage(message, speaker)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end
 
 local doNotCheckInGameIdentifier = require(game.ReplicatedStorage:FindFirstChild("doNotCheckInGameIdentifier"))
-module.version = function(speaker: Player, channel: any): boolean
+CommandService.Commands.version = function(speaker: Player, channel: any): boolean
 	local testMessage = ""
 	if doNotCheckInGameIdentifier.useTestDb() then
 		testMessage = " TEST VERSION, db will be wiped"
 	end
 
 	local message = string.format("Terrain Parkour - Version %s%s", enums.gameVersion, testMessage)
-	sendMessage(channel, message)
+	sendMessage(message, speaker)
 	GrandUndocumentedCommandBadge(speaker.UserId)
 	return true
 end
 
 local bootTime = tick()
 
-module.uptime = function(speaker: Player, channel: any): boolean
+CommandService.Commands.uptime = function(speaker: Player, channel: any): boolean
 	local uptimeTicks = tick() - bootTime
 	local days = 0
 	local hours = 0
@@ -556,29 +572,30 @@ module.uptime = function(speaker: Player, channel: any): boolean
 		uptimeTicks = uptimeTicks - minutes * 60
 	end
 
-	local message =
-		string.format("Server Uptime:  - %d days %d hours %d minutes %d seconds", days, hours, minutes, uptimeTicks)
-	sendMessage(channel, message)
+	local message = string.format("Server Uptime:  - %d days %d hours %d minutes %d seconds", days, hours, minutes, uptimeTicks)
+	
+	sendMessage(message, speaker)
 	GrandUndocumentedCommandBadge(speaker.UserId)
+	
 	return true
 end
 
-module.today = function(speaker: Player, channel): boolean
+CommandService.Commands.today = function(speaker: Player, channel): boolean
 	local res = playerData2.getGameStats()
-	sendMessage(channel, res)
+	sendMessage(res, speaker)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end
 
-module.meta = function(speaker: Player, channel): boolean
+CommandService.Commands.meta = function(speaker: Player, channel): boolean
 	local res =
 		"Principles of Terrain Parkour:\n\tNo Invisible Walls\n\tJust One More Race\n\tNo Dying\n\tRewards always happen\n\tFairness"
-	sendMessage(channel, res)
+	sendMessage(res, speaker)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end
 
-module.closest = function(speaker: Player, channel): boolean
+CommandService.Commands.closest = function(speaker: Player, channel): boolean
 	local bestsign: Instance? = getClosestSignToPlayer(speaker)
 	local message = ""
 	if bestsign == nil then
@@ -587,14 +604,12 @@ module.closest = function(speaker: Player, channel): boolean
 		message = "The closest found sign to " .. speaker.Name .. " is " .. bestsign.Name .. "!"
 	end
 
-	sendMessage(channel, message)
+	sendMessage(message, speaker)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end
 
---command to show <random> selection of unrun/unwr-ed runs with certain parameters.
---2022.06 incomplete
-module.showInteresting = function(speaker: Player, channel, params: tt.missingRunRequestParams): boolean
+CommandService.Commands.showInteresting = function(speaker: Player, channel, params: tt.missingRunRequestParams): boolean
 	if
 		params.kind == "unrun-to"
 		or params.kind == "unrun-from"
@@ -607,10 +622,10 @@ module.showInteresting = function(speaker: Player, channel, params: tt.missingRu
 		if res == nil then
 			warn("miss res")
 			message = "No result."
-			sendMessage(channel, message)
+			sendMessage(message, speaker)
 		else
 			message = res[1].startSignName .. "-" .. res[1].endSignName
-			sendMessage(channel, message)
+			sendMessage(message, speaker)
 		end
 		GrandCmdlineBadge(speaker.UserId)
 	else
@@ -621,19 +636,19 @@ module.showInteresting = function(speaker: Player, channel, params: tt.missingRu
 	return true
 end
 
-module.challenge = function(speaker: Player, channel, parts): boolean
+CommandService.Commands.challenge = function(speaker: Player, channel, parts): boolean
 	if parts[2] == nil or parts[2] == "" then
 		Usage(channel)
 		return true
 	end
 	local res = text.describeChallenge(parts)
 	if res ~= "" then
-		sendMessage(channel, res)
+		sendMessage(res, speaker)
 		GrandCmdlineBadge(speaker.UserId)
 		--successfully showed challenge
 		return true
 	else
-		Usage(channel)
+		Usage(channel, speaker)
 		return false
 	end
 end
@@ -654,10 +669,10 @@ local getRandomFoundSignName = function(userId: number): string
 	return signName
 end
 
-module.random = function(speaker: Player, channel): boolean
+CommandService.Commands.random = function(speaker: Player, channel): boolean
 	local rndSign = getRandomFoundSignName(speaker.UserId) or ""
 	local res = "Random Sign You've found: " .. rndSign .. "."
-	sendMessage(channel, res)
+	sendMessage(res, speaker)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end
@@ -671,8 +686,8 @@ local lastRandomTicks: number
 local runTimeInSecondsWithoutBump = 50 --todo lengthen  this
 -- runTimeInSecondsWithoutBump = 0.1
 
-module.randomRace = function(speaker: Player, channel): boolean
-	if config.IsInStudio() then
+CommandService.Commands.randomRace = function(speaker: Player, channel): boolean
+	if config.isInStudio() then
 		runTimeInSecondsWithoutBump = 1
 	end
 	local candidateSignId1: number
@@ -695,7 +710,7 @@ module.randomRace = function(speaker: Player, channel): boolean
 
 		--if we are in test mode game, we need to do this filter also:
 		local signFolder = game.Workspace:FindFirstChild("Signs")
-		if config.IsInStudio() then
+		if config.isInStudio() then
 			local existingSignIdChoices = {}
 			for _, signId in ipairs(signIdChoices) do
 				local sn = tpUtil.signId2signName(signId)
@@ -749,7 +764,7 @@ module.randomRace = function(speaker: Player, channel): boolean
 		for _, player in ipairs(PlayersService:GetPlayers()) do
 			table.insert(userIdsInServer, player.UserId)
 		end
-		if config.IsInStudio then
+		if config.isInStudio then
 			table.insert(userIdsInServer, enums.objects.BrouhahahaUserId)
 		end
 
@@ -762,7 +777,7 @@ module.randomRace = function(speaker: Player, channel): boolean
 
 		if not reusingRace then
 			for _, el in pairs(entries) do
-				sendMessage(channel, el.message, el.options)
+				sendMessage(el.message, speaker)
 			end
 		end
 		local userJoinMes = speaker.Name
@@ -771,7 +786,7 @@ module.randomRace = function(speaker: Player, channel): boolean
 			.. " to "
 			.. tpUtil.signId2signName(candidateSignId2)
 			.. '. Use "/rr" to join too!'
-		sendMessage(channel, userJoinMes)
+		sendMessage(userJoinMes, speaker)
 		GrandCmdlineBadge(speaker.UserId)
 
 		local request: tt.serverWarpRequest = {
@@ -788,7 +803,7 @@ module.randomRace = function(speaker: Player, channel): boolean
 						return
 					end
 					if tick() - lastRandomTicks > runTimeInSecondsWithoutBump then
-						sendMessage(channel, "Next race ready to start.")
+						sendMessage("Next race ready to start.", speaker)
 						break
 					end
 					task.wait(1)
@@ -802,7 +817,7 @@ module.randomRace = function(speaker: Player, channel): boolean
 	annotater.Error("fell through generating rr?")
 end
 
-module.popular = function(speaker: Player, channel): boolean
+CommandService.Commands.popular = function(speaker: Player, channel): boolean
 	--for testing, fake it like these people are also in the server.
 
 	local userIdsInServer = { -2, enums.objects.TerrainParkourUserId }
@@ -841,15 +856,15 @@ module.popular = function(speaker: Player, channel): boolean
 		table.insert(messages, msg)
 	end
 	local res = textUtil.stringJoin("\n", messages)
-	sendMessage(channel, res)
+	sendMessage(res, speaker)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end
 
-module.finders = function(speaker: Player, channel): boolean
+CommandService.Commands.finders = function(speaker: Player, channel): boolean
 	local finderLeaders = playerData2.getFinderLeaders()
 
-	sendMessage(channel, "Top Finders:")
+	sendMessage("Top Finders:", speaker)
 	local playersInServer = {}
 	for _, player in ipairs(PlayersService:GetPlayers()) do
 		playersInServer[player.UserId] = true
@@ -860,14 +875,14 @@ module.finders = function(speaker: Player, channel): boolean
 	end
 	local res = text.generateTextForRankedList(finderLeaders, playersInServer, speaker.UserId, getter)
 	for _, el in ipairs(res) do
-		sendMessage(channel, el.message, el.options)
+		sendMessage(el.message, speaker)
 	end
 
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end
 
-module.common = function(speaker: Player, channel): boolean
+CommandService.Commands.common = function(speaker: Player, channel): boolean
 	--find the intersection of finds of the top finders in the server
 	local signNames = playerData2.getCommonFoundSignNames()
 	local res = "Signs everyone in server has found: "
@@ -875,10 +890,27 @@ module.common = function(speaker: Player, channel): boolean
 	for _, signName in ipairs(signNames) do
 		res = res .. signName .. ", "
 	end
-	sendMessage(channel, res)
+	sendMessage(res, speaker)
 	GrandCmdlineBadge(speaker.UserId)
 	return true
 end
 
-_annotate("end")
-return module
+function CommandService:ProcessCommand(text, player)
+	local command = text:sub(1, 1)
+	
+	if command == "/" then
+		local cmd, args = text:match("^/(%w+)%s*(.*)$")
+		cmd = cmd:lower()
+		local executeCommand = self.Commands[cmd]
+
+		if executeCommand then
+			return executeCommand(player, args)
+		else
+			return "Unknown command!"
+		end
+	end
+	
+	return ""
+end
+
+return CommandService

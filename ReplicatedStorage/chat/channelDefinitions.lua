@@ -77,7 +77,6 @@ module.getChannelDefinitions = function(): { tt.channelDefinition }
 	local serverTime = os.date("Server Time: %H:%M %d-%m-%Y", tick())
 	local welcomeMessage =
 		string.format("Welcome to Terrain Parkour!\nVersion: %s\n%s\n%s", enums.gameVersion, serverTime, joinMessage)
-
 	table.insert(res, {
 		Name = "All",
 		AutoJoin = true,
