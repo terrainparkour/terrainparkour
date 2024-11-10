@@ -24,6 +24,8 @@ local serverEvents = require(game.StarterPlayer.StarterCharacterScripts.client.s
 
 local MovementLogger = require(game.ReplicatedStorage.ReplayModified.Replay)
 
+local ChatUI = require(game.ReplicatedStorage.ChatSystem.Chat)
+
 local userDataClient = require(game.StarterPlayer.StarterPlayerScripts.userDataClient)
 local leaderboard = require(game.StarterPlayer.StarterCharacterScripts.lb.leaderboard)
 local marathonClient = require(game.StarterPlayer.StarterCharacterScripts.client.marathonClient)
@@ -51,6 +53,7 @@ local setup = function()
 	-- character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 	-- humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	userDataClient.Init()
+	ChatUI:Initialize()
 	movement.Init()
 	morphs.Init()
 	MovementLogger.Init()

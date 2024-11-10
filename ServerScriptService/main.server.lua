@@ -10,6 +10,10 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 annotater.Init()
 
+local ChatService = require(game.ReplicatedStorage.ChatSystem.ChatService)
+
+ChatService:InitializeChannels()
+
 --IMPORTANT  this go first because it's where signs and everything are set up
 local workspaceRemoteSetup = require(game.ServerScriptService.workspaceRemoteSetup)
 workspaceRemoteSetup.CreateRemoteEventsAndRemoteFunctions()
