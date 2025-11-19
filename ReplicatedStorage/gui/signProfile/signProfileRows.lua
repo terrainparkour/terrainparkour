@@ -92,9 +92,10 @@ local createPlacementRowForSetOfRaces = function(
 				if playerGui == nil then
 					return
 				end
-				signGrindUIScreenGui = playerGui:FindFirstChild("SignGrindUIScreenGui")
-
-				if not signGrindUIScreenGui then
+				local foundGui: Instance? = playerGui:FindFirstChild("SignGrindUIScreenGui")
+				if foundGui and foundGui:IsA("ScreenGui") then
+					signGrindUIScreenGui = foundGui :: ScreenGui
+				else
 					signGrindUIScreenGui = Instance.new("ScreenGui")
 					signGrindUIScreenGui.Name = "SignGrindUIScreenGui"
 					signGrindUIScreenGui.Parent = playerGui
@@ -328,7 +329,7 @@ local function wrap(
 			end
 		end
 		for _, el in pairs(res) do
-			local btn = makeChip(el)
+			local btn: TextButton | TextLabel = makeChip(el)
 			btn.Size = UDim2.new(el.widthWeight / total, 0, 1, 0)
 			table.insert(out, btn)
 		end

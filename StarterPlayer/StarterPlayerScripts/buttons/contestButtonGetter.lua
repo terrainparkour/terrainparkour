@@ -1,4 +1,6 @@
 --!strict
+-- Contest button module that builds the contests popup action button on demand.
+-- Fetches contest data asynchronously so UI startup stays snappy.
 
 --a button that will pop a current contest, if any exists.
 local annotater = require(game.ReplicatedStorage.util.annotater)
@@ -9,6 +11,7 @@ local localPlayer = PlayersService.LocalPlayer
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+local scrollingFrameUtils = require(game.ReplicatedStorage.gui.scrollingFrameUtils)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local settings = require(game.ReplicatedStorage.settings)
@@ -25,7 +28,19 @@ local GetSingleContestFunction = remotes.getRemoteFunction("GetSingleContestFunc
 
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 
-local module = {}
+type ActionButton = gt.actionButton
+type Contest = ContestResponseTypes.Contest
+type ContestRace = ContestResponseTypes.ContestRace
+
+type Module = {
+	contestButton: ActionButton?,
+	Init: () -> nil,
+}
+
+local module: Module = {
+	contestButton = nil,
+	Init = function() end,
+}
 
 local maxUsersToDisplayInContest = 10
 local userSizedColumns = maxUsersToDisplayInContest + 2
@@ -67,6 +82,7 @@ local getPlaceByUsername = function(ss: { ContestResponseTypes.Runner }, usernam
 			return el
 		end
 	end
+	return nil
 end
 
 --widths for rows like
@@ -133,9 +149,9 @@ local function makeContestRow(
 	fr.BorderSizePixel = 0
 	fr.Name = string.format("%03d", ii) .. "PopularResultFrameRow"
 	fr.Size = UDim2.new(1, 0, 0, 30)
-	local vv = Instance.new("UIListLayout")
-	vv.FillDirection = Enum.FillDirection.Horizontal
-	vv.Parent = fr
+	local rowLayout = Instance.new("UIListLayout")
+	rowLayout.FillDirection = Enum.FillDirection.Horizontal
+	rowLayout.Parent = fr
 	local wpix = 0
 	if showScrollbar then
 		wpix = -10
@@ -212,9 +228,7 @@ local function makeContestRow(
 		local youTl = guiUtil.getTl("01", UDim2.new(0.5, 0, 1.0, 0), 1, youFrame, colors.defaultGrey)
 		youTl.Text = string.format("%0.3fs", theRun.timeMs / 1000)
 		local gap = theRun.timeMs - race.best.timeMs
-		local useColor = colors.lightRed
-
-		local plus, useColor = getColorForTimeGap(gap)
+		local plus, gapColor = getColorForTimeGap(gap)
 
 		-- local plus = "+"
 		-- --determining colors for relative position to leader.
@@ -234,7 +248,7 @@ local function makeContestRow(
 		-- 	plus = "+"
 		-- 	useColor = colors.lightRed
 		-- end
-		local diffTl = guiUtil.getTl("02", UDim2.new(0.5, 0, 1, 0), 1, youFrame, useColor)
+		local diffTl = guiUtil.getTl("02", UDim2.new(0.5, 0, 1, 0), 1, youFrame, gapColor)
 		diffTl.Text = string.format("%s%0.03fs", plus, gap / 1000)
 	else
 		local youTl = guiUtil.getTl("20", UDim2.new(1, 0, 1, 0), 7, youFrame, colors.lightGrey)
@@ -270,9 +284,9 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	outerFrame.Position = UDim2.new(0.15 / 2, 0, 0.25 / 2, 0)
 	outerFrame.BackgroundTransparency = 1
 	--setup header on list.
-	local vv0 = Instance.new("UIListLayout")
-	vv0.FillDirection = Enum.FillDirection.Vertical
-	vv0.Parent = outerFrame
+	local outerLayout = Instance.new("UIListLayout")
+	outerLayout.FillDirection = Enum.FillDirection.Vertical
+	outerLayout.Parent = outerFrame
 
 	local introduction = guiUtil.getTl("00.Introduction", UDim2.new(1, 0, 0, 40), 2, outerFrame, colors.defaultGrey, 1)
 	introduction.Text = "Welcome to Contests. Run each race below to compete!"
@@ -313,7 +327,7 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 			local ii = 0
 			while true do
 				ii += 1
-				if introduction == nil then
+				if introduction.Parent == nil then
 					break
 				end
 				holderIntro.Text = "Contest End: "
@@ -321,7 +335,7 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 					.. " UTC\nRemaining: "
 					.. tostring(contest.contestremaining - ii)
 					.. " seconds."
-				if screenGui == nil then
+				if screenGui.Parent == nil then
 					break
 				end
 				wait(1)
@@ -350,9 +364,9 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	local youpos = makeLeaderCell(contest.user, 12, leadTime)
 	youpos.Parent = leaderSummaryRow
 
-	local vv = Instance.new("UIListLayout")
-	vv.FillDirection = Enum.FillDirection.Horizontal
-	vv.Parent = leaderSummaryRow
+	local leaderLayout = Instance.new("UIListLayout")
+	leaderLayout.FillDirection = Enum.FillDirection.Horizontal
+	leaderLayout.Parent = leaderSummaryRow
 
 	----------------HEADER--------------
 	local headerFrame = Instance.new("Frame")
@@ -360,45 +374,45 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	headerFrame.Parent = outerFrame
 	headerFrame.Name = "03.contestHeaderRow"
 	headerFrame.Size = UDim2.new(1, 0, 0, rowHeight)
-	local vv = Instance.new("UIListLayout")
-	vv.FillDirection = Enum.FillDirection.Horizontal
-	vv.Parent = headerFrame
+	local headerLayout = Instance.new("UIListLayout")
+	headerLayout.FillDirection = Enum.FillDirection.Horizontal
+	headerLayout.Parent = headerFrame
 	local tl0 = guiUtil.getTl("00", UDim2.new(widths.number, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
 	tl0.Text = "Num"
 
-	local tl = guiUtil.getTl("01", UDim2.new(widths.race, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
-	tl.Text = "Run"
+	local runLabel = guiUtil.getTl("01", UDim2.new(widths.race, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
+	runLabel.Text = "Run"
 
-	local tl2 = guiUtil.getTl("02", UDim2.new(widths.dist, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
-	tl2.Text = "Dist"
+	local distLabel = guiUtil.getTl("02", UDim2.new(widths.dist, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
+	distLabel.Text = "Dist"
 
 	--lead section consists of best, gold,silver,bronze,4-8th (8), plus YOU
 	local leadCount = maxUsersToDisplayInContest + 2 --(display+best+YOU)
 
-	local tl3 = guiUtil.getTl("03", UDim2.new(widths.leads / leadCount, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
-	tl3.Text = "Best"
+	local bestLabel = guiUtil.getTl("03", UDim2.new(widths.leads / leadCount, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
+	bestLabel.Text = "Best"
 
-	local ii = 1
+	local medalIndex = 1
 
-	while ii <= maxUsersToDisplayInContest do
-		local tl = guiUtil.getTl(
-			string.format("%02d", 3 + ii),
+	while medalIndex <= maxUsersToDisplayInContest do
+		local placeLabel = guiUtil.getTl(
+			string.format("%02d", 3 + medalIndex),
 			UDim2.new(widths.leads / leadCount, 0, 1, 0),
 			2,
 			headerFrame,
 			colors.blueDone,
 			1
 		)
-		local text = tpUtil.getCardinalEmoji(ii)
-		if ii == 1 then
+		local text = tpUtil.getCardinalEmoji(medalIndex)
+		if medalIndex == 1 then
 			text = "Gold " .. tpUtil.getCardinalEmoji(1)
-		elseif ii == 2 then
+		elseif medalIndex == 2 then
 			text = "Silver " .. tpUtil.getCardinalEmoji(2)
-		elseif ii == 3 then
+		elseif medalIndex == 3 then
 			text = "Bronze " .. tpUtil.getCardinalEmoji(3)
 		end
-		tl.Text = text
-		ii += 1
+		placeLabel.Text = text
+		medalIndex += 1
 	end
 
 	local tlYou = guiUtil.getTl("14", UDim2.new(widths.leads / leadCount, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
@@ -430,12 +444,12 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	scrollingFrame.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Left
 	--TODO this scrollingness is kinda useless.
 	scrollingFrame.CanvasSize = UDim2.new(1, 0, 0, maxYPixels)
-	local vv = Instance.new("UIListLayout")
-	vv.FillDirection = Enum.FillDirection.Vertical
-	vv.Parent = scrollingFrame
+	local scrollingLayout = Instance.new("UIListLayout")
+	scrollingLayout.FillDirection = Enum.FillDirection.Vertical
+	scrollingLayout.Parent = scrollingFrame
 
-	for ii, race: ContestResponseTypes.ContestRace in ipairs(contest.races) do
-		local rowFrame = makeContestRow(contest, race, ii + 10, screenGui, scrollingFrame, showScrollbar)
+	for rowIndex, race: ContestResponseTypes.ContestRace in ipairs(contest.races) do
+		local rowFrame = makeContestRow(contest, race, rowIndex + 10, screenGui, scrollingFrame, showScrollbar)
 		rowFrame.Parent = scrollingFrame
 	end
 
@@ -451,26 +465,26 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 		screenGui:Destroy()
 	end)
 	scrollingFrame.CanvasPosition = lastCanvasPosition
+	
+	-- Prevent camera scroll when hovering over contest scrolling frame
+	scrollingFrameUtils.PreventCameraScrollOnHover(scrollingFrame)
 
 	return screenGui
 end
 
-local function makeGetter(contest: ContestResponseTypes.Contest): (Player) -> ScreenGui
-	local function f(localPlayer: Player): ScreenGui
+local function makeGetter(contest: Contest): (Player) -> ScreenGui
+	local function f(_player: Player): ScreenGui
 		local newcontest = GetSingleContestFunction:InvokeServer(contest.contestid)
 		return getContest(newcontest)
 	end
 	return f
 end
+module.contestButton = nil
 
-local contests: { ContestResponseTypes.Contest } = GetContestsFunction:InvokeServer({})
+local contestLoadInProgress = false
 
--- local function GetContent(player: Player, userIds: { number }):ScreenGui
---  end
-
-local ct: gt.actionButton = nil
-for _, contest in ipairs(contests) do
-	local cb: gt.actionButton = {
+local function buildActionButton(contest: Contest): ActionButton
+	local button: ActionButton = {
 		name = "Contest Button" .. contest.name,
 		contentsGetter = makeGetter(contest),
 		hoverHint = "Show Contests Ranks",
@@ -480,29 +494,51 @@ for _, contest in ipairs(contests) do
 		end,
 		widthXScale = 0.20,
 	}
-	ct = ct
-	break
-	--just the first one for now?
-	--table.insert(res, contestButton)
+	return button
 end
 
--- local contestButton: gt.actionButton = {
--- 	name = "COntest Button",
--- 	contentsGetter = GetContent,
--- 	hoverHint = "Show new first place runs",
--- 	shortName = "New",
--- 	getActive = function()
--- 		return true
--- 	end,
--- 	widthXScale = 0.25,
--- }
+local function refreshContestButtonAsync()
+	if contestLoadInProgress then
+		return
+	end
 
-module.contestButton = ct
+	contestLoadInProgress = true
+
+	task.spawn(function()
+		local ok, result = pcall(function()
+			return GetContestsFunction:InvokeServer({})
+		end)
+
+		if not ok then
+			warn(string.format("[contestButtonGetter] failed to load contests: %s", tostring(result)))
+			contestLoadInProgress = false
+			return
+		end
+
+		if typeof(result) ~= "table" then
+			warn("[contestButtonGetter] GetContestsFunction returned non-table result")
+			contestLoadInProgress = false
+			return
+		end
+
+		local contests = result :: { Contest }
+
+		module.contestButton = nil
+
+		for _, currentContest in ipairs(contests) do
+			module.contestButton = buildActionButton(currentContest)
+			break
+		end
+
+		contestLoadInProgress = false
+	end)
+end
 
 local function handleUserSettingChanged(setting: tt.userSettingValue)
 	if setting.name == settingEnums.settingDefinitions.SHORTEN_CONTEST_DIGIT_DISPLAY.name then
-		shortenContestDigitDisplay = setting.booleanValue
+		shortenContestDigitDisplay = setting.booleanValue == true
 	end
+	return nil
 end
 
 module.Init = function()
@@ -516,6 +552,8 @@ module.Init = function()
 	handleUserSettingChanged(
 		settings.GetSettingByName(settingEnums.settingDefinitions.SHORTEN_CONTEST_DIGIT_DISPLAY.name)
 	)
+
+	refreshContestButtonAsync()
 
 	_annotate("init done")
 end

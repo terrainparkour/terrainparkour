@@ -69,8 +69,8 @@ local AlphaFreeEvaluateFind = function(desc: mt.marathonDescriptor, signName: st
 end
 
 --evaluate a find and accept it if necessary, purely considering if its new to the list of finds.
-local function EvaluteFindBasedOnIfItsNewOrNot(desc, signName): mt.userFoundSignResult
-	for _, find in ipairs(desc) do
+local function EvaluteFindBasedOnIfItsNewOrNot(desc: mt.marathonDescriptor, signName: string): mt.userFoundSignResult
+	for _, find in ipairs(desc.finds) do
 		if find.signName == signName then
 			return { added = false, marathonDone = false, started = false }
 		end
@@ -130,6 +130,7 @@ local evaluateFindInFixedOrder = function(desc: mt.marathonDescriptor, signName:
 		return { added = false, marathonDone = false, started = false }
 	end
 	warn("should not get here.")
+	return { added = false, marathonDone = false, started = false }
 end
 
 local evaluateFindInFixedOrderByFirstLetter = function(
@@ -156,6 +157,7 @@ local evaluateFindInFixedOrderByFirstLetter = function(
 		return { added = false, marathonDone = false, started = false }
 	end
 	annotater.Error("should not get here.")
+	return { added = false, marathonDone = false, started = false }
 end
 
 --the most naive method of pairing up signids after a marathon is done.
@@ -163,7 +165,9 @@ local sequentialSummarizeResults = function(desc: mt.marathonDescriptor): { stri
 	local od = {}
 	for _, find in ipairs(desc.finds) do
 		local signId = tpUtil.looseSignName2SignId(find.signName)
-		table.insert(od, signId)
+		if signId then
+			table.insert(od, tostring(signId))
+		end
 	end
 	return od
 end
@@ -171,80 +175,116 @@ end
 local FindNUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string): nil
 	--get the tl
 	local targetName = marathonStatic.getMarathonComponentName(desc, desc.humanName)
-	local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
-	if exiTile == nil then
+	local exiTile: Instance? = frame:FindFirstChild(targetName, true)
+	if exiTile == nil or not exiTile:IsA("TextLabel") then
 		warn("bad.FindNUpdateRow" .. " could not find: " .. targetName)
 		return
 	end
+	local tile: TextLabel = exiTile :: TextLabel
 	local ratio = desc.count / (1.0 * desc.requiredCount)
-	local gotPart: TextLabel = exiTile:FindFirstChild("01-Yes")
-	local notGotPart: TextLabel = exiTile:FindFirstChild("03-No")
-	gotPart.Size = UDim2.new(ratio, 0, 1, 0)
-	notGotPart.Size = UDim2.new(1 - ratio, 0, 1, 0)
+	local gotPart: Instance? = tile:FindFirstChild("01-Yes")
+	local notGotPart: Instance? = tile:FindFirstChild("03-No")
+	if not gotPart or not gotPart:IsA("TextLabel") or not notGotPart or not notGotPart:IsA("TextLabel") then
+		warn("bad.FindNUpdateRow: missing gotPart or notGotPart")
+		return
+	end
+	local gotLabel: TextLabel = gotPart :: TextLabel
+	local notGotLabel: TextLabel = notGotPart :: TextLabel
+	gotLabel.Size = UDim2.new(ratio, 0, 1, 0)
+	notGotLabel.Size = UDim2.new(1 - ratio, 0, 1, 0)
 
-	local gotInner: TextLabel = gotPart:FindFirstChild("Inner")
-	local notGotInner: TextLabel = notGotPart:FindFirstChild("Inner")
-	gotInner.Text = tostring(desc.count)
-	gotInner.TextScaled = true
-	gotInner.BackgroundColor3 = colors.greenGo
-	notGotInner.Text = tostring(desc.requiredCount)
-	notGotInner.BackgroundColor3 = colors.defaultGrey
-	local Tween = TweenService:Create(gotInner, TweenInfo.new(enums.greenTime), { BackgroundColor3 = colors.meColor })
+	local gotInner: Instance? = gotLabel:FindFirstChild("Inner")
+	local notGotInner: Instance? = notGotLabel:FindFirstChild("Inner")
+	if not gotInner or not gotInner:IsA("TextLabel") or not notGotInner or not notGotInner:IsA("TextLabel") then
+		warn("bad.FindNUpdateRow: missing gotInner or notGotInner")
+		return
+	end
+	local gotInnerLabel: TextLabel = gotInner :: TextLabel
+	local notGotInnerLabel: TextLabel = notGotInner :: TextLabel
+	gotInnerLabel.Text = tostring(desc.count)
+	gotInnerLabel.TextScaled = true
+	gotInnerLabel.BackgroundColor3 = colors.greenGo
+	notGotInnerLabel.Text = tostring(desc.requiredCount)
+	notGotInnerLabel.BackgroundColor3 = colors.defaultGrey
+	local Tween = TweenService:Create(gotInnerLabel, TweenInfo.new(enums.greenTime), { BackgroundColor3 = colors.meColor })
 	Tween:Play()
+	return nil
 end
 
 local SignsOfEveryLengthUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string): nil
-	local ll = utf8.len(foundSignName)
+	local ll: number = utf8.len(foundSignName)
 	local targetName = marathonStatic.getMarathonComponentName(desc, string.format("%02d", ll))
-	local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
-	if exiTile == nil then
-		warn("bad.AlphaUpdateRow" .. foundSignName)
-		return
+	local exiTile: Instance? = frame:FindFirstChild(targetName, true)
+	if exiTile == nil or not exiTile:IsA("TextLabel") then
+		warn("bad.SignsOfEveryLengthUpdateRow: could not find " .. targetName)
+		return nil
 	end
-	local inner: TextLabel = exiTile:FindFirstChild("Inner")
+	local tile: TextLabel = exiTile :: TextLabel
+	local inner: Instance? = tile:FindFirstChild("Inner")
+	if not inner or not inner:IsA("TextLabel") then
+		warn("bad.SignsOfEveryLengthUpdateRow: missing Inner")
+		return nil
+	end
+	local innerLabel: TextLabel = inner :: TextLabel
 
 	local bgcolor = colors.yellowFind
-	exiTile.BackgroundColor3 = colors.greenGo
-	inner.BackgroundColor3 = colors.greenGo
-	local Tween = TweenService:Create(exiTile, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+	tile.BackgroundColor3 = colors.greenGo
+	innerLabel.BackgroundColor3 = colors.greenGo
+	local Tween = TweenService:Create(tile, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
 	Tween:Play()
-	local Tween2 = TweenService:Create(inner, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+	local Tween2 = TweenService:Create(innerLabel, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
 	Tween2:Play()
+	return nil
 end
 
 local AlphaUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string): nil
 	-- local firstLetterOfSign = string.lower(string.sub(foundSignName, 1, 1))
 	local firstLetterOfSign = textUtil.getFirstCodepointAsString(foundSignName):lower()
 	local targetName = marathonStatic.getMarathonComponentName(desc, firstLetterOfSign)
-	local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
-	if exiTile == nil then
+	local exiTile: Instance? = frame:FindFirstChild(targetName, true)
+	if exiTile == nil or not exiTile:IsA("TextLabel") then
 		--this is okay since non-alphanumeric chars won't count.
-		return
+		return nil
 	end
-	local inner: TextLabel = exiTile:FindFirstChild("Inner")
+	local tile: TextLabel = exiTile :: TextLabel
+	local inner: Instance? = tile:FindFirstChild("Inner")
+	if not inner or not inner:IsA("TextLabel") then
+		warn("bad.AlphaUpdateRow: missing Inner")
+		return nil
+	end
+	local innerLabel: TextLabel = inner :: TextLabel
 	local bgcolor = colors.yellowFind
-	inner.BackgroundColor3 = colors.greenGo
-	exiTile.BackgroundColor3 = colors.greenGo
-	local Tween = TweenService:Create(exiTile, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+	innerLabel.BackgroundColor3 = colors.greenGo
+	tile.BackgroundColor3 = colors.greenGo
+	local Tween = TweenService:Create(tile, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
 	Tween:Play()
-	local Tween2 = TweenService:Create(inner, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+	local Tween2 = TweenService:Create(innerLabel, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
 	Tween2:Play()
+	return nil
 end
 
-local FindSetUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string)
+local FindSetUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string): nil
 	local targetName = marathonStatic.getMarathonComponentName(desc, foundSignName)
-	local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
-	if exiTile == nil then
-		warn("bad.FindSetUpdateRow")
+	local exiTile: Instance? = frame:FindFirstChild(targetName, true)
+	if exiTile == nil or not exiTile:IsA("TextLabel") then
+		warn("bad.FindSetUpdateRow: could not find " .. targetName)
+		return nil
 	end
-	local inner: TextLabel = exiTile:FindFirstChild("Inner")
+	local tile: TextLabel = exiTile :: TextLabel
+	local inner: Instance? = tile:FindFirstChild("Inner")
+	if not inner or not inner:IsA("TextLabel") then
+		warn("bad.FindSetUpdateRow: missing Inner")
+		return nil
+	end
+	local innerLabel: TextLabel = inner :: TextLabel
 	local bgcolor = colors.yellowFind
-	exiTile.BackgroundColor3 = colors.greenGo
-	inner.BackgroundColor3 = colors.greenGo
-	local Tween = TweenService:Create(exiTile, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+	tile.BackgroundColor3 = colors.greenGo
+	innerLabel.BackgroundColor3 = colors.greenGo
+	local Tween = TweenService:Create(tile, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
 	Tween:Play()
-	local Tween2 = TweenService:Create(inner, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+	local Tween2 = TweenService:Create(innerLabel, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
 	Tween2:Play()
+	return nil
 end
 
 local findSetEvaluateFind = function(desc: mt.marathonDescriptor, signName: string): mt.userFoundSignResult
@@ -285,10 +325,7 @@ local mkFindSetMarathon = function(
 	overrideRequiredCount: number?
 ): mt.marathonDescriptor
 	local joined = textUtil.stringJoin(", ", signNames)
-	local requiredCount = overrideRequiredCount
-	if overrideRequiredCount == nil then
-		requiredCount = #signNames
-	end
+	local requiredCount: number = if overrideRequiredCount then overrideRequiredCount else #signNames
 	local inner: mt.marathonDescriptor = {
 		kind = "findset" .. slug,
 		highLevelType = "findSet",
@@ -298,7 +335,7 @@ local mkFindSetMarathon = function(
 		reportAsMarathon = true,
 		finds = {},
 		targets = signNames,
-		orderedTargets = nil,
+		orderedTargets = {},
 		count = 0,
 		requiredCount = requiredCount,
 		startTime = 0,
@@ -348,7 +385,7 @@ local signsOfEveryLength: mt.marathonDescriptor = {
 		"18",
 		"19",
 	},
-	orderedTargets = nil,
+	orderedTargets = {},
 	count = 0,
 	requiredCount = 19,
 	startTime = 0,
@@ -376,7 +413,7 @@ local alphaFree: mt.marathonDescriptor = {
 	reportAsMarathon = true,
 	finds = {},
 	targets = marathonStatic.alphaKeys,
-	orderedTargets = nil,
+	orderedTargets = {},
 	count = 0,
 	requiredCount = 26,
 	startTime = 0,
@@ -572,7 +609,7 @@ local find10t: mt.marathonDescriptor = {
 	sequenceNumber = "10t",
 }
 
-local function countFullLengthOfFoundSigns(desc: mt.marathonDescriptor)
+local function countFullLengthOfFoundSigns(desc: mt.marathonDescriptor): number
 	local ret = 0
 	for ii, find: mt.findInMarathonRun in ipairs(desc.finds) do
 		ret += utf8.len(find.signName)
@@ -587,22 +624,29 @@ local FindLetterCountUpdateRow = function(
 ): nil
 	--get the tl
 	local targetName = marathonStatic.getMarathonComponentName(desc, desc.humanName)
-	local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
-	if exiTile == nil then
-		warn("bad.FindNUpdateRow")
-		return
+	local exiTile: Instance? = frame:FindFirstChild(targetName, true)
+	if exiTile == nil or not exiTile:IsA("TextLabel") then
+		warn("bad.FindLetterCountUpdateRow: could not find " .. targetName)
+		return nil
 	end
-	local inner: TextLabel = exiTile:FindFirstChild("Inner")
-	local ct = countFullLengthOfFoundSigns(desc)
-	inner.Text = ct .. " / " .. limit
-	inner.TextScaled = true
+	local tile: TextLabel = exiTile :: TextLabel
+	local inner: Instance? = tile:FindFirstChild("Inner")
+	if not inner or not inner:IsA("TextLabel") then
+		warn("bad.FindLetterCountUpdateRow: missing Inner")
+		return nil
+	end
+	local innerLabel: TextLabel = inner :: TextLabel
+	local ct: number = countFullLengthOfFoundSigns(desc)
+	innerLabel.Text = string.format("%d / %d", ct, limit)
+	innerLabel.TextScaled = true
 	local bgcolor = colors.yellowFind
-	exiTile.BackgroundColor3 = colors.greenGo
-	inner.BackgroundColor3 = colors.greenGo
-	local Tween = TweenService:Create(exiTile, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+	tile.BackgroundColor3 = colors.greenGo
+	innerLabel.BackgroundColor3 = colors.greenGo
+	local Tween = TweenService:Create(tile, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
 	Tween:Play()
-	local Tween2 = TweenService:Create(inner, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+	local Tween2 = TweenService:Create(innerLabel, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
 	Tween2:Play()
+	return nil
 end
 
 --evaluate a find and accept it if necessary, purely considering if its new to the list of finds.
@@ -611,13 +655,13 @@ local function EvaluteFindBasedOnIfItsLetterCountIsUnderLimit(
 	signName: string,
 	limit: number
 ): mt.userFoundSignResult
-	for _, find in ipairs(desc) do
+	for _, find in ipairs(desc.finds) do
 		if find.signName == signName then
 			return { added = false, marathonDone = false, started = false }
 		end
 	end
-	local tot = countFullLengthOfFoundSigns(desc)
-	local signLength = utf8.len(signName)
+	local tot: number = countFullLengthOfFoundSigns(desc)
+	local signLength: number = utf8.len(signName)
 	if signLength + tot > limit then
 		return { added = false, marathonDone = false, started = false }
 	end
@@ -631,6 +675,7 @@ local function EvaluteFindBasedOnIfItsLetterCountIsUnderLimit(
 		return { added = true, marathonDone = marathonDone, started = desc.count == 1 }
 	end
 	warn("don't get here.")
+	return { added = false, marathonDone = false, started = false }
 end
 
 local function mkLetterMarathon(limit: number, badge: tt.badgeDescriptor)
@@ -743,20 +788,28 @@ local FindAlphabeticalAndAddAllChipsRow = function(
 			continue
 		end
 		local targetName = marathonStatic.getMarathonComponentName(desc, c)
-		local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
-		if exiTile == nil then
-			warn("bad.foundSignName")
+		local exiTile: Instance? = frame:FindFirstChild(targetName, true)
+		if exiTile == nil or not exiTile:IsA("TextLabel") then
+			warn("bad.FindAlphabeticalAndAddAllChipsRow: could not find " .. targetName)
+			continue
 		end
-		local inner: TextLabel = exiTile:FindFirstChild("Inner")
+		local tile: TextLabel = exiTile :: TextLabel
+		local inner: Instance? = tile:FindFirstChild("Inner")
+		if not inner or not inner:IsA("TextLabel") then
+			warn("bad.FindAlphabeticalAndAddAllChipsRow: missing Inner")
+			continue
+		end
+		local innerLabel: TextLabel = inner :: TextLabel
 
 		local bgcolor = colors.yellowFind
-		exiTile.BackgroundColor3 = colors.greenGo
-		inner.BackgroundColor3 = colors.greenGo
-		local Tween = TweenService:Create(exiTile, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+		tile.BackgroundColor3 = colors.greenGo
+		innerLabel.BackgroundColor3 = colors.greenGo
+		local Tween = TweenService:Create(tile, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
 		Tween:Play()
-		local Tween2 = TweenService:Create(inner, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
+		local Tween2 = TweenService:Create(innerLabel, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
 		Tween2:Play()
 	end
+	return nil
 end
 
 local alphabeticalAllLetters: mt.marathonDescriptor = {
@@ -791,7 +844,7 @@ local alphabeticalAllLetters: mt.marathonDescriptor = {
 -- we have to look at what's available.
 local function getSignsWithTrait(trait): { string }
 	local res = {}
-	local enums = require(game.ReplicatedStorage.util.enums)
+	-- enums already imported at top of file
 	for signName, signId in pairs(enums.name2signId) do
 		if not trait(signName) then
 			continue

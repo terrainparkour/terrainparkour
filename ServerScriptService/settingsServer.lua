@@ -179,6 +179,7 @@ end
 --just call this to get settings and it will handle caching.
 --src is just for debugging.
 local innerSetupSettings = function(player: Player, src: string): { [string]: tt.userSettingValue }
+	local setupStart = tick()
 	while debounceInnerSetup do
 		_annotate("settings.innersetup.wait " .. src)
 		wait(0.05)
@@ -188,9 +189,13 @@ local innerSetupSettings = function(player: Player, src: string): { [string]: tt
 
 	-- if missing, set up the cache.
 	if userSettingsCache[userId] == nil then
-		_annotate("innerSetupSettings there was no cache for this user., userId=" .. userId)
+		_annotate(string.format("innerSetupSettings START cache miss userId=%d src=%s", userId, src))
 		userSettingsCache[userId] = {}
+
+		local dbFetchStart = tick()
 		local got = getAllSettingsForUser(userId) :: { [string]: tt.userSettingValue }
+		local dbFetchTime = tick() - dbFetchStart
+		_annotate(string.format("innerSetupSettings DB fetch took %.3fs for userId=%d", dbFetchTime, userId))
 		if not got then
 			annotater.Error("not got.")
 
@@ -214,7 +219,17 @@ local innerSetupSettings = function(player: Player, src: string): { [string]: tt
 			end
 		end
 
-		_annotate(string.format("innerSetupSettings got %d settings for user from db. userId=%d", gotCt, userId))
+		local filterTime = tick() - dbFetchStart - dbFetchTime
+		_annotate(
+			string.format(
+				"innerSetupSettings filtered to %d valid settings (filter took %.3fs) userId=%d",
+				gotCt,
+				filterTime,
+				userId
+			)
+		)
+
+		local cachePopulateStart = tick()
 		-- note this allows settings from db which no longer exist in code. hmm.
 		for _, setting in pairs(actuallyDefinedSettings) do
 			-- _annotate(
@@ -230,6 +245,10 @@ local innerSetupSettings = function(player: Player, src: string): { [string]: tt
 			userSettingsCache[userId][setting.name] = setting
 		end
 
+		local cachePopulateTime = tick() - cachePopulateStart
+		_annotate(string.format("innerSetupSettings cache populated (%.3fs) userId=%d", cachePopulateTime, userId))
+
+		local defaultsStart = tick()
 		--filling in cache now.
 		for _, defaultSetting in pairs(settingEnums.settingDefinitions) do
 			--if user has no value from db, fill one in in cache at least so callers see it.
@@ -244,17 +263,33 @@ local innerSetupSettings = function(player: Player, src: string): { [string]: tt
 				userSettingsCache[userId][defaultSetting.name] = copySetting(defaultSetting)
 			end
 		end
+		local defaultsTime = tick() - defaultsStart
+		_annotate(string.format("innerSetupSettings defaults filled (%.3fs) userId=%d", defaultsTime, userId))
+
+		local totalSetupTime = tick() - setupStart
+		_annotate(
+			string.format(
+				"innerSetupSettings COMPLETE userId=%d total=%.3fs (db=%.3fs filter=%.3fs populate=%.3fs defaults=%.3fs)",
+				userId,
+				totalSetupTime,
+				dbFetchTime,
+				filterTime,
+				cachePopulateTime,
+				defaultsTime
+			)
+		)
+	else
+		_annotate(string.format("innerSetupSettings cache HIT userId=%d src=%s", userId, src))
 	end
 
 	debounceInnerSetup = false
-	_annotate(string.format("Returning settings combined real & filled-in from defaults"))
 	return userSettingsCache[userId]
 end
 
 local getUserSettingByName = function(player: Player, settingName: string): tt.userSettingValue
 	local userSettings = innerSetupSettings(player, "getUserSettingByName " .. settingName)
 	_annotate("trying to find a setting by name: " .. settingName)
-	for _, s in userSettings do
+	for _, s in pairs(userSettings) do
 		-- _annotate(
 		-- 	string.format(
 		-- 		"evaluating setting: %s %s. kind=%s bool=%s str=%s",
@@ -270,6 +305,7 @@ local getUserSettingByName = function(player: Player, settingName: string): tt.u
 		end
 	end
 	annotater.Error("missing setting of name " .. settingName)
+	return nil :: any
 end
 
 -- if you get a missing setting for a user, we just store it in server memory. if they CHANGE it, we actually store to dbserver. otherwise
@@ -319,39 +355,44 @@ local filterByKind = function(
 end
 
 local getUserSettingsRouter = function(player: Player, settingRequest: settingEnums.settingRequest): any
+	local routerStart = tick()
 	local msg = string.format(
-		"GetUserSettingsRouter, domainrequest=%s settingNameRequest=%s",
-		tostring(settingRequest.domain),
-		tostring(settingRequest.settingName)
+		"GetUserSettingsRouter START userId=%d domain=%s settingName=%s",
+		player.UserId,
+		tostring(settingRequest.domain or "nil"),
+		tostring(settingRequest.settingName or "nil")
 	)
 	_annotate(msg)
+
+	local result: any = nil
 	if settingRequest.domain ~= nil and settingRequest.domain ~= "" then
 		local all = getUserSettingsByDomain(player, settingRequest.domain)
 		if settingRequest.kind and settingRequest.kind ~= "" then
 			all = filterByKind(all, settingRequest.kind)
 		end
-		return all
-	end
-
-	if settingRequest.settingName ~= nil and settingRequest.settingName ~= "" then
+		result = all
+	elseif settingRequest.settingName ~= nil and settingRequest.settingName ~= "" then
 		local theSetting = getUserSettingByName(player, settingRequest.settingName)
 
 		if settingRequest.kind and settingRequest.kind ~= "" then
 			if theSetting.kind == settingRequest.kind then
 				_annotate("setting kind match, so returning a setting named: " .. theSetting.name)
-				return theSetting
+				result = theSetting
 			else
 				_annotate("setting kind mismatch, failed to match kind for setting named: " .. theSetting.name)
-				return nil
+				result = nil
 			end
+		else
+			result = theSetting
 		end
-
-		-- _annotate("got a setting request with no kind, and got a name match, so returning it.")
-		return theSetting
+	else
+		_annotate("falling through to return all settings. is this ever actually used??")
+		result = innerSetupSettings(player, "getUserSettingsRouter.all")
 	end
-	_annotate("falling through to return all settings. is this ever actually used??")
-	local userSettings = innerSetupSettings(player, "getUserSettingsRouter.all")
-	return userSettings
+
+	local elapsed = tick() - routerStart
+	_annotate(string.format("GetUserSettingsRouter DONE userId=%d took %.3fs", player.UserId, elapsed))
+	return result
 end
 
 local function userChangedSettingFromUI(userId: number, setting: tt.userSettingValue): tt.setSettingResponse
@@ -376,7 +417,7 @@ local function userChangedSettingFromUI(userId: number, setting: tt.userSettingV
 	userSettingsCache[userId][setting.name] = setting
 	grantBadge.GrantBadge(userId, badgeEnums.badges.TakeSurvey)
 	local ct = 0
-	for _, item: tt.userSettingValue in userSettingsCache[userId] do
+	for _, item: tt.userSettingValue in pairs(userSettingsCache[userId]) do
 		if item.domain ~= settingEnums.settingDomains.SURVEYS then
 			continue
 		end

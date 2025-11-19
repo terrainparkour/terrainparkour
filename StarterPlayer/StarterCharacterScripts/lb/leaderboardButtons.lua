@@ -56,7 +56,7 @@ module.initActionButtons = function(lbOuterFrame: Frame)
 	actionButtonFrame.Name = "LeaderboardActionButtonFrame"
 	actionButtonFrame.BackgroundTransparency = 1
 	actionButtonFrame.Parent = lbOuterFrame
-	actionButtonFrame.Size = UDim2.new(0.6, 0, 0, 17)
+	actionButtonFrame.Size = UDim2.new(0.6, 0, 0, 20)
 
 	local h = Instance.new("UIListLayout")
 	h.HorizontalAlignment = Enum.HorizontalAlignment.Right
@@ -64,7 +64,7 @@ module.initActionButtons = function(lbOuterFrame: Frame)
 	h.Parent = actionButtonFrame
 
 	local totalButtons = #settingButtons + #actionButtons
-	local buttonWidth = 1 / totalButtons
+	local buttonWidth = (1 / totalButtons) * 0.8
 
 	-- Create setting buttons
 	for i, buttonInfo in ipairs(settingButtons) do
@@ -73,11 +73,15 @@ module.initActionButtons = function(lbOuterFrame: Frame)
 		buttonTb.Text = buttonInfo.name
 		buttonTb.Name = string.format("%d.%s_inner", i, buttonInfo.name)
 		buttonTb.BackgroundTransparency = 1
-		local par: TextLabel = buttonTb.Parent
-		par.BackgroundTransparency = 0
+		local parentInstance = buttonTb.Parent
+		if parentInstance and parentInstance:IsA("TextLabel") then
+			local parentLabel: TextLabel = parentInstance
+			parentLabel.BackgroundTransparency = 0
+		end
 
 		buttonTb.Activated:Connect(function()
 			local guiSpec = editDomainSettingsButton.CreateGenericSettingsEditor(buttonInfo.domain)
+			local desiredSize = editDomainSettingsButton.CalculateSettingsEditorSize(buttonInfo.domain)
 			local theSgui = windows.CreatePopup(
 				guiSpec,
 				buttonInfo.name .. " Editor",
@@ -87,20 +91,20 @@ module.initActionButtons = function(lbOuterFrame: Frame)
 				false,
 				true,
 				false,
-				UDim2.new(0.5, 0, 0, 400)
+				desiredSize
 			)
 			local outerFrame = theSgui:FindFirstChildOfClass("Frame")
 			if outerFrame then
 				outerFrame.Position = UDim2.new(0.25, 0, 0.25, 0)
 			end
-			local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+			local playerGui = PlayersService.LocalPlayer:WaitForChild("PlayerGui")
 			theSgui.Parent = playerGui
 		end)
 
 		toolTip.setupToolTip(buttonTb, buttonInfo.hoverHint, UDim2.new(0, 200, 0, 40), false)
 	end
 
-	for i, buttonModule in pairs(actionButtons) do
+	for i, buttonModule in ipairs(actionButtons) do
 		local buttonTb = guiUtil.getTb(
 			buttonModule.Name,
 			UDim2.new(buttonWidth, 0, 1, 0),
@@ -112,10 +116,15 @@ module.initActionButtons = function(lbOuterFrame: Frame)
 		buttonTb.Text = buttonModule.Name
 		buttonTb.Name = string.format("%d.%s_inner", i + #settingButtons, buttonModule.Name)
 		buttonTb.BackgroundTransparency = 1
-		local par: TextLabel = buttonTb.Parent
-		par.BackgroundTransparency = 0
+		local parentInstance = buttonTb.Parent
+		if parentInstance and parentInstance:IsA("TextLabel") then
+			local parentLabel: TextLabel = parentInstance
+			parentLabel.BackgroundTransparency = 0
+		end
 
-		buttonTb.Activated:Connect(buttonModule.Click)
+		buttonTb.Activated:Connect(function(_input: InputObject?, _clickCount: number?)
+			buttonModule.Click({ PlayersService.LocalPlayer.UserId })
+		end)
 
 		if buttonModule.HoverHint then
 			toolTip.setupToolTip(buttonTb, buttonModule.HoverHint, UDim2.new(0, 200, 0, 40), false)

@@ -186,9 +186,13 @@ local function handleAvatarEvent(ev: aet.avatarEvent)
 		debounceHandleAvatarEvent = false
 		return
 	elseif ev.eventType == aet.avatarEventTypes.FLOOR_CHANGED then
-		if activeRunSignModule then
-			_annotate("Telling acitve module about floor.")
-			activeRunSignModule.InformSawFloorDuringRunFrom(ev.details.floorMaterial)
+		if activeRunSignModule and ev.details then
+			local floorMatValue: Enum.Material? = ev.details.floorMaterial
+			if floorMatValue then
+				local floorMat: Enum.Material = floorMatValue
+				_annotate("Telling acitve module about floor.")
+				activeRunSignModule.InformSawFloorDuringRunFrom(floorMat)
+			end
 		end
 	else
 		warn("unhandled avatar event in morphs. " .. avatarEventFiring.DescribeEvent(ev))
@@ -198,16 +202,17 @@ end
 
 ----- set player to fast update health. theoretically this survives everywhere?
 local hb = game:GetService("RunService").Heartbeat
-local healthUpdaterSignal = hb:Connect(function()
-	if not humanoid then
-		return
-	end
-	local lastHealTick = humanoid:GetAttribute("LastHeal") or 0
-	if tick() - lastHealTick > 0.1 and humanoid.Health < humanoid.MaxHealth and humanoid.Health > 0 then
-		humanoid.Health = math.min(humanoid.Health + 1, humanoid.MaxHealth)
-		humanoid:SetAttribute("LastHeal", tick())
-	end
-end)
+	hb:Connect(function()
+		if not humanoid then
+			return
+		end
+		local lastHealTickValue = humanoid:GetAttribute("LastHeal")
+		local lastHealTick: number = if typeof(lastHealTickValue) == "number" then lastHealTickValue :: number else 0
+		if tick() - lastHealTick > 0.1 and humanoid.Health < humanoid.MaxHealth and humanoid.Health > 0 then
+			humanoid.Health = math.min(humanoid.Health + 1, humanoid.MaxHealth)
+			humanoid:SetAttribute("LastHeal", tick())
+		end
+	end)
 
 local avatarEventConnection = nil
 module.Init = function()
@@ -217,7 +222,6 @@ module.Init = function()
 	isMorphBlockedByWarp = false
 	if avatarEventConnection then
 		avatarEventConnection:Disconnect()
-		avatarEventConnection = nil
 	end
 	avatarEventConnection = AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 	_annotate("init end.")

@@ -53,28 +53,26 @@ local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("Avatar
 -- but towards the end of 2022 this improved water detection quite
 -- a bit by forcing the player ot swimming state more when on thin water, for example.
 -- overall: the actual SWIM_ACTIVE is
-local artificiallyCheckForSwimming = function(character)
+local artificiallyCheckForSwimming = function(characterParam: Model)
 	local raycastParams = RaycastParams.new()
 	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-	raycastParams.FilterDescendantsInstances = { character }
-	local humanoid: Humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	raycastParams.FilterDescendantsInstances = { characterParam }
+	local humanoidParam: Humanoid = characterParam:WaitForChild("Humanoid") :: Humanoid
 	-- we either RESEND swimming state once per second (the outer wait time for this check)
 	-- or we detect swimming manually and set it.
 	task.spawn(function()
 		local ii = 3.2
-		local result: RaycastResult = nil
 		local foundSwim = false
-		local oldState = humanoid:GetState()
+		local oldState = humanoidParam:GetState()
 		if oldState == Enum.HumanoidStateType.Swimming then
 			foundSwim = true
 		else
-			local rootPart = character:FindFirstChild("HumanoidRootPart") :: Part
+			local rootPart = characterParam:FindFirstChild("HumanoidRootPart") :: Part
 			if not rootPart or not rootPart.Position or not rootPart:IsA("BasePart") then
 			else
-				while ii < 4.8 do
-					result =
-						workspace:Raycast(rootPart.Position, Vector3.new(0, -1 * ii, 0), raycastParams) :: RaycastResult | nil
-					if result and result.Material == Enum.Material.Water then
+			while ii < 4.8 do
+				local raycastResult = workspace:Raycast(rootPart.Position, Vector3.new(0, -1 * ii, 0), raycastParams)
+				if raycastResult and raycastResult.Material == Enum.Material.Water then
 						_annotate("faking swimming changestate.")
 						foundSwim = true
 						break
@@ -159,7 +157,6 @@ module.Init = function()
 
 	if avatarEventConnection then
 		avatarEventConnection:Disconnect()
-		avatarEventConnection = nil
 	end
 	avatarEventConnection = AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 
@@ -178,10 +175,14 @@ module.Init = function()
 			return
 		elseif hit.ClassName == "Part" or hit.ClassName == "MeshPart" or hit.ClassName == "UnionOperation" then
 			if hit.ClassName == "MeshPart" then
-				if hit.Parent.ClassName ~= "Folder" then
+				local hitParent: Instance? = hit.Parent
+				if not hitParent then
 					return
 				end
-				if hit.Parent.Name ~= "Signs" then
+				if hitParent.ClassName ~= "Folder" then
+					return
+				end
+				if hitParent.Name ~= "Signs" then
 					return
 				end
 				--double safe.

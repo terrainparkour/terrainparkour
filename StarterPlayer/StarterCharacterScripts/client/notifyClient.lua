@@ -14,11 +14,6 @@ local drawRunResultsGui = require(game.ReplicatedStorage.gui.runresults.drawRunR
 local drawFindGui = require(game.ReplicatedStorage.gui.runresults.drawFindGui)
 local ephemeralNotifications = require(game.ReplicatedStorage.gui.ephemeralNotificationCreator)
 
-local PlayersService = game:GetService("Players")
-
-local localPlayer = PlayersService.LocalPlayer
-local playerGui = localPlayer:WaitForChild("PlayerGui")
-
 type legacyOptions = {}
 
 --notify player of something.
@@ -32,7 +27,17 @@ local function clientReceiveNotification(pythonResponse: any)
 		return
 	elseif pythonResponse.kind == "userFoundSign" then
 		local dcFindResponse = pythonResponse :: tt.dcFindResponse
+		_annotate(
+			string.format(
+				"clientReceiveNotification: received userFoundSign userId=%d signId=%d signName=%s foundNew=%s",
+				dcFindResponse.userId,
+				dcFindResponse.signId,
+				dcFindResponse.signName,
+				tostring(dcFindResponse.foundNew)
+			)
+		)
 		drawFindGui.CreateFindScreenGui(dcFindResponse)
+		_annotate("clientReceiveNotification: drawFindGui.CreateFindScreenGui called")
 		return
 	elseif pythonResponse.kind == "marathon results" then
 		pythonResponse = pythonResponse :: tt.userFinishedRunResponse
@@ -52,7 +57,6 @@ end
 
 module.Init = function()
 	_annotate("init")
-	playerGui = localPlayer:WaitForChild("PlayerGui")
 	local remotes = require(game.ReplicatedStorage.util.remotes)
 	local ServerToClientEvent = remotes.getRemoteEvent("ServerToClientEvent")
 

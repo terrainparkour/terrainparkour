@@ -6,7 +6,34 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 module.CreateRemoteEventsAndRemoteFunctions = function()
-	--setting up race event
+	_annotate("Creating RemoteEvents, RemoteFunctions, and BindableEvents folders")
+	
+	-- Create the folders that remotes.lua expects
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	if not ReplicatedStorage:FindFirstChild("RemoteEvents") then
+		local folder = Instance.new("Folder")
+		folder.Name = "RemoteEvents"
+		folder.Parent = ReplicatedStorage
+		_annotate("Info: Created RemoteEvents folder")
+	else
+		_annotate("Info: RemoteEvents folder already exists")
+	end
+	if not ReplicatedStorage:FindFirstChild("RemoteFunctions") then
+		local folder = Instance.new("Folder")
+		folder.Name = "RemoteFunctions"
+		folder.Parent = ReplicatedStorage
+		_annotate("Info: Created RemoteFunctions folder")
+	else
+		_annotate("Info: RemoteFunctions folder already exists")
+	end
+	if not ReplicatedStorage:FindFirstChild("BindableEvents") then
+		local folder = Instance.new("Folder")
+		folder.Name = "BindableEvents"
+		folder.Parent = ReplicatedStorage
+		_annotate("Info: Created BindableEvents folder")
+	else
+		_annotate("Info: BindableEvents folder already exists")
+	end
 
 	local remotes = require(game.ReplicatedStorage.util.remotes)
 
@@ -76,6 +103,13 @@ module.CreateRemoteEventsAndRemoteFunctions = function()
 
 	--local player clicks sign, server generate signpopup, send it back to client
 	remotes.getRemoteFunction("ClickSignFunction")
+
+	-- Chat system (TextChatService migration 2025.11)
+	_annotate("Creating ProcessCommandFunction RemoteFunction")
+	remotes.getRemoteFunction("ProcessCommandFunction")
+	_annotate("Creating DisplaySystemMessageEvent RemoteEvent")
+	remotes.getRemoteEvent("DisplaySystemMessageEvent")
+	_annotate("Chat remotes created successfully")
 end
 
 _annotate("end")

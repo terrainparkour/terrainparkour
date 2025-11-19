@@ -17,7 +17,6 @@ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 local LLMGeneratedUIFunctions = require(game.ReplicatedStorage.gui.menu.LLMGeneratedUIFunctions)
 local drawFavoritesModal = require(game.ReplicatedStorage.gui.menu.drawFavoritesModal)
-local enums = require(game.ReplicatedStorage.util.enums)
 local PlayersService: Players = game:GetService("Players")
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
@@ -136,8 +135,11 @@ module.DrawRaceWarper = function(rowFrame: Frame | nil, change: tt.leaderboardUs
 	end
 
 	local innerFrame = guiUtil.getTl("Inner", UDim2.fromScale(1, 1), 2, rowFrame, colors.warpColor, 1, 0)
-	innerFrame.Text = string.format("%s-%s", signName1, signName2)
+	local displayText = string.format("%s-%s", signName1, signName2)
+	innerFrame.Text = displayText
 	innerFrame.TextScaled = true
+	innerFrame.RichText = true
+	innerFrame.TextWrapped = true
 
 	local warpButton = Instance.new("TextButton")
 	warpButton.Name = "WarpButton"

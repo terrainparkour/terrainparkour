@@ -15,8 +15,7 @@ local enums = require(game.ReplicatedStorage.util.enums)
 local module = {}
 
 module.getNewRaces = function(player: Player, userIds: { number }): { PopularResponseTypes.popularRaceResult }
-	local userIdsInServer: { number } = { 261, tostring(enums.objects.TerrainParkourUserId), -1, -2 }
-	userIdsInServer = {}
+	local userIdsInServer: { string } = {}
 	for _, userId in ipairs(userIds) do
 		table.insert(userIdsInServer, tostring(userId))
 	end
@@ -36,11 +35,13 @@ module.getNewRaces = function(player: Player, userIds: { number }): { PopularRes
 			thing.username = playerData2.GetUsernameByUserId(thing.userId)
 		end
 
-		local s: Part = signs:FindFirstChild(el.startSignName)
-		local e: Part = signs:FindFirstChild(el.endSignName)
-		if e == nil or s == nil then
+		local sInstance: Instance? = signs:FindFirstChild(el.startSignName)
+		local eInstance: Instance? = signs:FindFirstChild(el.endSignName)
+		if not eInstance or not eInstance:IsA("Part") or not sInstance or not sInstance:IsA("Part") then
 			el.distance = 0
 		else
+			local s: Part = sInstance :: Part
+			local e: Part = eInstance :: Part
 			el.distance = tpUtil.getDist(s.Position, e.Position)
 		end
 	end

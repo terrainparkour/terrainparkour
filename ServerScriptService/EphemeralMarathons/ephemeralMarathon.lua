@@ -44,6 +44,7 @@ local findEphemeralMarathon = function(marathonId: number): mt.ephemeralMarathon
 		end
 	end
 	warn("fail.")
+	return nil
 end
 
 local serverInvokeCreateEphemeralMarathon = function(player: Player, ...): any

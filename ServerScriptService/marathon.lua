@@ -7,6 +7,7 @@ local module = {}
 
 local rdb = require(game.ServerScriptService.rdb)
 local notify = require(game.ReplicatedStorage.notify)
+local MessageDispatcher = require(game.ReplicatedStorage.ChatSystem.messageDispatcher)
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
@@ -37,11 +38,29 @@ local serverInvokeMarathonComplete = function(
 		},
 	}
 
-	local userFinishedRunResponse: tt.userFinishedRunResponse = rdb.MakePostRequest(request)
+	local userFinishedRunResponse: tt.userFinishedRunResponseOrError = rdb.MakePostRequest(request)
+
+	local responseAsAny: any = userFinishedRunResponse
+	if responseAsAny.error or responseAsAny.banned then
+		local errorResponse: tt.userFinishedRunErrorResponse =
+			userFinishedRunResponse :: tt.userFinishedRunErrorResponse
+		annotater.Error("userFinishedMarathon returned error response", {
+			userId = player.UserId,
+			marathonKind = marathonKind,
+			error = errorResponse.error,
+			banned = errorResponse.banned,
+		})
+		if errorResponse.banned == true then
+			MessageDispatcher.SendSystemMessageToPlayer(player, "Chat", "You are banned. Please find another game to play.")
+		end
+		return
+	end
+
+	local typedResponse: tt.userFinishedRunResponse = userFinishedRunResponse :: tt.userFinishedRunResponse
 
 	local descTry = mds[marathonKind]
 	if descTry == nil then
-		_annotate(string.format("bad mk" .. marathonKind))
+		_annotate(string.format("bad mk %s", marathonKind))
 	end
 	if descTry ~= nil then
 		if descTry.awardBadge ~= nil then
@@ -49,21 +68,29 @@ local serverInvokeMarathonComplete = function(
 		end
 	end
 
-	userFinishedRunResponse.kind = "marathon results"
+	local responseWithKind: any = {}
+	for k, v in pairs(typedResponse) do
+		responseWithKind[k] = v
+	end
+	responseWithKind.kind = "marathon results"
 
-	notify.notifyPlayerAboutMarathonResults(player, userFinishedRunResponse)
+	notify.notifyPlayerAboutMarathonResults(player, responseWithKind :: tt.userFinishedRunResponse)
 
-	for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
-		lbUpdaterServer.SendUpdateToPlayer(otherPlayer, userFinishedRunResponse.lbUserStats)
+	if typedResponse.lbUserStats then
+		for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
+			lbUpdaterServer.SendUpdateToPlayer(otherPlayer, typedResponse.lbUserStats)
+		end
 	end
 end
 
 module.Init = function()
-	local marathonCompleteEvent: RemoteEvent = remotes.getRemoteEvent("MarathonCompleteEvent") :: RemoteEvent
-	if marathonCompleteEvent == nil then
-		warn("Fail")
+	local marathonCompleteEvent: RemoteEvent? = remotes.getRemoteEvent("MarathonCompleteEvent")
+	if not marathonCompleteEvent then
+		warn("marathon.Init: MarathonCompleteEvent not found")
+		return
 	end
-	marathonCompleteEvent.OnServerEvent:Connect(serverInvokeMarathonComplete)
+	local event: RemoteEvent = marathonCompleteEvent :: RemoteEvent
+	event.OnServerEvent:Connect(serverInvokeMarathonComplete)
 end
 
 _annotate("end")

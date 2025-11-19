@@ -25,14 +25,16 @@ module.BackfillBadges = function(player: Player): nil
 
 	if not s then
 		if player then
-			annotater.Error("Error backfilling badges for " .. player.UserId .. ": " .. e)
+			annotater.Error("Error backfilling badges for " .. player.UserId .. ": " .. tostring(e))
 		else
-			annotater.Error("Error backfilling badges for unknown player: " .. e)
+			annotater.Error("Error backfilling badges for unknown player: " .. tostring(e))
 		end
 	end
+	return nil
 end
 
 module.LogJoin = function(player: Player): nil
+	local start = tick()
 	local pc = #PlayersService:GetPlayers()
 
 	if pc == 1 then
@@ -48,14 +50,18 @@ module.LogJoin = function(player: Player): nil
 		}
 		rdb.MakePostRequest(request2)
 	end
+	
+	_annotate(string.format("LogJoin DONE for %s (%.3fs)", player.Name, tick() - start))
+	return nil
 end
 
-local function remoteLogDeath(character, UserId)
+local function remoteLogDeath(character: Model, UserId: number): nil
 	--we already know where they were here.
-	local root = character:FindFirstChild("HumanoidRootPart")
-	if not root or not root.Position then
-		return
+	local rootInstance: Instance? = character:FindFirstChild("HumanoidRootPart")
+	if not rootInstance or not rootInstance:IsA("BasePart") then
+		return nil
 	end
+	local root: BasePart = rootInstance :: BasePart
 
 	local request: tt.postRequest = {
 		remoteActionName = "userDied",
@@ -66,13 +72,19 @@ local function remoteLogDeath(character, UserId)
 			z = tpUtil.noe(root.Position.Z),
 		},
 	}
-	rdb.MakePostRequest(request)
+		rdb.MakePostRequest(request)
+	return nil
 end
 
-module.LogLocationOnDeath = function(player: Player)
+module.LogLocationOnDeath = function(player: Player): nil
 	--when a char is recreated, hook into its humanoid.
-	player.CharacterAdded:Connect(function(character)
-		local humanoid: Humanoid = character:WaitForChild("Humanoid")
+	player.CharacterAdded:Connect(function(character: Model)
+		local humanoidInstance: Instance? = character:WaitForChild("Humanoid")
+		if not humanoidInstance or not humanoidInstance:IsA("Humanoid") then
+			warn("LogLocationOnDeath: Failed to get Humanoid")
+			return
+		end
+		local humanoid: Humanoid = humanoidInstance :: Humanoid
 		humanoid.Died:Connect(function()
 			remoteLogDeath(character, player.UserId)
 		end)
@@ -80,9 +92,10 @@ module.LogLocationOnDeath = function(player: Player)
 			remoteLogDeath(character, player.UserId)
 		end)
 	end)
+	return nil
 end
 
-module.LogQuit = function(player: Player)
+module.LogQuit = function(player: Player): nil
 	--player may already be gone, so we just use the last tracked loc.
 	local loc = locationMonitor.getLocation(player.UserId)
 	if loc == nil or loc.X == nil then --already gone so just leave.
@@ -96,9 +109,10 @@ module.LogQuit = function(player: Player)
 		data = { userId = player.UserId, x = tpUtil.noe(loc.X), y = tpUtil.noe(loc.Y), z = tpUtil.noe(loc.Z) },
 	}
 	local response = rdb.MakePostRequest(request)
+	return nil
 end
 
-module.LogPlayerLeft = function(player)
+module.LogPlayerLeft = function(player): nil
 	local request: tt.postRequest = {
 		remoteActionName = "userLeft",
 		data = { userId = player.UserId },

@@ -11,6 +11,7 @@ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+local scrollingFrameUtils = require(game.ReplicatedStorage.gui.scrollingFrameUtils)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
@@ -276,6 +277,9 @@ local function getPopularContents(player: Player, userIds: { number })
 		screenGui:Destroy()
 	end)
 	scrollingFrame.CanvasPosition = lastCanvasPosition
+	
+	-- Prevent camera scroll when hovering over popular races scrolling frame
+	scrollingFrameUtils.PreventCameraScrollOnHover(scrollingFrame)
 
 	return screenGui
 end

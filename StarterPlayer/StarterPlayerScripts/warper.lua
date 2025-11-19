@@ -21,7 +21,7 @@ local aet = require(game.ReplicatedStorage.avatarEventTypes)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 
 ---------- CHARACTER -------------
-local localPlayer: Player = game.Players.LocalPlayer
+local localPlayer: Player = game:GetService("Players").LocalPlayer
 -- local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 
 local ClientRequestsWarpToRequestFunction = remotes.getRemoteFunction("ClientRequestsWarpToRequestFunction")

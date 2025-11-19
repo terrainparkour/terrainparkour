@@ -4,12 +4,17 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local doNotCheckInGameIdentifier = require(game.ReplicatedStorage:FindFirstChild("doNotCheckInGameIdentifier"))
+local doNotCheckModule: any = nil
+local doNotCheckInstance = game.ReplicatedStorage:FindFirstChild("doNotCheckInGameIdentifier")
+if doNotCheckInstance and doNotCheckInstance:IsA("ModuleScript") then
+	local ok, result = pcall(require, doNotCheckInstance)
+	if ok then
+		doNotCheckModule = result
+	end
+end
 
-local sendMessageModule = require(game.ReplicatedStorage.chat.sendMessage)
-local sendMessage = sendMessageModule.sendMessage
-
-local tt = require(game.ReplicatedStorage.types.gametypes)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MessageDispatcher = require(ReplicatedStorage.ChatSystem.messageDispatcher)
 
 local config = require(game.ReplicatedStorage.config)
 
@@ -77,7 +82,7 @@ end
 --following for 007 mystery sign.
 module.fadeInSign = function(sign: Part)
 	if not sign then
-		if config.IsInStudio() and not config.isTestGame() then
+		if config.IsInStudio() and not config.IsTestGame() then
 		end
 		return
 	end
@@ -96,10 +101,7 @@ module.fadeInSign = function(sign: Part)
 	end
 
 	surfaceGui.Enabled = true
-	local channelDefinitions = require(game.ReplicatedStorage.chat.channelDefinitions)
-	local allChannel = channelDefinitions.GetChannel("All")
-
-	sendMessage(allChannel, "007 has appeared")
+	MessageDispatcher.SendSystemMessage("Chat", "007 has appeared")
 end
 
 module.fadeOutSign = function(sign: Part?, first: boolean)
@@ -124,10 +126,7 @@ module.fadeOutSign = function(sign: Part?, first: boolean)
 	sign.CanCollide = false
 	sign.CanTouch = false
 	if not first then
-		local channelDefinitions = require(game.ReplicatedStorage.chat.channelDefinitions)
-		local allChannel: tt.channelDefinition = channelDefinitions.GetChannel("All")
-
-		sendMessage(allChannel, "007 has disappeared")
+		MessageDispatcher.SendSystemMessage("Chat", "007 has disappeared")
 	end
 end
 
@@ -163,7 +162,7 @@ module.SetupGrowingDistantPinnacle = function()
 	local waitTime = 1
 	local mult = 1
 	local maxAdditions = 1000
-	if doNotCheckInGameIdentifier.useTestDb() then --test game
+	if doNotCheckModule and doNotCheckModule.useTestDb and doNotCheckModule.useTestDb() then --test game
 		target = Vector3.new(836.921, 3.393, -635.989)
 		addVector = Vector3.new(3, 1, 17) / 5
 		ballSize = 14

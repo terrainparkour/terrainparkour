@@ -12,8 +12,14 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local managedFrames: { Frame } = {}
+local adjustingFrames: { [Frame]: boolean } = {}
 
 local function adjustFramePosition(frame: Frame)
+	-- Prevent re-entrancy - if we're already adjusting this frame, ignore this call
+	if adjustingFrames[frame] then
+		return
+	end
+
 	local viewportSize = workspace.CurrentCamera.ViewportSize
 	local frameSize = frame.AbsoluteSize
 	local framePosition = frame.AbsolutePosition
@@ -35,7 +41,9 @@ local function adjustFramePosition(frame: Frame)
 	end
 
 	if newX ~= framePosition.X or newY ~= framePosition.Y then
+		adjustingFrames[frame] = true
 		frame.Position = UDim2.new(0, newX, 0, newY)
+		adjustingFrames[frame] = false
 		_annotate(string.format("Adjusted position of frame %s to (%d, %d)", frame.Name, newX, newY))
 	end
 end

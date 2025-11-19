@@ -12,6 +12,7 @@ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+local scrollingFrameUtils = require(game.ReplicatedStorage.gui.scrollingFrameUtils)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 
@@ -285,6 +286,9 @@ local function getNewContents(player: Player, userIds: { number }): ScreenGui
 		screenGui:Destroy()
 	end)
 	scrollingFrame.CanvasPosition = lastCanvasPosition
+	
+	-- Prevent camera scroll when hovering over new races scrolling frame
+	scrollingFrameUtils.PreventCameraScrollOnHover(scrollingFrame)
 
 	return screenGui
 end

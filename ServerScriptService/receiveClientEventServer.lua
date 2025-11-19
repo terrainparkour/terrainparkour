@@ -13,7 +13,7 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local runResultsCommand = require(game.ReplicatedStorage.commands.runResultsCommand)
 local wrProgressionCommand = require(game.ReplicatedStorage.commands.wrProgressionCommand)
-local pinRaceCommand = require(game.ReplicatedStorage.chat.commands.pinRaceCommand)
+local pinRaceCommand = require(game.ReplicatedStorage.commands.pinRaceCommand)
 local userFavoriteRacesCommand = require(game.ReplicatedStorage.commands.userFavoriteRacesCommand)
 local rdb = require(game.ServerScriptService.rdb)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
@@ -22,7 +22,7 @@ local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local GenericClientUIFunction = remotes.getRemoteFunction("GenericClientUIFunction")
 
 --in new trust the client code, just call this directly with the actual details.
---note: it would be nice to retain server-side timing to detect hackers. nearly every one would give themselves away.
+--note: it would be nice to retain server-side timing to detectre hackers. nearly every one would give themselves away.
 
 local function handleAvatarMorph(player: Player, data: tt.avatarMorphData)
 	_annotate("handleAvatarMorph", data)

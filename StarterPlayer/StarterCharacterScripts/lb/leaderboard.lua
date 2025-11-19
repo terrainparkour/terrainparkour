@@ -71,6 +71,8 @@ local userId2rowframe: { [number]: Frame } = {}
 local lbUserRowFrame: Frame? = nil
 local lbIsEnabled: boolean = true
 
+local removeUserLBRow -- forward declaration
+
 -- the initial width and height scales.
 
 local headerRowYOffsetFixed = 24
@@ -95,6 +97,11 @@ local function saveLeaderboardConfiguration()
 	end
 	lastSaveRequestCount += 1
 	local yourSaveRequestCount = lastSaveRequestCount
+	local lbConfig = leaderboardConfiguration
+	if not lbConfig then
+		_annotate("No leaderboardConfiguration in saveLeaderboardConfiguration")
+		return
+	end
 	task.spawn(function()
 		task.wait(0.4)
 		if yourSaveRequestCount ~= lastSaveRequestCount then
@@ -111,8 +118,8 @@ local function saveLeaderboardConfiguration()
 				position = positionInOffset,
 				size = lbOuterFrame.Size,
 				minimized = lbOuterFrame:GetAttribute("IsMinimized"),
-				sortDirection = leaderboardConfiguration.sortDirection,
-				sortColumn = leaderboardConfiguration.sortColumn,
+				sortDirection = lbConfig.sortDirection,
+				sortColumn = lbConfig.sortColumn,
 			},
 		}
 		_annotate("saving leaderboard configuration", setting)
@@ -197,10 +204,14 @@ local function monitorLeaderboardFrame()
 	end
 
 	local function deferredUpdate()
+		local lbConfig = leaderboardConfiguration
+		if not lbConfig then
+			return
+		end
 		task.defer(function()
 			_annotate("Deferred update triggered")
-			leaderboardConfiguration.position = lbOuterFrame.Position
-			leaderboardConfiguration.size = lbOuterFrame.Size
+			lbConfig.position = lbOuterFrame.Position
+			lbConfig.size = lbOuterFrame.Size
 
 			ensureLeaderboardOnScreen("deferredUpdate")
 			saveLeaderboardConfiguration()
@@ -212,9 +223,13 @@ local function monitorLeaderboardFrame()
 
 	lbOuterFrame:GetAttributeChangedSignal("IsMinimized"):Connect(function()
 		_annotate("IsMinimized attribute changed")
+		local lbConfig = leaderboardConfiguration
+		if not lbConfig then
+			return
+		end
 		local minimizeState = lbOuterFrame:GetAttribute("IsMinimized")
 		if type(minimizeState) == "boolean" then
-			leaderboardConfiguration.minimized = minimizeState
+			lbConfig.minimized = minimizeState
 			ensureLeaderboardOnScreen('GetAttributeChangedSignal("IsMinimized")')
 			saveLeaderboardConfiguration()
 		else
@@ -232,6 +247,12 @@ local function monitorLeaderboardFrame()
 end
 
 ------------------ FUNCTIONS -----------------
+
+local function shouldEnableRichText(descriptor: lt.lbColumnDescriptor): boolean
+	-- Enable RichText for columns that should allow wrapping
+	-- RichText + TextWrapped enables more aggressive text wrapping behavior
+	return descriptor.doWrapping
+end
 
 local function setSize()
 	if not lbUserRowFrame then
@@ -258,12 +279,70 @@ local function getNameForDescriptor(descriptor: lt.lbColumnDescriptor): string
 	return string.format("%02d.cell.%s", descriptor.num, descriptor.name)
 end
 
+local function ensureValueLabelForDescriptor(
+	containerFrame: Frame,
+	descriptor: lt.lbColumnDescriptor,
+	bgcolor: Color3
+): (TextLabel, TextLabel)
+	-- pinned/favs columns are frame-backed instead of TextLabel-backed. They must expose a TextLabel with an Inner child
+	-- so downstream handlers can write text or swap in buttons. This helper enforces that exact structure so we never
+	-- improvise at update-time.
+	local desiredLabelName = string.format("%02d.cell.%s.valueHolder", descriptor.num, descriptor.name)
+	local holderInstance = containerFrame:FindFirstChild(desiredLabelName)
+	local holderLabel: TextLabel? = if holderInstance and holderInstance:IsA("TextLabel")
+		then holderInstance :: TextLabel
+		else nil
+	local innerLabel: TextLabel? = if holderLabel then holderLabel:FindFirstChild("Inner") :: TextLabel? else nil
+
+	if not holderLabel or not innerLabel then
+		if holderLabel then
+			holderLabel:Destroy()
+			holderLabel = nil
+			innerLabel = nil
+		end
+		local createdInner = guiUtil.getTl(desiredLabelName, UDim2.fromScale(1, 1), 2, containerFrame, bgcolor, 1, 0)
+		local parentInstance = createdInner.Parent
+		if parentInstance and parentInstance:IsA("TextLabel") then
+			local parentLabel = parentInstance :: TextLabel
+			parentLabel.Name = desiredLabelName
+			holderLabel = parentLabel
+			innerLabel = createdInner
+		end
+	end
+
+	assert(holderLabel ~= nil, string.format("Failed to create holder for descriptor %s", descriptor.name))
+	assert(innerLabel ~= nil, string.format("Failed to create inner for descriptor %s", descriptor.name))
+
+	local confirmedHolder = holderLabel :: TextLabel
+	local confirmedInner = innerLabel :: TextLabel
+
+	confirmedHolder.Size = UDim2.fromScale(1, 1)
+	confirmedHolder.BackgroundColor3 = bgcolor
+	confirmedHolder.BackgroundTransparency = 0
+	confirmedHolder.BorderMode = Enum.BorderMode.Inset
+	confirmedHolder.BorderSizePixel = 1
+	confirmedHolder.LayoutOrder = descriptor.num
+
+	confirmedInner.Text = ""
+	confirmedInner.TextScaled = true
+	confirmedInner.TextWrapped = true
+	confirmedInner.RichText = shouldEnableRichText(descriptor)
+
+	return confirmedHolder, confirmedInner
+end
+
 local debounceCreateRowForUser = false
 -- we got an upda
 local function getOrCreateRowForUser(userId: number): Frame?
 	_annotate("getOrCreateRowForUser called for userId: " .. tostring(userId))
 
 	if debounceCreateRowForUser then
+		return
+	end
+
+	if not lbUserRowFrame then
+		_annotate("getOrCreateRowForUser called with no lbUserRowFrame")
+		debounceCreateRowForUser = false
 		return
 	end
 
@@ -284,20 +363,29 @@ local function getOrCreateRowForUser(userId: number): Frame?
 	debounceCreateRowForUser = true
 
 	local userIntendedRowName = string.format("LBRow_%s", username)
-	local userRowFrame: Frame = lbUserRowFrame:FindFirstChild(userIntendedRowName)
-	if userRowFrame == nil then
-		userRowFrame = Instance.new("Frame")
-		userRowFrame.BorderMode = Enum.BorderMode.Inset
-		userRowFrame.BorderSizePixel = 0
-		userRowFrame.BackgroundTransparency = 0.1
-		userRowFrame.Name = userIntendedRowName
-		userId2rowframe[userId] = userRowFrame
-		userRowFrame.Parent = lbUserRowFrame
+	local userRowFrameInstance: Instance? = lbUserRowFrame:FindFirstChild(userIntendedRowName)
+	local userRowFrame: Frame?
+	if userRowFrameInstance and userRowFrameInstance:IsA("Frame") then
+		userRowFrame = userRowFrameInstance :: Frame
+	end
+	if not userRowFrame then
+		local newFrame: Frame = Instance.new("Frame")
+		newFrame.BorderMode = Enum.BorderMode.Inset
+		newFrame.BorderSizePixel = 0
+		newFrame.BackgroundTransparency = 0.1
+		newFrame.Name = userIntendedRowName
+		userRowFrame = newFrame
+		userId2rowframe[userId] = newFrame
+		newFrame.Parent = lbUserRowFrame
 
 		local horizontalLayout = Instance.new("UIListLayout")
 		horizontalLayout.FillDirection = Enum.FillDirection.Horizontal
-		horizontalLayout.Parent = userRowFrame
+		horizontalLayout.Parent = newFrame
 		horizontalLayout.Name = "LeaderboardUserRowHH_" .. username
+	end
+	if not userRowFrame then
+		debounceCreateRowForUser = false
+		return nil
 	end
 
 	local bgcolor = colors.defaultGrey
@@ -325,15 +413,50 @@ local function getOrCreateRowForUser(userId: number): Frame?
 			portraitCell.Parent = userRowFrame
 			portraitCell.Size = UDim2.fromScale(widthYScale, 1)
 			portraitCell.Name = getNameForDescriptor(lbColumnDescriptor)
+		elseif lbColumnDescriptor.name == "pinnedRace" or lbColumnDescriptor.name == "userFavoriteRaceCount" then
+			local cellName = getNameForDescriptor(lbColumnDescriptor)
+			local containerInstance = userRowFrame:FindFirstChild(cellName)
+			local containerFrame: Frame?
+			if containerInstance and containerInstance:IsA("Frame") then
+				containerFrame = containerInstance :: Frame
+			else
+				if containerInstance then
+					containerInstance:Destroy()
+				end
+				local newFrame = Instance.new("Frame")
+				newFrame.Name = cellName
+				newFrame.Parent = userRowFrame
+				containerFrame = newFrame
+			end
+
+			if containerFrame then
+				local descriptorFrame: Frame = containerFrame
+				descriptorFrame.Size = UDim2.fromScale(widthYScale, 1)
+				descriptorFrame.BackgroundColor3 = bgcolor
+				descriptorFrame.BackgroundTransparency = 0
+				descriptorFrame.BorderMode = Enum.BorderMode.Inset
+				descriptorFrame.BorderSizePixel = 1
+				descriptorFrame.LayoutOrder = lbColumnDescriptor.num
+
+				ensureValueLabelForDescriptor(descriptorFrame, lbColumnDescriptor, bgcolor)
+			end
 		else --it's a textlabel whatever we're generating anyway.
 			local cellName = getNameForDescriptor(lbColumnDescriptor)
-			local tl: TextLabel = userRowFrame:FindFirstChild(cellName)
+			local tlInstance: Instance? = userRowFrame:FindFirstChild(cellName)
+			local tl: TextLabel?
+			if tlInstance and tlInstance:IsA("TextLabel") then
+				tl = tlInstance :: TextLabel
+			end
 			if not tl then
 				tl = guiUtil.getTl(cellName, UDim2.fromScale(widthYScale, 1), 2, userRowFrame, bgcolor, 1, 0)
 			end
-			tl.Text = ""
-
-			tl.TextScaled = true
+			if tl then
+				tl.Text = ""
+				tl.TextScaled = true
+				tl.TextWrapped = true
+				tl.RichText = shouldEnableRichText(lbColumnDescriptor)
+				tl.LayoutOrder = lbColumnDescriptor.num
+			end
 		end
 	end
 	debounceCreateRowForUser = false
@@ -408,16 +531,38 @@ local function applyUserDataChanges(userDataChanges, subjectUserId: number)
 
 		local targetName = getNameForDescriptor(descriptor)
 		--it's important this targetname matches via interpolatino
-		local oldTextLabelParent = userRowFrame:FindFirstChild(targetName)
-		if oldTextLabelParent == nil then
+		local oldTextLabelParentInstance: Instance? = userRowFrame:FindFirstChild(targetName)
+		if not oldTextLabelParentInstance then
 			-- this user isn't displaying that data.
 			-- still, we have stored it so if they re-enable it we are good.
 			_annotate(string.format("missing oldTextLabelParent for %s", targetName))
 			continue
 		end
-		local oldTextLabel = oldTextLabelParent:FindFirstChild("Inner")
+		local oldTextLabelParent: Frame?
+		local oldTextLabel: TextLabel?
+		local parTextLabel: TextLabel?
 
-		if oldTextLabel == nil then
+		if oldTextLabelParentInstance:IsA("Frame") then
+			local frameParent: Frame = oldTextLabelParentInstance :: Frame
+			oldTextLabelParent = frameParent
+			local holderLabel, innerLabel = ensureValueLabelForDescriptor(frameParent, descriptor, bgcolor)
+			parTextLabel = holderLabel
+			oldTextLabel = innerLabel
+		else
+			local oldTextLabelInstance: Instance? = oldTextLabelParentInstance:FindFirstChild("Inner")
+			local parentTextLabel = if oldTextLabelParentInstance:IsA("TextLabel")
+				then oldTextLabelParentInstance :: TextLabel
+				else nil
+			if oldTextLabelInstance and oldTextLabelInstance:IsA("TextLabel") then
+				oldTextLabel = oldTextLabelInstance :: TextLabel
+				parTextLabel = parentTextLabel or oldTextLabel
+			elseif parentTextLabel then
+				oldTextLabel = parentTextLabel
+				parTextLabel = parentTextLabel
+			end
+		end
+
+		if not oldTextLabel or not parTextLabel then
 			debounceUpdateUserLeaderboardRow[subjectUserId] = nil
 			annotater.Error(
 				string.format(
@@ -426,7 +571,13 @@ local function applyUserDataChanges(userDataChanges, subjectUserId: number)
 					descriptor.name
 				)
 			)
+			continue
 		end
+
+		oldTextLabel.BackgroundColor3 = bgcolor
+		parTextLabel.BackgroundColor3 = bgcolor
+		oldTextLabel.RichText = shouldEnableRichText(descriptor)
+		oldTextLabel.TextWrapped = true
 
 		--if this exists, do green fade
 		local newIntermediateText: string | nil = nil
@@ -435,9 +586,11 @@ local function applyUserDataChanges(userDataChanges, subjectUserId: number)
 		--we have old number and new number.
 		--if not findRank, calculate the intermediate text and set up greenfade.
 		--and in either case, do a green fade.
-		local newFinalText = tostring(change.newValue)
+		local newFinalText: string
 		if descriptor.name == "findRank" and type(change.newValue) == "number" then
 			newFinalText = tpUtil.getCardinalEmoji(change.newValue)
+		else
+			newFinalText = tostring(change.newValue)
 		end
 
 		local improvement = false
@@ -459,44 +612,56 @@ local function applyUserDataChanges(userDataChanges, subjectUserId: number)
 				sign = ""
 			end
 			if gap ~= 0 then
-				newIntermediateText = string.format("%s\n(%s%d)", newFinalText, sign, gap)
+				local formattedGap = tostring(gap)
+				newIntermediateText = string.format("%s\n(%s%s)", newFinalText, sign, formattedGap)
 			end
-			_annotate(string.format("newIntermediateText: %s", newIntermediateText))
+			if newIntermediateText then
+				_annotate(string.format("newIntermediateText: %s", newIntermediateText))
+			end
 		elseif type(change.newValue) == "string" then
 			improvement = true
 			newIntermediateText = change.newValue
 		end
 
 		if change.key == "pinnedRace" then
-			leaderboardGui.DrawRaceWarper(oldTextLabelParent, change)
+			if not oldTextLabelParent then
+				continue
+			end
+			local pinnedFrame: Frame = oldTextLabelParent
+			leaderboardGui.DrawRaceWarper(pinnedFrame, change)
 		elseif change.key == "userFavoriteRaceCount" then
-			leaderboardGui.DrawShowFavoriteRacesButton(oldTextLabelParent, change, subjectUserId, localPlayer.UserId)
+			if not oldTextLabelParent then
+				continue
+			end
+			local favFrame: Frame = oldTextLabelParent
+			leaderboardGui.DrawShowFavoriteRacesButton(favFrame, change, subjectUserId, localPlayer.UserId)
 			--phase to new color if needed
 		elseif newIntermediateText == nil then
 			oldTextLabel.Text = newFinalText
 			oldTextLabel.BackgroundColor3 = bgcolor
-			local par = oldTextLabel.Parent :: TextLabel
-			par.BackgroundColor3 = bgcolor
+			parTextLabel.BackgroundColor3 = bgcolor
 		else
 			if improvement then
 				oldTextLabel.BackgroundColor3 = colors.greenGo
-				local par = oldTextLabel.Parent :: TextLabel
-				par.BackgroundColor3 = colors.greenGo
+				parTextLabel.BackgroundColor3 = colors.greenGo
 			else
 				if change.oldValue ~= MAGIC then
 					oldTextLabel.BackgroundColor3 = colors.blueDone
-
-					local par = oldTextLabel.Parent :: TextLabel
-					par.BackgroundColor3 = colors.blueDone
+					parTextLabel.BackgroundColor3 = colors.blueDone
 				end
 			end
 			oldTextLabel.Text = newIntermediateText
 
 			if improvement and change.oldValue ~= MAGIC then
 				-- while it's flashing, show the intermediate text, the new value followed by the diff improvement (i.e. ' (+1)')
+				local finalText = newFinalText
+				local label = oldTextLabel
+				local parLabel = parTextLabel
 				task.spawn(function()
 					wait(enums.greenTime)
-					oldTextLabel.Text = newFinalText
+					if label then
+						label.Text = finalText
+					end
 				end)
 
 				--phase the cell and the parent back to the default color.
@@ -508,7 +673,7 @@ local function applyUserDataChanges(userDataChanges, subjectUserId: number)
 				tween:Play()
 
 				local tween2 = TweenService:Create(
-					oldTextLabel.Parent,
+					parLabel,
 					TweenInfo.new(enums.greenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 					{ BackgroundColor3 = bgcolor }
 				)
@@ -527,21 +692,39 @@ end
 local function sortLeaderboard()
 	_annotate("sortLeaderboard with userId2rowframe: " .. #userId2rowframe)
 
+	if not leaderboardConfiguration then
+		return
+	end
 	local sortedRows = {}
+	local orphanedUserIds: { number } = {}
 	for userId, frame in pairs(userId2rowframe) do
+		local userCache = lbUserDataCache[userId]
+		if not userCache then
+			-- State inconsistency: row frame exists but cache data is missing
+			-- Collect for cleanup to maintain invariant
+			table.insert(orphanedUserIds, userId)
+			continue
+		end
 		table.insert(sortedRows, {
 			userId = userId,
 			frame = frame,
-			value = lbUserDataCache[userId][leaderboardConfiguration.sortColumn],
+			value = userCache[leaderboardConfiguration.sortColumn],
 			originalIndex = frame.LayoutOrder, -- Store the original order
 		})
 	end
 
+	-- Clean up orphaned row frames to maintain state consistency
+	for _, userId in ipairs(orphanedUserIds) do
+		_annotate(string.format("Removing orphaned row frame for userId %s (cache data missing)", tostring(userId)))
+		removeUserLBRow(userId)
+	end
+
+	local lbConfig = leaderboardConfiguration
 	table.sort(sortedRows, function(a, b)
 		if a.value == b.value then
 			-- If values are equal, maintain original order
 			return a.originalIndex < b.originalIndex
-		elseif leaderboardConfiguration.sortDirection == "ascending" then
+		elseif lbConfig.sortDirection == "ascending" then
 			if a.value == nil then
 				return true
 			end
@@ -567,6 +750,9 @@ end
 
 local function receiveHeaderRowClick(key: string)
 	if key == "portrait" then
+		return
+	end
+	if not leaderboardConfiguration then
 		return
 	end
 
@@ -605,16 +791,23 @@ local function completelyResetUserLB(forceResize: boolean, kind: string)
 	comdeb = true
 	_annotate(string.format("completely reset? lb, forceResize: %s", tostring(forceResize)))
 	--make initial row only. then as things happen (people join, or updates come in, apply them in-place)
-	local pgui: PlayerGui = localPlayer:WaitForChild("PlayerGui")
+	local pguiInstance: Instance = localPlayer:WaitForChild("PlayerGui")
+	if not pguiInstance:IsA("PlayerGui") then
+		annotater.Error("PlayerGui is not a PlayerGui")
+		comdeb = false
+		return
+	end
+	local pgui: PlayerGui = pguiInstance :: PlayerGui
 
-	local oldLbSgui: ScreenGui = pgui:FindFirstChild("LeaderboardScreenGui") :: ScreenGui?
-	local oldSize
-	local oldPosition
-	if oldLbSgui ~= nil then
-		local old: Frame = oldLbSgui:FindFirstChild("outer_lb")
-		if old then
-			oldSize = old.Size
-			oldPosition = old.Position
+	local oldLbSguiInstance: Instance? = pgui:FindFirstChild("LeaderboardScreenGui")
+	local oldLbSgui: ScreenGui?
+	if oldLbSguiInstance and oldLbSguiInstance:IsA("ScreenGui") then
+		oldLbSgui = oldLbSguiInstance :: ScreenGui
+	end
+	if oldLbSgui then
+		local oldInstance: Instance? = oldLbSgui:FindFirstChild("outer_lb")
+		if oldInstance and oldInstance:IsA("Frame") then
+			-- old size/position not used
 		end
 		oldLbSgui:Destroy()
 	end
@@ -626,7 +819,7 @@ local function completelyResetUserLB(forceResize: boolean, kind: string)
 	end
 
 	local existingSgui = pgui:FindFirstChild("LeaderboardScreenGui")
-	if existingSgui ~= nil then
+	if existingSgui then
 		existingSgui:Destroy()
 	end
 	local lbSgui: ScreenGui = Instance.new("ScreenGui")
@@ -639,10 +832,15 @@ local function completelyResetUserLB(forceResize: boolean, kind: string)
 	local lbSystemFrames = windowFunctions.SetupFrame("lb", true, true, true, true, UDim2.new(0, 300, 0, 100))
 	lbOuterFrame = lbSystemFrames.outerFrame
 	local lbContentFrame = lbSystemFrames.contentFrame
-	if lbOuterFrame == nil then
+	if not lbOuterFrame then
 		return
 	end
 
+	if not leaderboardConfiguration then
+		annotater.Error("leaderboardConfiguration is nil in completelyResetUserLB")
+		comdeb = false
+		return
+	end
 	lbOuterFrame.Parent = lbSgui
 	lbOuterFrame.Position = leaderboardConfiguration.position
 	lbOuterFrame.Size = leaderboardConfiguration.size
@@ -650,33 +848,43 @@ local function completelyResetUserLB(forceResize: boolean, kind: string)
 	local headerRow = leaderboardGui.MakeLeaderboardHeaderRow(enabledDescriptors, headerRowYOffsetFixed)
 	headerRow.Parent = lbContentFrame
 	headerRow.Position = UDim2.new(0, 0, 0, 0)
-	for _, elb: TextButton in pairs(headerRow:GetChildren()) do
-		if not elb:IsA("TextButton") then
+	for _, elbInstance: Instance in pairs(headerRow:GetChildren()) do
+		if not elbInstance:IsA("TextButton") then
 			continue
 		end
-		local keyHolder = elb:FindFirstChild("Inner"):FindFirstChild("key") :: StringValue
+		local elb: TextButton = elbInstance :: TextButton
+		local innerInstance: Instance? = elb:FindFirstChild("Inner")
+		if not innerInstance or not innerInstance:IsA("TextButton") then
+			continue
+		end
+		local inner: TextButton = innerInstance :: TextButton
+		local keyHolderInstance: Instance? = inner:FindFirstChild("key")
+		if not keyHolderInstance or not keyHolderInstance:IsA("StringValue") then
+			continue
+		end
+		local keyHolder: StringValue = keyHolderInstance :: StringValue
 		local key = keyHolder.Value
 		-- Add click event for sorting
-		local inner = elb:FindFirstChild("Inner") :: TextButton
 		inner.MouseButton1Click:Connect(function()
 			receiveHeaderRowClick(key)
 		end)
 	end
 
-	lbUserRowFrame = Instance.new("Frame")
-	lbUserRowFrame.Parent = lbContentFrame
-	lbUserRowFrame.BorderMode = Enum.BorderMode.Inset
-	lbUserRowFrame.BorderSizePixel = 0
-	lbUserRowFrame.Size = UDim2.new(1, 0, 1, -1 * headerRowYOffsetFixed)
-	lbUserRowFrame.Position = UDim2.new(0, 0, 0, headerRowYOffsetFixed)
-	lbUserRowFrame.Name = "lbUserRowFrame"
-	lbUserRowFrame.BackgroundTransparency = 1
-	lbUserRowFrame.BackgroundColor3 = colors.defaultGrey
+	local newLbUserRowFrame: Frame = Instance.new("Frame")
+	newLbUserRowFrame.Parent = lbContentFrame
+	newLbUserRowFrame.BorderMode = Enum.BorderMode.Inset
+	newLbUserRowFrame.BorderSizePixel = 0
+	newLbUserRowFrame.Size = UDim2.new(1, 0, 1, -1 * headerRowYOffsetFixed)
+	newLbUserRowFrame.Position = UDim2.new(0, 0, 0, headerRowYOffsetFixed)
+	newLbUserRowFrame.Name = "lbUserRowFrame"
+	newLbUserRowFrame.BackgroundTransparency = 1
+	newLbUserRowFrame.BackgroundColor3 = colors.defaultGrey
+	lbUserRowFrame = newLbUserRowFrame
 
 	local vv: UIListLayout = Instance.new("UIListLayout")
 	vv.SortOrder = Enum.SortOrder.LayoutOrder
 	vv.Name = "LeaderboardNameSorter"
-	vv.Parent = lbUserRowFrame
+	vv.Parent = newLbUserRowFrame
 
 	leaderboardButtons.initActionButtons(lbOuterFrame)
 
@@ -754,7 +962,7 @@ local function updateUserLeaderboardRow(userStats: tt.lbUserStats): ()
 	end
 
 	while debounceUpdateUserLeaderboardRow[subjectUserId] do
-		_annotate(string.format("waiting for user %s to finish receiving their lb update", userStats.userId))
+		_annotate(string.format("waiting for user %s to finish receiving their lb update", tostring(userStats.userId)))
 		wait(0.1)
 	end
 	debounceUpdateUserLeaderboardRow[subjectUserId] = true
@@ -784,12 +992,12 @@ local function removeUserLBRow(userId: number): ()
 		removeDebouncers[userId] = nil
 		return
 	end
-	local row: Frame = userId2rowframe[userId]
+	local row: Frame? = userId2rowframe[userId]
 	userId2rowframe[userId] = nil
 	lbUserDataCache[userId] = nil
-	if row ~= nil then
+	if row then
 		pcall(function()
-			if row ~= nil then
+			if row then
 				row:Destroy()
 			end
 		end)
@@ -863,12 +1071,15 @@ local function handleUserSettingChanged(setting: tt.userSettingValue, initial: b
 		and setting.domain == settingEnums.settingDomains.LEADERBOARD
 	then
 		if setting.luaValue then
-			leaderboardConfiguration = setting.luaValue
+			leaderboardConfiguration = setting.luaValue :: tt.lbConfig
 			_annotate("loaded leaderboardConfiguration")
-			for k, v in pairs(leaderboardConfiguration) do
-				_annotate(string.format("\tleaderboardConfiguration: %s=%s", tostring(k), tostring(v)))
+			local lbConfig = leaderboardConfiguration
+			if lbConfig then
+				for k, v in pairs(lbConfig) do
+					_annotate(string.format("\tleaderboardConfiguration: %s=%s", tostring(k), tostring(v)))
+				end
+				sortLeaderboard()
 			end
-			sortLeaderboard()
 		else
 			annotater.Error("leaderboardConfiguration is nil")
 		end
@@ -944,6 +1155,7 @@ local function handleUserSettingChanged(setting: tt.userSettingValue, initial: b
 			"non-initial reset within handleUserSettingChanged for setting: " .. tostring(setting.name)
 		)
 	end
+	return nil
 end
 
 local lb: tt.lbUserStats = {

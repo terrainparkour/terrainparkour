@@ -18,6 +18,7 @@ local rdb = require(game.ServerScriptService.rdb)
 local banning = require(game.ServerScriptService.banning)
 local notify = require(game.ReplicatedStorage.notify)
 local tpPlacementLogic = require(game.ReplicatedStorage.product.tpPlacementLogic)
+local MessageDispatcher = require(game.ReplicatedStorage.ChatSystem.messageDispatcher)
 
 local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
@@ -133,6 +134,7 @@ module.DoRunEnd = function(player: Player, data: tt.runEndingDataFromClient)
 		_annotate(
 			string.format("ban level > 0, not saving run for userName=%s, userId: %d", player.Name, player.UserId)
 		)
+		MessageDispatcher.SendSystemMessageToPlayer(player, "Chat", "You are banned. Please find another game to play.")
 		return
 	end
 
@@ -160,16 +162,38 @@ module.DoRunEnd = function(player: Player, data: tt.runEndingDataFromClient)
 			remoteActionName = "userFinishedRun",
 			data = userFinishedRunOptions,
 		}
-		local finishedRunResponse: tt.userFinishedRunResponse = rdb.MakePostRequest(request)
+		local finishedRunResponse: tt.userFinishedRunResponseOrError = rdb.MakePostRequest(request)
 
-		badgeCheckers.CheckBadgeGrantingAfterRun(userId, finishedRunResponse, startSignId, endSignId, floorSeenCount)
+		local responseAsAny: any = finishedRunResponse
+		if responseAsAny.error then
+			local errorResponse: tt.userFinishedRunErrorResponse =
+				finishedRunResponse :: tt.userFinishedRunErrorResponse
+			annotater.Error(
+				"userFinishedRun returned error response",
+				{ userId = userId, startSignId = startSignId, endSignId = endSignId, error = errorResponse.error }
+			)
+			if errorResponse.banned == true then
+				MessageDispatcher.SendSystemMessageToPlayer(
+					player,
+					"Chat",
+					"You are banned. Please find another game to play."
+				)
+			end
+			return
+		end
 
-		finishedRunResponse = module.showBestTimes(player, startSignId, endSignId, finishedRunResponse)
+		local typedResponse: tt.userFinishedRunResponse = finishedRunResponse :: tt.userFinishedRunResponse
 
-		runResultsCommand.SendRunResults(player, startSignId, endSignId, finishedRunResponse)
+		badgeCheckers.CheckBadgeGrantingAfterRun(userId, typedResponse, startSignId, endSignId, floorSeenCount)
 
-		for _, anyPlayer in ipairs(PlayerService:GetPlayers()) do
-			lbUpdaterServer.SendUpdateToPlayer(anyPlayer, finishedRunResponse.lbUserStats)
+		typedResponse = module.showBestTimes(player, startSignId, endSignId, typedResponse)
+
+		runResultsCommand.SendRunResults(player, startSignId, endSignId, typedResponse)
+
+		if typedResponse.lbUserStats then
+			for _, anyPlayer in ipairs(PlayerService:GetPlayers()) do
+				lbUpdaterServer.SendUpdateToPlayer(anyPlayer, typedResponse.lbUserStats)
+			end
 		end
 	end)
 

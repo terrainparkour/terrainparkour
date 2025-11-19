@@ -64,9 +64,9 @@ local doError = function(err: robloxError)
 	if isServer() then
 		local preparedError = { rawMessage = HttpService:JSONEncode(lua2Json.Lua2StringTable(err)) }
 		table.insert(theErrors, preparedError)
-		warn(err)
+		warn(string.format("Error: %s", HttpService:JSONEncode(lua2Json.Lua2StringTable(err))))
 	elseif isClient() then
-		warn(err)
+		warn(string.format("Error: %s", HttpService:JSONEncode(lua2Json.Lua2StringTable(err))))
 		ErrorMessageEvent:FireServer(err)
 	else
 		error("you are neither server nor client. you should not be calling this.")
@@ -91,6 +91,9 @@ module.Error = function(msg: string, userId: number?, data: any?)
 end
 
 local innitted = false
+
+local do_studio_only_error_sending_tests = false
+
 module.Init = function()
 	if innitted then
 		return
@@ -109,7 +112,7 @@ module.Init = function()
 		end)
 	end
 
-	if config.IsInStudio() then
+	if config.IsInStudio() and do_studio_only_error_sending_tests then
 		if isServer() then
 			module.Error("test error sent from server")
 		else

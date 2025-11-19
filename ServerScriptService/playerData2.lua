@@ -374,16 +374,23 @@ module.describeRaceHistoryMultilineText = function(
 	local real1: string = enums.signId2name[signId1]
 	local real2: string = enums.signId2name[signId2]
 
-	local sign1: Part = game.Workspace:FindFirstChild("Signs"):FindFirstChild(real1) :: Part
-	local sign2: Part = game.Workspace:FindFirstChild("Signs"):FindFirstChild(real2) :: Part
-	local dist
+	local signsFolder: Instance? = game.Workspace:FindFirstChild("Signs")
+	if not signsFolder or not signsFolder:IsA("Folder") then
+		warn("playerData2: Signs folder not found")
+		return 987654
+	end
+	local sign1Instance: Instance? = signsFolder:FindFirstChild(real1)
+	local sign2Instance: Instance? = signsFolder:FindFirstChild(real2)
+	local dist: number
 
-	--protect dev plcae
-	if sign1 == nil or sign2 == nil then
+	--protect dev place
+	if not sign1Instance or not sign1Instance:IsA("Part") or not sign2Instance or not sign2Instance:IsA("Part") then
 		warn("no such sign")
 		dist = 987654
 		-- return ""
 	else
+		local sign1: Part = sign1Instance :: Part
+		local sign2: Part = sign2Instance :: Part
 		dist = tpUtil.getDist(sign1.Position, sign2.Position)
 	end
 

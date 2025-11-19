@@ -13,19 +13,23 @@ local emojis = require(game.ReplicatedStorage.enums.emojis)
 
 local PlayersService = game:GetService("Players")
 
+-- Forward declarations
+local signName2Sign
+local IsSignPartValidRightNow
+
 -- either because it's not a valid sign or it's in the exclusion lists
-module.SignNameCanBeHighlighted = function(signName: string): boolean
+local function SignNameCanBeHighlighted(signName: string): boolean
 	if not signName or signName == "" then
 		return false
 	end
-	local sign = module.signName2Sign(signName)
+	local sign = signName2Sign(signName)
 	if not sign then
 		return false
 	end
-	if not module.IsSignPartValidRightNow(sign) then
+	if not IsSignPartValidRightNow(sign) then
 		return false
 	end
-	local signName = sign.Name
+	local signNameFromSign = sign.Name
 	for _, name in pairs(enums.ExcludeSignNamesFromStartingAt) do
 		if signName == name then
 			return false
@@ -38,37 +42,44 @@ module.SignNameCanBeHighlighted = function(signName: string): boolean
 	end
 	return true
 end
+module.SignNameCanBeHighlighted = SignNameCanBeHighlighted
 
-module.SignCanBeHighlighted = function(sign: Part?): boolean
+local function SignCanBeHighlighted(sign: Part?): boolean
 	if not sign then
 		return false
 	end
-	return module.SignNameCanBeHighlighted(sign.Name)
+	return SignNameCanBeHighlighted(sign.Name)
 end
+module.SignCanBeHighlighted = SignCanBeHighlighted
 
-module.fmtms = function(float: number): string
+local function fmtms(float: number): string
 	return string.format("%.3f", float / 1000)
 end
+module.fmtms = fmtms
 
-module.noe = function(n: number): number
+local function noe(n: number): number
 	return math.ceil(n * 100000) / 100000
 end
+module.noe = noe
 
-module.getDist = function(pos1: Vector3, pos2: Vector3): number
+local function getDist(pos1: Vector3, pos2: Vector3): number
 	local dst = Vector3.new(pos1.X - pos2.X, pos1.Y - pos2.Y, pos1.Z - pos2.Z)
 	return dst.Magnitude
 end
+module.getDist = getDist
 
-module.fmt = function(float: number): string
+local function fmt(float: number): string
 	return string.format("%.3f", float / 1000)
 end
+module.fmt = fmt
 
-module.fmtShort = function(float: number): string
+local function fmtShort(float: number): string
 	return string.format("%.2f", float / 1000)
 end
+module.fmtShort = fmtShort
 
 --this should use global since signs are actually streamed in and most won't be visible.
-module.signId2Position = function(signId: number): Vector3 | nil
+local function signId2Position(signId: number): Vector3 | nil
 	local name = enums.signId2name[signId]
 	if name == nil then
 		name = enums.signId2name[signId]
@@ -76,16 +87,18 @@ module.signId2Position = function(signId: number): Vector3 | nil
 	if name == nil then
 		return nil
 	end
-	local sign: Part = game.Workspace:WaitForChild("Signs"):FindFirstChild(name)
-	if not sign then
+	local sign: Instance? = game.Workspace:WaitForChild("Signs"):FindFirstChild(name)
+	if not sign or not sign:IsA("Part") then
 		return nil
 	end
-	return sign.Position
+	return (sign :: Part).Position
 end
+module.signId2Position = signId2Position
 
-module.signName2SignId = function(signName: string): number
+local function signName2SignId(signName: string): number
 	return enums.namelower2signId[signName:lower()]
 end
+module.signName2SignId = signName2SignId
 
 --stemming from the front, first match
 --return nil if no match. Prefers shorter matches (i.e. exact matches first)
@@ -96,7 +109,7 @@ for signId, signName in pairs(enums.signId2name) do
 end
 
 for signName, signAlias in pairs(enums.signName2Alias) do
-	table.insert(allSignNamesAndAliasesShortToLong, { signName = signAlias, signId = module.signName2SignId(signName) })
+	table.insert(allSignNamesAndAliasesShortToLong, { signName = signAlias, signId = signName2SignId(signName) })
 end
 
 table.sort(allSignNamesAndAliasesShortToLong, function(a, b)
@@ -106,7 +119,7 @@ table.sort(allSignNamesAndAliasesShortToLong, function(a, b)
 	return #a.signName < #b.signName
 end)
 
-module.looseSignName2SignId = function(signSearchText: string): number?
+local function looseSignName2SignId(signSearchText: string): number?
 	--return exact if matches.
 	if enums.namelower2signId[signSearchText:lower()] ~= nil then
 		return enums.namelower2signId[signSearchText:lower()]
@@ -125,17 +138,23 @@ module.looseSignName2SignId = function(signSearchText: string): number?
 
 	return nil
 end
+module.looseSignName2SignId = looseSignName2SignId
 
 --also takes into account aliases.
-module.looseSignName2Sign = function(signSearchText: string): Part?
-	local signId = module.looseSignName2SignId(signSearchText)
+local function looseSignName2Sign(signSearchText: string): Part?
+	local signId = looseSignName2SignId(signSearchText)
 	if signId == nil then
 		return nil
 	end
-	return game.Workspace:WaitForChild("Signs"):FindFirstChild(enums.signId2name[signId])
+	local sign: Instance? = game.Workspace:WaitForChild("Signs"):FindFirstChild(enums.signId2name[signId])
+	if sign and sign:IsA("Part") then
+		return sign :: Part
+	end
+	return nil
 end
+module.looseSignName2Sign = looseSignName2Sign
 
-function module.formatDateGap(gapSeconds: number): (string, string)
+local function formatDateGap(gapSeconds: number): (string, string)
 	if gapSeconds >= 365 * 24 * 60 * 60 then
 		return string.format("%.1fy", gapSeconds / (365 * 24 * 60 * 60)), "years"
 	elseif gapSeconds >= 3 * 24 * 60 * 60 then
@@ -148,8 +167,9 @@ function module.formatDateGap(gapSeconds: number): (string, string)
 		return string.format("%.1fs", gapSeconds), "seconds"
 	end
 end
+module.formatDateGap = formatDateGap
 
-module.signId2signName = function(signId: number?): string
+local function signId2signName(signId: number?): string
 	if not signId then
 		annotater.Error("signId is null?")
 		return ""
@@ -157,8 +177,9 @@ module.signId2signName = function(signId: number?): string
 	local res = enums.signId2name[signId]
 	return res
 end
+module.signId2signName = signId2signName
 
-module.signId2Sign = function(signId: number): Part?
+local function signId2Sign(signId: number): Part?
 	if not signId then
 		return nil
 	end
@@ -166,14 +187,28 @@ module.signId2Sign = function(signId: number): Part?
 	if not signName then
 		return nil
 	end
-	return game.Workspace:WaitForChild("Signs"):FindFirstChild(signName)
+	local sign: Instance? = game.Workspace:WaitForChild("Signs"):FindFirstChild(signName)
+	if sign and sign:IsA("Part") then
+		return sign :: Part
+	end
+	return nil
 end
+module.signId2Sign = signId2Sign
 
-module.signName2Sign = function(signName: string): Part?
-	return game.Workspace:WaitForChild("Signs"):FindFirstChild(signName)
+-- Defined here but assigned to module earlier or later?
+-- Actually I can just define it local and assign it to module at the end if I want, but I'm mixing styles.
+-- I'll stick to "define local, assign immediately to module" but use the local reference internally.
+
+signName2Sign = function(signName: string): Part?
+	local sign: Instance? = game.Workspace:WaitForChild("Signs"):FindFirstChild(signName)
+	if sign and sign:IsA("Part") then
+		return sign :: Part
+	end
+	return nil
 end
+module.signName2Sign = signName2Sign
 
-module.looseGetPlayerFromUsername = function(playerName: string): Player?
+local function looseGetPlayerFromUsername(playerName: string): Player?
 	playerName = playerName:lower()
 	--if there happen to be two players with subsetted names.
 	for _, player: Player in ipairs(PlayersService:GetPlayers()) do
@@ -188,12 +223,14 @@ module.looseGetPlayerFromUsername = function(playerName: string): Player?
 	end
 	return nil
 end
+module.looseGetPlayerFromUsername = looseGetPlayerFromUsername
 
-module.getPlayerByUserId = function(userId: number): Player
+local function getPlayerByUserId(userId: number): Player?
 	return PlayersService:GetPlayerByUserId(userId)
 end
+module.getPlayerByUserId = getPlayerByUserId
 
-module.getPlayerForUsername = function(username: string): Player?
+local function getPlayerForUsername(username: string): Player?
 	for _, player: Player in ipairs(PlayersService:GetPlayers()) do
 		if player.Name == username then
 			return player
@@ -201,16 +238,18 @@ module.getPlayerForUsername = function(username: string): Player?
 	end
 	return nil
 end
+module.getPlayerForUsername = getPlayerForUsername
 
-module.GetUserIdsInServer = function(): { number }
+local function GetUserIdsInServer(): { number }
 	local res = {}
 	for _, player: Player in ipairs(PlayersService:GetPlayers()) do
 		table.insert(res, player.UserId)
 	end
 	return res
 end
+module.GetUserIdsInServer = GetUserIdsInServer
 
-module.getCardinal = function(place: number): string
+local function getCardinal(place: number): string
 	if place == nil then
 		return ""
 	end
@@ -239,6 +278,7 @@ module.getCardinal = function(place: number): string
 
 	return tostring(place) .. stem
 end
+module.getCardinal = getCardinal
 
 local function digit2emoji(digit: number): string
 	if digit == 0 then
@@ -272,9 +312,10 @@ local function digit2emoji(digit: number): string
 		return emojis.emojis.DIGIT_NINE
 	end
 	annotater.Error("no")
+	return ""
 end
 
-module.getNumberEmojis = function(number: number): string
+local function getNumberEmojis(number: number): string
 	local res = ""
 	while number > 0 do
 		local digit = number % 10
@@ -283,9 +324,10 @@ module.getNumberEmojis = function(number: number): string
 	end
 	return res
 end
+module.getNumberEmojis = getNumberEmojis
 
 --including medals for early places
-module.getCardinalEmoji = function(place: number): string
+local function getCardinalEmoji(place: number): string
 	if place == nil then
 		return ""
 	end
@@ -299,82 +341,63 @@ module.getCardinalEmoji = function(place: number): string
 	if place == 3 then
 		return emojis.emojis.THIRD_PLACE
 	end
-	return module.getCardinal(place)
-	-- local emojiNumber = module.getNumberEmojis(place)
-	-- local stem = "th"
-
-	-- local lastDigit = place % 10
-	-- if lastDigit == 1 then
-	-- 	stem = "st"
-	-- end
-	-- if lastDigit == 2 then
-	-- 	stem = "nd"
-	-- end
-	-- if lastDigit == 3 then
-	-- 	stem = "rd"
-	-- end
-	-- local smallPlace = place % 100
-	-- if smallPlace == 11 then
-	-- 	stem = "th"
-	-- end
-	-- if smallPlace == 12 then
-	-- 	stem = "th"
-	-- end
-	-- if smallPlace == 13 then
-	-- 	stem = "th"
-	-- end
-	-- return emojiNumber .. stem
+	return getCardinal(place)
 end
+module.getCardinalEmoji = getCardinalEmoji
 
-module.getPlaceText = function(place: number): string
+local function getPlaceText(place: number): string
 	if place == 0 then
 		return "*"
 	end
 	if place > 10 then
 		return "-"
 	end
-	return module.getCardinal(place) .. " Place"
+	return getCardinal(place) .. " Place"
 end
+module.getPlaceText = getPlaceText
 
 -- generally you want to check serverUtil.UserCanInteractWithSign or the future client version of this which also takes
 -- into account whether the user has found it.
-module.IsSignPartValidRightNow = function(sign: Part): boolean
+IsSignPartValidRightNow = function(sign: Part): boolean
 	local res = sign.CanCollide and sign.CanTouch and sign.CanQuery
 	return res
 end
+module.IsSignPartValidRightNow = IsSignPartValidRightNow
 
-module.AttemptToParseRaceFromInput = function(message: string): tt.RaceParseResult
+local function AttemptToParseRaceFromInput(message: string): tt.RaceParseResult
 	--lookup a race (NAMEPREFIX-NAMEPREFIX) sign names
 	local signParts = textUtil.stringSplit(message:lower(), "-")
 	if #signParts == 2 then
 		local s1prefix = signParts[1]
 		local s2prefix = signParts[2]
 
-		local signId1 = module.looseSignName2SignId(s1prefix)
-		local signId2 = module.looseSignName2SignId(s2prefix)
-		local sign1name = module.signId2signName(signId1)
-		local sign2name = module.signId2signName(signId2)
+		local signId1 = looseSignName2SignId(s1prefix)
+		local signId2 = looseSignName2SignId(s2prefix)
 
 		local theError = ""
 
 		if signId1 == signId2 then
 			theError = "Trol"
 		end
-		if signId1 == nil or signId2 == nil then
+		if not signId1 or not signId2 then
 			theError = "Enter race name like A-B (where A and B are signs, and you can just enter the prefix too.)"
 		end
 
-		if theError ~= "" then
+		if theError ~= "" or not signId1 or not signId2 then
 			local ret: tt.RaceParseResult = {
 				signId1 = 0,
 				signId2 = 0,
 				signName1 = "",
 				signName2 = "",
-				error = error,
+				error = theError,
 			}
 
 			return ret
 		end
+
+		-- Logic to get names AFTER validating IDs are present
+		local sign1name = signId2signName(signId1)
+		local sign2name = signId2signName(signId2)
 
 		return {
 			signId1 = signId1,
@@ -393,10 +416,11 @@ module.AttemptToParseRaceFromInput = function(message: string): tt.RaceParseResu
 		}
 	end
 end
+module.AttemptToParseRaceFromInput = AttemptToParseRaceFromInput
 
 -- calculates the max number of decimal places present within a list of numbers, and returns math.min(that value,3)
 -- Example: For the input {1.234, 5.6789, 3.1}, the function will return 3 since although there is a number with 4, there's a hardcoded limit 3
-module.GetMaxDecimalPlaces = function(numbers: { number }): number
+local function GetMaxDecimalPlaces(numbers: { number }): number
 	local maxDecimals = 0
 	for _, num in ipairs(numbers) do
 		local _, fractionalPart = math.modf(num)
@@ -409,9 +433,10 @@ module.GetMaxDecimalPlaces = function(numbers: { number }): number
 	print("drawing decimals: ", maxDecimals, " probably should be at min 1?")
 	return maxDecimals
 end
+module.GetMaxDecimalPlaces = GetMaxDecimalPlaces
 
 -- returns the max number of digits in the integer part of a list of numbers
-module.GetMaxIntegerDigits = function(numbers: { number }): number
+local function GetMaxIntegerDigits(numbers: { number }): number
 	local maxDigits = 0
 	for _, num in ipairs(numbers) do
 		local integerPart = math.floor(num)
@@ -420,6 +445,7 @@ module.GetMaxIntegerDigits = function(numbers: { number }): number
 	end
 	return maxDigits
 end
+module.GetMaxIntegerDigits = GetMaxIntegerDigits
 
 _annotate("end")
 return module

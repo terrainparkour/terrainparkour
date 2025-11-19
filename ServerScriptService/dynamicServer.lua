@@ -17,7 +17,7 @@ local serverUtil = require(game.ServerScriptService.serverUtil)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local dynamicRunningEvent = remotes.getRemoteEvent("DynamicRunningEvent") :: RemoteEvent
-local signs: Folder = game.Workspace:FindFirstChild("Signs")
+local signs: Folder = game.Workspace:WaitForChild("Signs") :: Folder
 local dynamicRunningEnums = require(game.ReplicatedStorage.dynamicRunningEnums)
 
 ----------- GLOBAL STATE ----------------
@@ -34,8 +34,8 @@ local function getPositionByUserId(userId: number): Vector3?
 	end
 
 	local character = player.Character or player.CharacterAdded:Wait()
-	local rootPart: Part? = character:FindFirstChild("HumanoidRootPart")
-	if rootPart == nil then
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	if rootPart == nil or not rootPart:IsA("Part") then
 		return nil
 	end
 	local characterPosition = rootPart.Position
@@ -46,7 +46,11 @@ local function getNearestSigns(pos: Vector3, userId: number, count: number)
 	local dists = {}
 
 	-- yes it's dumb to do this entire thing, no it doesn't actually matter based on measurement
-	for _, sign: Part in ipairs(signs:GetChildren()) do
+	for _, signInstance in ipairs(signs:GetChildren()) do
+		if not signInstance:IsA("Part") then
+			continue
+		end
+		local sign: Part = signInstance
 		local signId = tpUtil.signName2SignId(sign.Name)
 
 		if not serverUtil.UserCanInteractWithSignId(userId, signId) then
@@ -111,7 +115,7 @@ local dynamicRunFrom = function(
 	--this has string keys on the wire. how to generally make them show up as number, so types match?
 	for k, frame: tt.DynamicRunFrame in ipairs(res.frames) do
 		local newFrame: tt.DynamicRunFrame = {
-			targetSignId = tonumber(frame.targetSignId),
+			targetSignId = tonumber(frame.targetSignId) or 0,
 			targetSignName = frame.targetSignName,
 			places = {},
 			myPriorPlace = nil,
@@ -119,20 +123,25 @@ local dynamicRunFrom = function(
 		}
 		if frame.myPriorPlace then
 			newFrame.myPriorPlace = {
-				place = tonumber(frame.myPriorPlace.place),
-				userId = tonumber(frame.myPriorPlace.userId),
-				timeMs = tonumber(frame.myPriorPlace.timeMs),
+				place = tonumber(frame.myPriorPlace.place) or 0,
+				username = frame.myPriorPlace.username or "Unknown",
+				userId = tonumber(frame.myPriorPlace.userId) or 0,
+				timeMs = tonumber(frame.myPriorPlace.timeMs) or 0,
 			}
 		end
 
 		for place, p in pairs(frame.places) do
+			local pKey = tonumber(place)
+			if not pKey then
+				continue
+			end
 			local thePlace: tt.DynamicPlace = {
-				place = tonumber(p.place),
-				username = p.username,
-				userId = tonumber(p.userId),
-				timeMs = tonumber(p.timeMs),
+				place = tonumber(p.place) or 0,
+				username = p.username or "Unknown",
+				userId = tonumber(p.userId) or 0,
+				timeMs = tonumber(p.timeMs) or 0,
 			}
-			newFrame.places[tonumber(place)] = thePlace
+			newFrame.places[pKey] = thePlace
 		end
 		table.insert(correctRes.frames, newFrame)
 	end
@@ -205,7 +214,6 @@ local function dynamicControlServer(player: Player, input: tt.dynamicRunningCont
 						_annotate("player left during dynamic sending" .. tostring(userId))
 						break
 					end
-					print(dynamicRunFromDataFrames)
 					local s, e = pcall(function()
 						_annotate("fire frames to client.")
 						dynamicRunningEvent:FireClient(oPlayer, dynamicRunFromDataFrames)

@@ -9,6 +9,7 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local particleEnums = require(game.StarterPlayer.StarterPlayerScripts.particleEnums)
+local scrollingFrameUtils = require(game.ReplicatedStorage.gui.scrollingFrameUtils)
 local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
 local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
 
@@ -131,6 +132,9 @@ module.CreateParticleGui = function()
 	closeButton.Activated:Connect(function()
 		screenGui.Enabled = false
 	end)
+	
+	-- Prevent camera scroll when hovering over particle explanation scrolling frame
+	scrollingFrameUtils.PreventCameraScrollOnHover(particleColorList)
 
 	return outerFrame
 end

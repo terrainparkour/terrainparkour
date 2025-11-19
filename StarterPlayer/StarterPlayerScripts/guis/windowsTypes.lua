@@ -30,6 +30,7 @@ export type textTileSpec = {
 	textColor: Color3?, --default textColor black
 	textXAlignment: Enum.TextXAlignment?, --default left
 	includeTextSizeConstraint: boolean?, --default true
+	leftPadding: number?, --default 0, adds UIPadding for left-aligned text
 }
 
 export type portraitTileSpec = {

@@ -34,12 +34,23 @@ end
 
 --update joiner about current players
 local function updatePlayerLbAboutAllImmediate(player: Player)
-	local character = player.Character or player.CharacterAdded:Wait()
+	local start = tick()
+	local _character = player.Character or player.CharacterAdded:Wait()
+	local playerCount = #PlayerService:GetPlayers()
+	_annotate(string.format("updatePlayerLbAboutAll START for %s (%d players)", player.Name, playerCount))
+	
 	for _, otherPlayer: Player in ipairs(PlayerService:GetPlayers()) do
+		local fetchStart = tick()
 		local lbUserStats: tt.lbUserStats = playerData2.GetStatsByUserId(otherPlayer.UserId, "update joiner lb")
+		local fetchTime = tick() - fetchStart
 		lbUpdaterServer.SendUpdateToPlayer(player, lbUserStats)
-		_annotate(string.format("Updating player: %s about %s", player.Name, otherPlayer.Name))
+		if fetchTime > 0.1 then
+			_annotate(string.format("  slow GetStats for %s: %.3fs", otherPlayer.Name, fetchTime))
+		end
 	end
+	
+	_annotate(string.format("updatePlayerLbAboutAll DONE for %s (%.3fs, %d players)", 
+		player.Name, tick() - start, playerCount))
 end
 
 module.UpdateAllAboutPlayerImmediate = function(player: Player)
@@ -57,19 +68,27 @@ module.SetPlayerToReceiveUpdates = function(player: Player)
 		_annotate("Player " .. player.Name .. " was added, so telling " .. player.Name .. " about it.")
 		return updatePlayerLbAboutAllImmediate(player)
 	end)
-	local character = player.Character or player.CharacterAdded:Wait()
+	local _character = player.Character or player.CharacterAdded:Wait()
 	updatePlayerLbAboutAllImmediate(player)
 end
 
 local updateOthersAboutPlayerImmediate = function(player: Player)
+	local start = tick()
+	local fetchStart = tick()
 	local lbUserStats: tt.lbUserStats = playerData2.GetStatsByUserId(player.UserId, "updateOthersAboutPlayerImmediate")
+	local fetchTime = tick() - fetchStart
+	
+	local otherPlayerCount = 0
 	for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
 		if otherPlayer.UserId == player.UserId then
 			continue
 		end
-		_annotate(string.format("Updating %s about player: %s", otherPlayer.Name, player.Name))
+		otherPlayerCount = otherPlayerCount + 1
 		lbUpdaterServer.SendUpdateToPlayer(otherPlayer, lbUserStats)
 	end
+	
+	_annotate(string.format("updateOthersAbout DONE for %s (%.3fs: %.3fs fetch + %.3fs send to %d players)", 
+		player.Name, tick() - start, fetchTime, tick() - start - fetchTime, otherPlayerCount))
 end
 
 -- when a player is added

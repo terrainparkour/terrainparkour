@@ -89,16 +89,20 @@ module.makeChipForSubcomponent = function(
 ): TextLabel
 	local name = module.getMarathonComponentName(desc, key)
 	local fakeParent = Instance.new("Frame")
-	local usePadding = desc.chipPadding
-	if usePadding == nil then
-		usePadding = 0
+	local chipPadding: number? = desc.chipPadding
+	local usePadding: number = 0
+	if chipPadding ~= nil then
+		usePadding = chipPadding :: number
 	end
 	local tl = guiUtil.getTl(name, UDim2.new(0, xscale, 1, 0), usePadding, fakeParent, colors.defaultGrey, 1, 0)
 	-- tl.Parent.BorderMode = Enum.BorderMode.Outline
 
 	--TODO fix this - override hack because keys are 2digit numbers and for display in this case we want to fix.
 	if desc.highLevelType == "signsOfEveryLength" then
-		key = tostring(tonumber(key))
+		local numKey = tonumber(key)
+		if numKey then
+			key = tostring(numKey)
+		end
 		tl.TextScaled = true
 	end
 	if desc.highLevelType == "findSet" then
@@ -106,7 +110,13 @@ module.makeChipForSubcomponent = function(
 	end
 	tl.Text = key
 	tl.ZIndex = zindex
-	return tl.Parent
+	local chipLabelCandidate = fakeParent:FindFirstChild(name)
+	if not chipLabelCandidate or not chipLabelCandidate:IsA("TextLabel") then
+		error("getMarathonComponentName: missing chip label " .. name)
+	end
+	local chipLabel = chipLabelCandidate :: TextLabel
+	chipLabel.ZIndex = zindex
+	return chipLabel
 end
 
 module.getChipFrame = function(desc: mt.marathonDescriptor): Frame
@@ -185,12 +195,21 @@ module.getChipFrame = function(desc: mt.marathonDescriptor): Frame
 		yesTl.Text = ""
 		noTl.Text = "Find " .. tostring(desc.requiredCount)
 
-		yesTl.Parent.Parent = innerFrame
-		noTl.Parent.Parent = innerFrame
+		local yesParent = yesTl.Parent
+		local noParent = noTl.Parent
+		if yesParent and noParent then
+			yesParent.Parent = innerFrame
+			noParent.Parent = innerFrame
+		else
+			warn("marathonStatic: yesTl or noTl missing Parent")
+		end
 
 		return frame
 	else
 		warn("Missed kind in setting up tiles. this will definitely fail.")
+		local errorFrame = Instance.new("Frame")
+		errorFrame.Name = "error"
+		return errorFrame
 	end
 
 	-- reconsiderOffsetXInTilesAsScale(tiles)

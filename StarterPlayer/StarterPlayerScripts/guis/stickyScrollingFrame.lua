@@ -2,19 +2,25 @@
 
 -- stickyScrollingFrame.lua
 -- a scrolling frame that snaps to rows and also allows sticky elements.
+-- Uses "visibility hack" to support sticky interleaved rows.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
+local _UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
+local Players = game:GetService("Players")
+
 local module = {}
 
--- okay it's actually a sticky scrolling frame which when you scroll, just fakes the nav
 module.CreateStickyScrollingFrame = function(rowHeight: number, dataRowsToShowCount: number?)
-	if not dataRowsToShowCount then
-		dataRowsToShowCount = 10
-		_annotate(string.format("dataRowsToShowCount fallback to: %d", dataRowsToShowCount))
+	local actualDataRowsToShowCount: number
+	if dataRowsToShowCount then
+		actualDataRowsToShowCount = dataRowsToShowCount
+		_annotate(string.format("dataRowsToShowCount received: %d", actualDataRowsToShowCount))
 	else
-		_annotate(string.format("dataRowsToShowCount received: %d", dataRowsToShowCount))
+		actualDataRowsToShowCount = 10
+		_annotate(string.format("dataRowsToShowCount fallback to: %d", actualDataRowsToShowCount))
 	end
 
 	local guiIsDoneAdding = false
@@ -22,121 +28,187 @@ module.CreateStickyScrollingFrame = function(rowHeight: number, dataRowsToShowCo
 	local UIListLayout = Instance.new("UIListLayout")
 	local rowFrames: { Frame } = {} -- Store references to all elements
 
-	-- it's a scrolling frame in ordre to listen to scrolls, but the actual implementation of scrolling is a hack
-	-- which is done with visibility of  rows so that it only appears to scroll
+	-- "Fake" scrolling setup
 	ScrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.None
 	ScrollingFrame.ElasticBehavior = Enum.ElasticBehavior.Always
-	ScrollingFrame.ScrollingEnabled = true
+	ScrollingFrame.ScrollingEnabled = false -- Disable native scrolling
 	ScrollingFrame.AutomaticSize = Enum.AutomaticSize.None
-	ScrollingFrame.ScrollBarThickness = 0
+	ScrollingFrame.ScrollBarThickness = 0 -- Hide scrollbar
+	ScrollingFrame.VerticalScrollBarInset = Enum.ScrollBarInset.None
 	ScrollingFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+	ScrollingFrame.Size = UDim2.new(1, 0, 1, 0)
 
 	-- Configure UIListLayout
 	UIListLayout.Parent = ScrollingFrame
 	UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	-- UIListLayout.VerticalFlex = Enum.UIFlexAlignment.Fill
+	
+	local firstRegularRowDisplayedIndex = 1
 
-	local firstRowDisplayedIndex = 1
-	local lastYPosition = 0
-
-	-- job: hide/show row elements so that there are the proper number (rowCount)
-	local function adjustVisibility()
-		if not guiIsDoneAdding then
-			return
+	-- Helper: get count of sticky rows and list of regular row indices
+	local function getStickyInfo()
+		local stickyCount = 0
+		local regularRowIndices: { number } = {}
+		for index, row in ipairs(rowFrames) do
+			local stickyAttr = row:GetAttribute("Sticky")
+			if stickyAttr == 1 then
+				stickyCount += 1
+			else
+				table.insert(regularRowIndices, index)
+			end
 		end
-		--if we can show 10 rows and have required rows 1,2, 5, and 70, and we have 100 rows in all, then at first
-		-- we show 1,2,   3,4,    5,    6,7,8,9,70.
-		-- i.e. we take all required items and then fill in the blanks
-		-- if the user scrolls down, then we skip 1 and add 10 before 70 etc.
-		local shownCount = 0
+		return stickyCount, regularRowIndices
+	end
 
-		-- just hide all to start
+	-- Helper: find first regular row index
+	local function getFirstRegularRowIndex(): number
+		for index, row in ipairs(rowFrames) do
+			local stickyAttr = row:GetAttribute("Sticky")
+			if stickyAttr ~= nil and stickyAttr ~= 1 then
+				return index
+			end
+		end
+		return 1
+	end
+
+	-- Core logic: hide/show row elements
+	local function adjustVisibility()
+		if not guiIsDoneAdding then return end
+		
+		-- 1. Hide all
 		for _, row in ipairs(rowFrames) do
 			row.Visible = false
 		end
 
-		-- turn on stickies. This can overload.
+		-- 2. Show all stickies
+		local shownCount = 0
 		for _, row in ipairs(rowFrames) do
 			if row:GetAttribute("Sticky") == 1 then
 				row.Visible = true
 				shownCount += 1
-				if shownCount >= dataRowsToShowCount then
-					break
+			end
+		end
+		
+		-- 3. Show regular rows starting from index
+		if shownCount < actualDataRowsToShowCount then
+			local countNeeded = actualDataRowsToShowCount - shownCount
+			local regularAdded = 0
+			
+			for index, row in ipairs(rowFrames) do
+				if row:GetAttribute("Sticky") == 1 then continue end
+				
+				-- We only start showing if index >= our cursor
+				if index >= firstRegularRowDisplayedIndex then
+					if regularAdded < countNeeded then
+						row.Visible = true
+						if regularAdded == 0 then
+							_annotate(string.format("First regular row shown: %s (idx %d, order %d)", row.Name, index, row.LayoutOrder))
+						end
+						regularAdded += 1
+					end
 				end
 			end
 		end
-
-		if shownCount < dataRowsToShowCount then
-			for index, rowFrame in ipairs(rowFrames) do
-				if rowFrame.Visible then
-					continue
-				end
-				if shownCount >= dataRowsToShowCount then
-					break
-				end
-				if index >= firstRowDisplayedIndex then
-					rowFrame.Visible = true
-					shownCount += 1
-					continue
-				end
-			end
-		end
+		
+		_annotate(string.format("adjustVisibility: startRegular=%d, totalShown=%d (max %d)", firstRegularRowDisplayedIndex, shownCount + 0, actualDataRowsToShowCount))
 	end
 
-	-- we do momentarily accept scrolling but we always undo it and instead just hide the top non-sticky row and unhide the bottom one, if available.
-	local function HandleChanges()
-		if not guiIsDoneAdding then
-			return
+	-- Handle Input
+	local localPlayer = Players.LocalPlayer
+	local mouse = localPlayer:GetMouse()
+	
+	-- Check if mouse is over frame
+	local function isMouseOver()
+		if not guiIsDoneAdding then return false end
+		
+		local mouseX, mouseY = mouse.X, mouse.Y
+		local framePos = ScrollingFrame.AbsolutePosition
+		local frameSize = ScrollingFrame.AbsoluteSize
+		
+		if frameSize.X == 0 or frameSize.Y == 0 then return false end
+		
+		if mouseX < framePos.X or mouseX > framePos.X + frameSize.X then return false end
+		if mouseY < framePos.Y or mouseY > framePos.Y + frameSize.Y then return false end
+		
+		return true
+	end
+	
+	-- Combined Scroll and Sink Logic
+	local function handleScrollAction(actionName, inputState, inputObject)
+		if inputState ~= Enum.UserInputState.Change then return Enum.ContextActionResult.Pass end
+		
+		if not isMouseOver() then
+			return Enum.ContextActionResult.Pass
 		end
-		-- it appears my system scrolls 37 pixesl at a time anyway.
-		local currentPosY = ScrollingFrame.CanvasPosition.Y
-		_annotate(string.format("current posY: %0.2f", currentPosY))
-		if currentPosY == lastYPosition then
-			_annotate("no movement.")
-			return
-		end
-		local scrollingDown = currentPosY > lastYPosition
-		_annotate(string.format("down = %s", tostring(scrollingDown)))
-		--always reset to top
-		local maxFirstRowDisplayedIndex = #rowFrames - dataRowsToShowCount - 1
-		_annotate(string.format("maxScrollDownAmount = %d", maxFirstRowDisplayedIndex))
-		if scrollingDown then
-			-- but we can't skip down below:
-			firstRowDisplayedIndex += 1
-			firstRowDisplayedIndex = math.min(firstRowDisplayedIndex, maxFirstRowDisplayedIndex)
-		else
-			firstRowDisplayedIndex -= 1
-			firstRowDisplayedIndex = math.max(firstRowDisplayedIndex, 1)
-		end
-		_annotate(string.format("firstRowDisplayedIndex = %d", firstRowDisplayedIndex))
 
-		ScrollingFrame.CanvasPosition = Vector2.new(0, 1)
-		lastYPosition = 1
+		-- Scroll logic
+		local stickyCount, regularRowIndices = getStickyInfo()
+		local totalRegularRows = #regularRowIndices
+		
+		if totalRegularRows == 0 then return Enum.ContextActionResult.Sink end
+		
+		-- How many regular rows fit?
+		local availableSlots = math.max(0, actualDataRowsToShowCount - stickyCount)
+		
+		-- Max index we can start at
+		local currentVirtualIndex = 1
+		for i, idx in ipairs(regularRowIndices) do
+			if idx == firstRegularRowDisplayedIndex then
+				currentVirtualIndex = i
+				break
+			end
+			if idx > firstRegularRowDisplayedIndex then
+				currentVirtualIndex = math.max(1, i - 1)
+				break
+			end
+		end
+		
+		local maxVirtualIndex = math.max(1, totalRegularRows - availableSlots + 1)
+		
+		-- Scroll
+		if inputObject.Position.Z < 0 then -- Scroll Down
+			currentVirtualIndex = math.min(currentVirtualIndex + 1, maxVirtualIndex)
+		else -- Scroll Up
+			currentVirtualIndex = math.max(currentVirtualIndex - 1, 1)
+		end
+		
+		-- Map back to rowFrames index
+		firstRegularRowDisplayedIndex = regularRowIndices[currentVirtualIndex]
+		
+		_annotate(string.format("Scroll handled by %s. New Index: %d", actionName, firstRegularRowDisplayedIndex))
 		adjustVisibility()
+
+		return Enum.ContextActionResult.Sink
 	end
+	
+	-- Use a unique action name for each instance to prevent collisions
+	-- We use HttpService:GenerateGUID to ensure uniqueness even if tostring(ScrollingFrame) is not unique enough (though it should be)
+	local HttpService = game:GetService("HttpService")
+	local actionName = "StickyScrollAction_" .. HttpService:GenerateGUID(false)
+	
+	ContextActionService:BindAction(actionName, handleScrollAction, false, Enum.UserInputType.MouseWheel)
+	
+	ScrollingFrame.Destroying:Connect(function() 
+		ContextActionService:UnbindAction(actionName)
+	end)
 
-	-- Now we can use updateStickyPositions in the scroll handler
-	ScrollingFrame:GetPropertyChangedSignal("CanvasPosition"):Connect(HandleChanges)
-	ScrollingFrame:GetPropertyChangedSignal("CanvasSize"):Connect(HandleChanges)
-
-	-- Function to add elements
+	-- API
 	local function addRowFrame(row: Frame, layoutOrder: number, isSticky: boolean)
 		table.insert(rowFrames, row)
 		row.LayoutOrder = layoutOrder
-		row.Size = UDim2.new(1, 0, 0, rowHeight) -- Ensure consistent row height
+		row.Size = UDim2.new(1, 0, 0, rowHeight)
 		row.Parent = ScrollingFrame
-
 		if isSticky then
 			row:SetAttribute("Sticky", 1)
 		else
 			row:SetAttribute("Sticky", 0)
 		end
-		row.Visible = true
-		adjustVisibility()
+		-- Visibility set by adjustVisibility
 	end
 
 	local function doneAdding()
 		guiIsDoneAdding = true
+		_annotate(string.format("doneAdding: %d rows total", #rowFrames))
+		firstRegularRowDisplayedIndex = getFirstRegularRowIndex()
 		adjustVisibility()
 	end
 

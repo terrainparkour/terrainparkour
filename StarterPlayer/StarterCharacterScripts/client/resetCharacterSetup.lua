@@ -8,12 +8,10 @@ annotater.Init()
 
 local module = {}
 local aet = require(game.ReplicatedStorage.avatarEventTypes)
-local localPlayer: Player = game.Players.LocalPlayer
+local players = game:GetService("Players")
+local localPlayer: Player = players.LocalPlayer
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
-
--- Store the current BindableEvent
-local resetBindable: BindableEvent? = nil
 
 local function handleReset()
 	fireEvent(aet.avatarEventTypes.AVATAR_RESET, { sender = "resetCharacterSetup" })
@@ -26,35 +24,66 @@ local function handleReset()
 		warn("failed killing player")
 	end
 	local didDie = false
-	task.spawn(function()
-		while true do
-			humanoid = character:WaitForChild("Humanoid") :: Humanoid
-			if not humanoid then
-				didDie = true
-				task.wait(0.01)
+	if character then
+		task.spawn(function()
+			local currentCharacter: Model = character
+			while true do
+				local humanoidInstance = currentCharacter:WaitForChild("Humanoid")
+				if not humanoidInstance or not humanoidInstance:IsA("Humanoid") then
+					didDie = true
+					task.wait(0.01)
+				else
+					local currentHumanoid: Humanoid = humanoidInstance :: Humanoid
+					task.wait(0.01)
+					if didDie and currentHumanoid.Health > 0 then
+						break
+					end
+				end
 			end
-			task.wait(0.01)
-			if didDie and humanoid.Health > 0 then
-				break
-			end
+		end)
+	end
+end
+
+local function setupResetCallback()
+	-- Clear any existing BindableEvent
+	local resetBindable: BindableEvent = Instance.new("BindableEvent")
+	resetBindable.Event:Connect(handleReset)
+	
+	-- Set the callback when character spawns - CoreScripts need time to register ResetButtonCallback
+	local starterGui = game:GetService("StarterGui")
+	local runService = game:GetService("RunService")
+	
+	local maxRetries = 10
+	local success = false
+	
+	for attempt = 1, maxRetries do
+		success = pcall(function()
+			starterGui:SetCore("ResetButtonCallback", resetBindable)
+		end)
+		if success then
+			_annotate(string.format("Reset button callback set (attempt %d)", attempt))
+			return
 		end
-	end)
+		if attempt < maxRetries then
+			runService.Heartbeat:Wait()
+		end
+	end
+	
+	-- If all retries failed, log error
+	annotater.Error(string.format("Failed to set ResetButtonCallback after %d attempts", maxRetries))
+	resetBindable:Destroy()
 end
 
 function module.Init()
-	-- Clear any existing BindableEvent
-	if resetBindable then
-		resetBindable:Destroy()
+	-- Set callback for existing character if present
+	if localPlayer.Character then
+		setupResetCallback()
 	end
 
-	-- Create a new BindableEvent
-	resetBindable = Instance.new("BindableEvent")
-	resetBindable.Event:Connect(handleReset)
-
-	-- Set the new callback
-	game:GetService("StarterGui"):SetCore("ResetButtonCallback", resetBindable)
-
-	_annotate(string.format("Reset button callback set"))
+	-- Set callback when character spawns
+	localPlayer.CharacterAdded:Connect(function()
+		setupResetCallback()
+	end)
 end
 
 _annotate(string.format("end"))

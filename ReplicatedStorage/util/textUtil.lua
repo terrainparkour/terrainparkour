@@ -24,6 +24,7 @@ module.getFirstCodepointAsString = function(input: string): string
 		-- body
 		return utf8.char(codepoint)
 	end
+	return ""
 end
 
 module.stringSplit = function(str: string, pat: string)
@@ -36,7 +37,11 @@ module.stringSplit = function(str: string, pat: string)
 		if s ~= 1 or cap ~= "" then
 			table.insert(t, cap)
 		end
-		last_end = e + 1
+		if e then
+			last_end = e + 1
+		else
+			last_end = s + 1
+		end
 		s, e, cap = str:find(fpat, last_end)
 	end
 	if last_end <= #str then
@@ -76,9 +81,9 @@ module.table_print = function(tt: any, inputIndent: number?, done: any): string
 	return table.concat(sb)
 end
 
-module.serializeTable = function(tbl: any)
+module.serializeTable = function(tbl: any): string
 	if "nil" == type(tbl) then
-		return tostring(nil)
+		return "nil"
 	elseif "table" == type(tbl) then
 		return module.table_print(tbl, nil, nil)
 	elseif "string" == type(tbl) then

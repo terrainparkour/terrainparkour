@@ -8,15 +8,20 @@ local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
-local function handle(character)
+local function handle(character: Model)
 	task.spawn(function()
-		local humanoid: Humanoid
+		local humanoid: Humanoid?
 		while true do
-			humanoid = character:WaitForChild("Humanoid")
-			if humanoid ~= nil then
+			local humanoidInstance: Instance? = character:WaitForChild("Humanoid")
+			if humanoidInstance and humanoidInstance:IsA("Humanoid") then
+				humanoid = humanoidInstance :: Humanoid
 				break
 			end
 			wait(0.1)
+		end
+		if not humanoid then
+			warn("noMesh.handle: Failed to get Humanoid")
+			return
 		end
 
 		local desc = humanoid:GetAppliedDescription()
@@ -54,17 +59,19 @@ local function handle(character)
 end
 
 module.StandardizeCharacter = function(player: Player)
+	local start = tick()
 	player.CharacterAdded:Connect(function(character)
 		handle(character)
 	end)
-	local character = player.Character or player.CharacterAdded:Wait()
+	local character: Model? = player.Character or player.CharacterAdded:Wait()
 	while true do
-		if character ~= nil then
-			handle(character)
+		if character then
+			handle(character :: Model)
 			break
 		end
 		wait(0.1)
 	end
+	_annotate(string.format("StandardizeCharacter DONE for %s (%.3fs, mesh work spawned)", player.Name, tick() - start))
 end
 
 _annotate("end")

@@ -51,6 +51,14 @@ export type raceInfo = {
 	raceIsCompetitive: boolean,
 }
 
+export type userFinishedRunErrorResponse = {
+	error: "banned" | "missing_sign_ids" | "network_error" | "parse_error",
+	banned: boolean?,
+	startSignId: number?,
+	endSignId: number?,
+	message: string?,
+}
+
 export type userFinishedRunOptions = {
 	userId: number,
 	startSignId: number,
@@ -111,6 +119,8 @@ export type userFinishedRunResponse = {
 	isMarathon: boolean,
 	isFavoriteRace: boolean,
 }
+
+export type userFinishedRunResponseOrError = userFinishedRunResponse | userFinishedRunErrorResponse
 -- okay, now updates are just general and cover all possible lb stats.
 -- keep doing this til the db dies.
 export type lbUserStats = {
@@ -269,7 +279,7 @@ export type DynamicRunFrame = {
 	targetSignId: number,
 	targetSignName: string,
 	places: { DynamicPlace },
-	myPriorPlace: DynamicPlace, --requesting user's place
+	myPriorPlace: DynamicPlace?, --requesting user's place
 	myfound: boolean,
 }
 

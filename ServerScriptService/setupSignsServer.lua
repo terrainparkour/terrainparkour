@@ -11,6 +11,8 @@ local colors = require(game.ReplicatedStorage.util.colors)
 
 local config = require(game.ReplicatedStorage.config)
 
+local _ = require(game.ServerScriptService.setupSpecialSigns)
+
 local module = {}
 
 --how often is player location modified? every frame I guess?
@@ -30,11 +32,17 @@ if false then
 			if player.Character == nil then
 				continue
 			end
-			if player.Character.HumanoidRootPart == nil then
+			local character: Model? = player.Character
+			if not character then
 				continue
 			end
+			local rootPartInstance: Instance? = character:FindFirstChild("HumanoidRootPart")
+			if not rootPartInstance or not rootPartInstance:IsA("BasePart") then
+				continue
+			end
+			local rootPart: BasePart = rootPartInstance :: BasePart
 			local tick = tick()
-			local pos = player.Character.HumanoidRootPart.Position
+			local pos: Vector3 = rootPart.Position
 			_annotate(string.format("%0.10f %0.4f-%0.4f-%0.4f", tick - t, pp.X - pos.X, pp.Y - pos.Y, pp.Z - pos.Z))
 			pp = pos
 			t = tick
@@ -56,6 +64,13 @@ local function SetupASignVisually(part: Part)
 	for _, child in ipairs(childs) do
 		child:Destroy()
 	end
+
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	part.LeftSurface = Enum.SurfaceType.Smooth
+	part.RightSurface = Enum.SurfaceType.Smooth
+	part.FrontSurface = Enum.SurfaceType.Smooth
+	part.BackSurface = Enum.SurfaceType.Smooth
 
 	local signGuiName = "SignGui_" .. part.Name
 	local surfaceGui = Instance.new("SurfaceGui")
@@ -79,13 +94,6 @@ local function SetupASignVisually(part: Part)
 	surfaceGui.CanvasSize = canvasSize
 	surfaceGui.Brightness = 1.5
 
-	part.TopSurface = Enum.SurfaceType.Smooth
-	part.BottomSurface = Enum.SurfaceType.Smooth
-	part.LeftSurface = Enum.SurfaceType.Smooth
-	part.RightSurface = Enum.SurfaceType.Smooth
-	part.FrontSurface = Enum.SurfaceType.Smooth
-	part.BackSurface = Enum.SurfaceType.Smooth
-
 	local children = surfaceGui:GetChildren()
 	for _, c in ipairs(children) do
 		if c:IsA("TextLabel") then
@@ -105,6 +113,11 @@ local function SetupASignVisually(part: Part)
 	textLabel.TextColor3 = colors.signTextColor
 	--I shold add a touch sound TODO
 	--i should add a touch visual +3 years good idea.
+
+	local extraSetupCallback = enums.signNameToExtraVisualSetupCallback[part.Name]
+	if extraSetupCallback then
+		extraSetupCallback(part)
+	end
 end
 
 --for dev only, if you forgot this.
@@ -116,13 +129,13 @@ local function checkMissingSigns()
 	end
 	local badct = 0
 	for signId, signName in pairs(enums.signId2name) do
-		local exiSign: Part? = signFolder:FindFirstChild(signName) :: Part
-		if not exiSign then
+		local exiSignInstance: Instance? = signFolder:FindFirstChild(signName)
+		if not exiSignInstance or not exiSignInstance:IsA("Part") then
 			badct += 1
 			if badct > 1 then
 				break
 			end
-			if not config.isTestGame() then
+			if not config.IsTestGame() then
 				warn("did you remember to put the sign " .. signName .. " into workspace.Signs?")
 			end
 		end
@@ -131,7 +144,11 @@ end
 
 module.Init = function()
 	_annotate("init")
-	for _, sign: Part in ipairs(game.Workspace:WaitForChild("Signs"):GetChildren()) do
+	for _, signInstance: Instance in ipairs(game.Workspace:WaitForChild("Signs"):GetChildren()) do
+		if not signInstance:IsA("Part") then
+			continue
+		end
+		local sign: Part = signInstance :: Part
 		if
 			not sign:IsA("Part")
 			and not sign:IsA("Model")

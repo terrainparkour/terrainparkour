@@ -297,8 +297,19 @@ local function handleAvatarEvent(ev: aet.avatarEvent)
 	elseif ev.eventType == aet.avatarEventTypes.TOUCH_SIGN then
 		if ev.details == nil or not ev.details.touchedSignId then
 			annotater.Error("x")
+			return
 		end
-		TouchedSign(ev.details.touchedSignId, ev.details.touchedSignName, ev.timestamp, ev.details.exactPositionOfHit)
+		local signIdValue: number? = ev.details.touchedSignId
+		local signNameValue: string? = ev.details.touchedSignName
+		local exactPosValue: Vector3? = ev.details.exactPositionOfHit
+		if not signIdValue then
+			annotater.Error("touchedSignId is nil")
+			return
+		end
+		local signId: number = signIdValue
+		local signName: string = if signNameValue then signNameValue else ""
+		local exactPos: Vector3 = if exactPosValue then exactPosValue else Vector3.zero
+		TouchedSign(signId, signName, ev.timestamp, exactPos)
 	else
 		_annotate("Unhandled event: " .. avatarEventFiring.DescribeEvent(ev))
 	end

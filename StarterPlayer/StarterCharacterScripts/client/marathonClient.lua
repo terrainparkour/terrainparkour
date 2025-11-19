@@ -11,7 +11,6 @@ local aet = require(game.ReplicatedStorage.avatarEventTypes)
 local mt = require(game.StarterPlayer.StarterPlayerScripts.marathon.marathonTypes)
 local mds = require(game.ReplicatedStorage.marathon.marathonDescriptors)
 
-local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
 local colors = require(game.ReplicatedStorage.util.colors)
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
@@ -30,8 +29,6 @@ local ephemeralMarathonCompleteEvent = remotes.getRemoteEvent("EphemeralMarathon
 local PlayersService = game:GetService("Players")
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
-local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
-local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 ----------------- EVENTS ----------------
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
@@ -50,17 +47,30 @@ end
 ------------------ UTIL ,  SIZING -----------------
 
 --just re-get the outer lbframe by name.
-local function getMarathonContentFrame(): Frame
-	local pl = PlayersService.LocalPlayer:WaitForChild("PlayerGui")
-	return pl:FindFirstChild("content_marathons", true)
+local function getMarathonContentFrame(): Frame?
+	local plInstance: Instance = PlayersService.LocalPlayer:WaitForChild("PlayerGui")
+	if not plInstance:IsA("PlayerGui") then
+		return nil
+	end
+	local pl: PlayerGui = plInstance :: PlayerGui
+	local foundInstance: Instance? = pl:FindFirstChild("content_marathons", true)
+	if foundInstance and foundInstance:IsA("Frame") then
+		local found: Frame = foundInstance :: Frame
+		return found
+	end
+	return nil
 end
 
 local function setMarathonSize()
-	local marathonContentFrame: Frame = getMarathonContentFrame()
-	if marathonContentFrame == nil then
+	local marathonContentFrame = getMarathonContentFrame()
+	if not marathonContentFrame then
 		return
 	end
-	local marathonOuterFrame: Frame = marathonContentFrame.Parent
+	local marathonOuterFrameInstance: Instance? = marathonContentFrame.Parent
+	if not marathonOuterFrameInstance or not marathonOuterFrameInstance:IsA("Frame") then
+		return
+	end
+	local marathonOuterFrame: Frame = marathonOuterFrameInstance :: Frame
 	marathonOuterFrame.Size = UDim2.new(
 		marathonOuterFrame.Size.Width.Scale,
 		marathonOuterFrame.Size.Width.Offset,
@@ -71,21 +81,26 @@ local function setMarathonSize()
 	-- Use GetChildren() instead of manually iterating through children
 	local anyMarathons = false
 	local theMarathons = {}
-	for _, singleMarathonFrame: Frame in ipairs(marathonContentFrame:GetChildren()) do
-		if singleMarathonFrame:IsA("Frame") then
-			table.insert(theMarathons, singleMarathonFrame)
+	for _, child in ipairs(marathonContentFrame:GetChildren()) do
+		if child:IsA("Frame") then
+			table.insert(theMarathons, child)
 		end
 	end
 
-	for _, singleMarathonFrame: Frame in pairs(theMarathons) do
-		singleMarathonFrame.Size = UDim2.new(1, 0, 1 / #theMarathons, 0)
-		anyMarathons = true
+	for _, singleMarathonFrame in pairs(theMarathons) do
+		if singleMarathonFrame:IsA("Frame") then
+			singleMarathonFrame.Size = UDim2.new(1, 0, 1 / #theMarathons, 0)
+			anyMarathons = true
+		end
 	end
 
-	local par = marathonContentFrame.Parent :: Frame
-	par.Visible = anyMarathons
-	if par.Visible then
-		par.Position = UDim2.new(0.60, 0, 0.5, 0)
+	local parInstance = marathonContentFrame.Parent
+	if parInstance and parInstance:IsA("Frame") then
+		local par: Frame = parInstance
+		par.Visible = anyMarathons
+		if par.Visible then
+			par.Position = UDim2.new(0.60, 0, 0.5, 0)
+		end
 	end
 end
 
@@ -108,7 +123,10 @@ local function startMarathonRunTimer(desc: mt.marathonDescriptor, baseTime: numb
 			end
 			wait(1 / 3.1)
 			local gap = tick() - baseTime
-			desc.timeTile.Text = string.format("%0.0f", gap)
+			local timeTileValue: TextLabel? = desc.timeTile
+			if timeTileValue then
+				timeTileValue.Text = string.format("%0.0f", gap)
+			end
 			_annotate("stuck in startMarathonRunTimer")
 		end
 	end)
@@ -156,16 +174,14 @@ local function getMarathonHH()
 end
 
 local function getNameTileWidth(name: string): number
-	local nameChars = string.len(name)
-	local expect = 8 * nameChars
-	return math.max(10 * 22)
+	return 220
 end
 
-local function getNameTile(name: string): TextLabel
+local function getNameTile(name: string): Frame
 	local fakeParent = Instance.new("Frame")
 
 	local namePixX = getNameTileWidth(name)
-	local nameTile: TextLabel = guiUtil.getTl(
+	local nameTileInstance = guiUtil.getTl(
 		"00-marathonName",
 		UDim2.new(0, namePixX, 1, 0),
 		1,
@@ -175,8 +191,16 @@ local function getNameTile(name: string): TextLabel
 		0,
 		Enum.AutomaticSize.None
 	)
+	if not nameTileInstance or not nameTileInstance:IsA("TextLabel") then
+		error("getNameTile: getTl did not return TextLabel")
+	end
+	local nameTile: TextLabel = nameTileInstance
 	nameTile.Text = name
-	return nameTile.Parent
+	local parentFrameInstance: Instance? = nameTile.Parent
+	if not parentFrameInstance or not parentFrameInstance:IsA("Frame") then
+		error("getNameTile: parent is not a Frame")
+	end
+	return parentFrameInstance :: Frame
 end
 
 local function getTimeTile(kind: string)
@@ -212,31 +236,41 @@ module.InitMarathonVisually = function(desc: mt.marathonDescriptor)
 		return
 	end
 	local thisMarathonFrameName = getMarathonKindFrameName(desc)
-	local thisMarathonFrame = marathonContentFrame:FindFirstChild(thisMarathonFrameName)
-
-	if thisMarathonFrame == nil then
+	local foundFrameInstance: Instance? = marathonContentFrame:FindFirstChild(thisMarathonFrameName)
+	local thisMarathonFrame: Frame
+	if foundFrameInstance and foundFrameInstance:IsA("Frame") then
+		thisMarathonFrame = foundFrameInstance :: Frame
+	else
 		_annotate("init visual marathon: " .. desc.humanName)
 		--this happens the first time you start a marathon from client-side.
-		thisMarathonFrame = Instance.new("Frame")
-		thisMarathonFrame.BorderMode = Enum.BorderMode.Inset
-		thisMarathonFrame.BorderSizePixel = 0
-		thisMarathonFrame.Name = thisMarathonFrameName
-		thisMarathonFrame.Parent = marathonContentFrame
+		local newFrame = Instance.new("Frame")
+		newFrame.BorderMode = Enum.BorderMode.Inset
+		newFrame.BorderSizePixel = 0
+		newFrame.Name = thisMarathonFrameName
+		newFrame.Parent = marathonContentFrame
+		thisMarathonFrame = newFrame
 	end
 	for _, oldTile in pairs(thisMarathonFrame:GetChildren()) do
 		oldTile:Destroy()
 	end
 
 	local nameTile = getNameTile(desc.humanName)
-	toolTip.setupToolTip(nameTile, desc.hint, toolTip.enum.toolTipSize.NormalText)
+	local hintTextValue: string? = desc.hint
+	if hintTextValue then
+		toolTip.setupToolTip(nameTile, hintTextValue, toolTip.enum.toolTipSize.NormalText)
+	else
+		toolTip.setupToolTip(nameTile, "", toolTip.enum.toolTipSize.NormalText)
+	end
 	nameTile.Parent = thisMarathonFrame
 
 	local chipFrame = marathonStatic.getChipFrame(desc)
 	chipFrame.Parent = thisMarathonFrame
 
-	local timeTile = getTimeTile(desc.kind)
-	desc.timeTile = timeTile
-	timeTile.Parent = thisMarathonFrame
+	local timeTileInstance = getTimeTile(desc.kind)
+	if timeTileInstance and timeTileInstance:IsA("TextLabel") then
+		desc.timeTile = timeTileInstance :: TextLabel
+		timeTileInstance.Parent = thisMarathonFrame
+	end
 
 	local resetTile = getResetTile(desc.kind)
 	resetTile.Activated:Connect(function()
@@ -260,7 +294,10 @@ end
 --kill the ongoing update timer.  set  the final time and background blue.
 local function finishMarathonVisually(desc: mt.marathonDescriptor, runMilliseconds: number, marathonRow: Frame)
 	stopTimerForKind(desc)
-	updateTimeTileForKindToCompletion(runMilliseconds, desc.timeTile)
+	local timeTileValue: TextLabel? = desc.timeTile
+	if timeTileValue then
+		updateTimeTileForKindToCompletion(runMilliseconds, timeTileValue)
+	end
 	_annotate("finishMarathonVisually.end." .. desc.kind)
 end
 
@@ -314,11 +351,12 @@ end
 
 --receive a touch on a sign for a given marathon.
 local function innerReceiveHit(desc: mt.marathonDescriptor, signName: string, innerTick: number)
-	local res = tellDescAboutFind(desc, signName)
-	if res == nil then
+	local resValue: mt.userFoundSignResult? = tellDescAboutFind(desc, signName)
+	if not resValue then
 		warn("NIL")
 		return
 	end
+	local res: mt.userFoundSignResult = resValue
 	if not res.added then
 		return
 	end
@@ -329,13 +367,12 @@ local function innerReceiveHit(desc: mt.marathonDescriptor, signName: string, in
 		_annotate("no marathon Frame.")
 		return
 	end
-	local marathonRow: Frame = marathonFrame:FindFirstChild(frameName)
-
-	--marathon has been killed in UI.
-	if marathonRow == nil then
+	local foundRowInstance: Instance? = marathonFrame:FindFirstChild(frameName)
+	if not foundRowInstance or not foundRowInstance:IsA("Frame") then
 		_annotate("no row?")
 		return
 	end
+	local marathonRow: Frame = foundRowInstance :: Frame
 
 	--NOTE: Why do this here, separated, not above in evaluateFind?
 	desc.UpdateRow(desc, marathonRow, signName)
@@ -346,7 +383,13 @@ local function innerReceiveHit(desc: mt.marathonDescriptor, signName: string, in
 	end
 
 	if res.marathonDone then
-		local completionTime = innerTick - desc.startTime
+		local startTimeValue: number? = desc.startTime
+		if not startTimeValue then
+			warn("marathonDone but startTime is nil")
+			return
+		end
+		local startTime: number = startTimeValue
+		local completionTime = innerTick - startTime
 		local runMilliseconds = math.round(completionTime * 1000)
 		finishMarathonVisually(desc, runMilliseconds, marathonRow)
 		if desc.highLevelType == "randomrace" then
@@ -370,7 +413,7 @@ end
 
 --BOTH tell the system that the setting value is this, AND init it visually.
 local deb = false
-local initMarathon = function(desc: mt.marathonDescriptor)
+local initMarathon = function(desc: mt.marathonDescriptor): any
 	while deb do
 		_annotate("initMarathon debouncer wait.")
 		task.wait(0.1)
@@ -391,6 +434,7 @@ local initMarathon = function(desc: mt.marathonDescriptor)
 		module.InitMarathonVisually(desc)
 	end
 	deb = false
+	return nil
 end
 
 --disable from the UI
@@ -408,17 +452,14 @@ local disableMarathon = function(desc: mt.marathonDescriptor)
 	resetMarathonProgress(desc)
 	local frameName = getMarathonKindFrameName(desc)
 	local marathonContentFrame = getMarathonContentFrame()
-	while true do
-		if marathonContentFrame ~= nil then
-			break
-		end
+	while not marathonContentFrame do
 		marathonContentFrame = getMarathonContentFrame()
 		task.wait(1)
 		_annotate("W")
 	end
-	local exi: Frame = marathonContentFrame:FindFirstChild(frameName)
-	if exi ~= nil then
-		exi:Destroy()
+	local foundExiInstance: Instance? = marathonContentFrame:FindFirstChild(frameName)
+	if foundExiInstance and foundExiInstance:IsA("Frame") then
+		foundExiInstance:Destroy()
 	end
 
 	table.remove(joinableMarathonKinds, target)
@@ -477,10 +518,10 @@ end
 
 --ideally filter at the registration layer but whatever.
 --also why is this being done here rather than in marathon client?
-local function HandleMarathonSettingsChanged(setting: tt.userSettingValue)
+local function HandleMarathonSettingsChanged(setting: tt.userSettingValue): any
 	if setting.domain ~= settingEnums.settingDomains.MARATHONS then
 		_annotate("wrong domain.")
-		return
+		return nil
 	end
 	_annotate("Load initial marathon or setting changed: " .. setting.name)
 	local sp = string.split(setting.name, " ")
@@ -490,13 +531,14 @@ local function HandleMarathonSettingsChanged(setting: tt.userSettingValue)
 	local targetMarathon: mt.marathonDescriptor = mds.marathons[key]
 	if targetMarathon == nil then
 		warn("bad setting probably legacy bad naming, shouldn't be many and no effect." .. key)
-		return
+		return nil
 	end
 	if setting.booleanValue then
 		initMarathon(targetMarathon)
 	else
 		disableMarathon(targetMarathon)
 	end
+	return nil
 end
 
 local avatarEventConnection
@@ -507,7 +549,11 @@ module.Init = function()
 	--blocker to confirm the user has completed warp
 	isMarathonBlockedByWarp = false
 
-	local pgui: PlayerGui = localPlayer:WaitForChild("PlayerGui")
+	local pguiInstance: Instance = localPlayer:WaitForChild("PlayerGui")
+	if not pguiInstance:IsA("PlayerGui") then
+		error("PlayerGui not found")
+	end
+	local pgui: PlayerGui = pguiInstance :: PlayerGui
 	local existingMarathonScreenGui = pgui:FindFirstChild("MarathonScreenGui")
 	if existingMarathonScreenGui then
 		existingMarathonScreenGui:Destroy()
@@ -531,9 +577,7 @@ module.Init = function()
 	setMarathonSize()
 	if avatarEventConnection then
 		avatarEventConnection:Disconnect()
-		avatarEventConnection = nil
 	end
-
 	avatarEventConnection = AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 
 	for _, userSetting in pairs(settings.GetSettingByDomain(settingEnums.settingDomains.MARATHONS)) do

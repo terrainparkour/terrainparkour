@@ -8,14 +8,29 @@ local lt = require(game.StarterPlayer.StarterCharacterScripts.lb.leaderboardType
 local module = {}
 
 local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
-	portrait = { name = "portrait", num = 1, widthScaleImportance = 14, userFacingName = "portrait", tooltip = "" },
-	username = { name = "username", num = 3, widthScaleImportance = 25, userFacingName = "username", tooltip = "" },
+	portrait = {
+		name = "portrait",
+		num = 1,
+		widthScaleImportance = 14,
+		userFacingName = "portrait",
+		tooltip = "",
+		doWrapping = false,
+	},
+	username = {
+		name = "username",
+		num = 3,
+		widthScaleImportance = 25,
+		userFacingName = "username",
+		tooltip = "",
+		doWrapping = false,
+	},
 	awardCount = {
 		name = "awardCount",
 		num = 5,
 		widthScaleImportance = 15,
 		userFacingName = "awards",
 		tooltip = "",
+		doWrapping = true,
 	},
 	userTix = {
 		name = "userTix",
@@ -23,6 +38,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 18,
 		userFacingName = "tix",
 		tooltip = "",
+		doWrapping = false,
 	},
 	findCount = {
 		name = "findCount",
@@ -30,6 +46,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 10,
 		userFacingName = "finds",
 		tooltip = "",
+		doWrapping = true,
 	},
 	findRank = {
 		name = "findRank",
@@ -37,6 +54,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 8,
 		userFacingName = "find rank",
 		tooltip = "",
+		doWrapping = true,
 	},
 	cwrs = {
 		name = "cwrs",
@@ -44,6 +62,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 12,
 		userFacingName = "cwrs",
 		tooltip = "",
+		doWrapping = true,
 	},
 	cwrsToday = {
 		name = "cwrsToday",
@@ -51,6 +70,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 12,
 		userFacingName = "cwrs today",
 		tooltip = "",
+		doWrapping = true,
 	},
 	cwrRank = {
 		name = "cwrRank",
@@ -58,6 +78,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 12,
 		userFacingName = "cwr rank",
 		tooltip = "",
+		doWrapping = true,
 	},
 	cwrTop10s = {
 		name = "cwrTop10s",
@@ -65,6 +86,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 11,
 		userFacingName = "cwr top10s",
 		tooltip = "",
+		doWrapping = true,
 	},
 	wrCount = {
 		name = "wrCount",
@@ -72,6 +94,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 10,
 		userFacingName = "wrs",
 		tooltip = "",
+		doWrapping = true,
 	},
 
 	wrsToday = {
@@ -80,6 +103,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 10,
 		userFacingName = "wrs today",
 		tooltip = "",
+		doWrapping = true,
 	},
 	wrRank = {
 		name = "wrRank",
@@ -87,6 +111,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 8,
 		userFacingName = "wr rank",
 		tooltip = "",
+		doWrapping = true,
 	},
 	top10s = {
 		name = "top10s",
@@ -94,6 +119,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 8,
 		userFacingName = "top10s",
 		tooltip = "",
+		doWrapping = true,
 	},
 
 	userTotalRaceCount = {
@@ -102,6 +128,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 9,
 		userFacingName = "races",
 		tooltip = "",
+		doWrapping = true,
 	},
 	userTotalRunCount = {
 		name = "userTotalRunCount",
@@ -109,6 +136,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 6,
 		userFacingName = "runs",
 		tooltip = "",
+		doWrapping = true,
 	},
 	runsToday = {
 		name = "runsToday",
@@ -116,6 +144,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 10,
 		userFacingName = "runs today",
 		tooltip = "",
+		doWrapping = true,
 	},
 	badgeCount = {
 		name = "badgeCount",
@@ -123,6 +152,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 10,
 		userFacingName = "badges",
 		tooltip = "",
+		doWrapping = true,
 	},
 	-- warpTo = {
 	-- 	name = "warpTo",
@@ -144,6 +174,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 10,
 		userFacingName = "game days",
 		tooltip = "",
+		doWrapping = true,
 	},
 	userFavoriteRaceCount = {
 		name = "userFavoriteRaceCount",
@@ -151,6 +182,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 10,
 		userFacingName = "favs",
 		tooltip = "show this user's favorite races",
+		doWrapping = true,
 	},
 	pinnedRace = {
 		name = "pinnedRace",
@@ -158,6 +190,7 @@ local LbColumnDescriptors: { [string]: lt.lbColumnDescriptor } = {
 		widthScaleImportance = 55,
 		userFacingName = "pinned",
 		tooltip = "use /pin or /unpin to set/remove this. It'll be warpable by other players, too, soon.",
+		doWrapping = true,
 	},
 }
 

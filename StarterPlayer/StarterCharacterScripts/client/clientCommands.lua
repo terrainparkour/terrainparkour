@@ -29,7 +29,7 @@ local function showSigns(signIds: { number }, extraText: string?)
 	textHighlighting.DoHighlightMultiple(signIds)
 	if extraText then
 		--we want to chat it to the player:
-		local chatText = "You have " .. #signIds .. " signs that " .. extraText
+		-- local chatText = "You have " .. #signIds .. " signs that " .. extraText
 		-- localPlayer:Chat(chatText)
 		--TODO
 	end

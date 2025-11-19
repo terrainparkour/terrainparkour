@@ -11,6 +11,7 @@ export type lbColumnDescriptor = {
 	widthScaleImportance: number,
 	userFacingName: string,
 	tooltip: string,
+	doWrapping: boolean,
 }
 
 _annotate("end")

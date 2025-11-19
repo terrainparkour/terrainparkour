@@ -25,6 +25,7 @@ local _annotate = annotater.getAnnotater(script)
 local colors = require(game.ReplicatedStorage.util.colors)
 local fonts = require(game.StarterPlayer.StarterPlayerScripts.guis.fonts)
 local wt = require(game.StarterPlayer.StarterPlayerScripts.guis.windowsTypes)
+local scrollingFrameUtils = require(game.ReplicatedStorage.gui.scrollingFrameUtils)
 local stickyScrollingFrame = require(game.StarterPlayer.StarterPlayerScripts.guis.stickyScrollingFrame)
 local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
 
@@ -148,6 +149,12 @@ module.CreateText = function(textSpec: wt.textTileSpec): TextLabel
 		constraint.Parent = res
 	end
 
+	if textSpec.leftPadding and textSpec.leftPadding > 0 then
+		local padding = Instance.new("UIPadding")
+		padding.PaddingLeft = UDim.new(0, textSpec.leftPadding)
+		padding.Parent = res
+	end
+
 	return res
 end
 
@@ -224,14 +231,13 @@ module.CreateScrollingFrame = function(scrollingFrameSpec: wt.scrollingFrameTile
 	contentFrame.BorderSizePixel = frameBorderSizePixel
 	contentFrame.BorderMode = globalBorderMode
 
-	local headerRow: Frame = module.CreateRow(scrollingFrameSpec.headerRow)
-	headerRow.Parent = contentFrame
-	headerRow.Position = UDim2.new(0, 0, 0, 0)
-
 	local contentFrameLayout: UIListLayout = addLayout(contentFrame, Enum.FillDirection.Vertical)
 	contentFrameLayout.SortOrder = Enum.SortOrder.Name
 	contentFrameLayout.FillDirection = Enum.FillDirection.Vertical
 	contentFrameLayout.Parent = contentFrame
+
+	local headerRow: Frame = module.CreateRow(scrollingFrameSpec.headerRow)
+	headerRow.Parent = contentFrame
 
 	local theStickyFrameManager: wt.stickyScrollingFrameType = stickyScrollingFrame.CreateStickyScrollingFrame(
 		scrollingFrameSpec.rowHeight,
@@ -242,9 +248,29 @@ module.CreateScrollingFrame = function(scrollingFrameSpec: wt.scrollingFrameTile
 	theStickyFrameManager.frame.BorderMode = globalBorderMode
 	theStickyFrameManager.frame.BackgroundTransparency = 1
 	theStickyFrameManager.frame.BorderSizePixel = scrollingFrameBorderSizePixel
-	-- theStickyFrameManager.frame.ScrollBarThickness = 8
-	-- theStickyFrameManager.frame.VerticalScrollBarInset = Enum.ScrollBarInset.None
+	-- ScrollBarThickness set to 8 in stickyScrollingFrame module for visible scrollbar
+	theStickyFrameManager.frame.VerticalScrollBarInset = Enum.ScrollBarInset.None
 	theStickyFrameManager.frame.Size = UDim2.new(1, 0, 1, 0)
+	
+	-- Update scrolling frame size to fill remaining space after header
+	local function updateScrollingFrameSize()
+		if headerRow.AbsoluteSize.Y == 0 or contentFrame.AbsoluteSize.Y == 0 then
+			return
+		end
+		local headerHeight = headerRow.AbsoluteSize.Y
+		local contentHeight = contentFrame.AbsoluteSize.Y
+		local remainingHeight = contentHeight - headerHeight
+		if remainingHeight > 0 then
+			theStickyFrameManager.frame.Size = UDim2.new(1, 0, 0, remainingHeight)
+		end
+	end
+	
+	contentFrameLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateScrollingFrameSize)
+	headerRow:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateScrollingFrameSize)
+	contentFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateScrollingFrameSize)
+	
+	-- Initial size update after layout is ready
+	task.defer(updateScrollingFrameSize)
 
 	for _, rowSpec in ipairs(scrollingFrameSpec.dataRows) do
 		local row: Frame = module.CreateRow(rowSpec)
@@ -311,6 +337,9 @@ module.CreateScrollingFrameOrig = function(scrollingFrameSpec: wt.scrollingFrame
 	local contentHeight: number = #scrollingFrameSpec.dataRows * scrollingFrameSpec.rowHeight
 	contentFrame.Size = UDim2.new(1, 0, 0, contentHeight)
 	scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
+	
+	-- Prevent camera scroll when hovering over scrolling frame
+	scrollingFrameUtils.PreventCameraScrollOnHover(scrollingFrame)
 
 	return contentFrame
 end

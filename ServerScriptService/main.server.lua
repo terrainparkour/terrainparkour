@@ -10,90 +10,148 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 annotater.Init()
 
-local ChatService = require(game.ReplicatedStorage.ChatSystem.ChatService)
-
-ChatService:InitializeChannels()
-
 --IMPORTANT  this go first because it's where signs and everything are set up
 local workspaceRemoteSetup = require(game.ServerScriptService.workspaceRemoteSetup)
-workspaceRemoteSetup.CreateRemoteEventsAndRemoteFunctions()
+annotater.Profile("workspaceRemoteSetup.CreateRemoteEventsAndRemoteFunctions", function()
+	workspaceRemoteSetup.CreateRemoteEventsAndRemoteFunctions()
+end)
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerBootstrap = require(ReplicatedStorage:WaitForChild("ChatSystem"):WaitForChild("serverBootstrap"))
+ServerBootstrap.Init()
+
+-- Register all commands as TextChatCommand instances so Roblox suppresses them
+local registerCommands = require(game.ServerScriptService.registerCommands)
+annotater.Profile("registerCommands.Init", function()
+	registerCommands.Init()
+end)
 
 local rdb = require(game.ServerScriptService.rdb)
-rdb.Init()
+annotater.Profile("rdb.Init", function()
+	rdb.Init()
+end)
 
 local nocol = require(game.ServerScriptService.nocollide)
-nocol.Init()
+annotater.Profile("nocol.Init", function()
+	nocol.Init()
+end)
 
 local userDataServer = require(game.ServerScriptService.userDataServer)
-userDataServer.Init()
+annotater.Profile("userDataServer.Init", function()
+	userDataServer.Init()
+end)
 
 local setupSignsServer = require(game.ServerScriptService.setupSignsServer)
-setupSignsServer.Init()
+annotater.Profile("setupSignsServer.Init", function()
+	setupSignsServer.Init()
+end)
 
 local receiveClientEventServer = require(game.ServerScriptService.receiveClientEventServer)
-receiveClientEventServer.Init()
+annotater.Profile("receiveClientEventServer.Init", function()
+	receiveClientEventServer.Init()
+end)
 
 local signMovement = require(game.ReplicatedStorage.util.signMovement)
-signMovement.SetupGrowingDistantPinnacle()
+annotater.Profile("signMovement.SetupGrowingDistantPinnacle", function()
+	signMovement.SetupGrowingDistantPinnacle()
+end)
 
 local setupFindTouchMonitoring = require(game.ServerScriptService.setupFindTouchMonitoring)
-setupFindTouchMonitoring.Init()
+annotater.Profile("setupFindTouchMonitoring.Init", function()
+	setupFindTouchMonitoring.Init()
+end)
 
 local sounds = require(game.ServerScriptService.sounds)
-sounds.Init()
+annotater.Profile("sounds.Init", function()
+	sounds.Init()
+end)
 
 local pushSigns = require(game.ServerScriptService.pushSigns)
-pushSigns.CheckSignsNeedingPushing()
+annotater.Profile("pushSigns.CheckSignsNeedingPushing", function()
+	pushSigns.CheckSignsNeedingPushing()
+end)
 
 local presence = require(game.ServerScriptService.presence)
-presence.Init()
+annotater.Profile("presence.Init", function()
+	presence.Init()
+end)
 
 local banning = require(game.ServerScriptService.banning)
-banning.Init()
+annotater.Profile("banning.Init", function()
+	banning.Init()
+end)
 
 local marathon = require(game.ServerScriptService.marathon)
-marathon.Init()
+annotater.Profile("marathon.Init", function()
+	marathon.Init()
+end)
 
 local ephemeralMarathon = require(game.ServerScriptService.EphemeralMarathons.ephemeralMarathon)
-ephemeralMarathon.Init()
+annotater.Profile("ephemeralMarathon.Init", function()
+	ephemeralMarathon.Init()
+end)
 
 local locationMonitor = require(game.ReplicatedStorage.locationMonitor)
-locationMonitor.Init()
+annotater.Profile("locationMonitor.Init", function()
+	locationMonitor.Init()
+end)
 
 --include these to initialize listeners despite not being "used".
 local userSettings = require(game.ServerScriptService.settingsServer)
-userSettings.Init()
+annotater.Profile("userSettings.Init", function()
+	userSettings.Init()
+end)
 
 local newRaces = require(game.ServerScriptService.data.newRaces)
-newRaces.Init()
+annotater.Profile("newRaces.Init", function()
+	newRaces.Init()
+end)
 
 local popularRaces = require(game.ServerScriptService.data.popularRaces)
-popularRaces.Init()
+annotater.Profile("popularRaces.Init", function()
+	popularRaces.Init()
+end)
 
 local contests = require(game.ServerScriptService.data.contests)
-contests.Init()
+annotater.Profile("contests.Init", function()
+	contests.Init()
+end)
 
 local dynamic = require(game.ServerScriptService.dynamicServer)
-dynamic.Init()
+annotater.Profile("dynamic.Init", function()
+	dynamic.Init()
+end)
 
 local serverEvents = require(game.ServerScriptService.serverEvents)
-serverEvents.Init()
+annotater.Profile("serverEvents.Init", function()
+	serverEvents.Init()
+end)
 
 local serverWarping = require(game.ServerScriptService.serverWarping)
-serverWarping.Init()
+annotater.Profile("serverWarping.Init", function()
+	serverWarping.Init()
+end)
 
 local runEnding = require(game.ServerScriptService.runEnding)
-runEnding.Init()
+annotater.Profile("runEnding.Init", function()
+	runEnding.Init()
+end)
 
 local setupSpecialSigns = require(game.ServerScriptService.setupSpecialSigns)
-setupSpecialSigns.Init()
+annotater.Profile("setupSpecialSigns.Init", function()
+	setupSpecialSigns.Init()
+end)
 
-local playerData2 = require(game.ServerScriptService.playerData2)
+local _playerData2 = require(game.ServerScriptService.playerData2)
 local signClicking = require(game.ServerScriptService.signClicking)
-signClicking.Init()
+annotater.Profile("signClicking.Init", function()
+	signClicking.Init()
+end)
 
 local badges = require(game.ServerScriptService.badges)
-badges.Init()
+annotater.Profile("badges.Init", function()
+	badges.Init()
+end)
 
 --how  does the game work?
 --good question.  mainly it's in lua client/server scripts, but via certain calls made from BE, you hit a python mysql db server you also have to have set up.  this is where all your real records and data are stored.
@@ -127,8 +185,10 @@ local testing = require(game.ReplicatedStorage.testing)
 
 local config = require(game.ReplicatedStorage.config)
 if config.IsInStudio() then
-	checkBadgesForBadIds()
-	testing.TestAll()
+	annotater.Profile("checkBadgesForBadIds", checkBadgesForBadIds)
+	annotater.Profile("testing.TestAll", function()
+		testing.TestAll()
+	end)
 end
 
 _annotate("end")

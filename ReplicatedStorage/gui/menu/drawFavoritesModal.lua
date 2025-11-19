@@ -254,7 +254,7 @@ local function createScrollingFrameDataRows(
 		local warpTileButtonSpec: wt.buttonTileSpec = {
 			type = "button",
 			text = "Warp",
-			backgroundColor = colors.defaultGrey,
+			backgroundColor = colors.warpColor,
 			isBold = false,
 			onClick = function()
 				warper.WarpToSignId(thisRaceInfo.theRace.startSignId, thisRaceInfo.theRace.endSignId)
@@ -531,7 +531,7 @@ module.DrawFavoriteRacesModal = function(targetUserId: number?, requestingUserId
 		guiSpec,
 		"FavoritesGui",
 		true, --draggable
-		false, --resizable
+		true, --resizable
 		false, --minimizable
 		true, --pinnable
 		true, --dismissableWithX
@@ -545,8 +545,9 @@ module.DrawFavoriteRacesModal = function(targetUserId: number?, requestingUserId
 			local lastGuiOuterFrame = theLastGui:FindFirstChildOfClass("Frame")
 			if lastGuiOuterFrame then
 				_annotate("\tRunResult positioning: set outerFrame.Position to lastGuiOuterFrame.Position")
-				theLastGuiPosition = lastGuiOuterFrame.Position
-				outerFrame.Position = theLastGuiPosition
+				local position = lastGuiOuterFrame.Position
+				theLastGuiPosition = position
+				outerFrame.Position = position
 			else
 				if theLastGuiPosition then --if its been closed, then just use that.
 					outerFrame.Position = theLastGuiPosition

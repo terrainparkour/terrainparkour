@@ -2,10 +2,11 @@
 
 local module = {}
 
-module.gameVersion = "0.310"
+module.gameVersion = "0.4.3"
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
+	["Pickleball"] = 593,
 	["Schlafli"] = 592,
 	["Elon"] = 591,
 	["Society"] = 590,
@@ -603,6 +604,7 @@ local name2signId: { [string]: number } = {
 	["Polytropon"] = 559,
 	["DNA"] = 560,
 	["Prefontaine"] = 561,
+	---------- DO NOT ADD SIGNS HERE. ADD THEM TO THE TOP. VERV 2025
 }
 
 --aliases of symbolic signs to their english alias.
@@ -650,6 +652,8 @@ local unanchoredSignNames = { ["Freedom"] = 1 }
 module.useLeftFaceSignNames = useLeftFaceSignNames
 module.unanchoredSignNames = unanchoredSignNames
 module.usesBackFaceSignNames = usesBackFaceSignNames
+
+module.signNameToExtraVisualSetupCallback = {}
 local alternateNames = [[Tiramisu Parboil
 Turin Parchment
 Tar Heel Parker
@@ -744,6 +748,7 @@ objects.TerrainParkourPlaceId = 868107368
 objects.TerrainParkourUniverseId = 360479749
 objects.TerrainParkourDevGamePlaceId = 1
 objects.TerrainParkourDevGameUniverseId = 1
+objects.ShedletskyUserId = 261
 
 local topPlayerUserIds: { number } =
 	{ 1796098297, 2546938052, 3682042001, 507095653, 183056632, 1905672054, 299045490, 1444105681 }
@@ -894,6 +899,7 @@ Join the group for special chat color! https://www.roblox.com/My/Groups.aspx?gid
 Update: MovementV2
 
 Note: Source code for the Lua part of this game is available online here: github terrainparkour]],
+	[400] = "next generation of game development",
 }
 
 local SpecialSignDescriptions = {

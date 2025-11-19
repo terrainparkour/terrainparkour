@@ -12,7 +12,7 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local serverEventGuis = require(game.StarterPlayer.StarterPlayerScripts.guis.serverEventGuis)
 local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
-local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
+-- local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
 local colors = require(game.ReplicatedStorage.util.colors)
 local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
 
@@ -43,7 +43,11 @@ end
 module.Init = function()
 	_annotate("serverEvents init start")
 
-	local pgui: PlayerGui = localPlayer:WaitForChild("PlayerGui")
+	local pguiInstance = localPlayer:WaitForChild("PlayerGui")
+	if not pguiInstance or not pguiInstance:IsA("PlayerGui") then
+		error("PlayerGui not found")
+	end
+	local pgui: PlayerGui = pguiInstance
 	local existingServerEventScreenGui = pgui:FindFirstChild("ServerEventScreenGui")
 	if existingServerEventScreenGui then
 		existingServerEventScreenGui:Destroy()

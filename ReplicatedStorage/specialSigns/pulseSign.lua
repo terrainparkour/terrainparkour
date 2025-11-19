@@ -43,7 +43,10 @@ local DoLaunchForPulse = function()
 
 	local direction = Vector3.new(x, y, z).Unit
 	local thisServerPulseVector = direction * pulsePower
-	character.PrimaryPart.AssemblyLinearVelocity = thisServerPulseVector
+	local primaryPart = character.PrimaryPart
+	if primaryPart then
+		primaryPart.AssemblyLinearVelocity = thisServerPulseVector
+	end
 	pulseLaunchDebounce = false
 end
 
@@ -57,7 +60,7 @@ end
 specialSign.InformRunStarting = function()
 	pulseLaunchDebounce = false
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
-	humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	local _humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	DoLaunchForPulse()
 end
 

@@ -43,8 +43,14 @@ end
 
 setupValues()
 
-local character = script.Parent
-local humanoid: Humanoid = character:WaitForChild("Humanoid")
+local Players = game:GetService("Players")
+
+local parentInstance = script.Parent
+if not parentInstance or not parentInstance:IsA("Model") then
+	error("Animate must be parented to a character Model")
+end
+local character = parentInstance :: Model
+local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 local pose = "Standing"
 
 local function setupStateChange()
@@ -75,23 +81,53 @@ do
 	userPlayEmoteByIdAnimTrackReturn = success and value
 end
 
-local AnimationSpeedDampeningObject: IntValue = script:FindFirstChild("ScaleDampeningPercent")
+local animationSpeedDampeningObject = script:FindFirstChild("ScaleDampeningPercent") :: IntValue?
 local HumanoidHipHeight = 2
 
 local EMOTE_TRANSITION_TIME = 0.1
 
+type AnimationDefinition = {
+	id: string,
+	weight: number,
+}
+
+type AnimationEntry = {
+	anim: Animation,
+	weight: number,
+}
+
+type AnimationSet = {
+	count: number,
+	totalWeight: number,
+	connections: { RBXScriptConnection },
+	[number]: AnimationEntry,
+}
+
 local currentAnim = ""
-local currentAnimInstance = nil
-local currentAnimTrack = nil
-local currentAnimKeyframeHandler = nil
+local currentAnimInstance: Animation? = nil
+local currentAnimTrack: AnimationTrack? = nil
+local currentAnimKeyframeHandler: RBXScriptConnection? = nil
 local currentAnimSpeed = 1.0
 
-local runAnimTrack = nil
-local runAnimKeyframeHandler = nil
+local runAnimTrack: AnimationTrack? = nil
+local runAnimKeyframeHandler: RBXScriptConnection? = nil
 
-local PreloadedAnims = {}
+local preloadedAnims: { [string]: boolean } = {}
 
-local animTable = {}
+local animTable: { [string]: AnimationSet } = {}
+
+local function getAnimatorForHumanoid(targetHumanoid: Humanoid): Animator
+	local existingAnimator = targetHumanoid:FindFirstChildOfClass("Animator")
+	if existingAnimator then
+		return existingAnimator
+	end
+	local newAnimator = Instance.new("Animator")
+	newAnimator.Parent = targetHumanoid
+	return newAnimator
+end
+
+local playAnimation: (string, number, Humanoid) -> ()
+local playToolAnimation: (string, number, Humanoid, Enum.AnimationPriority?) -> ()
 local animNames = {
 	idle = {
 		-- { id = "http://www.roblox.com/asset/?id=507766666", weight = 1 },
@@ -176,34 +212,23 @@ local loopEmote = {
 
 math.randomseed(tick())
 
-function findExistingAnimationInSet(set, anim)
-	if set == nil or anim == nil then
-		return 0
-	end
-
-	for idx = 1, set.count, 1 do
-		if set[idx].anim.AnimationId == anim.AnimationId then
-			return idx
+local function configureAnimationSet(name: string, fileList: { AnimationDefinition }?)
+	local existingSet = animTable[name]
+	if existingSet ~= nil then
+		for _, connection in pairs(existingSet.connections) do
+			connection:Disconnect()
 		end
 	end
-
-	return 0
-end
-
-function configureAnimationSet(name, fileList)
-	if animTable[name] ~= nil then
-		for _, connection in pairs(animTable[name].connections) do
-			connection:disconnect()
-		end
-	end
-	animTable[name] = {}
-	animTable[name].count = 0
-	animTable[name].totalWeight = 0
-	animTable[name].connections = {}
+	local set: AnimationSet = {
+		count = 0,
+		totalWeight = 0,
+		connections = {},
+	}
+	animTable[name] = set
 
 	local allowCustomAnimations = true
 
-	local success, msg = pcall(function()
+	local success = pcall(function()
 		allowCustomAnimations = game:GetService("StarterPlayer").AllowCustomAnimations
 	end)
 	if not success then
@@ -213,75 +238,66 @@ function configureAnimationSet(name, fileList)
 	-- check for config values
 	local config = script:FindFirstChild(name)
 	if allowCustomAnimations and config ~= nil then
-		table.insert(
-			animTable[name].connections,
-			config.ChildAdded:connect(function(child)
-				configureAnimationSet(name, fileList)
-			end)
-		)
-		table.insert(
-			animTable[name].connections,
-			config.ChildRemoved:connect(function(child)
-				configureAnimationSet(name, fileList)
-			end)
-		)
+		set.connections[#set.connections + 1] = config.ChildAdded:Connect(function()
+			configureAnimationSet(name, fileList)
+		end)
+		set.connections[#set.connections + 1] = config.ChildRemoved:Connect(function()
+			configureAnimationSet(name, fileList)
+		end)
 
 		local idx = 0
 		for _, childPart in pairs(config:GetChildren()) do
 			if childPart:IsA("Animation") then
 				local newWeight = 1
-				local weightObject: IntValue = childPart:FindFirstChild("Weight")
-				if weightObject ~= nil then
+				local weightObject = childPart:FindFirstChild("Weight") :: IntValue?
+				if weightObject then
 					newWeight = weightObject.Value
 				end
-				animTable[name].count = animTable[name].count + 1
-				idx = animTable[name].count
-				animTable[name][idx] = {}
-				animTable[name][idx].anim = childPart
-				animTable[name][idx].weight = newWeight
-				animTable[name].totalWeight = animTable[name].totalWeight + animTable[name][idx].weight
-				table.insert(
-					animTable[name].connections,
-					childPart.Changed:connect(function(property)
-						configureAnimationSet(name, fileList)
-					end)
-				)
-				table.insert(
-					animTable[name].connections,
-					childPart.ChildAdded:connect(function(property)
-						configureAnimationSet(name, fileList)
-					end)
-				)
-				table.insert(
-					animTable[name].connections,
-					childPart.ChildRemoved:connect(function(property)
-						configureAnimationSet(name, fileList)
-					end)
-				)
+				set.count += 1
+				idx = set.count
+				set[idx] = {
+					anim = childPart,
+					weight = newWeight,
+				}
+				set.totalWeight += newWeight
+				set.connections[#set.connections + 1] = childPart.Changed:Connect(function()
+					configureAnimationSet(name, fileList)
+				end)
+				set.connections[#set.connections + 1] = childPart.ChildAdded:Connect(function()
+					configureAnimationSet(name, fileList)
+				end)
+				set.connections[#set.connections + 1] = childPart.ChildRemoved:Connect(function()
+					configureAnimationSet(name, fileList)
+				end)
 			end
 		end
 	end
 
 	-- fallback to defaults
-	if animTable[name].count <= 0 then
-		for idx, anim in pairs(fileList) do
-			animTable[name][idx] = {}
-			animTable[name][idx].anim = Instance.new("Animation")
-			animTable[name][idx].anim.Name = name
-			animTable[name][idx].anim.AnimationId = anim.id
-			animTable[name][idx].weight = anim.weight
-			animTable[name].count = animTable[name].count + 1
-			animTable[name].totalWeight = animTable[name].totalWeight + anim.weight
+	if set.count <= 0 and fileList then
+		local defaults = fileList :: { AnimationDefinition }
+		for idx, anim in pairs(defaults) do
+			local animation = Instance.new("Animation")
+			animation.Name = name
+			animation.AnimationId = anim.id
+			set[idx] = {
+				anim = animation,
+				weight = anim.weight,
+			}
+			set.count += 1
+			set.totalWeight += anim.weight
 		end
 	end
 
 	-- preload anims
-	for i, animType in pairs(animTable) do
+	for _, animType in pairs(animTable) do
 		for idx = 1, animType.count, 1 do
-			if PreloadedAnims[animType[idx].anim.AnimationId] == nil then
-				-- _annotate(animType[idx])
-				humanoid:LoadAnimation(animType[idx].anim)
-				PreloadedAnims[animType[idx].anim.AnimationId] = true
+			local entry = animType[idx]
+			if entry and preloadedAnims[entry.anim.AnimationId] == nil then
+				local preloadTrack = getAnimatorForHumanoid(humanoid):LoadAnimation(entry.anim)
+				preloadTrack:Stop(0)
+				preloadTrack:Destroy()
+				preloadedAnims[entry.anim.AnimationId] = true
 			end
 		end
 	end
@@ -290,49 +306,26 @@ end
 ------------------------------------------------------------------------------------------------------------
 
 -- Setup animation objects
-function scriptChildModified(child)
+local function scriptChildModified(child: Instance)
 	local fileList = animNames[child.Name]
 	if fileList ~= nil then
 		configureAnimationSet(child.Name, fileList)
 	end
 end
 
-script.ChildAdded:connect(scriptChildModified)
-script.ChildRemoved:connect(scriptChildModified)
+script.ChildAdded:Connect(scriptChildModified)
+script.ChildRemoved:Connect(scriptChildModified)
 
 -- Clear any existing animation tracks
 -- Fixes issue with characters that are moved in and out of the Workspace accumulating tracks
-local animator = if humanoid then humanoid:FindFirstChildOfClass("Animator") else nil
-if animator then
-	local animTracks = animator:GetPlayingAnimationTracks()
-	for _, track in ipairs(animTracks) do
-		track:Stop(0)
-		track:Destroy()
-	end
+local cleanupAnimator = getAnimatorForHumanoid(humanoid)
+local animTracks = cleanupAnimator:GetPlayingAnimationTracks()
+for _, track in ipairs(animTracks) do
+	track:Stop(0)
+	track:Destroy()
 end
 
 --script to constantly print the newly playing animation
-if false then
-	task.spawn(function()
-		local last = ""
-		while true do
-			local exi = animator:GetPlayingAnimationTracks()
-			if exi == nil then
-				continue
-			end
-			if exi[1] == last then
-				continue
-			end
-			-- _annotate(exi[1])
-			_annotate(" anim tracks: " .. tostring(exi))
-			_annotate(exi)
-			_annotate(exi[1])
-			last = exi[1]
-			task.wait(0.1)
-		end
-	end)
-end
-
 for name, fileList in pairs(animNames) do
 	configureAnimationSet(name, fileList)
 end
@@ -353,7 +346,7 @@ local currentlyPlayingEmote = false
 
 -- functions
 
-function stopAllAnimations()
+local function stopAllAnimations(): string
 	local oldAnim = currentAnim
 
 	-- return to idle if finishing an emote
@@ -369,7 +362,7 @@ function stopAllAnimations()
 	currentAnim = ""
 	currentAnimInstance = nil
 	if currentAnimKeyframeHandler ~= nil then
-		currentAnimKeyframeHandler:disconnect()
+		currentAnimKeyframeHandler:Disconnect()
 	end
 
 	if currentAnimTrack ~= nil then
@@ -380,7 +373,7 @@ function stopAllAnimations()
 
 	-- clean up walk if there is one
 	if runAnimKeyframeHandler ~= nil then
-		runAnimKeyframeHandler:disconnect()
+		runAnimKeyframeHandler:Disconnect()
 	end
 
 	if runAnimTrack ~= nil then
@@ -392,26 +385,26 @@ function stopAllAnimations()
 	return oldAnim
 end
 
-function getHeightScale()
+local function getHeightScale(): number
 	if humanoid then
 		if not humanoid.AutomaticScalingEnabled then
 			return 1
 		end
 
 		local scale = humanoid.HipHeight / HumanoidHipHeight
-		if AnimationSpeedDampeningObject == nil then
-			AnimationSpeedDampeningObject = script:FindFirstChild("ScaleDampeningPercent")
+		if animationSpeedDampeningObject == nil then
+			animationSpeedDampeningObject = script:FindFirstChild("ScaleDampeningPercent") :: IntValue?
 		end
-		if AnimationSpeedDampeningObject ~= nil then
+		if animationSpeedDampeningObject ~= nil then
 			scale = 1
-				+ (humanoid.HipHeight - HumanoidHipHeight) * AnimationSpeedDampeningObject.Value / HumanoidHipHeight
+				+ (humanoid.HipHeight - HumanoidHipHeight) * animationSpeedDampeningObject.Value / HumanoidHipHeight
 		end
 		return scale
 	end
 	return 1
 end
 
-local function rootMotionCompensation(speed)
+local function rootMotionCompensation(speed: number): number
 	local speedScaled = speed * 1.25
 	local heightScale = getHeightScale()
 	local runSpeed = speedScaled / heightScale
@@ -420,6 +413,11 @@ end
 
 local smallButNotZero = 0.0001
 local function setRunSpeed(speed)
+	if not currentAnimTrack or not runAnimTrack then
+		return
+	end
+	local walkTrack = currentAnimTrack
+	local runTrack = runAnimTrack
 	local normalizedWalkSpeed = 0.5 -- established empirically using current `913402848` walk animation
 	local normalizedRunSpeed = 1
 	local runSpeed = rootMotionCompensation(speed)
@@ -440,36 +438,41 @@ local function setRunSpeed(speed)
 	else
 		runAnimationWeight = 1
 	end
-	currentAnimTrack:AdjustWeight(walkAnimationWeight)
-	runAnimTrack:AdjustWeight(runAnimationWeight)
-	currentAnimTrack:AdjustSpeed(walkAnimationTimewarp)
-	runAnimTrack:AdjustSpeed(runAnimationTimerwarp)
+	walkTrack:AdjustWeight(walkAnimationWeight)
+	runTrack:AdjustWeight(runAnimationWeight)
+	walkTrack:AdjustSpeed(walkAnimationTimewarp)
+	runTrack:AdjustSpeed(runAnimationTimerwarp)
 end
 
-function setAnimationSpeed(speed)
+local function setAnimationSpeed(speed: number)
 	if currentAnim == "walk" then
 		setRunSpeed(speed)
 	else
-		if speed ~= currentAnimSpeed then
+		local track = currentAnimTrack
+		if track and speed ~= currentAnimSpeed then
 			currentAnimSpeed = speed
-			currentAnimTrack:AdjustSpeed(currentAnimSpeed)
+			track:AdjustSpeed(currentAnimSpeed)
 		end
 	end
 end
 
-function keyFrameReachedFunc(frameName)
+local function keyFrameReachedFunc(frameName: string)
 	if frameName == "End" then
 		if currentAnim == "walk" then
-			if userNoUpdateOnLoop == true then
-				if runAnimTrack.Looped ~= true then
-					runAnimTrack.TimePosition = 0.0
+			if currentAnimTrack and runAnimTrack then
+				local walkTrack = currentAnimTrack
+				local runTrack = runAnimTrack
+				if userNoUpdateOnLoop == true then
+					if runTrack.Looped ~= true then
+						runTrack.TimePosition = 0.0
+					end
+					if walkTrack.Looped ~= true then
+						walkTrack.TimePosition = 0.0
+					end
+				else
+					runTrack.TimePosition = 0.0
+					walkTrack.TimePosition = 0.0
 				end
-				if currentAnimTrack.Looped ~= true then
-					currentAnimTrack.TimePosition = 0.0
-				end
-			else
-				runAnimTrack.TimePosition = 0.0
-				currentAnimTrack.TimePosition = 0.0
 			end
 		else
 			local repeatAnim = currentAnim
@@ -478,7 +481,7 @@ function keyFrameReachedFunc(frameName)
 				repeatAnim = "idle"
 			end
 
-			if currentlyPlayingEmote then
+			if currentlyPlayingEmote and currentAnimTrack then
 				if currentAnimTrack.Looped then
 					return
 				end
@@ -494,18 +497,21 @@ function keyFrameReachedFunc(frameName)
 	end
 end
 
-function rollAnimation(animName)
-	local roll = math.random(1, animTable[animName].totalWeight)
-	local origRoll = roll
+local function rollAnimation(animName: string): number
+	local animSet = animTable[animName]
+	if not animSet or animSet.count == 0 then
+		return 1
+	end
+	local roll = math.random(1, animSet.totalWeight)
 	local idx = 1
-	while roll > animTable[animName][idx].weight do
-		roll = roll - animTable[animName][idx].weight
+	while animSet[idx] and roll > animSet[idx].weight do
+		roll -= animSet[idx].weight
 		idx = idx + 1
 	end
 	return idx
 end
 
-local function switchToAnim(anim, animName, transitionTime: number, humanoid)
+local function switchToAnim(anim: Animation, animName: string, transitionTime: number, targetHumanoid: Humanoid)
 	-- switch animation
 	if
 		animName == "idle"
@@ -542,46 +548,55 @@ local function switchToAnim(anim, animName, transitionTime: number, humanoid)
 	currentAnimSpeed = 1.0
 
 	-- load it to the humanoid; get AnimationTrack
-	currentAnimTrack = humanoid:LoadAnimation(anim)
-	currentAnimTrack.Priority = Enum.AnimationPriority.Core
-
-	-- play the animation
-	currentAnimTrack:Play(transitionTime)
+	local targetAnimator = getAnimatorForHumanoid(targetHumanoid)
+	local newCurrentTrack = targetAnimator:LoadAnimation(anim)
+	newCurrentTrack.Priority = Enum.AnimationPriority.Core
+	newCurrentTrack:Play(transitionTime)
+	currentAnimTrack = newCurrentTrack
 	currentAnim = animName
 	currentAnimInstance = anim
 
 	-- set up keyframe name triggers
 	if currentAnimKeyframeHandler ~= nil then
-		currentAnimKeyframeHandler:disconnect()
+		currentAnimKeyframeHandler:Disconnect()
 	end
-	currentAnimKeyframeHandler = currentAnimTrack.KeyframeReached:connect(keyFrameReachedFunc)
+	currentAnimKeyframeHandler = newCurrentTrack.KeyframeReached:Connect(keyFrameReachedFunc)
 
 	-- check to see if we need to blend a walk/run animation
 	if animName == "walk" then
 		local runAnimName = "run"
 		local runIdx = rollAnimation(runAnimName)
 
-		runAnimTrack = humanoid:LoadAnimation(animTable[runAnimName][runIdx].anim)
-		runAnimTrack.Priority = Enum.AnimationPriority.Core
-		runAnimTrack:Play(transitionTime)
+		local newRunTrack = targetAnimator:LoadAnimation(animTable[runAnimName][runIdx].anim)
+		newRunTrack.Priority = Enum.AnimationPriority.Core
+		newRunTrack:Play(transitionTime)
+		runAnimTrack = newRunTrack
 
 		if runAnimKeyframeHandler ~= nil then
-			runAnimKeyframeHandler:disconnect()
+			runAnimKeyframeHandler:Disconnect()
 		end
-		runAnimKeyframeHandler = runAnimTrack.KeyframeReached:connect(keyFrameReachedFunc)
+		runAnimKeyframeHandler = newRunTrack.KeyframeReached:Connect(keyFrameReachedFunc)
 	end
 end
 
-function playAnimation(animName, transitionTime, humanoid)
+playAnimation = function(animName: string, transitionTime: number, targetHumanoid: Humanoid)
+	local animSet = animTable[animName]
+	if not animSet or animSet.count == 0 then
+		return
+	end
 	local idx = rollAnimation(animName)
-	local anim = animTable[animName][idx].anim
+	local animEntry = animSet[idx]
+	if not animEntry then
+		return
+	end
+	local anim = animEntry.anim
 
-	switchToAnim(anim, animName, transitionTime, humanoid)
+	switchToAnim(anim, animName, transitionTime, targetHumanoid)
 	currentlyPlayingEmote = false
 end
 
-function playEmote(emoteAnim, transitionTime, humanoid)
-	switchToAnim(emoteAnim, emoteAnim.Name, transitionTime, humanoid)
+local function playEmote(emoteAnim: Animation, transitionTime: number, targetHumanoid: Humanoid)
+	switchToAnim(emoteAnim, emoteAnim.Name, transitionTime, targetHumanoid)
 	currentlyPlayingEmote = true
 end
 
@@ -589,19 +604,32 @@ end
 -------------------------------------------------------------------------------------------
 
 local toolAnimName = ""
-local toolAnimTrack = nil
-local toolAnimInstance = nil
-local currentToolAnimKeyframeHandler = nil
+local toolAnimTrack: AnimationTrack? = nil
+local toolAnimInstance: Animation? = nil
+local currentToolAnimKeyframeHandler: RBXScriptConnection? = nil
 
-function toolKeyFrameReachedFunc(frameName)
+local function toolKeyFrameReachedFunc(frameName: string)
 	if frameName == "End" then
 		playToolAnimation(toolAnimName, 0.0, humanoid)
 	end
 end
 
-function playToolAnimation(animName, transitionTime, humanoid, priority)
+playToolAnimation = function(
+	animName: string,
+	transitionTime: number,
+	targetHumanoid: Humanoid,
+	priority: Enum.AnimationPriority?
+)
+	local animSet = animTable[animName]
+	if not animSet or animSet.count == 0 then
+		return
+	end
 	local idx = rollAnimation(animName)
-	local anim = animTable[animName][idx].anim
+	local animEntry = animSet[idx]
+	if not animEntry then
+		return
+	end
+	local anim = animEntry.anim
 
 	if toolAnimInstance ~= anim then
 		if toolAnimTrack ~= nil then
@@ -611,25 +639,27 @@ function playToolAnimation(animName, transitionTime, humanoid, priority)
 		end
 
 		-- load it to the humanoid; get AnimationTrack
-		toolAnimTrack = humanoid:LoadAnimation(anim)
+		local targetAnimator = getAnimatorForHumanoid(targetHumanoid)
+		local newToolTrack = targetAnimator:LoadAnimation(anim)
 		if priority then
-			toolAnimTrack.Priority = priority
+			newToolTrack.Priority = priority
 		end
 
 		-- play the animation
-		toolAnimTrack:Play(transitionTime)
+		newToolTrack:Play(transitionTime)
+		toolAnimTrack = newToolTrack
 		toolAnimName = animName
 		toolAnimInstance = anim
 
-		currentToolAnimKeyframeHandler = toolAnimTrack.KeyframeReached:connect(toolKeyFrameReachedFunc)
+		currentToolAnimKeyframeHandler = newToolTrack.KeyframeReached:Connect(toolKeyFrameReachedFunc)
 	end
 end
 
-function stopToolAnimations()
+local function stopToolAnimations(): string
 	local oldAnim = toolAnimName
 
 	if currentToolAnimKeyframeHandler ~= nil then
-		currentToolAnimKeyframeHandler:disconnect()
+		currentToolAnimKeyframeHandler:Disconnect()
 	end
 
 	toolAnimName = ""
@@ -647,7 +677,7 @@ end
 -------------------------------------------------------------------------------------------
 -- STATE CHANGE HANDLERS
 
-function onRunning(speed)
+local function onRunning(speed: number)
 	local movedDuringEmote = userEmoteToRunThresholdChange
 		and currentlyPlayingEmote
 		and humanoid.MoveDirection == Vector3.new(0, 0, 0)
@@ -665,18 +695,18 @@ function onRunning(speed)
 	end
 end
 
-function onDied()
+local function onDied()
 	pose = "Dead"
 end
 
-function onJumping()
+local function onJumping()
 	-- _annotate("onJumping")
 	playAnimation("jump", 0.1, humanoid)
 	jumpAnimTimeRemaining = jumpAnimDuration
 	pose = "Jumping"
 end
 
-function onClimbing(speed)
+local function onClimbing(speed: number)
 	-- _annotate("onClimbing")
 	-- local scale = 5.0
 	-- playAnimation("climb", 0.1, Humanoid)
@@ -684,12 +714,12 @@ function onClimbing(speed)
 	pose = "Climbing"
 end
 
-function onGettingUp()
+local function onGettingUp()
 	-- _annotate("onGettingUp")
 	pose = "GettingUp"
 end
 
-function onFreeFall()
+local function onFreeFall()
 	-- _annotate("onFreeFall")
 	if jumpAnimTimeRemaining <= 0 then
 		playAnimation("fall", fallTransitionTime, humanoid)
@@ -697,16 +727,16 @@ function onFreeFall()
 	pose = "FreeFall"
 end
 
-function onFallingDown()
+local function onFallingDown()
 	-- _annotate("onFallingDown")
 	pose = "FallingDown"
 end
 
-function onSeated()
+local function onSeated()
 	pose = "Seated"
 end
 
-function onPlatformStanding()
+local function onPlatformStanding()
 	-- _annotate("onPlatformStanding")
 	pose = "PlatformStanding"
 end
@@ -714,12 +744,7 @@ end
 -------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------
 
-function onLanding(speed)
-	-- _annotate("landed " .. tostring(speed))
-	stopAllAnimations()
-end
-
-function onSwimming(speed)
+local function onSwimming(speed: number)
 	if speed > 1.00 then
 		local scale = 10.0
 		playAnimation("swim", 0.4, humanoid)
@@ -731,7 +756,7 @@ function onSwimming(speed)
 	end
 end
 
-function animateTool()
+local function animateTool()
 	if toolAnim == "None" then
 		playToolAnimation("toolnone", toolTransitionTime, humanoid, Enum.AnimationPriority.Idle)
 		return
@@ -748,10 +773,10 @@ function animateTool()
 	end
 end
 
-function getToolAnim(tool)
+local function getToolAnim(tool: Tool): StringValue?
 	for _, c in ipairs(tool:GetChildren()) do
-		if c.Name == "toolanim" and c.className == "StringValue" then
-			return c
+		if c.Name == "toolanim" and c:IsA("StringValue") then
+			return c :: StringValue
 		end
 	end
 	return nil
@@ -762,7 +787,7 @@ local lastTick = 0
 local lastPose = pose
 
 --apparently never used
-function stepAnimate(currentTime)
+local function stepAnimate(currentTime: number)
 	local dodoprint = false
 	local doprint = true
 	if pose ~= lastPose then
@@ -807,7 +832,7 @@ function stepAnimate(currentTime)
 	end
 
 	-- Tool Animation handling
-	local tool = character:FindFirstChildOfClass("Tool")
+	local tool = character:FindFirstChildOfClass("Tool") :: Tool?
 	if tool and tool:FindFirstChild("Handle") then
 		local animStringValueObject = getToolAnim(tool)
 
@@ -846,7 +871,7 @@ humanoid.Swimming:Connect(onSwimming)
 -- Humanoid.Landing:Connect(onLanding)
 
 -- setup emote chat hook
-game:GetService("Players").LocalPlayer.Chatted:Connect(function(msg)
+Players.LocalPlayer.Chatted:Connect(function(msg)
 	local emote = ""
 	if string.sub(msg, 1, 3) == "/e " then
 		emote = string.sub(msg, 4)
@@ -901,7 +926,7 @@ end
 task.spawn(function()
 	-- loop to handle timed state transitions and tool animations
 	while character.Parent ~= nil do
-		local _, currentGameTime = wait(0.1)
+		local currentGameTime = task.wait(0.1)
 		stepAnimate(currentGameTime)
 	end
 end)

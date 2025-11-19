@@ -1,17 +1,31 @@
 --!strict
 
---
+-- userFavoriteRacesCommand.lua :: ReplicatedStorage.commands.userFavoriteRacesCommand
+-- SERVER-ONLY: Mark or unmark races as favorites and fetch favorite race lists for users.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local rdb = require(game.ServerScriptService.rdb)
 local tt = require(game.ReplicatedStorage.types.gametypes)
+local rdb = require(game.ServerScriptService.rdb)
 
-local module = {}
+type Module = {
+	AdjustFavoriteRace: (
+		requestingPlayer: Player,
+		signId1: number,
+		signId2: number,
+		favoriteStatus: boolean
+	) -> boolean,
+	GetFavoriteRaces: (
+		requestingPlayer: Player,
+		targetUserId: number,
+		requestingUserId: number,
+		otherUserIds: { number }
+	) -> tt.serverFavoriteRacesResponse,
+}
 
--- called on the server either by commandParsing,
--- or by the user clicking on something on the client which is relayed through clientCommands!
+local module: Module = {} :: Module
+
 module.AdjustFavoriteRace = function(
 	requestingPlayer: Player,
 	signId1: number,
@@ -28,7 +42,7 @@ module.AdjustFavoriteRace = function(
 		},
 	}
 
-	_annotate("getting wr progression")
+	_annotate("adjusting favorite race")
 	rdb.MakePostRequest(req)
 	return true
 end
@@ -38,7 +52,7 @@ module.GetFavoriteRaces = function(
 	targetUserId: number,
 	requestingUserId: number,
 	otherUserIds: { number }
-)
+): tt.serverFavoriteRacesResponse
 	local req = {
 		remoteActionName = "favoriteRacesRequest",
 		data = { targetUserId = targetUserId, otherUserIds = otherUserIds, requestingUserId = requestingUserId },

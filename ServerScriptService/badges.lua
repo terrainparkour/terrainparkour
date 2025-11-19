@@ -162,8 +162,8 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 				kind
 			)
 		)
-		deb[userId] = true
 		userIdHasDataPrepared[userId] = true
+		deb[userId] = false
 		--leaving spawned task. The user's data is now totally prepared.
 	end)
 	-- okay, wait a while for them to be done.

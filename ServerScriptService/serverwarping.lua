@@ -42,6 +42,9 @@ local function isPositionInTerrain(position: Vector3): { success: boolean, occ: 
 
 	-- Read the terrain voxels in the region
 	local material, occupancy = workspace.Terrain:ReadVoxels(region, 4)
+	if not material then
+		return { success = true, occ = 0, mat = Enum.Material.Air }
+	end
 
 	-- Check if any voxel in the region is occupied by non-air, non-water
 	local size = material.Size
@@ -61,7 +64,8 @@ local function isPositionInTerrain(position: Vector3): { success: boolean, occ: 
 	return { success = true, occ = 0, mat = Enum.Material.Air }
 end
 
-local theFilter = { workspace:FindFirstChild("Signs") }
+local signsFolderInstance: Instance? = workspace:FindFirstChild("Signs")
+local theFilter: { Instance } = if signsFolderInstance then { signsFolderInstance } else {}
 
 local findWarpablePositionForSign = function(sign: BasePart): Vector3?
 	local size = sign.Size
@@ -210,15 +214,25 @@ local function ServerDoWarpToPosition(player: Player, pos: Vector3, randomize: b
 		return false
 	end
 
-	local rootPart: Part = character:FindFirstChild("HumanoidRootPart")
-	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
-	if not rootPart then
+	local rootPartInstance: Instance? = character:FindFirstChild("HumanoidRootPart")
+	if not rootPartInstance or not rootPartInstance:IsA("BasePart") then
 		_annotate("ServerDoWarpToPosition.HRP nil")
 		return false
 	end
+	local rootPart: BasePart = rootPartInstance :: BasePart
+	local humanoidInstance: Instance? = character:WaitForChild("Humanoid")
+	if not humanoidInstance or not humanoidInstance:IsA("Humanoid") then
+		_annotate("ServerDoWarpToPosition.Humanoid nil")
+		return false
+	end
+	local humanoid: Humanoid = humanoidInstance :: Humanoid
 
 	--finding a position we are allowed to warp to.
 	if randomize then
+		if not sign then
+			annotater.Error("randomize was true but no sign provided")
+			return false
+		end
 		local goodPosition = findWarpablePositionForSign(sign)
 		if not goodPosition then
 			annotater.Error(string.format("no good position found for: %s", tostring(sign.Name)))
@@ -230,7 +244,6 @@ local function ServerDoWarpToPosition(player: Player, pos: Vector3, randomize: b
 	humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
 	_annotate("humanoid:ChangeState(Enum.HumanoidStateType.Freefall)")
 	--2024: is this effectively just the server version of resetting movement states?
-	rootPart.Velocity = Vector3.new(0, 0, 0)
 	rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 	while true do
 		local state = humanoid:GetState()
@@ -306,29 +319,34 @@ module.Init = function()
 		_annotate("server received client request to warp.")
 
 		if request.kind == "sign" then
+			local signId = request.signId
+			if not signId then
+				return { didWarp = false, reason = "no signId" }
+			end
+
 			_annotate(
 				string.format(
 					"server has been asked by client to to do a warp of player=%s signId=%s, highlight=%s",
 					player.Name,
-					tostring(request.signId),
+					tostring(signId),
 					tostring(request.highlightSignId)
 				)
 			)
-			local pos: Vector3 | nil = tpUtil.signId2Position(request.signId)
+			local pos: Vector3 | nil = tpUtil.signId2Position(signId)
 			if not pos then
-				_annotate("no POS?" .. tostring(request.signId))
+				_annotate("no POS?" .. tostring(signId))
 				return { didWarp = false, reason = "no POS" }
 			end
 
-			local sign: BasePart | nil = tpUtil.signId2Sign(request.signId)
+			local sign: BasePart | nil = tpUtil.signId2Sign(signId)
 			if not sign then
-				_annotate("no SIGN?" .. tostring(request.signId))
+				_annotate("no SIGN?" .. tostring(signId))
 				return { didWarp = false, reason = "no SIGN" }
 			end
 
-			local securityPass = CheckWarpingSecurityForPlayerAndSign(player, request.signId)
+			local securityPass = CheckWarpingSecurityForPlayerAndSign(player, signId)
 			if not securityPass then
-				annotater.Error(string.format("security pass failed %s %d", tostring(player.Name), request.signId))
+				annotater.Error(string.format("security pass failed %s %d", tostring(player.Name), signId))
 				return { didWarp = false, reason = "security pass failed" }
 			end
 
@@ -340,7 +358,7 @@ module.Init = function()
 			_annotate(
 				string.format(
 					"Server done with the warp to signId=%s with res: %s",
-					tostring(request.signId),
+					tostring(signId),
 					tostring(innerWarpRes)
 				)
 			)

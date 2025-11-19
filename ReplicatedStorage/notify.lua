@@ -26,27 +26,47 @@ module.playerNotificationTypes = {
 
 --internal method to actually send notifications.
 
-module.notifyPlayerAboutMarathonResults = function(player: Player, options: tt.userFinishedRunResponse)
+local function notifyPlayerAboutMarathonResults(player: Player, options: tt.userFinishedRunResponse)
 	ServerToClientEvent:FireClient(player, options)
 end
+module.notifyPlayerAboutMarathonResults = notifyPlayerAboutMarathonResults
 
-module.notifyPlayerAboutBadge = function(player: Player, options: tt.badgeOptions)
+local function notifyPlayerAboutBadge(player: Player, options: tt.badgeOptions)
 	_annotate("badge notif")
 	ServerToClientEvent:FireClient(player, options)
 end
+module.notifyPlayerAboutBadge = notifyPlayerAboutBadge
 
-module.notifyPlayerOfSignFind = function(player: Player, options: tt.dcFindResponse)
+local function notifyPlayerOfSignFind(player: Player, options: tt.dcFindResponse)
+	_annotate(
+		string.format(
+			"notifyPlayerOfSignFind: firing to player=%s userId=%d signId=%d signName=%s foundNew=%s",
+			player.Name,
+			options.userId,
+			options.signId,
+			options.signName,
+			tostring(options.foundNew)
+		)
+	)
 	ServerToClientEvent:FireClient(player, options)
+	_annotate(string.format("notifyPlayerOfSignFind: fired successfully"))
 end
+module.notifyPlayerOfSignFind = notifyPlayerOfSignFind
 
-module.notifyPlayerOfEphemeralMarathonRun = function(player: Player, res: emt.emRunResults)
+local function notifyPlayerOfEphemeralMarathonRun(player: Player, res: emt.emRunResults)
 	annotater.Error("not set up.", player.UserId)
 	warn("not set up.")
 end
+module.notifyPlayerOfEphemeralMarathonRun = notifyPlayerOfEphemeralMarathonRun
+
+local function notifyPlayerAboutActionResult(player: Player, options: tt.ephemeralNotificationOptions)
+	ServerToClientEvent:FireClient(player, options)
+end
+module.notifyPlayerAboutActionResult = notifyPlayerAboutActionResult
 
 --notify other players in the server of interesting things that happened.
 --like someone earning tix, setting a WR, pushing someone's score down
-module.handleActionResults = function(actionResults: { tt.actionResult })
+local function handleActionResults(actionResults: { tt.actionResult })
 	if not actionResults or #actionResults == 0 then
 		return
 	end
@@ -64,15 +84,16 @@ module.handleActionResults = function(actionResults: { tt.actionResult })
 			warn("bad targetUserId came in on message entirely" .. arSubjectUserId)
 			continue
 		end
-		local arSubjectPlayer = tpUtil.getPlayerByUserId(arSubjectUserId)
+		local arSubjectPlayer: Player? = tpUtil.getPlayerByUserId(arSubjectUserId)
 		if arSubjectPlayer == nil then
 			_annotate("player was not in server, this is okay.")
 			continue
 		end
+		local subjectPlayer: Player = arSubjectPlayer :: Player
 		if actionResult.notifyAllExcept then
 			for _, op in ipairs(PlayersService:GetPlayers()) do
 				local useMessage = actionResult.message
-				if op.UserId == arSubjectPlayer.UserId then
+				if op.UserId == subjectPlayer.UserId then
 					if config.IsInStudio() then
 						useMessage = actionResult.message .. " (studio only)"
 					else
@@ -88,7 +109,7 @@ module.handleActionResults = function(actionResults: { tt.actionResult })
 					and actionResult.warpToSignId
 				) or 0
 
-				module.notifyPlayerAboutActionResult(op, {
+				notifyPlayerAboutActionResult(op, {
 					userId = actionResult.userId,
 					text = useMessage,
 					kind = actionResult.kind,
@@ -98,11 +119,11 @@ module.handleActionResults = function(actionResults: { tt.actionResult })
 		else
 			local useWarpToSignId = (
 				actionResult.warpToSignId
-				and playerData2.HasUserFoundSign(arSubjectPlayer.UserId, actionResult.warpToSignId)
+				and playerData2.HasUserFoundSign(subjectPlayer.UserId, actionResult.warpToSignId)
 				and not enums.SignIdIsExcludedFromStart[actionResult.warpToSignId]
 				and actionResult.warpToSignId
 			) or 0
-			module.notifyPlayerAboutActionResult(arSubjectPlayer, {
+			notifyPlayerAboutActionResult(subjectPlayer, {
 				userId = actionResult.userId,
 				text = actionResult.message,
 				kind = actionResult.kind,
@@ -111,10 +132,7 @@ module.handleActionResults = function(actionResults: { tt.actionResult })
 		end
 	end
 end
-
-module.notifyPlayerAboutActionResult = function(player: Player, options: tt.ephemeralNotificationOptions)
-	ServerToClientEvent:FireClient(player, options)
-end
+module.handleActionResults = handleActionResults
 
 _annotate("end")
 return module

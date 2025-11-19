@@ -84,6 +84,7 @@ module.setupToolTip = function(
 	local myAge = 0
 
 	target.MouseEnter:Connect(function()
+		DestroyToolTips()
 		tooltipAge += 1
 		myAge = tooltipAge
 		local playerGui: PlayerGui? = localPlayer:FindFirstChildOfClass("PlayerGui") :: PlayerGui
@@ -196,6 +197,18 @@ module.setupToolTip = function(
 			adder = 1
 		end
 		DestroyToolTips(myAge + adder)
+	end)
+
+	target.InputBegan:Connect(function(input: InputObject)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			DestroyToolTips()
+		end
+	end)
+
+	target.AncestryChanged:Connect(function(_, parent)
+		if parent == nil then
+			DestroyToolTips()
+		end
 	end)
 end
 

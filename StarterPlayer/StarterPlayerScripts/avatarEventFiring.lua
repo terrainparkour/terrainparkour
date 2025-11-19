@@ -76,7 +76,7 @@ module.DescribeEvent = function(ev: aet.avatarEvent): string
 		usingText = string.format("%s sender=%s ", usingText, details.sender)
 	end
 	if ev.id then
-		usingText = string.format("%s id=%s ", usingText, ev.id)
+		usingText = string.format("%s id=%d ", usingText, ev.id)
 	end
 
 	local res = string.format("%s%s", aet.avatarEventTypesReverse[ev.eventType], usingText)
@@ -84,11 +84,24 @@ module.DescribeEvent = function(ev: aet.avatarEvent): string
 end
 
 module.GetPlayerPosition = function(): (Vector3, Vector3, number)
-	local character = game.Players.LocalPlayer.Character
+	local character = game:GetService("Players").LocalPlayer.Character
+	if not character then
+		return Vector3.new(0, 0, 0), Vector3.new(0, 0, 1), 0
+	end
+
 	local rootPart = character:FindFirstChild("HumanoidRootPart")
-	-- TODO this line 90 can error (wheN? if player leaves? .309+)
+	if not rootPart or not rootPart:IsA("BasePart") then
+		return Vector3.new(0, 0, 0), Vector3.new(0, 0, 1), 0
+	end
+
+	local humanoid = character:FindFirstChild("Humanoid")
+	local walkSpeed = 0
+	if humanoid and humanoid:IsA("Humanoid") then
+		walkSpeed = humanoid.WalkSpeed
+	end
+
 	local lookVector = rootPart.CFrame.LookVector
-	return rootPart.Position, lookVector, character:FindFirstChild("Humanoid").WalkSpeed
+	return rootPart.Position, lookVector, walkSpeed
 end
 
 module.FireEvent = function(avatarEventType: number, details: aet.avatarEventDetails)
@@ -104,8 +117,6 @@ module.FireEvent = function(avatarEventType: number, details: aet.avatarEventDet
 	if details.position ~= nil or details.lookVector ~= nil then
 		warn("why did you already have this?", details.position, details.lookVector)
 	end
-
-	local character = game.Players.LocalPlayer.Character
 
 	local s, e = pcall(function()
 		local pos, lv, s = module.GetPlayerPosition()

@@ -1,13 +1,21 @@
 --!strict
 
+-- showSignsCommand.lua :: ReplicatedStorage.commands.showSignsCommand
+-- SERVER-ONLY: Show signs found by player or compare finds with another player.
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
-local playerData2 = require(game.ServerScriptService.playerData2)
 
 local remotes = require(game.ReplicatedStorage.util.remotes)
+local playerData2 = require(game.ServerScriptService.playerData2)
+
 local ShowSignsEvent = remotes.getRemoteEvent("ShowSignsEvent")
 
-local module = {}
+type Module = {
+	ShowSignCommand: (player: Player, targetUserId: number?) -> boolean,
+}
+
+local module: Module = {} :: Module
 
 module.ShowSignCommand = function(player: Player, targetUserId: number?): boolean
 	_annotate(string.format("SeenSignCommand for player %s, targetUserId: %s", player.Name, tostring(targetUserId)))
@@ -27,10 +35,9 @@ module.ShowSignCommand = function(player: Player, targetUserId: number?): boolea
 		end
 		for signId, val in pairs(playerSignIds) do
 			if val and not hisSignIds[signId] then
-				-- we only show intersection
-				signIdsToShow[signId] = true
-			else
 				table.insert(signIdsYouHaveThatHeDoesntHave, signId)
+			else
+				signIdsToShow[signId] = true
 			end
 		end
 		extraText = string.format(

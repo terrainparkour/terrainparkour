@@ -5,6 +5,7 @@ local _annotate = annotater.getAnnotater(script)
 
 local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+local scrollingFrameUtils = require(game.ReplicatedStorage.gui.scrollingFrameUtils)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 
@@ -80,6 +81,10 @@ module.getMenuList = function(localPlayer: Player, buttons: { gt.button }, pgui:
 	tb.Activated:Connect(function()
 		screenGui:Destroy()
 	end)
+	
+	-- Prevent camera scroll when hovering over menu scrolling frame
+	scrollingFrameUtils.PreventCameraScrollOnHover(scrollingFrame)
+	
 	return screenGui
 end
 

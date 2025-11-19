@@ -11,6 +11,7 @@ local module = {}
 
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
+local scrollingFrameUtils = require(game.ReplicatedStorage.gui.scrollingFrameUtils)
 local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 local textHighlighting = require(game.ReplicatedStorage.gui.textHighlighting)
 local tt = require(game.ReplicatedStorage.types.gametypes)
@@ -80,8 +81,8 @@ module.MakeSignProfileGrindingGui = function(
 			continue
 		end
 
+		local button = getIndividualGrindButton(startSignId, realGuyCount, unrunRelationship)
 		if button then
-			local button = getIndividualGrindButton(startSignId, realGuyCount, unrunRelationship)
 			table.insert(buttons, button)
 			realGuyCount += 1
 		end
@@ -182,9 +183,14 @@ module.MakeSignProfileGrindingGui = function(
 	uiPadding.Parent = scrollFrame
 
 	for _, button in ipairs(buttons) do
-		button.Parent = scrollFrame
-		button.Size = UDim2.new(0, 90, 0, 30) -- Ensure consistent size
+		if button then
+			button.Parent = scrollFrame
+			button.Size = UDim2.new(0, 90, 0, 30) -- Ensure consistent size
+		end
 	end
+	
+	-- Prevent camera scroll when hovering over grinding GUI scrolling frame
+	scrollingFrameUtils.PreventCameraScrollOnHover(scrollFrame)
 
 	return outerFrame
 end

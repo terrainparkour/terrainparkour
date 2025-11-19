@@ -13,6 +13,15 @@ local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
 local wt = require(game.StarterPlayer.StarterPlayerScripts.guis.windowsTypes)
 
 module.CreateFindScreenGui = function(options: tt.dcFindResponse): ScreenGui
+	_annotate(
+		string.format(
+			"CreateFindScreenGui: starting userId=%d signId=%d signName=%s foundNew=%s",
+			options.userId,
+			options.signId,
+			options.signName,
+			tostring(options.foundNew)
+		)
+	)
 	local detailsMessage =
 		string.format("You've found %d out of %d signs!", options.userFindCount, options.totalSignsInGame)
 	local finderMessage =
@@ -182,6 +191,7 @@ module.CreateFindScreenGui = function(options: tt.dcFindResponse): ScreenGui
 
 	local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 	newFindSgui.Parent = playerGui
+	_annotate(string.format("CreateFindScreenGui: GUI created and parented to PlayerGui"))
 
 	return newFindSgui
 end

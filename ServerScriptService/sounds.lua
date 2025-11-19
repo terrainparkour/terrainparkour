@@ -11,11 +11,12 @@ local sounds = {
 	["pulse_launch"] = 5020637878,
 }
 
-local soundFolder = nil
+local soundFolder: Folder
 
 -- setup shared sound folder.
-if game.ReplicatedStorage:FindFirstChild("Sounds") then
-	soundFolder = game.ReplicatedStorage:FindFirstChild("Sounds")
+local foundFolder: Instance? = game.ReplicatedStorage:FindFirstChild("Sounds")
+if foundFolder and foundFolder:IsA("Folder") then
+	soundFolder = foundFolder :: Folder
 else
 	soundFolder = Instance.new("Folder")
 	soundFolder.Name = "Sounds"
@@ -23,12 +24,13 @@ else
 end
 
 local function getSound(soundAssetId: number): Sound
-	local sound = soundFolder:FindFirstChild(tostring(soundAssetId))
-	if sound == nil then
-		sound = Instance.new("Sound")
-		sound.SoundId = "rbxassetid://" .. soundAssetId
-		sound.Parent = soundFolder
+	local soundInstance: Instance? = soundFolder:FindFirstChild(tostring(soundAssetId))
+	if soundInstance and soundInstance:IsA("Sound") then
+		return soundInstance :: Sound
 	end
+	local sound: Sound = Instance.new("Sound")
+	sound.SoundId = "rbxassetid://" .. tostring(soundAssetId)
+	sound.Parent = soundFolder
 	return sound
 end
 

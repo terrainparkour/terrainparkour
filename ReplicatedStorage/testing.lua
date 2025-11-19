@@ -16,7 +16,7 @@ local testTpPlacementLogic = require(game.ReplicatedStorage.product.testTpPlacem
 
 module.TestAll = function()
 	if config.IsInStudio() then
-		print("Running TPLogic tests:")
+		print("Running TestAll tests:")
 		testTpPlacementLogic.TestAll()
 	end
 end

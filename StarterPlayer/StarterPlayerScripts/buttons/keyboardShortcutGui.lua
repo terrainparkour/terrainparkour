@@ -8,6 +8,7 @@ local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
+local scrollingFrameUtils = require(game.ReplicatedStorage.gui.scrollingFrameUtils)
 local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
 
 local PlayersService = game:GetService("Players")
@@ -58,13 +59,13 @@ module.CreateShortcutGui = function()
 	listLayout2.Name = "KeyboardHH"
 
 	local shortcuts = {
-		{ key = "r", desc = "Warp to last completed run", icon = "🏃" },
-		{ key = "1", desc = "Warp to last completed run", icon = "🏃" },
-		{ key = "2", desc = "Warp to last sign you started a race from", icon = "🏃" },
-		{ key = "h", desc = "Remove sign highlights", icon = "🚫" },
-		{ key = "z", desc = "Cancel current race", icon = "🚫" },
-		{ key = "x", desc = "Remove popped up UIs and notifications", icon = "🗑️" },
-		{ key = "Tab", desc = "Toggle leaderboard", icon = "📊" },
+		{ key = "r", desc = "Warp to last completed run", icon = "RUN" },
+		{ key = "1", desc = "Warp to last completed run", icon = "RUN" },
+		{ key = "2", desc = "Warp to last sign you started a race from", icon = "RUN" },
+		{ key = "h", desc = "Remove sign highlights", icon = "STOP" },
+		{ key = "z", desc = "Cancel current race", icon = "STOP" },
+		{ key = "x", desc = "Remove popped up UIs and notifications", icon = "CLEAR" },
+		{ key = "Tab", desc = "Toggle leaderboard", icon = "DATA" },
 	}
 
 	local shortcutList = Instance.new("ScrollingFrame")
@@ -151,6 +152,9 @@ module.CreateShortcutGui = function()
 
 	-- windows.SetupDraggability(outerKeyboardFrame)
 	-- windows.SetupResizeability(outerKeyboardFrame)
+	
+	-- Prevent camera scroll when hovering over keyboard shortcuts scrolling frame
+	scrollingFrameUtils.PreventCameraScrollOnHover(shortcutList)
 
 	return outerKeyboardFrame
 end

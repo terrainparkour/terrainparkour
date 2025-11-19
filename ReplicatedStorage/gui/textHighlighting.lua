@@ -59,7 +59,7 @@ end
 
 local function innerDoHighlight(sign: Part)
 	if not sign then
-		if config.isTestGame() then
+		if config.IsTestGame() then
 			_annotate("trying to highlight a nil sign?")
 		else
 			warn("trying to highlight a nil sign?")
@@ -192,7 +192,7 @@ module.DoHighlightSingleSignId = function(signId: number, context: string)
 	local sign: Part? = tpUtil.signId2Sign(signId)
 
 	if not sign then
-		if not config.isTestGame() then
+		if not config.IsTestGame() then
 			warn(string.format("trying to highlight an unseen sign? signId=%s context=%s", tostring(signId), context))
 		end
 		return

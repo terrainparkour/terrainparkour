@@ -53,15 +53,21 @@ module.MakePostRequest = function(request: tt.postRequest): any
 	end)
 
 	if not s then
-		_annotate(string.format("error making post request: %s", e))
-		return
+		annotater.Error(
+			"error making post request",
+			{ remoteActionName = request.remoteActionName, error = tostring(e) }
+		)
+		return { error = "network_error", message = tostring(e) }
 	end
 
-	-- if false and res and not res.banned then
-	-- 	task.spawn(function()
-	-- 		afterRemoteDbActions(res.data)
-	-- 	end)
-	-- end
+	if not res or not res["res"] then
+		annotater.Error(
+			"post request returned invalid response structure",
+			{ remoteActionName = request.remoteActionName, res = res }
+		)
+		return { error = "parse_error", message = "Invalid response structure from backend" }
+	end
+
 	_annotate(string.format("did http request, remaining = %d", httpRemaining))
 	return res["res"]
 end

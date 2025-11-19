@@ -10,7 +10,7 @@ local remotes = require(game.ReplicatedStorage.util.remotes)
 
 local module = {}
 
-local banCache: { [number]: number } = {}
+local banCache: { [number]: number? } = {}
 local banDebounce: { [number]: boolean } = {}
 
 local NOBAN = 0
@@ -23,16 +23,39 @@ module.getBanLevel = function(userId: number): number
 	end
 
 	if banCache[userId] == nil then
+		banCache[userId] = NOBAN
 		banDebounce[userId] = true
 		local request: tt.postRequest = {
 			remoteActionName = "getUserBanLevel",
 			data = { userId = userId },
 		}
-		local res = rdb.MakePostRequest(request)
-		banCache[userId] = tonumber(res.banLevel)
+		local banLevelNumber: number = NOBAN
+		local ok, res = pcall(function()
+			return rdb.MakePostRequest(request)
+		end)
+		if ok and res and typeof(res) == "table" and res.banLevel ~= nil then
+			local raw = res.banLevel
+			if typeof(raw) == "number" then
+				banLevelNumber = raw
+			elseif typeof(raw) == "string" then
+				local parsed = tonumber(raw)
+				if parsed ~= nil then
+					banLevelNumber = parsed
+				else
+					_annotate(string.format("Warn: getUserBanLevel returned non-numeric string for %d", userId))
+				end
+			else
+				_annotate(
+					string.format("Warn: getUserBanLevel returned unsupported type (%s) for %d", typeof(raw), userId)
+				)
+			end
+		else
+			_annotate(string.format("Warn: getUserBanLevel failed for %d (%s)", userId, tostring(res)))
+		end
+		banCache[userId] = banLevelNumber
 		banDebounce[userId] = false
 	end
-	return banCache[userId]
+	return banCache[userId] or NOBAN
 end
 
 local function saveBan(userId: number, banLevel)

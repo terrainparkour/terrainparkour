@@ -64,7 +64,6 @@ module.RegisterFunctionToListenForDomain = function(func: (tt.userSettingValue) 
 
 		return
 	end
-	_annotate(string.format("successfully registered domain listnerer for: %s %s", listeningDomainName, tostring(func)))
 	domainSettingChangeMonitoringFunctions[listeningDomainName] = func
 end
 
@@ -77,8 +76,6 @@ module.RegisterFunctionToListenForSettingName = function(
 	name: string,
 	source: string
 )
-	-- let's make sure we're registering a setting which exists in the enums and things.
-	_annotate(string.format("Register setting listener for: %s", name))
 	local exi = false
 	for _, setting in pairs(settingEnums.settingDefinitions) do
 		if setting.name == name then
@@ -102,22 +99,22 @@ module.RegisterFunctionToListenForSettingName = function(
 	end
 
 	settingChangeMonitoringFunctions[nameKey] = func
-	_annotate(string.format("registered: %s to listen to setting named: %s", nameKey, name))
 end
 
---also just tell registered scripts this change happened
-local function LocalNotifySettingChange(setting: tt.userSettingValue)
-	if setting.kind == settingEnums.settingKinds.BOOLEAN then
-		_annotate(string.format("LocalNotifySettingChange: %s %s", setting.name, tostring(setting.booleanValue)))
-	elseif setting.kind == settingEnums.settingKinds.STRING then
-		_annotate(string.format("LocalNotifySettingChange: %s %s", setting.name, tostring(setting.stringValue)))
+module.UnregisterFunctionToListenForSettingName = function(name: string, source: string)
+	local nameKey = name .. "|" .. source
+	if settingChangeMonitoringFunctions[nameKey] then
+		settingChangeMonitoringFunctions[nameKey] = nil
 	end
+end
+
+-- also just tell registered scripts this change happened
+local function LocalNotifySettingChange(setting: tt.userSettingValue)
 	for nameKey: string, funcWhichCaresAboutThisSettingChange: (tt.userSettingValue) -> nil in
 		pairs(settingChangeMonitoringFunctions)
 	do
 		local name = nameKey:split("|")[1]
 		if setting.name == name then
-			_annotate("APPLY " .. tostring(name) .. " " .. tostring(funcWhichCaresAboutThisSettingChange))
 			funcWhichCaresAboutThisSettingChange(setting)
 		end
 	end
@@ -129,24 +126,51 @@ local function LocalNotifySettingChange(setting: tt.userSettingValue)
 	end
 end
 
---2024 is this safe to globally just use? like, in the chat toggler can I hit this and get some kind of useful or at least
--- not super slow/not missing data way to get the current value?
 module.GetSettingByName = function(settingName: string): tt.userSettingValue
+	local startTime = tick()
+	_annotate(string.format("GetSettingByName START: %s", settingName))
+	
 	local req: settingEnums.settingRequest = { settingName = settingName }
 	local theSetting = GetUserSettingsFunction:InvokeServer(req)
+	
+	local elapsed = tick() - startTime
+	_annotate(string.format("GetSettingByName DONE: %s took %.3fs", settingName, elapsed))
+	
 	return theSetting
 end
 
 module.GetSettingByDomain = function(domain: string): { [string]: tt.userSettingValue }
+	local startTime = tick()
+	_annotate(string.format("GetSettingByDomain START: %s", domain))
+	
 	local req: settingEnums.settingRequest = { domain = domain }
-	local theSetting = GetUserSettingsFunction:InvokeServer(req)
-	return theSetting
+	local theSettings = GetUserSettingsFunction:InvokeServer(req)
+	
+	local elapsed = tick() - startTime
+	local count = 0
+	for _ in pairs(theSettings) do
+		count = count + 1
+	end
+	_annotate(string.format("GetSettingByDomain DONE: %s took %.3fs (%d settings)", domain, elapsed, count))
+	
+	return theSettings
 end
 
 module.GetSettingByDomainAndKind = function(domain: string, kind: string): { [string]: tt.userSettingValue }
+	local startTime = tick()
+	_annotate(string.format("GetSettingByDomainAndKind START: %s %s", domain, kind))
+	
 	local req: settingEnums.settingRequest = { domain = domain, kind = kind }
-	local theSetting = GetUserSettingsFunction:InvokeServer(req)
-	return theSetting
+	local theSettings = GetUserSettingsFunction:InvokeServer(req)
+	
+	local elapsed = tick() - startTime
+	local count = 0
+	for _ in pairs(theSettings) do
+		count = count + 1
+	end
+	_annotate(string.format("GetSettingByDomainAndKind DONE: %s %s took %.3fs (%d settings)", domain, kind, elapsed, count))
+	
+	return theSettings
 end
 
 module.SetSetting = function(setting: tt.userSettingValue): tt.setSettingResponse

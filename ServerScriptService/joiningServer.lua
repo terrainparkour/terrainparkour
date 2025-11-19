@@ -7,29 +7,48 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local colors = require(game.ReplicatedStorage.util.colors)
-local channelDefinitions = require(game.ReplicatedStorage.chat.channelDefinitions)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local MessageDispatcher = require(ReplicatedStorage.ChatSystem.messageDispatcher)
 local playerData2 = require(game.ServerScriptService.playerData2)
 
 local module = {}
 
-local racersChannel
-
-module.PostJoinToRacersImmediate = function(player: Player)
-	racersChannel = channelDefinitions.GetChannel("Racers")
-	_annotate("Posting join to racers: " .. player.Name)
-	local statTag = playerData2.GetPlayerDescriptionLine(player.UserId)
-	local text = player.Name .. " joined! " .. statTag
-	local options = { ChatColor = colors.greenGo }
-	racersChannel:SendSystemMessage(text, options)
+local function formatTime(): string
+	local time = os.date("*t", os.time())
+	return string.format("%02d:%02d:%02d", time.hour, time.min, time.sec)
 end
 
-module.PostLeaveToRacersImmediate = function(player: Player)
-	racersChannel = channelDefinitions.GetChannel("Racers")
-	_annotate("Posting leave to racers: " .. player.Name)
+local function getServerPlayerCount(): number
+	return #Players:GetPlayers()
+end
+
+-- Module internals
+module.PostJoinToJoinsImmediate = function(player: Player)
+	local start = tick()
+	local fetchStart = tick()
 	local statTag = playerData2.GetPlayerDescriptionLine(player.UserId)
-	local text = player.Name .. " left! " .. statTag
+	local fetchTime = tick() - fetchStart
+	local timeStr = formatTime()
+	local playerCount = getServerPlayerCount()
+	local text = string.format("[%s] %s joined! (%d players) %s", timeStr, player.Name, playerCount, statTag)
+	local options = { ChatColor = colors.greenGo }
+	if not MessageDispatcher.SendSystemMessage("Joins", text, options) then
+		return
+	end
+	_annotate(
+		string.format("PostJoinToJoins DONE for %s (%.3fs: %.3fs fetch)", player.Name, tick() - start, fetchTime)
+	)
+end
+
+module.PostLeaveToJoinsImmediate = function(player: Player)
+	_annotate("Posting leave to joins: " .. player.Name)
+	local statTag = playerData2.GetPlayerDescriptionLine(player.UserId)
+	local timeStr = formatTime()
+	local playerCount = getServerPlayerCount()
+	local text = string.format("[%s] %s left! (%d players) %s", timeStr, player.Name, playerCount, statTag)
 	local options = { ChatColor = colors.redStop }
-	racersChannel:SendSystemMessage(text, options)
+	MessageDispatcher.SendSystemMessage("Joins", text, options)
 end
 
 _annotate("end")

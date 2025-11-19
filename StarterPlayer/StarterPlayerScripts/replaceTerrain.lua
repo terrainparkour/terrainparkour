@@ -21,7 +21,7 @@ local function replacePartWithAir(part)
 end
 
 -- Example usage:
-replacePartWithAir(game.workspace:FindFirstChild("Part"))
+replacePartWithAir(workspace:FindFirstChild("Part"))
 
 local allTerrain = {
 	[0] = Enum.Material.WoodPlanks,

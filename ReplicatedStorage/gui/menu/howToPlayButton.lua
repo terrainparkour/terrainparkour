@@ -5,6 +5,7 @@ local _annotate = annotater.getAnnotater(script)
 
 local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+local scrollingFrameUtils = require(game.ReplicatedStorage.gui.scrollingFrameUtils)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 
 local module = {}
@@ -53,6 +54,10 @@ local getHowToPlayModal = function(localPlayer: Player): ScreenGui
 	tb.Activated:Connect(function()
 		screenGui:Destroy()
 	end)
+	
+	-- Prevent camera scroll when hovering over how-to-play scrolling frame
+	scrollingFrameUtils.PreventCameraScrollOnHover(scrollingFrame)
+	
 	return screenGui
 end
 

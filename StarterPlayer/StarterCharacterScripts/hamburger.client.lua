@@ -7,7 +7,7 @@ local _annotate = annotater.getAnnotater(script)
 local PlayersService = game:GetService("Players")
 
 local localPlayer = PlayersService.LocalPlayer
-local pgui: PlayerGui = PlayersService.LocalPlayer:WaitForChild("PlayerGui")
+local pgui: PlayerGui = PlayersService.LocalPlayer:WaitForChild("PlayerGui") :: PlayerGui
 local menu = require(game.ReplicatedStorage.gui.menu.menu)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 
@@ -27,7 +27,8 @@ local function setupMenu()
 	local ham = menu.getHamburger()
 	local hamName = ham.Name
 	ham.Parent = pgui
-	local menuDisplayButton: TextButton = ham:FindFirstChild("hamburgerFrame"):FindFirstChild("button")
+	local hamFrame = ham:WaitForChild("hamburgerFrame")
+	local menuDisplayButton: TextButton = hamFrame:WaitForChild("button") :: TextButton
 	local shown = false
 	menuDisplayButton.Activated:Connect(function()
 		--destroy if  this was a toggle off.

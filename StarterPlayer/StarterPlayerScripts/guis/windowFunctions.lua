@@ -9,6 +9,7 @@ local colors = require(game.ReplicatedStorage.util.colors)
 -- Correcting the require path for uiPositionManager
 local uiPositionManager = require(game.StarterPlayer.StarterPlayerScripts.guis.uiPositionManager)
 local attemptResizeOnMinimized = Instance.new("BindableEvent")
+local thumbnails = require(game.ReplicatedStorage.thumbnails)
 
 local buttonScalePixel = 15
 local minimizedSize = Vector2.new(buttonScalePixel * 2, buttonScalePixel)
@@ -40,56 +41,84 @@ local function createWindowControl(frame: Frame, name: string, text: string, pos
 	return button
 end
 
-local SetupResizeability = function(frame: Frame): TextButton
+local SetupResizeability = function(frame: Frame, aspectRatio: number?): TextButton
 	local resizing = false
-	local lastInputPosition = Vector2.new()
-	local initialFrameSize = UDim2.new()
-	local initialFramePosition = UDim2.new()
+	local startInputPosition = Vector2.new()
+	local startFrameSize = UDim2.new()
+	local startFramePosition = UDim2.new()
+	local startAbsoluteSize = Vector2.new()
 
 	-- Create resize handle as a TextButton directly on the input frame.
 	-- Position it in the bottom left corner of the frame
 	local resizeHandle = createWindowControl(frame, "resizer", "O", UDim2.new(0, 0, 1, -buttonScalePixel))
 
-	local deb = false
+	-- Hide portrait tooltip when hovering over resize handle
+	resizeHandle.MouseEnter:Connect(function()
+		thumbnails.HideAvatarPopup()
+	end)
+
+	-- Store aspect ratio at creation time if provided
+	if aspectRatio then
+		frame:SetAttribute("AspectRatio", aspectRatio)
+	end
+
 	local function handleResize(input: InputObject)
-		if deb then
-			return
+		-- Calculate total delta from start of drag
+		local currentInputPosition = Vector2.new(input.Position.X, input.Position.Y)
+		local totalDelta = currentInputPosition - startInputPosition
+
+		-- Check if this frame should maintain aspect ratio
+		local storedAspectRatioValue = frame:GetAttribute("AspectRatio")
+		local storedAspectRatio: number? = if type(storedAspectRatioValue) == "number" then storedAspectRatioValue else nil
+		local maintainAspectRatio = storedAspectRatio ~= nil and storedAspectRatio > 0
+		
+		-- Calculate target dimensions based on drag (Bottom-Left resize)
+		-- Dragging Left (negative X) -> Width increases
+		-- Dragging Down (positive Y) -> Height increases
+		local targetWidth = startAbsoluteSize.X - totalDelta.X
+		local targetHeight = startAbsoluteSize.Y + totalDelta.Y
+		
+		-- Apply minimum size constraint
+		targetWidth = math.max(targetWidth, 50)
+		targetHeight = math.max(targetHeight, 50)
+
+		local finalWidth = targetWidth
+		local finalHeight = targetHeight
+
+		if maintainAspectRatio and storedAspectRatio then
+			-- Determine primary drag direction based on absolute movement
+			if math.abs(totalDelta.Y) > math.abs(totalDelta.X) then
+				-- Vertical drag is dominant
+				finalHeight = targetHeight
+				finalWidth = finalHeight * storedAspectRatio
+			else
+				-- Horizontal drag is dominant
+				finalWidth = targetWidth
+				finalHeight = finalWidth / storedAspectRatio
+			end
 		end
 
-		deb = true
-		-- this is the delta since the last time we resized (as the user drags)
-		local delta = Vector2.new(input.Position.X - lastInputPosition.X, input.Position.Y - lastInputPosition.Y)
-
-		-- Adjust frame position and size
-		-- as you drag down, the height increases and position Y stays the same.
-		-- as you drag left, the width increases and position X shrinks since the window has to move underneath you.
-		-- do NOT remove the above explanatory comments above.
-
-		--continuously update the frame
-		initialFrameSize = frame.Size
-		initialFramePosition = frame.Position
-
-		local newSizeXScale = initialFrameSize.X.Scale
-		local newSizeXOffset = initialFrameSize.X.Offset - delta.X
-		local newPositionXOffset = initialFramePosition.X.Offset + delta.X
-
-		local newSizeYScale = initialFrameSize.Y.Scale
-		local newSizeYOffset = initialFrameSize.Y.Offset + delta.Y
-
-		frame.Size = UDim2.new(newSizeXScale, newSizeXOffset, newSizeYScale, newSizeYOffset)
-
+		-- Calculate new Size and Position
+		-- Width change affects Position X (growing left moves position left)
+		local widthChange = finalWidth - startAbsoluteSize.X
+		
+		-- We assume Scale is 0 for these windows as they are offset-based
+		local newSize = UDim2.new(
+			startFrameSize.X.Scale,
+			finalWidth,
+			startFrameSize.Y.Scale,
+			finalHeight
+		)
+		
 		local newPosition = UDim2.new(
-			initialFramePosition.X.Scale,
-			newPositionXOffset,
-			initialFramePosition.Y.Scale,
-			initialFramePosition.Y.Offset
+			startFramePosition.X.Scale,
+			startFramePosition.X.Offset - widthChange,
+			startFramePosition.Y.Scale,
+			startFramePosition.Y.Offset
 		)
 
+		frame.Size = newSize
 		frame.Position = newPosition
-
-		-- Update last input position
-		lastInputPosition = Vector2.new(input.Position.X, input.Position.Y)
-		deb = false
 	end
 
 	resizeHandle.InputBegan:Connect(function(input: InputObject)
@@ -102,9 +131,10 @@ local SetupResizeability = function(frame: Frame): TextButton
 				return
 			end
 			resizing = true
-			lastInputPosition = input.Position
-			initialFrameSize = frame.Size
-			initialFramePosition = frame.Position
+			startInputPosition = Vector2.new(input.Position.X, input.Position.Y)
+			startFrameSize = frame.Size
+			startFramePosition = frame.Position
+			startAbsoluteSize = frame.AbsoluteSize
 		end
 	end)
 
@@ -139,6 +169,11 @@ local SetupMinimizeability = function(frame: Frame)
 	local minimizeButton: TextButton
 	-- Position the minimize button in the bottom left corner, next to the resize handle
 	minimizeButton = createWindowControl(frame, "minimizer", "-", UDim2.new(0, buttonScalePixel, 1, -buttonScalePixel))
+
+	-- Hide portrait tooltip when hovering over minimize button
+	minimizeButton.MouseEnter:Connect(function()
+		thumbnails.HideAvatarPopup()
+	end)
 
 	local childrenSizes: { [string]: UDim2 } = {}
 	local originalSize: UDim2 = frame.Size
@@ -220,7 +255,7 @@ local function updateDrag(
 end
 
 -- Modify the isFrameOnScreen function
-local function isFrameOnScreen(frame: Frame): (boolean, string)
+module.isFrameOnScreen = function(frame: Frame): (boolean, string)
 	if not frame.Visible then
 		return false, "Frame is intentionally hidden"
 	end
@@ -368,6 +403,11 @@ local function SetupPinnability(frame: Frame)
 	local pinButton: TextButton =
 		createWindowControl(frame, "pinner", "📌", UDim2.new(0, 0, 1, -2 * buttonScalePixel))
 
+	-- Hide portrait tooltip when hovering over pin button
+	pinButton.MouseEnter:Connect(function()
+		thumbnails.HideAvatarPopup()
+	end)
+
 	pinButton.MouseButton1Click:Connect(function()
 		isPinned = not isPinned
 		frame:SetAttribute("IsPinned", isPinned)
@@ -386,7 +426,8 @@ module.SetupFrame = function(
 	resizable: boolean,
 	minimizable: boolean,
 	pinnable: boolean,
-	outerFrameSize: UDim2
+	outerFrameSize: UDim2,
+	maintainAspectRatio: boolean?
 ): { outerFrame: Frame, contentFrame: Frame }
 	-- Set outer frame size based on content size
 	local outerFrame = Instance.new("Frame")
@@ -399,11 +440,23 @@ module.SetupFrame = function(
 	outerFrame:SetAttribute("IsMinimized", false)
 	outerFrame.Size = outerFrameSize
 
+	-- Calculate aspect ratio at creation time if maintaining aspect ratio
+	local aspectRatio: number? = nil
+	if maintainAspectRatio == true then
+		-- Calculate from initial size (convert UDim2 to absolute pixels for aspect ratio)
+		-- Since we're using offset-based sizing initially, calculate from that
+		local initialWidth = outerFrameSize.X.Offset
+		local initialHeight = outerFrameSize.Y.Offset
+		if initialWidth > 0 and initialHeight > 0 then
+			aspectRatio = initialWidth / initialHeight
+		end
+	end
+
 	if draggable then
 		SetupDraggability(outerFrame)
 	end
 	if resizable then
-		SetupResizeability(outerFrame)
+		SetupResizeability(outerFrame, aspectRatio)
 	end
 	if minimizable then
 		SetupMinimizeability(outerFrame)
@@ -427,7 +480,7 @@ module.SetupFrame = function(
 		task.wait()
 		local position = outerFrame.AbsolutePosition
 		local size = outerFrame.AbsoluteSize
-		local onScreen, status = isFrameOnScreen(outerFrame)
+		local _onScreen, status = module.isFrameOnScreen(outerFrame)
 		_annotate(
 			string.format(
 				"GUI Debug - %s: Position: (%d, %d), Size: (%d, %d), Status: %s",

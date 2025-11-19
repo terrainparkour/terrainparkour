@@ -20,25 +20,58 @@ local playerAddFuncs: { storedFunc } = {}
 local playerRemovingFuncs: { storedFunc } = {}
 
 local function applyPlayerAddFuncs(player: Player)
+	local overallStart = tick()
+	_annotate(string.format("Player.Add START for %s (userId: %d)", player.Name, player.UserId))
+	
 	for _, storedFunc: storedFunc in pairs(playerAddFuncs) do
 		task.spawn(function()
-			_annotate("running.Add " .. storedFunc.name .. " on " .. player.Name)
-			storedFunc.func(player)
+			local start = tick()
+			_annotate(string.format("Player.Add.%s START %s", storedFunc.name, player.Name))
+			local success, err = pcall(function()
+				storedFunc.func(player)
+			end)
+			local elapsed = tick() - start
+			if success then
+				_annotate(string.format("Player.Add.%s DONE %s (%.3fs)", storedFunc.name, player.Name, elapsed))
+			else
+				annotater.Error(string.format("Player.Add.%s FAILED %s after %.3fs: %s", 
+					storedFunc.name, player.Name, elapsed, tostring(err)))
+			end
 		end)
 	end
+	
+	-- Note: functions run in parallel, so this just tracks dispatch time
+	local dispatchTime = tick() - overallStart
+	_annotate(string.format("Player.Add DISPATCHED %d funcs for %s (%.3fs)", 
+		#playerAddFuncs, player.Name, dispatchTime))
 end
 
 local function applyPlayerRemovingFuncs(player: Player)
+	_annotate(string.format("Player.Remove START for %s (userId: %d)", player.Name, player.UserId))
+	
 	for _, storedFunc in pairs(playerRemovingFuncs) do
-		_annotate("running.Removing " .. storedFunc.name .. " on " .. player.Name)
 		task.spawn(function()
-			storedFunc.func(player)
+			local start = tick()
+			_annotate(string.format("Player.Remove.%s START %s", storedFunc.name, player.Name))
+			local success, err = pcall(function()
+				storedFunc.func(player)
+			end)
+			local elapsed = tick() - start
+			if success then
+				_annotate(string.format("Player.Remove.%s DONE %s (%.3fs)", storedFunc.name, player.Name, elapsed))
+			else
+				annotater.Error(string.format("Player.Remove.%s FAILED %s after %.3fs: %s", 
+					storedFunc.name, player.Name, elapsed, tostring(err)))
+			end
 		end)
 	end
 end
 
 local function preloadFinds(player: Player)
+	local start = tick()
 	playerData2.HasUserFoundSign(player.UserId, 1)
+	_annotate(string.format("preloadFinds DONE for %s (%.3fs)", player.Name, tick() - start))
+	return nil
 end
 
 module.Init = function()
@@ -58,7 +91,7 @@ module.Init = function()
 		{ func = leaderboardBadgeEvents.TellPlayerAboutAllOthersBadges, name = "TellAllAboutMeBadges" }
 	)
 	table.insert(playerAddFuncs, { func = leaderboardBadgeEvents.TellMeAboutOBadges, name = "TellMeAboutOBadges" })
-	table.insert(playerAddFuncs, { func = joiningServer.PostJoinToRacersImmediate, name = "PostJoinToRacers" })
+	table.insert(playerAddFuncs, { func = joiningServer.PostJoinToJoinsImmediate, name = "PostJoinToJoins" })
 
 	PlayersService.PlayerAdded:Connect(applyPlayerAddFuncs)
 
@@ -74,13 +107,13 @@ module.Init = function()
 		playerRemovingFuncs,
 		{ func = leaderboardServer.RemoveFromLeaderboardImmediate, name = "RemoveFromLeaderboard" }
 	)
-	table.insert(playerRemovingFuncs, { func = joiningServer.PostLeaveToRacersImmediate, name = "PostLeaveToRacers" })
+	table.insert(playerRemovingFuncs, { func = joiningServer.PostLeaveToJoinsImmediate, name = "PostLeaveToJoins" })
 
 	PlayersService.PlayerRemoving:Connect(applyPlayerRemovingFuncs)
 
 	--players 100% gone by this point but whatever.
 	game:BindToClose(function()
-		for _, player in pairs(game.Players:GetPlayers()) do
+		for _, player in pairs(PlayersService:GetPlayers()) do
 			for _, func in ipairs(playerRemovingFuncs) do
 				_annotate("calling final server close: " .. func.name .. " on " .. player.Name)
 				func.func(player)

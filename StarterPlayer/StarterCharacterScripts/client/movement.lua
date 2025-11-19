@@ -12,13 +12,14 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
+local activeRunSGui = require(game.ReplicatedStorage.gui.activeRunSGui)
 
 local aet = require(game.ReplicatedStorage.avatarEventTypes)
 
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local fireEvent = avatarEventFiring.FireEvent
 local userData = require(game.StarterPlayer.StarterPlayerScripts.userData)
-local speedGui = require(game.StarterPlayer.StarterPlayerScripts.guis.speedGui)
+local config = require(game.ReplicatedStorage.config)
 
 local Players = game:GetService("Players")
 
@@ -97,7 +98,7 @@ local InternalSetSpeed = function(speed: number)
 	})
 	_annotate(string.format("Updating for speed: %0.1f=>%0.1f", lastNotifiedSpeed, speed))
 	lastNotifiedSpeed = speed
-	speedGui.AdjustSpeedGui(speed, humanoid.JumpPower)
+	activeRunSGui.UpdateSpeed(speed)
 end
 
 local function ApplyNewPhysicsFloor(name: string, props: PhysicalProperties)
@@ -218,10 +219,12 @@ local adjustSpeed = function()
 		-- this enables users to keep their terrain-time-run, even while jumping. They still suffer jumping penalties.
 		if movementHistoryEvent.eventType == aet.avatarEventTypes.FLOOR_CHANGED then
 			--- detect a change in floor material, and reset time on terrain if so ---
-			if movementEnums.EnumIsTerrain(movementHistoryEvent.details.floorMaterial) then
+			local floorMaterial = movementHistoryEvent.details and movementHistoryEvent.details.floorMaterial
+			if floorMaterial and movementEnums.EnumIsTerrain(floorMaterial) then
 				-- if we wanted to treat the two grass types as identical, this would be where we would do that.
 				-- or maybe, different but at least not resetting.
-				if movementHistoryEvent.details.floorMaterial ~= activeTerrain then
+				local floorMat: Enum.Material = floorMaterial
+				if floorMat ~= activeTerrain then
 					local useOldTerrainName = ""
 					if activeTerrain then
 						useOldTerrainName = activeTerrain.Name
@@ -231,23 +234,22 @@ local adjustSpeed = function()
 						string.format(
 							"Changed terrain types from %s=>%s.  \r\n\tOld time on material: %0.1f, \r\n\tthis eventAge, %0.1f, \r\n\tso updated howLongHasUserBeenOnThisTerrainS to just: %0.1f",
 							useOldTerrainName,
-							movementHistoryEvent.details.floorMaterial.Name,
+							floorMat.Name,
 							howLongHasUserBeenOnThisTerrainS,
 							eventAge,
 							math.max(howLongHasUserBeenOnThisTerrainS - 3, eventAge)
 						)
 					)
-
 					-- basically we are always dealing with "how long (longer is better) has this same-terrain state been in effect?
 					-- previously we would zero it out. But now we just do math.max (old time on -3, new eventAge).
 					-- so if they jsut switched and that was the last action, then they either get 0 credit or old time -3.
 					howLongHasUserBeenOnThisTerrainS = math.max(howLongHasUserBeenOnThisTerrainS - 3, eventAge)
 					if specialMovementAnnotate then
-						_annotate("accepted new floor actually: " .. movementHistoryEvent.details.floorMaterial.Name)
+						_annotate("accepted new floor actually: " .. floorMat.Name)
 					end
 					-- we reset the start time. subsequently this will have the effect of meaning the
 					-- recalculation of their "gain speed" time is affected (negatively, for shorter gain-times.)
-					activeTerrain = movementHistoryEvent.details.floorMaterial
+					activeTerrain = floorMat
 					howLongHasUserBeenOnThisTerrainS = eventAge
 				end
 				isTouchingNonTerrainRightNow = false
@@ -259,7 +261,7 @@ local adjustSpeed = function()
 			end
 
 			-- also notice if they've touched lava recently ---
-			if eventAge < 4 and movementHistoryEvent.details.floorMaterial == Enum.Material.CrackedLava then
+			if eventAge < 4 and floorMaterial == Enum.Material.CrackedLava then
 				lavaInLast4Seconds = true
 
 				-- this is necessary because lava penalty is from the last time they touched lava
@@ -457,7 +459,7 @@ local adjustSpeed = function()
 	------------- lava --------------
 	local actualLavaSpeedMultiplier = 1
 	local floorJumpPowerMultiplier = 1
-	local lastFloorJumpPowerMultiplier = movementEnums.GetJumpPowerByFloorMultipler(lastTouchedFloor)
+	local lastFloorJumpPowerMultiplier = if lastTouchedFloor then movementEnums.GetJumpPowerByFloorMultipler(lastTouchedFloor) else 1
 	if lavaInLast4Seconds then
 		if activeRunSignName == "cOld mOld on a sLate pLate" then
 			actualLavaSpeedMultiplier = 71 / 68
@@ -610,16 +612,17 @@ local handleAvatarEvent = function(ev: aet.avatarEvent)
 		--- nuke past history and start from here. -----------
 		if not ev.details or not ev.details.startSignName then
 			annotater.Error("race started w/out data.")
+			return
 		end
-		setRunEffectedSign(ev.details.startSignName)
+		local startSignNameValue: string? = ev.details.startSignName
+		if not startSignNameValue then
+			annotater.Error("race started w/out startSignName.")
+			return
+		end
+		local startSignName: string = startSignNameValue :: string
+		setRunEffectedSign(startSignName)
 		movementEventHistory = {}
 		table.insert(movementEventHistory, ev)
-
-		if ev.details and ev.details.startSignName then
-			setRunEffectedSign(ev.details.startSignName)
-		else
-			_annotate("race started w/out data.")
-		end
 		if activeRunSignName == "Salekhard" then
 			ApplyNewPhysicsFloor("ice", movementEnums.IceProps)
 		end
@@ -672,24 +675,30 @@ local handleAvatarEvent = function(ev: aet.avatarEvent)
 	elseif ev.eventType == aet.avatarEventTypes.RUN_CANCEL or ev.eventType == aet.avatarEventTypes.RUN_COMPLETE then
 		if activeRunSignName == "" then
 			_annotate("weird, ended run while not on one. hmmm")
-			_annotate(ev.details.reason)
+			_annotate(ev.details.reason or "no reason")
 		end
 		if ev.eventType == aet.avatarEventTypes.RUN_COMPLETE then
 			-- this is sufficient to locate the original run, because 1. we know when it actually arrived 2. we know the start and end time.
 			-- but in reality we just load the latest of these runs.
-			local movementEventCopy = table.clone(movementEventHistory)
-			task.spawn(function()
-				task.wait(0.3)
-				-- we wait, so that it's more likely that the server has got the data already.
-				userData.SendRunData(
-					"run_complete",
-					ev.details.startSignName,
-					ev.details.endSignName,
-					workspace.Terrain.CustomPhysicalProperties,
-					movementEventCopy
-				)
-				-- TODO definitely don't accept failure here. backoff/send later.
-			end)
+			if config.ENABLE_RUN_DATA_COLLECTION and ev.details then
+				local movementEventCopy = table.clone(movementEventHistory)
+				task.spawn(function()
+					task.wait(0.3)
+					-- we wait, so that it's more likely that the server has got the data already.
+					local startSignNameValue: string? = ev.details.startSignName
+					local endSignNameValue: string? = ev.details.endSignName
+					local startSignName: string = if startSignNameValue then startSignNameValue :: string else ""
+					local endSignName: string = if endSignNameValue then endSignNameValue :: string else ""
+					userData.SendRunData(
+						"run_complete",
+						startSignName,
+						endSignName,
+						workspace.Terrain.CustomPhysicalProperties,
+						movementEventCopy
+					)
+					-- TODO definitely don't accept failure here. backoff/send later.
+				end)
+			end
 		end
 		--- clear history and remove knowledge that we're on a run from a certain sign.
 
@@ -715,8 +724,9 @@ local handleAvatarEvent = function(ev: aet.avatarEvent)
 		ev.eventType == aet.avatarEventTypes.CHARACTER_REMOVING or ev.eventType == aet.avatarEventTypes.AVATAR_DIED
 	then
 		setRunEffectedSign("")
-		_annotate("character removed or avatar died, so killing movementEventHistory.")
+		_annotate("character removed or avatar died, so killing movementEventHistory and destroying GUI.")
 		movementEventHistory = {}
+		activeRunSGui.DestroyGui()
 	else
 		warn("Unhandled movement event: " .. avatarEventFiring.DescribeEvent(ev))
 	end
@@ -738,13 +748,11 @@ module.Init = function()
 	movementEventHistory = {}
 	activeRunSignName = ""
 	debounceAdjustSpeed = false
-	speedGui.CreateSpeedGui()
-	local lastDataSendTick = tick()
+	activeRunSGui.Init()
 	task.spawn(function()
 		while true do
 			adjustSpeed()
 			task.wait(1 / 60)
-			local now = tick()
 			-- if activeRunSignName and activeRunSignName ~= "" and now - lastDataSendTick > 3 then
 			-- 	userData.SendRunData("run_in_progress", activeRunSignName, "", movementEventHistory)
 			-- 	lastDataSendTick = now
@@ -763,7 +771,6 @@ module.Init = function()
 
 	if avatarEventConnection then
 		avatarEventConnection:Disconnect()
-		avatarEventConnection = nil
 	end
 	avatarEventConnection = AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 	_annotate("End of movement.Init.")

@@ -1,19 +1,23 @@
 --!strict
 
--- wrProgressionCommand on server
+-- wrProgressionCommand.lua :: ReplicatedStorage.commands.wrProgressionCommand
+-- SERVER-ONLY: Fetch world record progression data and send to client for display.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local rdb = require(game.ServerScriptService.rdb)
-local tt = require(game.ReplicatedStorage.types.gametypes)
-
 local remotes = require(game.ReplicatedStorage.util.remotes)
+local tt = require(game.ReplicatedStorage.types.gametypes)
+local rdb = require(game.ServerScriptService.rdb)
+
 local GenericClientUIEvent = remotes.getRemoteEvent("GenericClientUIEvent")
 
-local module = {}
+type Module = {
+	GetWRProgression: (player: Player, signId1: number, signId2: number) -> boolean,
+}
 
--- called on the server either by commandParsing, or by the user clicking on something on the client which is relayed through clientCommands.
+local module: Module = {} :: Module
+
 module.GetWRProgression = function(player: Player, signId1: number, signId2: number): boolean
 	local req = {
 		remoteActionName = "wrProgressionRequest",

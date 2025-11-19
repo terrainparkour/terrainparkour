@@ -8,7 +8,6 @@ local _annotate = annotater.getAnnotater(script)
 local settings = require(game.ReplicatedStorage.settings)
 local colors = require(game.ReplicatedStorage.util.colors)
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local settingSort = require(game.ReplicatedStorage.settingSort)
 local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
@@ -52,6 +51,7 @@ local function createSettingRowSpec(setting: tt.userSettingValue, n: number): wt
 					backgroundColor = colors.defaultGrey,
 					textColor = colors.black,
 					textXAlignment = Enum.TextXAlignment.Left,
+					leftPadding = 4,
 				},
 			},
 			{
@@ -63,6 +63,29 @@ local function createSettingRowSpec(setting: tt.userSettingValue, n: number): wt
 		},
 	}
 	return x
+end
+
+function module.CalculateSettingsEditorSize(domain: string): UDim2
+	local userSettings: { [string]: tt.userSettingValue } =
+		settings.GetSettingByDomainAndKind(domain, settingEnums.settingKinds.BOOLEAN)
+
+	local settingsCount = 0
+	for _ in pairs(userSettings) do
+		settingsCount += 1
+	end
+
+	local generalRowHeight = 36
+	local titleHeight = generalRowHeight
+	local headerHeight = generalRowHeight
+	local closeButtonHeight = 30
+	local maxRowsToShow = 12
+	local actualRowsToShow = math.min(settingsCount, maxRowsToShow)
+	local contentHeight = actualRowsToShow * generalRowHeight
+
+	local totalHeight = titleHeight + headerHeight + contentHeight + closeButtonHeight
+	local maxHeight = titleHeight + headerHeight + (maxRowsToShow * generalRowHeight) + closeButtonHeight
+
+	return UDim2.new(0.5, 0, 0, math.min(totalHeight, maxHeight))
 end
 
 function module.CreateGenericSettingsEditor(domain: string): wt.guiSpec
@@ -98,23 +121,43 @@ function module.CreateGenericSettingsEditor(domain: string): wt.guiSpec
 		isBold = true,
 		backgroundColor = colors.blueDone,
 		textColor = colors.black,
-		textXAlignment = Enum.TextXAlignment.Left,
+		textXAlignment = Enum.TextXAlignment.Center,
 	}
 
-	-- Define scrollingFrame components
-	local scrollingFrameHeaderTileSpec: wt.tileSpec = {
-		name = "NameHeader",
-		order = 1,
-		width = UDim.new(1, 0),
-		spec = nameHeaderSpec,
+	local valueHeaderSpec: wt.textTileSpec = {
+		type = "text",
+		text = "Value",
+		isMonospaced = false,
+		isBold = true,
+		backgroundColor = colors.blueDone,
+		textColor = colors.black,
+		textXAlignment = Enum.TextXAlignment.Center,
 	}
 
+	-- Define scrollingFrame components - header row matches data row structure
 	local scrollingFrameHeaderRowSpec: wt.rowSpec = {
 		name = "SettingsHeader",
 		order = 1,
-		tileSpecs = { scrollingFrameHeaderTileSpec },
+		tileSpecs = {
+			{
+				name = "NameHeader",
+				order = 1,
+				width = UDim.new(0.7, 0),
+				spec = nameHeaderSpec,
+			},
+			{
+				name = "ValueHeader",
+				order = 2,
+				width = UDim.new(0.3, 0),
+				spec = valueHeaderSpec,
+			},
+		},
 		height = UDim.new(0, generalRowHeight),
 	}
+
+	-- Calculate dynamic row count: show all settings but cap at reasonable maximum
+	local maxRowsToShow = 12
+	local actualRowsToShow = math.min(#settingSpecs + 1, maxRowsToShow) -- +1 for header
 
 	local scrollingFrameSpec: wt.scrollingFrameTileSpec = {
 		type = "scrollingFrameTileSpec",
@@ -123,7 +166,7 @@ function module.CreateGenericSettingsEditor(domain: string): wt.guiSpec
 		dataRows = settingSpecs,
 		stickyRows = {},
 		rowHeight = generalRowHeight,
-		howManyRowsToShow = 22,
+		howManyRowsToShow = actualRowsToShow,
 	}
 
 	-- Define row specs
@@ -166,7 +209,6 @@ function module.CreateGenericSettingsEditor(domain: string): wt.guiSpec
 				order = 3,
 				height = UDim.new(0, 30),
 				tileSpecs = { windows.StandardCloseButton },
-				horizontalAlignment = Enum.HorizontalAlignment.Right,
 			},
 		},
 	}

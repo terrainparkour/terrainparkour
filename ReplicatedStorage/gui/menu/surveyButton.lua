@@ -5,6 +5,7 @@ local _annotate = annotater.getAnnotater(script)
 
 local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+local scrollingFrameUtils = require(game.ReplicatedStorage.gui.scrollingFrameUtils)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 
@@ -182,6 +183,9 @@ local getSurveyModal = function(localPlayer: Player): ScreenGui
 	local publicNotice =
 		guiUtil.getTl("02ZZZpublicWarning", UDim2.new(1, 0, 0, 40), 1, outerFrame, colors.defaultGrey, 1, 0)
 	publicNotice.Text = "Your answers are public."
+	
+	-- Prevent camera scroll when hovering over survey scrolling frame
+	scrollingFrameUtils.PreventCameraScrollOnHover(scrollingFrame)
 
 	return screenGui
 end

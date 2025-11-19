@@ -54,12 +54,18 @@ local settingDefinitions: { [string]: tt.userSettingValue } = {
 		kind = settingKinds.LUA,
 		defaultLuaValue = { -- tt.currentRunUIConfiguration
 			showDistance = true,
-			position = UDim2.new(0.3, 0, 0.70, 0),
-			size = UDim2.new(0.0, 200, 0.20, 0),
+			position = UDim2.new(0.05, 0, 0.75, 0),
+			size = UDim2.new(0.0, 600, 0.0, 100),
 			digitsInTime = 2,
-			transparency = 0.6,
+			transparency = 0.5,
 		},
 		editorName = "",
+	},
+	RESET_ACTIVE_RUN_POSITION = {
+		name = "reset active run position",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = false,
 	},
 	ALLOW_WARP = {
 		name = "allow warping at all. If you set this, warping will not work although buttons will still appear. This is useful if you are doing long marathons, for example.",

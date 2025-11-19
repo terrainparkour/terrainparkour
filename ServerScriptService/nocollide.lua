@@ -23,7 +23,7 @@ local createParticleEmitter = function(player: Player, desc: tt.particleDescript
 	local particleEmitter: ParticleEmitter = Instance.new("ParticleEmitter")
 
 	particleEmitter.Brightness = desc.brightness
-	local colorSequence: ColorSequence = ColorSequence.new(desc.color)
+	local colorSequence: ColorSequence = ColorSequence.new(desc.color :: Color3)
 	particleEmitter.Color = colorSequence
 	particleEmitter.Drag = desc.drag
 	particleEmitter.EmissionDirection = desc.direction
@@ -48,7 +48,7 @@ local createParticleEmitter = function(player: Player, desc: tt.particleDescript
 end
 -------------------TEMP-------------------------
 
-local function setPlayerCollisionGroup(character)
+local function setPlayerCollisionGroup(character: Model)
 	for _, part: BasePart in ipairs(character:GetDescendants()) do
 		if part:IsA("BasePart") then
 			part.CollisionGroup = PLAYER_GROUP
@@ -56,9 +56,9 @@ local function setPlayerCollisionGroup(character)
 	end
 end
 
-local function onCharacterAdded(character)
+local function onCharacterAdded(character: Model)
 	setPlayerCollisionGroup(character)
-	character.DescendantAdded:Connect(function(descendant: BasePart)
+	character.DescendantAdded:Connect(function(descendant: Instance)
 		if descendant:IsA("BasePart") then
 			descendant.CollisionGroup = PLAYER_GROUP
 		end
@@ -126,7 +126,7 @@ export type particleDescriptor = {
 -- 	velocityInheritance = 0.5,
 -- }
 
-local function onPlayerAdded(player)
+local function onPlayerAdded(player: Player)
 	player.CharacterAdded:Connect(onCharacterAdded)
 	-- if player.UserId == -1 then
 	-- 	createParticleEmitter(player, xx)

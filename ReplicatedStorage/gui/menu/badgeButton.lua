@@ -6,6 +6,7 @@ local _annotate = annotater.getAnnotater(script)
 local PlayersService = game:GetService("Players")
 local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+local scrollingFrameUtils = require(game.ReplicatedStorage.gui.scrollingFrameUtils)
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
@@ -76,7 +77,13 @@ local function makeBadgeRowFrame(
 	)
 
 	badgeNameLabel.Text = badge.name
-	toolTip.setupToolTip(badgeNameLabel, badge.hint or "", toolTip.enum.toolTipSize.NormalText)
+	local badgeHint: string = badge.name
+	if badge.hint ~= nil and badge.hint ~= "" then
+		badgeHint = badge.hint
+	else
+		badgeHint = string.format("%s badge", badge.name)
+	end
+	toolTip.setupToolTip(badgeNameLabel, badgeHint, toolTip.enum.toolTipSize.NormalText)
 
 	badgeNameLabel.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -299,9 +306,9 @@ local getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	local sortedUserBadgeStatus: { [number]: { tt.badgeProgress } } = {}
 	for _, requestedUserIdInOrder in ipairs(orderedUserIdsInServer) do
 		for theUserId, item in pairs(badgeProgressInfo) do
-			theUserId = tonumber(theUserId)
-			if requestedUserIdInOrder == theUserId then
-				sortedUserBadgeStatus[theUserId] = item
+			local numericUserId = tonumber(theUserId)
+			if numericUserId and requestedUserIdInOrder == numericUserId then
+				sortedUserBadgeStatus[numericUserId] = item
 				break
 			end
 		end
@@ -349,6 +356,9 @@ local getBadgeStatusModal = function(localPlayer: Player): ScreenGui
 	tb.Activated:Connect(function()
 		screenGui:Destroy()
 	end)
+	
+	-- Prevent camera scroll when hovering over badge scrolling frame
+	scrollingFrameUtils.PreventCameraScrollOnHover(badgeScrollingFrame)
 
 	return screenGui
 end

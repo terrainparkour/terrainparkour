@@ -178,6 +178,9 @@ local function startServerEvent(data: tt.ServerEventCreateType): tt.runningServe
 	local signsFolder: Folder = game.Workspace:FindFirstChild("Signs") :: Folder
 	local allSigns: { Part } = {}
 	for _, sign: Instance in ipairs(signsFolder:GetChildren()) do
+		if not sign:IsA("Part") then
+			continue
+		end
 		if not tpUtil.SignCanBeHighlighted(sign) then
 			continue
 		end
@@ -198,6 +201,16 @@ local function startServerEvent(data: tt.ServerEventCreateType): tt.runningServe
 			continue
 		end
 		table.insert(existingAllFoundSignIds, signId)
+	end
+
+	-- Early return if no valid signs available
+	if #existingAllFoundSignIds == 0 then
+		_annotate("startServerEvent: no found signs available")
+		return nil
+	end
+	if #allSigns == 0 then
+		_annotate("startServerEvent: no signs available in workspace")
+		return nil
 	end
 
 	local hasShort = false
@@ -265,7 +278,7 @@ local function startServerEvent(data: tt.ServerEventCreateType): tt.runningServe
 
 		--if we need short and it is, keep it.
 		if not hasShort then
-			if dist < shortDistance or config.isTestGame() then
+			if dist < shortDistance or config.IsTestGame() then
 				break
 			else
 				continue
@@ -274,7 +287,7 @@ local function startServerEvent(data: tt.ServerEventCreateType): tt.runningServe
 
 		--if we need med and it's not med, skip
 		if not hasMed then
-			if (dist > shortDistance and dist < medDistance) or config.isTestGame() then
+			if (dist > shortDistance and dist < medDistance) or config.IsTestGame() then
 				break
 			else
 				continue
@@ -323,6 +336,7 @@ local function serverReceiveFunction(player: Player, message: string, data: tt.S
 	elseif message == serverEventEnums.messageTypes.CONNECT then
 		ServerEventRemoteEvent:FireClient(player, serverEventEnums.messageTypes.UPDATE, activeRunningServerEvents)
 	end
+	return nil
 end
 
 local function integrateRun(ev: tt.runningServerEvent, data: tt.serverFinishRunNotifierType): boolean

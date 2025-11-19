@@ -1,8 +1,14 @@
 --!strict
+-- config.lua @ ReplicatedStorage.config
+-- Game-global configuration flags and environment detection helpers.
 
 local module = {}
 
--- controlling which server endpoints/debugging status should be used.
+-- Module internals
+module.ENABLE_RUN_DATA_COLLECTION = false
+module.ENABLE_LUA2JSON_DIAGNOSTICS = false
+module.STARTUP_PROFILING_ENABLED = false
+
 module.IsInStudio = function()
 	local forceProd = false
 	if forceProd then
@@ -19,8 +25,10 @@ module.IsInStudio = function()
 	return isInStudio
 end
 
-module.isTestGame = function()
-	if string.match(game.Name, "Dev Place") then
+module.IsTestGame = function()
+	local gameName = game.Name
+	local hasDevPlace = string.find(gameName, "Dev Place", 1, true) ~= nil
+	if hasDevPlace then
 		return true
 	end
 	return false
