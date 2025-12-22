@@ -5,12 +5,12 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local rdb = require(game.ServerScriptService.rdb)
 local playerData2 = require(game.ServerScriptService.playerData2)
+local usernameCache = require(game.ServerScriptService.usernameCache)
 local colors = require(game.ReplicatedStorage.util.colors)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local enums = require(game.ReplicatedStorage.util.enums)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local PlayersService = game:GetService("Players")
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 
@@ -132,13 +132,13 @@ module.generateTextForRankedList = function(
 		userId: number
 	) -> { count: number, rank: number, signIds: { number } }
 ): { messageItem }
-	local messageItems = {}
+	local messageItems: { messageItem } = {}
 	local shownUserIds: { [number]: boolean } = {}
 	for _, obj in pairs(results) do
 		if obj.userId < 0 then
 			obj.username = "TestUser_" .. obj.userId
 		else
-			obj.username = playerData2.GetUsernameByUserId(obj.userId)
+			obj.username = usernameCache.GetUsernameByUserId(obj.userId)
 		end
 		local color = colors.white
 		--the person in the top list also is in server, so highlight them.
@@ -148,14 +148,14 @@ module.generateTextForRankedList = function(
 			if obj.userId == speakerUserId then
 				color = colors.meColor
 			end
-			table.insert(messageItems, { message = res, options = { ChatColor = color } })
+			table.insert(messageItems, { message = res, options = { ChatColor = color }, rank = obj.rank })
 			shownUserIds[obj.userId] = true
 			continue
 		end
 
 		--normal case: add the person
 		local res = tpUtil.getCardinalEmoji(obj.rank) .. ":\t" .. obj.count .. " - " .. obj.username
-		table.insert(messageItems, { message = res, options = { ChatColor = color } })
+		table.insert(messageItems, { message = res, options = { ChatColor = color }, rank = obj.rank })
 	end
 
 	--fallback to display stats for the other people in the server too.
@@ -165,14 +165,21 @@ module.generateTextForRankedList = function(
 			continue
 		end
 
-		local username = playerData2.GetUsernameByUserId(userIdInServer)
+		local username = usernameCache.GetUsernameByUserId(userIdInServer)
 		local stats = backupGetterForPeopleNotInInputData(userIdInServer)
 		local res = tpUtil.getCardinalEmoji(stats.rank) .. ":\t" .. stats.count .. " - " .. username
 		local color = colors.greenGo
 		if userIdInServer == speakerUserId then
 			color = colors.meColor
 		end
-		table.insert(extraMessages, { message = res, options = { ChatColor = color }, rank = stats.count })
+		local rankValue: number
+		if stats.count then
+			rankValue = stats.count
+		else
+			rankValue = 0
+		end
+		local msgItem: messageItem = { message = res, options = { ChatColor = color }, rank = rankValue }
+		table.insert(extraMessages, msgItem)
 	end
 
 	--so that player in server lists make sense? hack.

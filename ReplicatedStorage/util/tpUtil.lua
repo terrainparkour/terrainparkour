@@ -1,21 +1,59 @@
 --!strict
+-- tpUtil.lua (ReplicatedStorage.util.tpUtil)
+-- Shared sign lookup, formatting, and UI helper utilities used across UI.
 
 --why this naming? because the chat modules also have a script named 'util' which messes things up.
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
+local PlayersService = game:GetService("Players")
+
+local emojis = require(game.ReplicatedStorage.enums.emojis)
+local enums = require(game.ReplicatedStorage.util.enums)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
-local module = {}
-local enums = require(game.ReplicatedStorage.util.enums)
-local emojis = require(game.ReplicatedStorage.enums.emojis)
+type Part = BasePart
+type RaceParseResult = tt.RaceParseResult
 
-local PlayersService = game:GetService("Players")
+type Module = {
+	SignNameCanBeHighlighted: (string) -> boolean,
+	SignCanBeHighlighted: (Part?) -> boolean,
+	fmtms: (number) -> string,
+	noe: (number) -> number,
+	getDist: (Vector3, Vector3) -> number,
+	fmt: (number) -> string,
+	fmtShort: (number) -> string,
+	fmtmsWithUnit: (number) -> string,
+	fmtShortWithUnit: (number) -> string,
+	fmtAdaptiveWithUnit: (number) -> string,
+	signId2Position: (number) -> Vector3?,
+	signName2SignId: (string) -> number,
+	looseSignName2SignId: (string) -> number?,
+	looseSignName2Sign: (string) -> Part?,
+	formatDateGap: (number) -> (string, string),
+	signId2signName: (number?) -> string,
+	signId2Sign: (number?) -> Part?,
+	signName2Sign: (string) -> Part?,
+	looseGetPlayerFromUsername: (string) -> Player?,
+	getPlayerByUserId: (number) -> Player?,
+	getPlayerForUsername: (string) -> Player?,
+	GetUserIdsInServer: () -> { number },
+	getCardinal: (number) -> string,
+	getNumberEmojis: (number) -> string,
+	getCardinalEmoji: (number) -> string,
+	getPlaceText: (number) -> string,
+	IsSignPartValidRightNow: (Part?) -> boolean,
+	AttemptToParseRaceFromInput: (string) -> RaceParseResult,
+	GetMaxDecimalPlaces: ({ number }) -> number,
+	GetMaxIntegerDigits: ({ number }) -> number,
+}
+
+local module = {} :: Module
 
 -- Forward declarations
-local signName2Sign
-local IsSignPartValidRightNow
+local signName2Sign: (string) -> Part?
+local IsSignPartValidRightNow: (Part?) -> boolean
 
 -- either because it's not a valid sign or it's in the exclusion lists
 local function SignNameCanBeHighlighted(signName: string): boolean
@@ -26,10 +64,10 @@ local function SignNameCanBeHighlighted(signName: string): boolean
 	if not sign then
 		return false
 	end
-	if not IsSignPartValidRightNow(sign) then
+	local validSign: Part = sign :: Part
+	if not IsSignPartValidRightNow(validSign) then
 		return false
 	end
-	local signNameFromSign = sign.Name
 	for _, name in pairs(enums.ExcludeSignNamesFromStartingAt) do
 		if signName == name then
 			return false
@@ -78,17 +116,49 @@ local function fmtShort(float: number): string
 end
 module.fmtShort = fmtShort
 
+-- Format milliseconds with "s" unit suffix (3 decimal places)
+-- Example: 1234 -> "1.234s"
+local function fmtmsWithUnit(float: number): string
+	return string.format("%.3fs", float / 1000)
+end
+module.fmtmsWithUnit = fmtmsWithUnit
+
+-- Format milliseconds with "s" unit suffix (2 decimal places)
+-- Example: 1234 -> "1.23s"
+local function fmtShortWithUnit(float: number): string
+	return string.format("%.2fs", float / 1000)
+end
+module.fmtShortWithUnit = fmtShortWithUnit
+
+-- Format milliseconds with "s" unit suffix for Y-axis labels (adaptive precision)
+-- Uses more precision for shorter times, less for longer times
+-- Example: 1234 -> "1.23s", 12340 -> "12.3s", 123400 -> "123s"
+local function fmtAdaptiveWithUnit(ms: number): string
+	local seconds = ms / 1000
+	if seconds >= 100 then
+		return string.format("%.0fs", seconds)
+	elseif seconds >= 10 then
+		return string.format("%.1fs", seconds)
+	else
+		return string.format("%.2fs", seconds)
+	end
+end
+module.fmtAdaptiveWithUnit = fmtAdaptiveWithUnit
+
 --this should use global since signs are actually streamed in and most won't be visible.
+--Never cache Sign instances here: streaming constantly hides/unhides them, so we always re-fetch.
 local function signId2Position(signId: number): Vector3 | nil
 	local name = enums.signId2name[signId]
 	if name == nil then
+		warn("bad signId 1: " .. tostring(signId))
 		name = enums.signId2name[signId]
 	end
 	if name == nil then
+		warn("bad signId 2: " .. tostring(signId))
 		return nil
 	end
 	local sign: Instance? = game.Workspace:WaitForChild("Signs"):FindFirstChild(name)
-	if not sign or not sign:IsA("Part") then
+	if not sign or not sign:IsA("BasePart") then
 		return nil
 	end
 	return (sign :: Part).Position
@@ -147,7 +217,7 @@ local function looseSignName2Sign(signSearchText: string): Part?
 		return nil
 	end
 	local sign: Instance? = game.Workspace:WaitForChild("Signs"):FindFirstChild(enums.signId2name[signId])
-	if sign and sign:IsA("Part") then
+	if sign and sign:IsA("BasePart") then
 		return sign :: Part
 	end
 	return nil
@@ -171,27 +241,31 @@ module.formatDateGap = formatDateGap
 
 local function signId2signName(signId: number?): string
 	if not signId then
-		annotater.Error("signId is null?")
+		annotater.Error(string.format("signId2signName missing signId (%s)", tostring(signId)), { source = "tpUtil.signId2signName" })
 		return ""
 	end
-	local res = enums.signId2name[signId]
-	return res
+
+	local signName = enums.signId2name[signId]
+	if not signName then
+		annotater.Error(string.format("signId2signName missing entry for signId=%s", tostring(signId)), { signId = signId, source = "tpUtil.signId2signName" })
+		return ""
+	end
+
+	return signName
 end
 module.signId2signName = signId2signName
 
-local function signId2Sign(signId: number): Part?
+local function signId2Sign(signId: number?): Part?
 	if not signId then
 		return nil
 	end
+
 	local signName = enums.signId2name[signId]
 	if not signName then
 		return nil
 	end
-	local sign: Instance? = game.Workspace:WaitForChild("Signs"):FindFirstChild(signName)
-	if sign and sign:IsA("Part") then
-		return sign :: Part
-	end
-	return nil
+
+	return signName2Sign(signName)
 end
 module.signId2Sign = signId2Sign
 
@@ -200,8 +274,9 @@ module.signId2Sign = signId2Sign
 -- I'll stick to "define local, assign immediately to module" but use the local reference internally.
 
 signName2Sign = function(signName: string): Part?
+	--Same streaming constraint: reacquire the Signs folder every time so this never holds stale Instances.
 	local sign: Instance? = game.Workspace:WaitForChild("Signs"):FindFirstChild(signName)
-	if sign and sign:IsA("Part") then
+	if sign and sign:IsA("BasePart") then
 		return sign :: Part
 	end
 	return nil
@@ -358,10 +433,13 @@ module.getPlaceText = getPlaceText
 
 -- generally you want to check serverUtil.UserCanInteractWithSign or the future client version of this which also takes
 -- into account whether the user has found it.
-IsSignPartValidRightNow = function(sign: Part): boolean
+IsSignPartValidRightNow = (function(sign: Part?): boolean
+	if not sign then
+		return false
+	end
 	local res = sign.CanCollide and sign.CanTouch and sign.CanQuery
 	return res
-end
+end) :: (Part?) -> boolean
 module.IsSignPartValidRightNow = IsSignPartValidRightNow
 
 local function AttemptToParseRaceFromInput(message: string): tt.RaceParseResult
@@ -377,7 +455,7 @@ local function AttemptToParseRaceFromInput(message: string): tt.RaceParseResult
 		local theError = ""
 
 		if signId1 == signId2 then
-			theError = "Trol"
+			theError = "Trolling is not allowed."
 		end
 		if not signId1 or not signId2 then
 			theError = "Enter race name like A-B (where A and B are signs, and you can just enter the prefix too.)"
@@ -396,12 +474,15 @@ local function AttemptToParseRaceFromInput(message: string): tt.RaceParseResult
 		end
 
 		-- Logic to get names AFTER validating IDs are present
-		local sign1name = signId2signName(signId1)
-		local sign2name = signId2signName(signId2)
+		-- Cast to number since we know they're not nil
+		local validSignId1: number = signId1 :: number
+		local validSignId2: number = signId2 :: number
+		local sign1name = signId2signName(validSignId1)
+		local sign2name = signId2signName(validSignId2)
 
 		return {
-			signId1 = signId1,
-			signId2 = signId2,
+			signId1 = validSignId1,
+			signId2 = validSignId2,
 			signName1 = sign1name,
 			signName2 = sign2name,
 			error = "",
@@ -430,7 +511,7 @@ local function GetMaxDecimalPlaces(numbers: { number }): number
 		end
 		maxDecimals = math.max(maxDecimals, decimals)
 	end
-	print("drawing decimals: ", maxDecimals, " probably should be at min 1?")
+	-- print("drawing decimals: ", maxDecimals, " probably should be at min 1?")
 	return maxDecimals
 end
 module.GetMaxDecimalPlaces = GetMaxDecimalPlaces
@@ -446,6 +527,8 @@ local function GetMaxIntegerDigits(numbers: { number }): number
 	return maxDigits
 end
 module.GetMaxIntegerDigits = GetMaxIntegerDigits
+
+export type TpUtil = Module
 
 _annotate("end")
 return module

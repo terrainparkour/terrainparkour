@@ -10,7 +10,7 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local TweenService = game:GetService("TweenService")
-local PlayersService = game:GetService("Players")
+local _PlayersService = game:GetService("Players")
 
 local enums = require(game.ReplicatedStorage.util.enums)
 local colors = require(game.ReplicatedStorage.util.colors)
@@ -20,13 +20,14 @@ local marathonDescriptors = require(game.ReplicatedStorage.marathon.marathonDesc
 
 local mt = require(game.StarterPlayer.StarterPlayerScripts.marathon.marathonTypes)
 
-local RRUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string): nil
+local RRUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string)
 	local targetName = marathonStatic.getMarathonComponentName(desc, foundSignName)
-	local exiTile: TextLabel = frame:FindFirstChild(targetName, true)
-	if exiTile == nil then
+	local exiTileInstance = frame:FindFirstChild(targetName, true)
+	if not exiTileInstance or not exiTileInstance:IsA("TextLabel") then
 		warn("bad.")
+		return
 	end
-
+	local exiTile = exiTileInstance :: TextLabel
 	local bgcolor = colors.yellowFind
 	exiTile.BackgroundColor3 = colors.greenGo
 	local Tween = TweenService:Create(exiTile, TweenInfo.new(enums.greenTime), { BackgroundColor3 = bgcolor })
@@ -35,7 +36,8 @@ end
 
 --patching in to existing marathon system.
 --note this isn't shipped yet
-local pat: mt.marathonDescriptor = {
+-- Template with some fields nil; they get filled in by CreateRandomRaceInMarathonUI
+local pat: any = {
 	kind = "",
 	highLevelType = "randomrace",
 	humanName = "",
@@ -63,10 +65,7 @@ local pat: mt.marathonDescriptor = {
 }
 
 module.CreateRandomRaceInMarathonUI = function(startSignName: string, endSignName: string): mt.marathonDescriptor
-	local cdesc = {}
-	for orig_key, orig_value in pairs(pat) do
-		cdesc[orig_key] = orig_value
-	end
+	local cdesc = table.clone(pat)
 
 	local desc = cdesc :: mt.marathonDescriptor
 

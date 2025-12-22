@@ -9,8 +9,8 @@ local _annotate = annotater.getAnnotater(script)
 local commandTypes = require(game.ReplicatedStorage.ChatSystem.commandTypes)
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local serverWarping = require(game.ServerScriptService.serverWarping)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local serverWarping = require(game.ServerScriptService.serverwarping)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 
 local module: commandTypes.CommandModule = {
 	Execute = function(_player: Player, _parts: { string }): boolean
@@ -38,33 +38,14 @@ function module.Execute(player: Player, parts: { string }): boolean
 	else
 		local targetPlayer = tpUtil.looseGetPlayerFromUsername(object)
 		if targetPlayer == nil then
-			_annotate(
-				string.format("server command warp tried to warp but couldn't find player based on data: %s", object)
-			)
+			_annotate(string.format("server command warp tried to warp but couldn't find player based on data: %s", object))
 			return false
 		end
 
-		local character: Model? = targetPlayer.Character
-		if not character then
-			character = targetPlayer.CharacterAdded:Wait()
-		end
-		if character == nil then
-			_annotate(
-				string.format("server command warp tried to warp but couldn't find player based on data: %s", object)
-			)
-			return false
-		end
-		_annotate(string.format("WarpToUsername username=%s", object))
-		local primaryPart = character:FindFirstChild("HumanoidRootPart")
-		if not primaryPart or not primaryPart:IsA("BasePart") then
-			annotater.Error("player not found in workspace within AdminOnlyWarp", targetPlayer.UserId)
-			return false
-		end
-		local primaryBasePart = primaryPart :: BasePart
-		local pos = primaryBasePart.Position + Vector3.new(10, 20, 10)
+		-- Use kind="player" which has terrain checking and admin bypass
 		local request: tt.serverWarpRequest = {
-			kind = "position",
-			position = pos,
+			kind = "player",
+			targetUserId = targetPlayer.UserId,
 		}
 		serverWarping.RequestClientToWarpToWarpRequest(player, request)
 	end

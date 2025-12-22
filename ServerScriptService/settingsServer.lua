@@ -22,13 +22,14 @@ local enums = require(game.ReplicatedStorage.util.enums)
 local rdb = require(game.ServerScriptService.rdb)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
-local grantBadge = require(game.ServerScriptService.grantBadge)
-local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
 local lua2Json = require(game.ReplicatedStorage.util.lua2Json)
 
-local HttpService = game:GetService("HttpService")
-
 local remotes = require(game.ReplicatedStorage.util.remotes)
+local SettingChangedBindableEvent = remotes.getBindableEvent("SettingChangedBindableEvent")
+local SettingChangedFromServerEvent = remotes.getRemoteEvent("SettingChangedFromServerEvent")
+local LeaderboardSettingChangedBindableEvent = remotes.getBindableEvent("LeaderboardSettingChangedBindableEvent")
+
+local HttpService = game:GetService("HttpService")
 
 local GetUserSettingsFunction: RemoteFunction = remotes.getRemoteFunction("GetUserSettingsFunction")
 local UserSettingsChangedFunction: RemoteFunction = remotes.getRemoteFunction("UserSettingsChangedFunction")
@@ -81,7 +82,7 @@ local getAllSettingsForUser = function(userId: number)
 		if b.kind == settingEnums.settingKinds.LUA then
 			-- we have to reconvert it back to lua!
 			local theVal = b.luaValue
-			-- local tt = type(theVal)
+			_annotate(string.format("getAllSettingsForUser LOAD: userId=%d name=%s rawJson=%s", userId, b.name, tostring(theVal)))
 			local theVal2 = HttpService:JSONDecode(theVal)
 			b.luaValue = lua2Json.StringTable2Lua(theVal2)
 		end
@@ -90,7 +91,7 @@ local getAllSettingsForUser = function(userId: number)
 	return res
 end
 
-local getOrCreateBooleanSetting = function(setting: tt.userSettingValue)
+local _getOrCreateBooleanSetting = function(setting: tt.userSettingValue)
 	local request: tt.postRequest = {
 		remoteActionName = "getOrCreateBooleanSetting",
 		data = {
@@ -101,7 +102,7 @@ local getOrCreateBooleanSetting = function(setting: tt.userSettingValue)
 	return rdb.MakePostRequest(request)
 end
 
-local getOrCreateStringSetting = function(setting: tt.userSettingValue)
+local _getOrCreateStringSetting = function(setting: tt.userSettingValue)
 	local request: tt.postRequest = {
 		remoteActionName = "getOrCreateStringSetting",
 		data = {
@@ -112,7 +113,7 @@ local getOrCreateStringSetting = function(setting: tt.userSettingValue)
 end
 
 -- this JUST creates the setting, NOT the userSetting.
-local getOrCreateLuaSetting = function(setting: tt.userSettingValue)
+local _getOrCreateLuaSetting = function(setting: tt.userSettingValue)
 	local request: tt.postRequest = {
 		remoteActionName = "getOrCreateLuaSetting",
 		data = {
@@ -135,11 +136,15 @@ local function doesSettingHaveDefinition(setting: tt.userSettingValue): boolean
 end
 
 local updateLuaSettingForUser = function(userId: number, setting: tt.userSettingValue): tt.setSettingResponse
+	local jsonValue = HttpService:JSONEncode(lua2Json.Lua2StringTable(setting.luaValue))
+	_annotate(string.format("updateLuaSettingForUser SAVE: userId=%d name=%s domain=%s", userId, setting.name, setting.domain))
+	_annotate(string.format("updateLuaSettingForUser SAVE FULL JSON: %s", jsonValue))
+
 	local modifiedSetting: tt.userSettingValue = {
 		name = setting.name,
 		domain = setting.domain,
 		kind = setting.kind,
-		luaValue = HttpService:JSONEncode(lua2Json.Lua2StringTable(setting.luaValue)),
+		luaValue = jsonValue,
 	}
 
 	local request: tt.postRequest = {
@@ -182,108 +187,94 @@ local innerSetupSettings = function(player: Player, src: string): { [string]: tt
 	local setupStart = tick()
 	while debounceInnerSetup do
 		_annotate("settings.innersetup.wait " .. src)
-		wait(0.05)
+		task.wait(0.05)
 	end
 	debounceInnerSetup = true
-	local userId = player.UserId
 
-	-- if missing, set up the cache.
-	if userSettingsCache[userId] == nil then
-		_annotate(string.format("innerSetupSettings START cache miss userId=%d src=%s", userId, src))
-		userSettingsCache[userId] = {}
+	local success, result = pcall(function()
+		local userId = player.UserId
 
-		local dbFetchStart = tick()
-		local got = getAllSettingsForUser(userId) :: { [string]: tt.userSettingValue }
-		local dbFetchTime = tick() - dbFetchStart
-		_annotate(string.format("innerSetupSettings DB fetch took %.3fs for userId=%d", dbFetchTime, userId))
-		if not got then
-			annotater.Error("not got.")
+		-- if missing, set up the cache.
+		if userSettingsCache[userId] == nil then
+			_annotate(string.format("innerSetupSettings START cache miss userId=%d src=%s", userId, src))
+			userSettingsCache[userId] = {}
 
-			return {}
-		end
-		local actuallyDefinedSettings: { [string]: tt.userSettingValue } = {}
-		local gotCt = 0
-		for _, returnedSettingFromRemoteDb in pairs(got) do
-			if doesSettingHaveDefinition(returnedSettingFromRemoteDb) then
-				gotCt += 1
-				actuallyDefinedSettings[returnedSettingFromRemoteDb.name] = returnedSettingFromRemoteDb
-			else
-				_annotate(
-					string.format(
-						"innerSetupSettings got setting that isn't actually defined. Possibly just a deprecated one left over in the db. %s. kind=%s",
-						returnedSettingFromRemoteDb.name,
-						returnedSettingFromRemoteDb.kind
-					)
-				)
-				continue
+			local dbFetchStart = tick()
+			local got = getAllSettingsForUser(userId) :: { [string]: tt.userSettingValue }
+			local dbFetchTime = tick() - dbFetchStart
+			_annotate(string.format("innerSetupSettings DB fetch took %.3fs for userId=%d", dbFetchTime, userId))
+			if not got then
+				annotater.Error("not got.")
+
+				return {}
 			end
-		end
-
-		local filterTime = tick() - dbFetchStart - dbFetchTime
-		_annotate(
-			string.format(
-				"innerSetupSettings filtered to %d valid settings (filter took %.3fs) userId=%d",
-				gotCt,
-				filterTime,
-				userId
-			)
-		)
-
-		local cachePopulateStart = tick()
-		-- note this allows settings from db which no longer exist in code. hmm.
-		for _, setting in pairs(actuallyDefinedSettings) do
-			-- _annotate(
-			-- 	string.format(
-			-- 		"innerSetupSettings got setting: %s %s. kind=%s bool=%s str=%s",
-			-- 		setting.name,
-			-- 		setting.domain,
-			-- 		tostring(setting.kind),
-			-- 		tostring(setting.booleanValue),
-			-- 		tostring(setting.stringValue)
-			-- 	)
-			-- )
-			userSettingsCache[userId][setting.name] = setting
-		end
-
-		local cachePopulateTime = tick() - cachePopulateStart
-		_annotate(string.format("innerSetupSettings cache populated (%.3fs) userId=%d", cachePopulateTime, userId))
-
-		local defaultsStart = tick()
-		--filling in cache now.
-		for _, defaultSetting in pairs(settingEnums.settingDefinitions) do
-			--if user has no value from db, fill one in in cache at least so callers see it.
-			if userSettingsCache[userId][defaultSetting.name] == nil then
-				_annotate(
-					string.format(
-						"innerSetupSettings creating default setting: %s %s",
-						defaultSetting.name,
-						defaultSetting.domain
-					)
-				)
-				userSettingsCache[userId][defaultSetting.name] = copySetting(defaultSetting)
+			local actuallyDefinedSettings: { [string]: tt.userSettingValue } = {}
+			local gotCt = 0
+			for _, returnedSettingFromRemoteDb in pairs(got) do
+				if not returnedSettingFromRemoteDb.name or not returnedSettingFromRemoteDb.kind then
+					_annotate(string.format("innerSetupSettings got malformed setting: name=%s kind=%s", tostring(returnedSettingFromRemoteDb.name), tostring(returnedSettingFromRemoteDb.kind)))
+					continue
+				end
+				if doesSettingHaveDefinition(returnedSettingFromRemoteDb) then
+					gotCt += 1
+					actuallyDefinedSettings[returnedSettingFromRemoteDb.name] = returnedSettingFromRemoteDb
+				else
+					_annotate(string.format("innerSetupSettings got setting that isn't actually defined. Possibly just a deprecated one left over in the db. %s. kind=%s", returnedSettingFromRemoteDb.name, returnedSettingFromRemoteDb.kind))
+					continue
+				end
 			end
-		end
-		local defaultsTime = tick() - defaultsStart
-		_annotate(string.format("innerSetupSettings defaults filled (%.3fs) userId=%d", defaultsTime, userId))
 
-		local totalSetupTime = tick() - setupStart
-		_annotate(
-			string.format(
-				"innerSetupSettings COMPLETE userId=%d total=%.3fs (db=%.3fs filter=%.3fs populate=%.3fs defaults=%.3fs)",
-				userId,
-				totalSetupTime,
-				dbFetchTime,
-				filterTime,
-				cachePopulateTime,
-				defaultsTime
-			)
-		)
-	else
-		_annotate(string.format("innerSetupSettings cache HIT userId=%d src=%s", userId, src))
-	end
+			local filterTime = tick() - dbFetchStart - dbFetchTime
+			_annotate(string.format("innerSetupSettings filtered to %d valid settings (filter took %.3fs) userId=%d", gotCt, filterTime, userId))
+
+			local cachePopulateStart = tick()
+			-- note this allows settings from db which no longer exist in code. hmm.
+			for _, setting in pairs(actuallyDefinedSettings) do
+				-- _annotate(
+				-- 	string.format(
+				-- 		"innerSetupSettings got setting: %s %s. kind=%s bool=%s str=%s",
+				-- 		setting.name,
+				-- 		setting.domain,
+				-- 		tostring(setting.kind),
+				-- 		tostring(setting.booleanValue),
+				-- 		tostring(setting.stringValue)
+				-- 	)
+				-- )
+				userSettingsCache[userId][setting.name] = setting
+			end
+
+			local cachePopulateTime = tick() - cachePopulateStart
+			_annotate(string.format("innerSetupSettings cache populated (%.3fs) userId=%d", cachePopulateTime, userId))
+
+			local defaultsStart = tick()
+			--filling in cache now.
+			for _, defaultSetting in pairs(settingEnums.settingDefinitions) do
+				--if user has no value from db, fill one in in cache at least so callers see it.
+				if userSettingsCache[userId][defaultSetting.name] == nil then
+					_annotate(string.format("innerSetupSettings creating default setting: %s %s", defaultSetting.name, defaultSetting.domain))
+					userSettingsCache[userId][defaultSetting.name] = copySetting(defaultSetting)
+				end
+			end
+			local defaultsTime = tick() - defaultsStart
+			_annotate(string.format("innerSetupSettings defaults filled (%.3fs) userId=%d", defaultsTime, userId))
+
+			local totalSetupTime = tick() - setupStart
+			_annotate(string.format("innerSetupSettings COMPLETE userId=%d total=%.3fs (db=%.3fs filter=%.3fs populate=%.3fs defaults=%.3fs)", userId, totalSetupTime, dbFetchTime, filterTime, cachePopulateTime, defaultsTime))
+		else
+			_annotate(string.format("innerSetupSettings cache HIT userId=%d src=%s", userId, src))
+		end
+
+		return userSettingsCache[userId]
+	end)
 
 	debounceInnerSetup = false
-	return userSettingsCache[userId]
+
+	if success then
+		return result
+	else
+		annotater.Error("Error in innerSetupSettings: " .. tostring(result))
+		return {} -- Return empty or handle error appropriately
+	end
 end
 
 local getUserSettingByName = function(player: Player, settingName: string): tt.userSettingValue
@@ -312,8 +303,7 @@ end
 -- it only exists on the game server. and that's okay?
 local getUserSettingsByDomain = function(player: Player, domain: string): { [string]: tt.userSettingValue }
 	_annotate("getUserSettingsByDomain " .. domain)
-	local userSettings: { [string]: tt.userSettingValue } =
-		innerSetupSettings(player, "getUserSettingsByDomain " .. domain)
+	local userSettings: { [string]: tt.userSettingValue } = innerSetupSettings(player, "getUserSettingsByDomain " .. domain)
 	local res = {}
 
 	-- note that these are loaded directly from the db, without any attempt currently to coerce them into the list of actually
@@ -321,16 +311,7 @@ local getUserSettingsByDomain = function(player: Player, domain: string): { [str
 	-- in returning settings to user / server code which no longer exist.
 	_annotate("userSettings get by domain=" .. domain)
 	for _, s in pairs(userSettings) do
-		_annotate(
-			string.format(
-				"evaluating setting for domain inclusion:: name=%s domain=%s kind=%s bool=%s str=%s",
-				s.name,
-				s.domain,
-				tostring(s.kind),
-				tostring(s.booleanValue),
-				tostring(s.stringValue)
-			)
-		)
+		_annotate(string.format("evaluating setting for domain inclusion:: name=%s domain=%s kind=%s bool=%s str=%s", s.name, s.domain, tostring(s.kind), tostring(s.booleanValue), tostring(s.stringValue)))
 		if s.domain == domain then
 			_annotate("included it.")
 			res[s.name] = s
@@ -341,10 +322,7 @@ local getUserSettingsByDomain = function(player: Player, domain: string): { [str
 	return res
 end
 
-local filterByKind = function(
-	settings: { [string]: tt.userSettingValue },
-	kind: string
-): { [string]: tt.userSettingValue }
+local filterByKind = function(settings: { [string]: tt.userSettingValue }, kind: string): { [string]: tt.userSettingValue }
 	local res = {}
 	for n, el in pairs(settings) do
 		if el.kind == kind then
@@ -354,17 +332,12 @@ local filterByKind = function(
 	return res
 end
 
-local getUserSettingsRouter = function(player: Player, settingRequest: settingEnums.settingRequest): any
+local getUserSettingsRouter = function(player: Player, settingRequest: settingEnums.settingRequest): tt.userSettingValue | { [string]: tt.userSettingValue }
 	local routerStart = tick()
-	local msg = string.format(
-		"GetUserSettingsRouter START userId=%d domain=%s settingName=%s",
-		player.UserId,
-		tostring(settingRequest.domain or "nil"),
-		tostring(settingRequest.settingName or "nil")
-	)
+	local msg = string.format("GetUserSettingsRouter START userId=%d domain=%s settingName=%s", player.UserId, tostring(settingRequest.domain or "nil"), tostring(settingRequest.settingName or "nil"))
 	_annotate(msg)
 
-	local result: any = nil
+	local result: tt.userSettingValue | { [string]: tt.userSettingValue }
 	if settingRequest.domain ~= nil and settingRequest.domain ~= "" then
 		local all = getUserSettingsByDomain(player, settingRequest.domain)
 		if settingRequest.kind and settingRequest.kind ~= "" then
@@ -380,7 +353,8 @@ local getUserSettingsRouter = function(player: Player, settingRequest: settingEn
 				result = theSetting
 			else
 				_annotate("setting kind mismatch, failed to match kind for setting named: " .. theSetting.name)
-				result = nil
+				-- Return empty table when no match
+				result = {}
 			end
 		else
 			result = theSetting
@@ -411,29 +385,53 @@ local function userChangedSettingFromUI(userId: number, setting: tt.userSettingV
 		res = updateLuaSettingForUser(userId, setting)
 	else
 		_annotate("unknown setting kind " .. setting.kind)
+		res = { res = false, error = "unknown setting kind: " .. tostring(setting.kind) }
 	end
 
 	-- we should store *the one which was sent to us* not the one that was modified to be put on the wire.
 	userSettingsCache[userId][setting.name] = setting
-	grantBadge.GrantBadge(userId, badgeEnums.badges.TakeSurvey)
-	local ct = 0
+
+	-- Fire event for badge granting (handled elsewhere to avoid require cycles)
+	local surveyCount = 0
 	for _, item: tt.userSettingValue in pairs(userSettingsCache[userId]) do
-		if item.domain ~= settingEnums.settingDomains.SURVEYS then
-			continue
-		end
-		if item.booleanValue ~= nil then
-			ct += 1
-		end
-		if ct > 20 then
-			grantBadge.GrantBadge(userId, badgeEnums.badges.SurveyKing)
-			break
+		if item.domain == settingEnums.settingDomains.SURVEYS and item.booleanValue ~= nil then
+			surveyCount += 1
 		end
 	end
+	SettingChangedBindableEvent:Fire(userId, setting.domain, surveyCount, setting)
+
+	-- Fire event for leaderboard-affecting settings (PINNED_BADGE, WARP_TO_PERMISSION, SHARE_IDLE_STATUS)
+	if setting.name == settingEnums.settingDefinitions.PINNED_BADGE.name or setting.name == settingEnums.settingDefinitions.WARP_TO_PERMISSION.name or setting.name == settingEnums.settingDefinitions.SHARE_IDLE_STATUS.name then
+		LeaderboardSettingChangedBindableEvent:Fire(userId, setting.name)
+	end
+
 	return res
 end
 
 module.SetSettingFromServer = function(player: Player, setting: tt.userSettingValue): tt.setSettingResponse
-	return userChangedSettingFromUI(player.UserId, setting)
+	local response = userChangedSettingFromUI(player.UserId, setting)
+	-- Notify the client so it can update local state (e.g., switch UI variants)
+	SettingChangedFromServerEvent:FireClient(player, setting)
+	return response
+end
+
+-- Get a specific setting value by userId (for server-side lookups of other users' settings)
+module.GetSettingValueByUserId = function(userId: number, settingName: string): string | boolean | nil
+	local PlayersService = game:GetService("Players")
+	local player = PlayersService:GetPlayerByUserId(userId)
+	if not player then
+		return nil
+	end
+	local setting = getUserSettingByName(player, settingName)
+	if not setting then
+		return nil
+	end
+	if setting.kind == settingEnums.settingKinds.BOOLEAN then
+		return setting.booleanValue
+	elseif setting.kind == settingEnums.settingKinds.STRING then
+		return setting.stringValue
+	end
+	return nil
 end
 
 module.Init = function()
@@ -448,8 +446,8 @@ module.Init = function()
 	_annotate("init done")
 end
 
-local function doRemoteTest()
-	local settingName = "ernie5"
+local function _doRemoteTest()
+	local settingName = "jlelbo"
 	local setting: tt.userSettingValue = {
 		name = settingName,
 		domain = settingEnums.settingDomains.USERSETTINGS,
@@ -465,15 +463,19 @@ local function doRemoteTest()
 	}
 	userSettingsCache[enums.objects.TerrainParkourUserId] = {}
 	userChangedSettingFromUI(enums.objects.TerrainParkourUserId, setting)
-	local setting2 =
-		getUserSettingByName(game.Players:GetPlayerByUserId(enums.objects.TerrainParkourUserId), settingName)
+	local PlayersService = game:GetService("Players")
+	local testPlayer = PlayersService:GetPlayerByUserId(enums.objects.TerrainParkourUserId)
+	if not testPlayer then
+		return
+	end
+	local setting2 = getUserSettingByName(testPlayer, settingName)
 	_annotate(tostring(setting2.luaValue))
 
 	local allSettings = getAllSettingsForUser(enums.objects.TerrainParkourUserId)
-	local regot = nil
+	local _regot = nil
 	for _, el in pairs(allSettings) do
 		if el.name == settingName then
-			regot = el
+			_regot = el
 		end
 	end
 end

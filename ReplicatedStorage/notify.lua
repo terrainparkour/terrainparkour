@@ -4,10 +4,8 @@
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
-local playerData2 = require(game.ServerScriptService.playerData2)
-local emt = require(game.ServerScriptService.EphemeralMarathons.ephemeralMarathonTypes)
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
 local config = require(game.ReplicatedStorage.config)
 local PlayersService = game:GetService("Players")
@@ -16,20 +14,7 @@ local ServerToClientEvent = remotes.getRemoteEvent("ServerToClientEvent")
 
 local module = {}
 
-module.playerNotificationTypes = {
-	userFoundSign = "userFoundSign",
-	userFinishedRun = "userFinishedRun",
-	userFinishedMarathon = "userFinishedMarathon",
-	userEarnedBadge = "userEarnedBadge",
-	tellPlayersTheirFoundSignIds = "tellPlayersTheirFoundSignIds",
-}
-
---internal method to actually send notifications.
-
-local function notifyPlayerAboutMarathonResults(player: Player, options: tt.userFinishedRunResponse)
-	ServerToClientEvent:FireClient(player, options)
-end
-module.notifyPlayerAboutMarathonResults = notifyPlayerAboutMarathonResults
+-- notifyPlayerAboutMarathonResults removed: use runResultsCommand.SendDisciplineResults instead
 
 local function notifyPlayerAboutBadge(player: Player, options: tt.badgeOptions)
 	_annotate("badge notif")
@@ -38,26 +23,11 @@ end
 module.notifyPlayerAboutBadge = notifyPlayerAboutBadge
 
 local function notifyPlayerOfSignFind(player: Player, options: tt.dcFindResponse)
-	_annotate(
-		string.format(
-			"notifyPlayerOfSignFind: firing to player=%s userId=%d signId=%d signName=%s foundNew=%s",
-			player.Name,
-			options.userId,
-			options.signId,
-			options.signName,
-			tostring(options.foundNew)
-		)
-	)
+	_annotate(string.format("notifyPlayerOfSignFind: firing to player=%s userId=%d signId=%d signName=%s foundNew=%s", player.Name, options.userId, options.signId, options.signName, tostring(options.foundNew)))
 	ServerToClientEvent:FireClient(player, options)
-	_annotate(string.format("notifyPlayerOfSignFind: fired successfully"))
+	_annotate("notifyPlayerOfSignFind: fired successfully")
 end
 module.notifyPlayerOfSignFind = notifyPlayerOfSignFind
-
-local function notifyPlayerOfEphemeralMarathonRun(player: Player, res: emt.emRunResults)
-	annotater.Error("not set up.", player.UserId)
-	warn("not set up.")
-end
-module.notifyPlayerOfEphemeralMarathonRun = notifyPlayerOfEphemeralMarathonRun
 
 local function notifyPlayerAboutActionResult(player: Player, options: tt.ephemeralNotificationOptions)
 	ServerToClientEvent:FireClient(player, options)
@@ -71,7 +41,8 @@ local function handleActionResults(actionResults: { tt.actionResult })
 		return
 	end
 
-	-- we load this very late since there is circular dependency otherwise.
+	-- deferred require to break circular dependency (playerData2 requires notify)
+	local playerData2 = require(game.ServerScriptService.playerData2)
 
 	for _, actionResult in ipairs(actionResults) do
 		if actionResult.userId == nil or actionResult.userId == 0 then
@@ -102,12 +73,7 @@ local function handleActionResults(actionResults: { tt.actionResult })
 				end
 
 				--filter this out if the person we are notifying isn't allowed to warp to it
-				local useWarpToSignId = (
-					actionResult.warpToSignId
-					and playerData2.HasUserFoundSign(op.UserId, actionResult.warpToSignId)
-					and not enums.SignIdIsExcludedFromStart[actionResult.warpToSignId]
-					and actionResult.warpToSignId
-				) or 0
+				local useWarpToSignId = (actionResult.warpToSignId and playerData2.HasUserFoundSign(op.UserId, actionResult.warpToSignId) and not enums.SignIdIsExcludedFromStart[actionResult.warpToSignId] and actionResult.warpToSignId) or 0
 
 				notifyPlayerAboutActionResult(op, {
 					userId = actionResult.userId,
@@ -117,12 +83,7 @@ local function handleActionResults(actionResults: { tt.actionResult })
 				})
 			end
 		else
-			local useWarpToSignId = (
-				actionResult.warpToSignId
-				and playerData2.HasUserFoundSign(subjectPlayer.UserId, actionResult.warpToSignId)
-				and not enums.SignIdIsExcludedFromStart[actionResult.warpToSignId]
-				and actionResult.warpToSignId
-			) or 0
+			local useWarpToSignId = (actionResult.warpToSignId and playerData2.HasUserFoundSign(subjectPlayer.UserId, actionResult.warpToSignId) and not enums.SignIdIsExcludedFromStart[actionResult.warpToSignId] and actionResult.warpToSignId) or 0
 			notifyPlayerAboutActionResult(subjectPlayer, {
 				userId = actionResult.userId,
 				text = actionResult.message,

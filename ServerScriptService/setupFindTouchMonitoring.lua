@@ -8,13 +8,13 @@ local PlayerService = game:GetService("Players")
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local enums = require(game.ReplicatedStorage.util.enums)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local notify = require(game.ReplicatedStorage.notify)
 local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
 local banning = require(game.ServerScriptService.banning)
 local rdb = require(game.ServerScriptService.rdb)
 local playerData2 = require(game.ServerScriptService.playerData2)
-local MessageDispatcher = require(game.ReplicatedStorage.ChatSystem.messageDispatcher)
+local messageDispatcher = require(game.ReplicatedStorage.ChatSystem.messageDispatcher)
 
 local module = {}
 
@@ -32,23 +32,48 @@ local userFoundSign = function(userId: number, signId: number): tt.dcFindRespons
 	if raw and raw.banned == true then
 		_annotate(string.format("userFoundSign: user %d is banned", userId))
 		if player then
-			MessageDispatcher.SendSystemMessageToPlayer(
-				player,
-				"Chat",
-				"You are banned. Please find another game to play."
-			)
+			messageDispatcher.SendSystemMessageToPlayer(player, "Chat", "You are banned. Please find another game to play.")
 		end
 		return nil
 	end
 
+	if raw == nil then
+		annotater.Error("userFoundSign: nil response", {
+			userId = userId,
+			signId = signId,
+		})
+		return nil
+	end
+
+	if typeof(raw) ~= "table" then
+		annotater.Error("userFoundSign: non-table response", {
+			userId = userId,
+			signId = signId,
+			responseType = typeof(raw),
+		})
+		return nil
+	end
+
+	if raw.error ~= nil then
+		annotater.Error("userFoundSign: backend error", {
+			userId = userId,
+			signId = signId,
+			error = tostring(raw.error),
+			message = tostring(raw.message),
+		})
+		return nil
+	end
+
+	if raw.signName == nil then
+		annotater.Error("userFoundSign: missing signName", {
+			userId = userId,
+			signId = signId,
+		})
+		return nil
+	end
+
 	local dcFindResponse: tt.dcFindResponse = raw :: tt.dcFindResponse
-	_annotate(
-		string.format(
-			"userFoundSign: API returned foundNew=%s signName=%s",
-			tostring(dcFindResponse.foundNew),
-			dcFindResponse.signName
-		)
-	)
+	_annotate(string.format("userFoundSign: API returned foundNew=%s signName=%s", tostring(dcFindResponse.foundNew), tostring(dcFindResponse.signName)))
 	return dcFindResponse
 end
 
@@ -59,35 +84,39 @@ local function doNewFind(player: Player, signId: number, sign: Part)
 		local userId = player.UserId
 		_annotate(string.format("doNewFind: starting for userId=%d signId=%d signName=%s", userId, signId, sign.Name))
 		playerData2.ImmediatelySetUserFoundSignInCache(userId, signId)
-		_annotate(string.format("doNewFind: cached sign find, calling API"))
+		_annotate("doNewFind: cached sign find, calling API")
 		local dcFindResponse: tt.dcFindResponse? = userFoundSign(userId, signId)
 
 		if not dcFindResponse then
-			_annotate(string.format("doNewFind: user is banned, aborting"))
+			_annotate("doNewFind: user is banned, aborting")
 			return
 		end
 
 		-- send notification immediately so UI popup isn't blocked by stats/badge data
-		_annotate(
-			string.format("doNewFind: sending notification to player foundNew=%s", tostring(dcFindResponse.foundNew))
-		)
+		_annotate(string.format("doNewFind: sending notification to player foundNew=%s", tostring(dcFindResponse.foundNew)))
 		notify.notifyPlayerOfSignFind(player, dcFindResponse)
-		_annotate(string.format("doNewFind: notification sent"))
+		_annotate("doNewFind: notification sent")
 
 		-- fetch stats for leaderboard updates (this can happen async)
-		_annotate(string.format("doNewFind: fetching stats for leaderboard updates"))
+		_annotate("doNewFind: fetching stats for leaderboard updates")
+		-- Update activity timestamp for idle tracking
+		playerData2.UpdateUserActivity(player.UserId)
+
 		local lbUserStats: tt.lbUserStats = playerData2.GetStatsByUserId(player.UserId, "doNewFind")
-		_annotate(string.format("doNewFind: stats fetched, updating leaderboards"))
+		_annotate("doNewFind: stats fetched, updating leaderboards")
+
+		-- Check for rank improvements and notify the player
+		playerData2.CheckAndNotifyRankImprovements(player.UserId, lbUserStats)
 
 		--update all players leaderboards.
 		for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
 			lbUpdaterServer.SendUpdateToPlayer(otherPlayer, lbUserStats)
 		end
-		_annotate(string.format("doNewFind: leaderboards updated, spawning badge check"))
+		_annotate("doNewFind: leaderboards updated, spawning badge check")
 		task.spawn(function()
 			badgeCheckers.CheckBadgeGrantingAfterFind(userId, signId, dcFindResponse)
 		end)
-		_annotate(string.format("doNewFind: complete"))
+		_annotate("doNewFind: complete")
 	end)
 end
 
@@ -96,8 +125,6 @@ end
 -- and also tell the user through an event.
 --when serverside notices a sign has been touched:
 local function touchedSignServer(hit: BasePart, sign: Part)
-	--as soon as server receives the hit, note down the hit.
-
 	--lots of validation on the touch.
 	if not hit:IsA("MeshPart") then
 		return false
@@ -118,6 +145,9 @@ local function touchedSignServer(hit: BasePart, sign: Part)
 
 	local signId: number? = enums.name2signId[sign.Name]
 	if signId == nil then
+		annotater.Error("touchedSignServer: sign missing from enum", {
+			signName = sign.Name,
+		})
 		return false
 	end
 
@@ -126,6 +156,7 @@ local function touchedSignServer(hit: BasePart, sign: Part)
 	if not character then
 		return false
 	end
+
 	local humInstance: Instance? = character:WaitForChild("Humanoid")
 	if not humInstance or not humInstance:IsA("Humanoid") then
 		return false
@@ -141,26 +172,16 @@ local function touchedSignServer(hit: BasePart, sign: Part)
 		return false
 	end
 
-	if banning.getBanLevel(targetPlayer.UserId) > 0 then
-		MessageDispatcher.SendSystemMessageToPlayer(
-			targetPlayer,
-			"Chat",
-			"You are banned. Please find another game to play."
-		)
+	local banLevel = banning.getBanLevel(targetPlayer.UserId)
+	if banLevel > 0 then
+		messageDispatcher.SendSystemMessageToPlayer(targetPlayer, "Chat", "You are banned. Please find another game to play.")
 		return false
 	end
 
 	--validation end, the find is real.
 	local newFind = not playerData2.HasUserFoundSign(userId, signId)
 	if newFind then
-		_annotate(
-			string.format(
-				"touchedSignServer: userId=%d signId=%d signName=%s newFind=true, calling doNewFind",
-				userId,
-				signId,
-				sign.Name
-			)
-		)
+		_annotate(string.format("touchedSignServer: userId=%d signId=%d signName=%s newFind=true, calling doNewFind", userId, signId, sign.Name))
 		doNewFind(targetPlayer, signId, sign)
 	end
 	return true
@@ -174,13 +195,17 @@ module.Init = function()
 		return
 	end
 	for _, signInstance in ipairs(signsFolder:GetChildren()) do
-		if not signInstance:IsA("Part") then
+		if not signInstance:IsA("BasePart") then
 			continue
 		end
 		local sign: Part = signInstance :: Part
 		local signId = enums.name2signId[sign.Name]
 		if signId == nil then
 			warn("Sign minssing from enum" .. tostring(sign.Name))
+			continue
+		end
+		-- Skip touch setup for disabled signs - they are untouchable
+		if enums.disabledSignNames[sign.Name:lower()] then
 			continue
 		end
 		--this is necessary for tracking finds.

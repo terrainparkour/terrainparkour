@@ -8,21 +8,22 @@ local _annotate = annotater.getAnnotater(script)
 local specialSign = {}
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 
 local activeRunSGui = require(game.ReplicatedStorage.gui.activeRunSGui)
-local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
 local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 local humanoid = character:WaitForChild("Humanoid") :: Humanoid
-local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
+local warper = require(game.StarterPlayer.StarterCharacterScripts.client.warper)
 ----------- GLOBALS -----------
 
 local signId = tpUtil.signName2SignId("Cow")
 local totalSizeGain = 0
 local loopRunning = false
 local killLoop = false
+
+local DESCRIPTION = "Moo"
 
 -------------- MAIN --------------
 specialSign.InformRunEnded = function()
@@ -42,7 +43,7 @@ specialSign.InformRunEnded = function()
 end
 
 local startDescriptionLoopingUpdate = function()
-	activeRunSGui.UpdateExtraRaceDescription("Moo")
+	activeRunSGui.UpdateExtraRaceDescription(DESCRIPTION)
 	task.spawn(function()
 		local lastChecked = tick()
 		loopRunning = true
@@ -116,7 +117,7 @@ specialSign.InformRunStarting = function()
 		task.wait(0.1)
 	end
 	killLoop = false
-	activeRunSGui.UpdateExtraRaceDescription("Moo")
+	activeRunSGui.UpdateExtraRaceDescription(DESCRIPTION)
 	assert(not loopRunning, "loop running?")
 	startDescriptionLoopingUpdate()
 	assert(loopRunning, "loop running?")
@@ -124,7 +125,11 @@ specialSign.InformRunStarting = function()
 end
 
 specialSign.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?) end
-specialSign.InformRetouch = function() end
+
+specialSign.InformRetouch = function()
+	-- Re-set description after RestartRun clears it
+	activeRunSGui.UpdateExtraRaceDescription(DESCRIPTION)
+end
 
 specialSign.CanRunEnd = function(): tt.runEndExtraDataForRacing
 	return {

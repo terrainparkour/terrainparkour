@@ -11,14 +11,13 @@ local module = {}
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local enums = require(game.ReplicatedStorage.util.enums)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
 local config = require(game.ReplicatedStorage.config)
 local rdb = require(game.ServerScriptService.rdb)
 
 local playerData2 = require(game.ServerScriptService.playerData2)
-local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
 
 local PlayersService = game:GetService("Players")
@@ -84,7 +83,7 @@ end
 
 local function endServerEvent(serverEvent: tt.runningServerEvent): boolean
 	while debounceEventUpdater do
-		wait(1)
+		task.wait(1)
 		_annotate("waitng to end event.")
 	end
 	debounceEventUpdater = true
@@ -105,7 +104,7 @@ local function endServerEvent(serverEvent: tt.runningServerEvent): boolean
 
 	badgeCheckers.CheckServerEventAllocations(allocations, serverEvent.distance)
 
-	local res = reportServerEventEnd(serverEvent, allocations)
+	local _res = reportServerEventEnd(serverEvent, allocations)
 	return true
 end
 
@@ -127,7 +126,7 @@ local function setupRunningServerEventKiller()
 					end
 				end
 			end
-			wait(5)
+			task.wait(5)
 		end
 	end)
 end
@@ -194,10 +193,11 @@ local function startServerEvent(data: tt.ServerEventCreateType): tt.runningServe
 			continue
 		end
 		local exi = signsFolder:FindFirstChild(sn)
-		if exi == nil then
+		if exi == nil or not exi:IsA("Part") then
 			continue
 		end
-		if not tpUtil.SignCanBeHighlighted(exi) then
+		local signPart = exi :: Part
+		if not tpUtil.SignCanBeHighlighted(signPart) then
 			continue
 		end
 		table.insert(existingAllFoundSignIds, signId)
@@ -368,7 +368,7 @@ end
 
 local function receiveRunFinishFromServer(data: tt.serverFinishRunNotifierType)
 	while debounceEventUpdater do
-		wait(1)
+		task.wait(1)
 		_annotate("waint for debouncEventUpdater")
 	end
 	debounceEventUpdater = true

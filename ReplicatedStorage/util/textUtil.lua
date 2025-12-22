@@ -81,18 +81,6 @@ module.table_print = function(tt: any, inputIndent: number?, done: any): string
 	return table.concat(sb)
 end
 
-module.serializeTable = function(tbl: any): string
-	if "nil" == type(tbl) then
-		return "nil"
-	elseif "table" == type(tbl) then
-		return module.table_print(tbl, nil, nil)
-	elseif "string" == type(tbl) then
-		return tbl
-	else
-		return tostring(tbl)
-	end
-end
-
 --coalesce remaining string keys >=start into a space-separated single string.
 module.coalesceFrom = function(tbl: any, start: number): string
 	local combined = ""

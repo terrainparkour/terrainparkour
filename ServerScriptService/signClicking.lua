@@ -52,7 +52,7 @@ local function showSignLeadersPopup(player: Player, signId: number)
 			}
 			return res
 		end
-		wait(0.3)
+		task.wait(0.3)
 	end
 end
 

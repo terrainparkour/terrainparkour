@@ -32,7 +32,7 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local tpPlacementLogic = require(game.ReplicatedStorage.product.tpPlacementLogic)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local settings = require(game.ReplicatedStorage.settings)
 local tt = require(game.ReplicatedStorage.types.gametypes)
@@ -41,148 +41,56 @@ local dynamicRunningEnums = require(game.ReplicatedStorage.dynamicRunningEnums)
 local PlayersService = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local drawDynamicGui = require(script.Parent.drawDynamicGui)
+local drawDynamicGui = require(game.StarterPlayer.StarterPlayerScripts.drawDynamicGui)
 local localPlayer = PlayersService.LocalPlayer
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local dynamicRunningEvent = remotes.getRemoteEvent("DynamicRunningEvent") :: RemoteEvent
+
+local settingName = settingEnums.settingDefinitions.ENABLE_DYNAMIC_RUNNING.name
+local settingSourceId = "dynamicRunning"
 
 -------------- GLOBALS ----------------------
 --control settings, default start. modifiable by a setting.
 local dynamicRunningEnabled = false
 local bbguiMaxDist = 150
 
--- for chunking size jumps within the dynamic runnig popup
-local divver = 120
--- number of pixels per letter.
-local perWidth = 9
-
 --global for tracking
 local dynamicStartTick: number = 0
-local debounce = false
+-- local debounce = false
 local dynamicRunFrames: { tt.DynamicRunFrame } = {}
 
 --target sign name => TL;
 local textLabelStore: { [string]: TextLabel } = {}
 
---signName => ui outer frame
-local targetSignUis: { [string]: TextLabel } = {}
-
 local startDynamicDebounce = false
 local renderStepped: RBXScriptConnection? = nil
+local dynamicRunEventConnection: RBXScriptConnection? = nil
+local avatarEventConnection: RBXScriptConnection? = nil
 local lastupdates = {}
 local hasReset = false
 
--------------------- FUNCTIONS ----------------------
-
--- destroy all UIs and nuke the pointer dict to them
-module.endDynamic = function(force: boolean?)
-	_annotate("endDynamic, force:" .. tostring(force))
-	if not (force or dynamicRunningEnabled) then
-		return
-	end
-
-	_annotate("endDynamic, real")
-	startDynamicDebounce = true
-
-	for k, v in pairs(targetSignUis) do
-		local par = v.Parent
-		if par then
-			par = par.Parent
-			if par then
-				par:Destroy()
-			end
-		end
-	end
-	targetSignUis = {}
-	dynamicStartTick = 0
-	local data: tt.dynamicRunningControlType = {
-		action = dynamicRunningEnums.ACTIONS.DYNAMIC_STOP,
-		fromSignId = 0,
-		userId = localPlayer.UserId,
-	}
-	dynamicRunningEvent:FireServer(data)
-	startDynamicDebounce = false
-end
-
---called when a player re-touches a sign to reser timer
-module.resetDynamicTiming = function(startTick: number)
-	if not dynamicRunningEnabled then
-		return
-	end
-	_annotate("resetDynamicTiming")
-	dynamicStartTick = startTick
-end
-
--- do everything on the server and just monitor it on the client
-module.startDynamic = function(player: Player, signName: string, startTick: number)
-	if not dynamicRunningEnabled then
-		return
-	end
-
-	local signId = tpUtil.signName2SignId(signName)
-
-	task.spawn(function()
-		while startDynamicDebounce do
-			wait(0.1)
-			_annotate("waited for dynamic start debounce")
-		end
-
-		startDynamicDebounce = true
-		dynamicStartTick = startTick
-
-		local data: tt.dynamicRunningControlType = {
-			action = dynamicRunningEnums.ACTIONS.DYNAMIC_START,
-			fromSignId = signId,
-			userId = player.UserId,
-		}
-
-		dynamicRunningEvent:FireServer(data)
-		startDynamicDebounce = false
-	end)
-end
-
---get or create bbgui above sign
-local function getOrCreateUI(from: string, to: string): TextLabel?
-	if not targetSignUis[to] then
-		local ui = drawDynamicGui.DrawDynamicMouseover(from, to)
-		if not ui then
-			return
-		end
-		targetSignUis[to] = ui
-	end
-	return targetSignUis[to]
-end
+-------------------- HELPERS ----------------------
 
 --called once per active run + target; after setup, self-runs.
 --(also, self-destroys when you leave the area?)
 --also, needs dynamic runtime.
 
-local function lock(src: string)
-	if not src then
-		src = ""
+--get or create bbgui above sign
+local function getOrCreateUI(from: string, to: string): TextLabel?
+	if not textLabelStore[to] then
+		local ui = drawDynamicGui.DrawDynamicMouseover(from, to)
+		if not ui then
+			return nil
+		end
+		textLabelStore[to] = ui
 	end
-	while debounce do
-		_annotate(string.format("debounce lock. %s", src))
-		wait(0.05)
-	end
-	debounce = true
-end
-
-local function unlock()
-	debounce = false
+	return textLabelStore[to]
 end
 
 local function addSignToDynamicLabelStore(dynamicRunFrame: tt.DynamicRunFrame, from: string)
 	_annotate(string.format("adding sign to dynamic label store: %s", dynamicRunFrame.targetSignName))
 	table.insert(dynamicRunFrames, dynamicRunFrame)
-	local tl = getOrCreateUI(from, dynamicRunFrame.targetSignName)
-
-	--this can happen sometimes - the client doesn't have the full DM yet somehow
-	if not tl then
-		_annotate(string.format("failed to create TL for: %s", dynamicRunFrame.targetSignName))
-		return
-	end
-	textLabelStore[dynamicRunFrame.targetSignName] = tl
+	getOrCreateUI(from, dynamicRunFrame.targetSignName)
 end
 
 local function handleOneDynamicFrameTarget(dynamicRunFrame: tt.DynamicRunFrame)
@@ -193,15 +101,30 @@ local function handleOneDynamicFrameTarget(dynamicRunFrame: tt.DynamicRunFrame)
 		return
 	end
 
-	local bbgui: BillboardGui = textLabel:FindFirstAncestorOfClass("BillboardGui")
-	if not bbgui then
+	local bbguiInstance: Instance? = textLabel:FindFirstAncestorOfClass("BillboardGui")
+	if not bbguiInstance or not bbguiInstance:IsA("BillboardGui") then
 		_annotate(string.format("no bbgui, %s", dynamicRunFrame.targetSignName))
 		return
 	end
+	local bbgui: BillboardGui = bbguiInstance :: BillboardGui
 
-	local rootPart = localPlayer.Character:WaitForChild("HumanoidRootPart")
+	local character = localPlayer.Character
+	if not character then
+		return
+	end
+	local rootPartInstance = character:FindFirstChild("HumanoidRootPart")
+	if not rootPartInstance or not rootPartInstance:IsA("BasePart") then
+		return
+	end
+	local rootPart: BasePart = rootPartInstance :: BasePart
+
 	local pos = rootPart.Position
-	local par = bbgui.Parent :: Part
+	local parInstance = bbgui.Parent
+	if not parInstance or not parInstance:IsA("BasePart") then
+		return
+	end
+	local par: BasePart = parInstance :: BasePart
+
 	local dist = tpUtil.getDist(par.Position, pos)
 	-- _annotate(string.format("dist to: %s is: %0.1f", dynamicRunFrame.targetSignName, dist))
 
@@ -236,14 +159,113 @@ end
 
 local function fullReset()
 	_annotate("full dynamic running reset")
-	lock("fullReset")
-	for _, item in ipairs(textLabelStore) do
-		item.Parent.Parent:Destroy()
+	for _, item in pairs(textLabelStore) do
+		-- item is TextLabel. Parent is Frame. Parent.Parent is BillboardGui.
+		if item.Parent and item.Parent.Parent then
+			item.Parent.Parent:Destroy()
+		end
 	end
 	textLabelStore = {}
 	dynamicRunFrames = {}
-	unlock()
 end
+
+local function internalStartDynamic(player: Player, signName: string, startTick: number)
+	if not dynamicRunningEnabled then
+		return
+	end
+
+	-- Debounce: if already trying to start this specific run, ignore.
+	-- Or if very recent start.
+	if startDynamicDebounce then
+		return
+	end
+
+	local signId = tpUtil.signName2SignId(signName)
+
+	task.spawn(function()
+		startDynamicDebounce = true
+		dynamicStartTick = startTick
+
+		local data: tt.dynamicRunningControlType = {
+			action = dynamicRunningEnums.ACTIONS.DYNAMIC_START,
+			fromSignId = signId,
+			userId = player.UserId,
+		}
+
+		dynamicRunningEvent:FireServer(data)
+		task.wait(0.5)
+		startDynamicDebounce = false
+	end)
+end
+
+local function internalResetDynamicTiming(startTick: number)
+	if not dynamicRunningEnabled then
+		return
+	end
+	_annotate("resetDynamicTiming")
+	dynamicStartTick = startTick
+end
+
+-- destroy all UIs and nuke the pointer dict to them
+local function internalEndDynamic(force: boolean?)
+	_annotate("endDynamic, force:" .. tostring(force))
+	if not (force or dynamicRunningEnabled) then
+		return
+	end
+
+	_annotate("endDynamic, real")
+
+	fullReset()
+
+	dynamicStartTick = 0
+	local data: tt.dynamicRunningControlType = {
+		action = dynamicRunningEnums.ACTIONS.DYNAMIC_STOP,
+		fromSignId = 0,
+		userId = localPlayer.UserId,
+	}
+	dynamicRunningEvent:FireServer(data)
+end
+
+-------------------- MODULE FUNCTIONS ----------------------
+
+-- Listen for events instead of being called directly
+local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts:WaitForChild("avatarEventFiring"))
+local aet = require(game.ReplicatedStorage.avatarEventTypes)
+local AvatarEventBindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
+
+local eventsWeCareAbout = {
+	aet.avatarEventTypes.RUN_START,
+	aet.avatarEventTypes.RUN_COMPLETE,
+	aet.avatarEventTypes.RUN_CANCEL,
+	aet.avatarEventTypes.RETOUCH_SIGN,
+	aet.avatarEventTypes.AVATAR_DIED,
+	aet.avatarEventTypes.AVATAR_RESET,
+}
+
+local function handleAvatarEvent(ev: aet.avatarEvent)
+	if not avatarEventFiring.EventIsATypeWeCareAbout(ev, eventsWeCareAbout) then
+		return
+	end
+
+	if ev.eventType == aet.avatarEventTypes.RUN_START then
+		if ev.details and ev.details.startSignName then
+			internalStartDynamic(localPlayer, ev.details.startSignName, ev.timestamp)
+		end
+	elseif ev.eventType == aet.avatarEventTypes.RETOUCH_SIGN then
+		internalResetDynamicTiming(ev.timestamp)
+	elseif
+		ev.eventType == aet.avatarEventTypes.RUN_COMPLETE
+		or ev.eventType == aet.avatarEventTypes.RUN_CANCEL
+		or ev.eventType == aet.avatarEventTypes.AVATAR_DIED
+		or ev.eventType == aet.avatarEventTypes.AVATAR_RESET
+	then
+		internalEndDynamic()
+	end
+end
+
+-- Public API (reduced surface area)
+-- Still exposed for settings changes, but not for racing logic
+module.endDynamic = internalEndDynamic
 
 local function receiveDynamicRunData(updates: tt.dynamicRunFromData)
 	if not dynamicRunningEnabled then
@@ -251,18 +273,36 @@ local function receiveDynamicRunData(updates: tt.dynamicRunFromData)
 		return
 	end
 	_annotate(string.format("Apply dynamicRunning %d %s", #updates.frames, updates.fromSignName))
-	lock("receive")
+
+	-- Since drawDynamicGui calls signName2Sign which calls WaitForChild, this MIGHT yield.
+	-- However, we are running on the client, and signs are streamed.
+	-- If it yields, we want to make sure we don't have a race condition.
+	-- But since we removed the reset/locking logic, we just add.
+	-- If a reset happened in the meantime, textLabelStore was cleared.
+	-- If we add now, we add to the new store.
+	-- The only risk is adding a label for an OLD run to a NEW run.
+	-- We can check dynamicStartTick.
+
+	local capturedStartTick = dynamicStartTick
+
 	for _, dynamicRunFrame: tt.DynamicRunFrame in ipairs(updates.frames) do
 		if dynamicRunFrame.targetSignName == "👻" then
-			--we just magically don't do dynamic running at all TO ghost.
 			continue
 		end
+
+		-- If the run has reset or changed while we were processing (unlikely but possible if yields occur), abort.
+		if dynamicStartTick ~= capturedStartTick or dynamicStartTick == 0 then
+			return
+		end
+
 		addSignToDynamicLabelStore(dynamicRunFrame, updates.fromSignName)
 	end
-	unlock()
 end
 
 local function setupRenderStepped()
+	if renderStepped then
+		return
+	end
 	_annotate("starting render stepped")
 
 	renderStepped = RunService.RenderStepped:Connect(function()
@@ -300,6 +340,15 @@ local function setupRenderStepped()
 	end)
 end
 
+local function teardownRenderStepped()
+	if not renderStepped then
+		return
+	end
+	renderStepped:Disconnect()
+	renderStepped = nil
+	_annotate("kill renderstepped")
+end
+
 local function handleUserSettingChanged(setting: tt.userSettingValue)
 	if setting.name == settingEnums.settingDefinitions.ENABLE_DYNAMIC_RUNNING.name then
 		if setting.booleanValue == true then
@@ -310,38 +359,48 @@ local function handleUserSettingChanged(setting: tt.userSettingValue)
 			end
 		elseif setting.booleanValue == false then
 			if dynamicRunningEnabled then
-				--also destroy them all.
 				_annotate("disabling dynamic running")
 				dynamicRunningEnabled = false
-				renderStepped:Disconnect()
-				_annotate("kill renderstepped")
+				teardownRenderStepped()
 				module.endDynamic(true)
 			end
 		end
 	end
+	return nil
 end
 
 module.Init = function()
 	_annotate("init")
-	dynamicRunningEnabled = false
-	dynamicStartTick = 0
-	debounce = false
-	dynamicRunFrames = {}
-	textLabelStore = {}
-	targetSignUis = {}
-	renderStepped = nil
-	lastupdates = {}
-	hasReset = false
-	startDynamicDebounce = false
-	dynamicRunningEvent.OnClientEvent:Connect(receiveDynamicRunData)
+	if dynamicStartTick == 0 then
+		dynamicStartTick = 0
+		dynamicRunFrames = {}
+		textLabelStore = {}
+		lastupdates = {}
+		hasReset = false
+		startDynamicDebounce = false
+	end
 
-	--in addition to this, needs to get the original setting to set it locally too.
+	if not dynamicRunEventConnection then
+		dynamicRunEventConnection = dynamicRunningEvent.OnClientEvent:Connect(receiveDynamicRunData)
+	end
+
+	settings.UnregisterFunctionToListenForSettingName(settingName, settingSourceId)
 	settings.RegisterFunctionToListenForSettingName(function(item)
 		return handleUserSettingChanged(item)
-	end, settingEnums.settingDefinitions.ENABLE_DYNAMIC_RUNNING.name, "dynamicRunning")
+	end, settingName, settingSourceId)
 
-	local dynset = settings.GetSettingByName(settingEnums.settingDefinitions.ENABLE_DYNAMIC_RUNNING.name)
-	handleUserSettingChanged(dynset)
+	local dynset = settings.GetSettingByName(settingName)
+	if dynset then
+		handleUserSettingChanged(dynset)
+	else
+		_annotate("dynamic running setting missing; defaulting to disabled")
+		dynamicRunningEnabled = false
+	end
+
+	if not avatarEventConnection then
+		avatarEventConnection = AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
+	end
+
 	_annotate("init done")
 end
 

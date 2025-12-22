@@ -34,7 +34,7 @@ task.spawn(function()
 			end
 			lastBanLevel = banLevel
 		end
-		wait(20)
+		task.wait(20)
 	end
 end)
 

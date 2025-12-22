@@ -48,9 +48,8 @@ function module.Execute(player: Player, _parts: { string }): boolean
 		error("generateTextForRankedList returned non-table for wrs command")
 	end
 	for _, el in ipairs((res :: any) :: { any }) do
-		local messageValue = if type(el) == "table" then el.message else nil
-		if type(messageValue) == "string" then
-			commandUtils.SendMessage(messageValue, player)
+		if type(el) == "table" and type(el.message) == "string" then
+			commandUtils.SendMessage(el.message, player, el.options)
 		end
 	end
 

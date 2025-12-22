@@ -11,7 +11,7 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local mt = require(game.StarterPlayer.StarterPlayerScripts.marathon.marathonTypes)
 local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
 local marathonStatic = require(game.ReplicatedStorage.marathon.marathonStatic)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
 local config = require(game.ReplicatedStorage.config)
 local TweenService = game:GetService("TweenService")
@@ -23,6 +23,10 @@ module.marathons = {}
 --return if you have found a sign of this length yet.
 local SignsOfLengthEvaluateFind = function(desc: mt.marathonDescriptor, signName: string): mt.userFoundSignResult
 	local len = utf8.len(signName)
+	if not len then
+		warn("SignsOfLengthEvaluateFind: could not compute utf8 length for signName=", signName)
+		return { added = false, marathonDone = false, started = false }
+	end
 	if len > 19 then --too long or short
 		return { added = false, marathonDone = false, started = false }
 	end
@@ -133,10 +137,7 @@ local evaluateFindInFixedOrder = function(desc: mt.marathonDescriptor, signName:
 	return { added = false, marathonDone = false, started = false }
 end
 
-local evaluateFindInFixedOrderByFirstLetter = function(
-	desc: mt.marathonDescriptor,
-	signName: string
-): mt.userFoundSignResult
+local evaluateFindInFixedOrderByFirstLetter = function(desc: mt.marathonDescriptor, signName: string): mt.userFoundSignResult
 	local targetOrder = desc.orderedTargets
 	local firstLetterOfSign = textUtil.getFirstCodepointAsString(signName):lower()
 	--iterate through all keys til you get to the first null
@@ -176,11 +177,12 @@ local FindNUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, found
 	--get the tl
 	local targetName = marathonStatic.getMarathonComponentName(desc, desc.humanName)
 	local exiTile: Instance? = frame:FindFirstChild(targetName, true)
-	if exiTile == nil or not exiTile:IsA("TextLabel") then
+	-- Note: For findn marathons, the tile is a Frame (not TextLabel) - see marathonStatic.getChipFrame
+	if not exiTile or (not exiTile:IsA("TextLabel") and not exiTile:IsA("Frame")) then
 		warn("bad.FindNUpdateRow" .. " could not find: " .. targetName)
 		return
 	end
-	local tile: TextLabel = exiTile :: TextLabel
+	local tile: Frame = exiTile :: Frame
 	local ratio = desc.count / (1.0 * desc.requiredCount)
 	local gotPart: Instance? = tile:FindFirstChild("01-Yes")
 	local notGotPart: Instance? = tile:FindFirstChild("03-No")
@@ -212,7 +214,11 @@ local FindNUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, found
 end
 
 local SignsOfEveryLengthUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string): nil
-	local ll: number = utf8.len(foundSignName)
+	local ll: number? = utf8.len(foundSignName)
+	if not ll then
+		warn("bad.SignsOfEveryLengthUpdateRow: could not get length of " .. foundSignName)
+		return nil
+	end
 	local targetName = marathonStatic.getMarathonComponentName(desc, string.format("%02d", ll))
 	local exiTile: Instance? = frame:FindFirstChild(targetName, true)
 	if exiTile == nil or not exiTile:IsA("TextLabel") then
@@ -612,16 +618,14 @@ local find10t: mt.marathonDescriptor = {
 local function countFullLengthOfFoundSigns(desc: mt.marathonDescriptor): number
 	local ret = 0
 	for ii, find: mt.findInMarathonRun in ipairs(desc.finds) do
-		ret += utf8.len(find.signName)
+		local len: number? = utf8.len(find.signName)
+		if len then
+			ret += len
+		end
 	end
 	return ret
 end
-local FindLetterCountUpdateRow = function(
-	desc: mt.marathonDescriptor,
-	frame: Frame,
-	foundSignName: string,
-	limit: number
-): nil
+local FindLetterCountUpdateRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string, limit: number): nil
 	--get the tl
 	local targetName = marathonStatic.getMarathonComponentName(desc, desc.humanName)
 	local exiTile: Instance? = frame:FindFirstChild(targetName, true)
@@ -661,8 +665,8 @@ local function EvaluteFindBasedOnIfItsLetterCountIsUnderLimit(
 		end
 	end
 	local tot: number = countFullLengthOfFoundSigns(desc)
-	local signLength: number = utf8.len(signName)
-	if signLength + tot > limit then
+	local signLength: number? = utf8.len(signName)
+	if not signLength or signLength + tot > limit then
 		return { added = false, marathonDone = false, started = false }
 	end
 	if signLength + tot <= limit then
@@ -773,11 +777,7 @@ local function evaluateIfSignHasAnyNewLetters(desc: mt.marathonDescriptor, signN
 end
 
 --for an sign you just hit, figure out what new alpha chips you should highlight.
-local FindAlphabeticalAndAddAllChipsRow = function(
-	desc: mt.marathonDescriptor,
-	frame: Frame,
-	foundSignName: string
-): nil
+local FindAlphabeticalAndAddAllChipsRow = function(desc: mt.marathonDescriptor, frame: Frame, foundSignName: string): nil
 	local coverage = getLetterCoverage(desc, foundSignName)
 	for _, c in ipairs(foundSignName:split("")) do
 		c = c:lower()
@@ -905,7 +905,11 @@ module.marathons.singleletter = mkFindSetMarathon(
 	"singleletter",
 	"10 Single Letter Signs",
 	getSignsWithTrait(function(s)
-		return utf8.len(s) == 1
+		local length = utf8.len(s)
+		if not length then
+			return false
+		end
+		return length == 1
 	end),
 	badgeEnums.badges.MarathonCompletionSingleLetter,
 	10
@@ -950,14 +954,17 @@ local findsetAOfB = getSignsWithTrait(function(s)
 	return true
 end)
 
-module.marathons.aofb =
-	mkFindSetMarathon("aofb", "A of B (8)", findsetAOfB, badgeEnums.badges.MarathonCompletionAOfB, 8)
+module.marathons.aofb = mkFindSetMarathon("aofb", "A of B (8)", findsetAOfB, badgeEnums.badges.MarathonCompletionAOfB, 8)
 
 module.marathons.threeletter = mkFindSetMarathon(
 	"threeletter",
 	"Find ten 3-letter signs",
 	getSignsWithTrait(function(s)
-		return utf8.len(s) == 3
+		local length = utf8.len(s)
+		if not length then
+			return false
+		end
+		return length == 3
 	end),
 	badgeEnums.badges.MarathonCompletionThreeLetter,
 	10

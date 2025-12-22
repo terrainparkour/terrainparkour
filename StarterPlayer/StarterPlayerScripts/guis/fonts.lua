@@ -1,24 +1,23 @@
+--!strict
+-- fonts.lua (StarterPlayer/StarterPlayerScripts/guis/fonts.lua)
+-- Cached font faces to avoid per-call allocation.
+
+-- Pre-cache all four font variants at module load
+local monoRegular = Font.new("rbxasset://fonts/families/Inconsolata.json")
+local monoBold = Font.new("rbxasset://fonts/families/Inconsolata.json")
+monoBold.Weight = Enum.FontWeight.Bold
+
+local serifRegular = Font.new("rbxasset://fonts/families/Merriweather.json")
+local serifBold = Font.new("rbxasset://fonts/families/Merriweather.json")
+serifBold.Weight = Enum.FontWeight.Bold
+
 local module = {}
 
-module.GetFont = function(isMonospaced: boolean?, bold: boolean?): Font
+function module.GetFont(isMonospaced: boolean?, bold: boolean?): Font
 	if isMonospaced then
-		if bold then
-			local font1 = Font.new("rbxasset://fonts/families/Inconsolata.json")
-			font1.Weight = Enum.FontWeight.Bold
-			return font1
-		else
-			local font2 = Font.new("rbxasset://fonts/families/Inconsolata.json")
-			return font2
-		end
+		return if bold then monoBold else monoRegular
 	else
-		if bold then
-			local font3 = Font.new("rbxasset://fonts/families/Merriweather.json")
-			font3.Weight = Enum.FontWeight.Bold
-			return font3
-		else
-			local font4 = Font.new("rbxasset://fonts/families/Merriweather.json")
-			return font4
-		end
+		return if bold then serifBold else serifRegular
 	end
 end
 

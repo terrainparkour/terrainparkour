@@ -1,98 +1,72 @@
 --!strict
 
 -- localSignClickability.lua
--- used for sign click ui.
+-- Displays sign click popup UI with WR leader info and related races.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
-local module = {}
 
-local emojis = require(game.ReplicatedStorage.enums.emojis)
-
-local colors = require(game.ReplicatedStorage.util.colors)
-local tt = require(game.ReplicatedStorage.types.gametypes)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
-local thumbnails = require(game.ReplicatedStorage.thumbnails)
-local localRdb = require(game.ReplicatedStorage.localRdb)
 local PlayersService = game:GetService("Players")
 
-local localPlayer = PlayersService.LocalPlayer
-
-local playerGui = localPlayer:WaitForChild("PlayerGui")
+local colors = require(game.ReplicatedStorage.util.colors)
+local enums = require(game.ReplicatedStorage.util.enums)
+local emojis = require(game.ReplicatedStorage.enums.emojis)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
-
---signid:bool
-local toggledOnSigns = {}
-local signSetupStatus = {}
-
+local localRdb = require(game.ReplicatedStorage.localRdb)
 local remotes = require(game.ReplicatedStorage.util.remotes)
-local ClickSignFunction = remotes.getRemoteFunction("ClickSignFunction")
+local thumbnails = require(game.ReplicatedStorage.thumbnails)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
+local tt = require(game.ReplicatedStorage.types.gametypes)
 
+local module = {}
+
+-- Configuration constants
+local BILLBOARD_WIDTH = 1000 -- pixels
+local BILLBOARD_HEIGHT = 300 -- pixels
+local BILLBOARD_MAX_DISTANCE = 50 -- studs before billboard fades
+local CLICK_DETECTOR_DISTANCE = 40 -- studs for click activation
+local AUTO_DISMISS_DISTANCE = 30 -- studs before popup auto-closes
+local AUTO_DISMISS_CHECK_INTERVAL = 1 -- seconds
+
+-- Player mode constants (what to show about the user's relationship to a race)
 local YOULEAD = 1
 local YOUPLACE = 2
 local YOURAN = 3
 local YOUNEVERRAN = 4
 
-local function getColorForSignItemKind(signItem): Color3
-	_annotate(signItem)
-	_annotate(signItem.kind)
-	if signItem == nil then
-		warn("nil. signitem.")
-	end
-	if signItem.kind == "nearestGlobalUnrun" then
-		return colors.warpColor
-	end
-	if signItem.kind == "MiddistGlobalUnrun" then
-		return colors.warpColor
-	end
-	if signItem.kind == "nearestPersonalUnrun" then
-		return colors.warpColor
-	end
-	if signItem.kind == "interesting" then
-		return colors.defaultGrey
-	end
-	if signItem.kind == "nearest" then
-		return colors.defaultGrey
-	end
-	if signItem.kind == "popular" then
-		return colors.warpColor
-	end
-	if signItem.kind == "linked" then
-		return colors.warpColor
-	end
+local localPlayer = PlayersService.LocalPlayer
+local playerGui = localPlayer:WaitForChild("PlayerGui")
 
-	warn("unhanelded kind" .. signItem.kind)
-	return colors.defaultGrey
-end
+local ClickSignFunction = remotes.getRemoteFunction("ClickSignFunction")
 
-local function getTextForSignItemKind(signItem): string
-	if signItem == nil then
-		warn("nil. signitem.")
-	end
-	if signItem.kind == "nearestGlobalUnrun" then
-		return "Nobody ran"
-	end
-	if signItem.kind == "MiddistGlobalUnrun" then
-		return "Nobody ran"
-	end
-	if signItem.kind == "nearestPersonalUnrun" then
-		return "You never ran"
-	end
-	if signItem.kind == "interesting" then
-		return ""
-	end
-	if signItem.kind == "nearest" then
-		return ""
-	end
-	if signItem.kind == "popular" then
-		return "Popular"
-	end
-	if signItem.kind == "linked" then
-		return "Linked"
-	end
+-- Module state
+local toggledOnSigns: { [number]: boolean } = {}
+local signSetupStatus: { [string]: boolean } = {}
 
-	warn("unhanelded kind" .. signItem.kind)
-	return "miss"
+-- Sign item kind properties: color and display text
+-- Using Color3 values directly from colors module
+type KindProperties = { color: Color3, text: string }
+local kindProperties: { [string]: KindProperties } = {
+	nearestGlobalUnrun = { color = colors.warpColor, text = "Nobody ran" },
+	MiddistGlobalUnrun = { color = colors.warpColor, text = "Nobody ran" },
+	nearestPersonalUnrun = { color = colors.warpColor, text = "You never ran" },
+	interesting = { color = colors.defaultGrey, text = "" },
+	nearest = { color = colors.defaultGrey, text = "" },
+	popular = { color = colors.warpColor, text = "Popular" },
+	linked = { color = colors.warpColor, text = "Linked" },
+}
+
+local function getKindProperties(signItem: any): KindProperties
+	if not signItem then
+		annotater.Error("getKindProperties: nil signItem")
+		return { color = colors.defaultGrey, text = "" }
+	end
+	local props = kindProperties[signItem.kind]
+	if not props then
+		annotater.Error(string.format("getKindProperties: unhandled kind '%s'", tostring(signItem.kind)))
+		return { color = colors.defaultGrey, text = "" }
+	end
+	return props
 end
 
 local function generateRowForRelatedSign(sign: any, ct: number, youlead: boolean, yscale: number)
@@ -107,21 +81,17 @@ local function generateRowForRelatedSign(sign: any, ct: number, youlead: boolean
 	hh.Parent = row
 
 	if sign.best_username == nil or sign.best_username == "" then
-		--no leader at all
-		local tt = guiUtil.getTl("01-signTile", UDim2.new(0.35, 0, 1, 0), 2, row, colors.signColor, 1)
-		tt.Text = tpUtil.signId2signName(sign.signId)
-		tt.TextColor3 = colors.signTextColor
+		-- No leader at all for this race
+		local kindProps = getKindProperties(sign)
+		local signNameLabel = guiUtil.getTl("01-signTile", UDim2.new(0.35, 0, 1, 0), 2, row, colors.signColor, 1)
+		signNameLabel.Text = tpUtil.signId2signName(sign.signId)
+		signNameLabel.TextColor3 = colors.signTextColor
 
-		local tt2 = guiUtil.getTl("03-nobody-ran", UDim2.new(0.35, 0, 1, 0), 2, row, getColorForSignItemKind(sign), 1)
-		tt2.Text = "Nobody ran"
+		local statusLabel = guiUtil.getTl("03-nobody-ran", UDim2.new(0.35, 0, 1, 0), 2, row, kindProps.color, 1)
+		statusLabel.Text = if #kindProps.text > 0 then kindProps.text else "Nobody ran"
 
-		local t = getTextForSignItemKind(sign)
-		if t and #t > 0 then
-			tt2.Text = t
-		end
-		local tt3 = guiUtil.getTl("02nearsign-dist", UDim2.new(0.3, 0, 1, 0), 1, row, colors.defaultGrey, 1)
-		tt3.Text = string.format("%.0fd", sign.dist)
-		-- tt3.TextXAlignment=Enum.TextXAlignment.Left
+		local distLabel = guiUtil.getTl("02nearsign-dist", UDim2.new(0.3, 0, 1, 0), 1, row, colors.defaultGrey, 1)
+		distLabel.Text = string.format("%.0fd", sign.dist)
 		return row
 	end
 
@@ -229,8 +199,9 @@ local function generateRowForRelatedSign(sign: any, ct: number, youlead: boolean
 		im.BackgroundColor3 = colors.meColor
 	end
 
-	--leadername
-	local useColor = colors.defaultGrey
+	-- Leader name and kind description
+	local kindProps = getKindProperties(sign)
+	local useColor = kindProps.color
 	local useText = ""
 	if sign.best_username then
 		useText = sign.best_username
@@ -240,14 +211,12 @@ local function generateRowForRelatedSign(sign: any, ct: number, youlead: boolean
 		if sign.kind == "personalUnrun" then
 			useText = useText .. "\nyou never ran"
 		end
-		useColor = getColorForSignItemKind(sign)
-		local t = getTextForSignItemKind(sign)
-		if t and #t > 0 then
-			useText = useText .. "\n" .. t
+		if #kindProps.text > 0 then
+			useText = useText .. "\n" .. kindProps.text
 		end
 	end
-	local tt2 = guiUtil.getTl("04-description", UDim2.new(0.35, 0, 1, 0), 1, row, useColor, 1)
-	tt2.Text = useText
+	local descriptionLabel = guiUtil.getTl("04-description", UDim2.new(0.35, 0, 1, 0), 1, row, useColor, 1)
+	descriptionLabel.Text = useText
 
 	return row
 end
@@ -277,7 +246,7 @@ local function addUsernames(chunks)
 	end
 end
 
-local function DisplaySignRelatedData(signRelatedData, sign)
+local function DisplaySignRelatedData(signRelatedData: any, sign: Instance)
 	local leaderdata = signRelatedData.signWRLeaderData.ordered_tops
 	local nearestdata = signRelatedData.relatedSignData.nearest
 	local scopeddata = signRelatedData.relatedSignData.scoped
@@ -285,16 +254,15 @@ local function DisplaySignRelatedData(signRelatedData, sign)
 
 	addUsernames({ leaderdata, nearestdata, interestingdata, scopeddata }) --ClickSignFunction
 
-	--set up basics of board and frame
+	-- Set up billboard GUI and main frame
 	local bbg = Instance.new("BillboardGui")
 	bbg.Parent = sign
 	bbg.Name = "LeaderGuiFrame"
 	bbg.Active = true
 	bbg.Adornee = sign
-	bbg.MaxDistance = 50
+	bbg.MaxDistance = BILLBOARD_MAX_DISTANCE
 	bbg.AlwaysOnTop = true
-	--size of sign bb
-	bbg.Size = UDim2.new(0, 1000, 0, 300)
+	bbg.Size = UDim2.new(0, BILLBOARD_WIDTH, 0, BILLBOARD_HEIGHT)
 	bbg.StudsOffset = Vector3.new(0, 10, 0)
 
 	local mainFrame = Instance.new("Frame")
@@ -325,10 +293,7 @@ local function DisplaySignRelatedData(signRelatedData, sign)
 	else
 		local leader = leaderdata[1]
 		local wrRelatedBgColor = colors.grey
-		if localPlayer == nil then
-			warn("no localplayer")
-			return bbg
-		end
+		-- LocalPlayer is guaranteed to exist in a LocalScript
 		if leader.userId and localPlayer.UserId == leader.userId then
 			wrRelatedBgColor = colors.meColor
 		end
@@ -424,7 +389,6 @@ local function DisplaySignRelatedData(signRelatedData, sign)
 				img2.BackgroundColor3 = colors.meColor
 			end
 
-			local wrHeader = Instance.new("TextLabel")
 			local useColor = colors.defaultGrey
 			if localPlayer.UserId == el.userId then
 				useColor = colors.meColor
@@ -461,9 +425,9 @@ local function DisplaySignRelatedData(signRelatedData, sign)
 		rightFrame.Size = UDim2.new((1 - 0.3) / #datasets, 0, 1, 0)
 		rightFrame.Name = tostring(03 + ii) .. "-right-" .. descriptions[ii]
 
-		local vv = Instance.new("UIListLayout")
-		vv.FillDirection = Enum.FillDirection.Vertical
-		vv.Parent = rightFrame
+		local rightLayout = Instance.new("UIListLayout")
+		rightLayout.FillDirection = Enum.FillDirection.Vertical
+		rightLayout.Parent = rightFrame
 		local tl = guiUtil.getTl("0", UDim2.new(1, 0, yscale, 0), 1, rightFrame, colors.blueDone, 1)
 		tl.Text = descriptions[ii]
 
@@ -494,7 +458,7 @@ end
 
 local function rightClickSign(signId, sign)
 	local signClickMessage: tt.signClickMessage =
-		{ leftClick = false, signId = signId, userId = game.Players.LocalPlayer.UserId }
+		{ leftClick = false, signId = signId, userId = localPlayer.UserId }
 	ClickSignFunction:InvokeServer(signClickMessage)
 end
 
@@ -515,7 +479,7 @@ local function leftClickSign(signId: number, sign: Part)
 	end
 
 	local signClickMessage: tt.signClickMessage =
-		{ leftClick = true, signId = signId, userId = game.Players.LocalPlayer.UserId }
+		{ leftClick = true, signId = signId, userId = localPlayer.UserId }
 	local signRelatedData = ClickSignFunction:InvokeServer(signClickMessage)
 	DisplaySignRelatedData(signRelatedData, sign)
 
@@ -523,17 +487,31 @@ local function leftClickSign(signId: number, sign: Part)
 
 	task.spawn(function()
 		while true do
-			local dist = tpUtil.getDist(sign.Position, localPlayer.Character.PrimaryPart.Position)
-
-			if dist > 30 then
+			-- Check if we've been reset
+			if not toggledOnSigns[signId] then
 				local gg = sign:FindFirstChild("LeaderGuiFrame")
 				if gg ~= nil then
 					gg:Destroy()
 				end
+				break
+			end
+
+			local char = localPlayer.Character
+			if not char or not char.PrimaryPart then
+				break
+			end
+
+			local dist = tpUtil.getDist(sign.Position, char.PrimaryPart.Position)
+
+			if dist > AUTO_DISMISS_DISTANCE then
+				local existingGui = sign:FindFirstChild("LeaderGuiFrame")
+				if existingGui then
+					existingGui:Destroy()
+				end
 				toggledOnSigns[signId] = false
 				break
 			end
-			task.wait(1)
+			task.wait(AUTO_DISMISS_CHECK_INTERVAL)
 		end
 	end)
 end
@@ -543,12 +521,17 @@ end
 local function SetupSigns()
 	--when the response from the click with data to display comes back.
 	--set up each sign to be clickable by this user individually.
-	for _, sign: Part in ipairs(game.Workspace:WaitForChild("Signs"):GetChildren()) do
+	for _, signInstance in ipairs(game.Workspace:WaitForChild("Signs"):GetChildren()) do
+		local sign = signInstance :: Part
 		if signSetupStatus[sign.Name] then
 			continue
 		end
 
-		sign = sign :: Part
+		-- Skip disabled signs - they are not clickable
+		if enums.disabledSignNames[sign.Name:lower()] then
+			signSetupStatus[sign.Name] = true
+			continue
+		end
 
 		local surfacegui = Instance.new("SurfaceGui")
 		surfacegui.Parent = playerGui
@@ -557,22 +540,52 @@ local function SetupSigns()
 
 		local cd = Instance.new("ClickDetector")
 		local signId = tpUtil.looseSignName2SignId(sign.Name)
-		cd.MaxActivationDistance = 40
+		if not signId then
+			continue
+		end
+		cd.MaxActivationDistance = CLICK_DETECTOR_DISTANCE
 		cd.Parent = sign
 		cd.Name = sign.Name .. tostring(signId)
 
-		cd.MouseClick:Connect(function(e)
+		cd.MouseClick:Connect(function(_e)
 			return leftClickSign(signId, sign)
 		end)
-		cd.RightMouseClick:Connect(function(e)
+		cd.RightMouseClick:Connect(function(_e)
 			return rightClickSign(signId, sign)
 		end)
 		signSetupStatus[sign.Name] = true
 	end
 end
 
+
+module.Reset = function()
+	_annotate("Resetting localSignClickability UIs")
+	local signsFolder = game.Workspace:FindFirstChild("Signs")
+	if not signsFolder then
+		return
+	end
+	
+	for _, sign in ipairs(signsFolder:GetChildren()) do
+		-- Clear UI
+		local gg = sign:FindFirstChild("LeaderGuiFrame")
+		if gg then
+			gg:Destroy()
+		end
+		
+		-- Clear ClickDetectors so we can re-bind them
+		for _, child in ipairs(sign:GetChildren()) do
+			if child:IsA("ClickDetector") then
+				child:Destroy()
+			end
+		end
+	end
+	toggledOnSigns = {}
+	signSetupStatus = {}
+end
+
 module.Init = function()
 	_annotate("init")
+	module.Reset()
 	SetupSigns()
 	_annotate("init done")
 end

@@ -13,7 +13,11 @@ local module = {}
 local avatarPopupGui: ScreenGui? = nil
 local avatarPopupImage: ImageLabel? = nil
 
+local badgePopupGui: ScreenGui? = nil
+local badgePopupImage: ImageLabel? = nil
+
 local POPUP_GUI_NAME = "LeaderboardAvatarPopupGui"
+local BADGE_POPUP_GUI_NAME = "BadgeImagePopupGui"
 
 local thumbnailMaps: { [number]: { [Enum.ThumbnailType]: { [Enum.ThumbnailSize]: string } } } = {}
 
@@ -21,6 +25,32 @@ local thumbnailMaps: { [number]: { [Enum.ThumbnailType]: { [Enum.ThumbnailSize]:
 module.HideAvatarPopup = function()
 	if avatarPopupGui then
 		avatarPopupGui.Enabled = false
+	end
+end
+
+-- Hide badge popup
+module.HideBadgePopup = function()
+	if badgePopupGui then
+		badgePopupGui.Enabled = false
+	end
+end
+
+-- Connect mouse enter/leave handlers to both the portrait frame and its child image.
+-- Roblox mouse events don't bubble, so we must wire both to ensure reliable hover detection.
+module.connectPortraitMouseHandlers = function(
+	portraitFrame: Frame,
+	onEnter: () -> (),
+	onLeave: () -> ()
+)
+	-- Connect to parent frame
+	portraitFrame.MouseEnter:Connect(onEnter)
+	portraitFrame.MouseLeave:Connect(onLeave)
+
+	-- Connect to child image if present
+	local portraitImage = portraitFrame:FindFirstChild("PortraitImage")
+	if portraitImage and portraitImage:IsA("GuiObject") then
+		portraitImage.MouseEnter:Connect(onEnter)
+		portraitImage.MouseLeave:Connect(onLeave)
 	end
 end
 
@@ -80,13 +110,14 @@ module.createAvatarPortraitPopup = function(
 	userId: number,
 	doPopup: boolean,
 	backgroundColor: Color3?,
-	borderSizePixel: number?
+	borderSizePixel: number?,
+	borderColor: Color3?
 ): Frame
 	local portraitCell = Instance.new("Frame")
 	portraitCell.Size = UDim2.fromScale(1, 1)
 	portraitCell.BackgroundTransparency = 1
 	portraitCell.Name = "PortraitCell"
-	portraitCell.BorderSizePixel = borderSizePixel or 0
+	portraitCell.BorderSizePixel = 0
 	portraitCell.BorderMode = Enum.BorderMode.Inset
 
 	local img = Instance.new("ImageLabel")
@@ -96,7 +127,9 @@ module.createAvatarPortraitPopup = function(
 	img.Parent = portraitCell
 	img.BorderMode = Enum.BorderMode.Inset
 	img.ScaleType = Enum.ScaleType.Crop
-	img.BorderSizePixel = 0
+	-- Apply border to the image (the visible element)
+	img.BorderSizePixel = borderSizePixel or 0
+	img.BorderColor3 = borderColor or colors.black
 	local content = module.getThumbnailContent(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 	img.Image = content
 
@@ -235,26 +268,34 @@ module.createAvatarPortraitPopup = function(
 			popupImage.Position = UDim2.fromOffset(newPositionX, newPositionY)
 		end
 
-		portraitCell.MouseEnter:Connect(function()
-			showAvatarPopup()
-		end)
+		-- Connect mouse handlers to BOTH parent and child image
+		-- Roblox mouse events don't bubble; child intercepts when mouse is over it
+		local function connectMouseHandlers(element: GuiObject)
+			element.MouseEnter:Connect(function()
+				showAvatarPopup()
+			end)
 
-		portraitCell.MouseLeave:Connect(function()
-			hideAvatarPopup()
-		end)
-
-		portraitCell.MouseMoved:Connect(function()
-			-- Hide tooltip if mouse moves over a control button
-			if isMouseOverControlButton(portraitCell) then
+			element.MouseLeave:Connect(function()
 				hideAvatarPopup()
-			end
-		end)
+			end)
 
-		portraitCell.InputBegan:Connect(function(input: InputObject)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
-				hideAvatarPopup()
-			end
-		end)
+			element.MouseMoved:Connect(function()
+				-- Hide tooltip if mouse moves over a control button
+				if isMouseOverControlButton(portraitCell) then
+					hideAvatarPopup()
+				end
+			end)
+
+			element.InputBegan:Connect(function(input: InputObject)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 then
+					hideAvatarPopup()
+				end
+			end)
+		end
+
+		-- Wire both parent frame and child image so tooltip works regardless of which is "on top"
+		connectMouseHandlers(portraitCell)
+		connectMouseHandlers(img)
 
 		portraitCell.AncestryChanged:Connect(function(_, parent)
 			if parent == nil then
@@ -268,6 +309,138 @@ module.createAvatarPortraitPopup = function(
 	end
 
 	return portraitCell
+end
+
+-- Create a badge image with optional hover popup showing larger version
+module.createBadgeImageWithPopup = function(
+	iconImageId: number?,
+	doPopup: boolean,
+	backgroundColor: Color3?
+): ImageLabel
+	local img = Instance.new("ImageLabel")
+	img.Size = UDim2.new(1, 0, 1, 0)
+	-- Badges are circular, so use transparent background to show through
+	img.BackgroundColor3 = backgroundColor or colors.defaultGrey
+	img.BackgroundTransparency = if backgroundColor then 0 else 1
+	img.Name = "BadgeImage"
+	img.BorderSizePixel = 0
+	img.ScaleType = Enum.ScaleType.Fit
+
+	local content = ""
+	if iconImageId then
+		content = string.format("rbxassetid://%d", iconImageId)
+		img.Image = content
+	end
+
+	if doPopup and iconImageId then
+		local function getOrCreateBadgePopup(playerGui: PlayerGui?): (ScreenGui?, ImageLabel?)
+			if not playerGui then
+				return nil, nil
+			end
+
+			if badgePopupGui and badgePopupGui.Parent ~= playerGui then
+				badgePopupGui:Destroy()
+				badgePopupGui = nil
+				badgePopupImage = nil
+			end
+
+			if not badgePopupGui then
+				local newGui = Instance.new("ScreenGui")
+				newGui.Name = BADGE_POPUP_GUI_NAME
+				newGui.ResetOnSpawn = false
+				newGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+				newGui.DisplayOrder = 100 -- Above most other GUIs
+
+				local container = Instance.new("Frame")
+				container.Size = UDim2.fromScale(1, 1)
+				container.BackgroundTransparency = 1
+				container.Name = "BadgeImages"
+				container.Parent = newGui
+
+				local image = Instance.new("ImageLabel")
+				image.Size = UDim2.fromOffset(150, 150)
+				image.BackgroundTransparency = 1
+				image.BorderSizePixel = 0
+				image.Name = "LargeBadgeImage"
+				image.ZIndex = 10
+				image.ScaleType = Enum.ScaleType.Fit
+				image.Parent = container
+
+				badgePopupGui = newGui
+				badgePopupImage = image
+
+				-- Click to dismiss
+				image.InputBegan:Connect(function(input: InputObject)
+					if input.UserInputType == Enum.UserInputType.MouseButton1 then
+						if badgePopupGui then
+							badgePopupGui.Enabled = false
+						end
+					end
+				end)
+			end
+
+			if badgePopupGui and badgePopupGui.Parent ~= playerGui then
+				badgePopupGui.Parent = playerGui
+			end
+
+			return badgePopupGui, badgePopupImage
+		end
+
+		local function hideBadgePopup()
+			if badgePopupGui then
+				badgePopupGui.Enabled = false
+			end
+		end
+
+		local function showBadgePopup()
+			local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+			if not playerGui then
+				return
+			end
+
+			local popupGui, popupImage = getOrCreateBadgePopup(playerGui)
+			if not popupGui or not popupImage then
+				return
+			end
+
+			popupGui.Enabled = true
+			popupImage.Image = content
+
+			local mouseLocation = UserInputService:GetMouseLocation()
+			-- Position to the left of the mouse, centered vertically
+			local newPositionX = mouseLocation.X - popupImage.Size.X.Offset - 20
+			local newPositionY = mouseLocation.Y - (popupImage.Size.Y.Offset / 2)
+
+			local screenSize = workspace.CurrentCamera.ViewportSize
+			newPositionX = math.max(0, math.min(newPositionX, screenSize.X - popupImage.Size.X.Offset))
+			newPositionY = math.max(0, math.min(newPositionY, screenSize.Y - popupImage.Size.Y.Offset))
+
+			popupImage.Position = UDim2.fromOffset(newPositionX, newPositionY)
+		end
+
+		-- Wire mouse handlers
+		img.MouseEnter:Connect(function()
+			showBadgePopup()
+		end)
+
+		img.MouseLeave:Connect(function()
+			hideBadgePopup()
+		end)
+
+		img.InputBegan:Connect(function(input: InputObject)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				hideBadgePopup()
+			end
+		end)
+
+		img.AncestryChanged:Connect(function(_, parent)
+			if parent == nil then
+				hideBadgePopup()
+			end
+		end)
+	end
+
+	return img
 end
 
 _annotate("end")

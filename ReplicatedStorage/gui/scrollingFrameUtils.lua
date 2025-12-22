@@ -39,7 +39,7 @@ module.PreventCameraScrollOnHover = function(scrollingFrame: ScrollingFrame)
 			return Enum.ContextActionResult.Pass
 		end
 		
-		_annotate(string.format("[PreventCameraScroll] Sinking scroll for %s", scrollingFrame.Name))
+		_annotate(string.format("Sinking scroll for %s", scrollingFrame.Name))
 		
 		-- Sink the input to prevent camera from also scrolling
 		return Enum.ContextActionResult.Sink

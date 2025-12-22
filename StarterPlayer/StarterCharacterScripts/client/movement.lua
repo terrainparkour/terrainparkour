@@ -45,6 +45,48 @@ local movementEventHistory: { aet.avatarEvent } = {}
 local activeRunSignName: string = ""
 local lastTouchedFloor: Enum.Material? = nil
 
+local function describeMovementState(): string
+	return string.format(
+		"movementState{sign=%s,warpBlocked=%s,historySize=%d}",
+		activeRunSignName ~= "" and activeRunSignName or "none",
+		tostring(isMovementBlockedByWarp),
+		#movementEventHistory
+	)
+end
+
+local function setMovementWarpBlocked(nextValue: boolean, context: string)
+	if isMovementBlockedByWarp == nextValue then
+		return
+	end
+	isMovementBlockedByWarp = nextValue
+	_annotate(string.format("isMovementBlockedByWarp -> %s (%s) %s", tostring(nextValue), context, describeMovementState()))
+end
+
+local function setActiveRunSign(name: string)
+	if activeRunSignName == name then
+		return
+	end
+	activeRunSignName = name
+	_annotate(string.format("activeRunSignName -> %s %s", name ~= "" and name or "none", describeMovementState()))
+end
+
+local function clearMovementHistory(context: string)
+	movementEventHistory = {}
+	-- _annotate(string.format("movementEventHistory cleared (%s)", context))
+end
+
+local function pushMovementHistory(ev: aet.avatarEvent, context: string)
+	table.insert(movementEventHistory, ev)
+	-- _annotate(
+	-- 	string.format(
+	-- 		"movementEventHistory push (%s) size=%d %s",
+	-- 		context,
+	-- 		#movementEventHistory,
+	-- 		avatarEventFiring.DescribeEvent(ev)
+	-- 	)
+	-- )
+end
+
 ------------------------ UTILS -----------------------
 
 local InternalSetJumpPower = function(jumpPower: number)
@@ -206,7 +248,7 @@ local adjustSpeed = function()
 	-- this only covers things that happen after a sign is touched.
 	-- hmm okay SURELY the minimum start time on this terrain should be... the first event which occurred?
 	-- because somehow people are reaching the end of the run with no speedup.
-	_annotate("----------NEW ROUND-----------")
+	-- _annotate("----------NEW ROUND-----------")
 	for _, movementHistoryEvent: aet.avatarEvent in pairs(movementEventHistory) do
 		if isMovementBlockedByWarp then
 			_annotate("broke out of adjust speed due to warp.")
@@ -225,37 +267,29 @@ local adjustSpeed = function()
 				-- or maybe, different but at least not resetting.
 				local floorMat: Enum.Material = floorMaterial
 				if floorMat ~= activeTerrain then
-					local useOldTerrainName = ""
-					if activeTerrain then
-						useOldTerrainName = activeTerrain.Name
-					end
-
-					_annotate(
-						string.format(
-							"Changed terrain types from %s=>%s.  \r\n\tOld time on material: %0.1f, \r\n\tthis eventAge, %0.1f, \r\n\tso updated howLongHasUserBeenOnThisTerrainS to just: %0.1f",
-							useOldTerrainName,
-							floorMat.Name,
-							howLongHasUserBeenOnThisTerrainS,
-							eventAge,
-							math.max(howLongHasUserBeenOnThisTerrainS - 3, eventAge)
-						)
-					)
-					-- basically we are always dealing with "how long (longer is better) has this same-terrain state been in effect?
-					-- previously we would zero it out. But now we just do math.max (old time on -3, new eventAge).
-					-- so if they jsut switched and that was the last action, then they either get 0 credit or old time -3.
+					-- Apply -3 second penalty for terrain transitions.
+					-- The penalty reduces accumulated time, but never below the event age.
+					-- Example: 20s on Grass → LeafyGrass = max(20-3, 0) = 17s on new terrain
 					howLongHasUserBeenOnThisTerrainS = math.max(howLongHasUserBeenOnThisTerrainS - 3, eventAge)
 					if specialMovementAnnotate then
-						_annotate("accepted new floor actually: " .. floorMat.Name)
+						_annotate(
+							string.format(
+								"Terrain transition: %s => %s, time carried over: %0.1fs",
+								activeTerrain and activeTerrain.Name or "none",
+								floorMat.Name,
+								howLongHasUserBeenOnThisTerrainS
+							)
+						)
 					end
-					-- we reset the start time. subsequently this will have the effect of meaning the
-					-- recalculation of their "gain speed" time is affected (negatively, for shorter gain-times.)
 					activeTerrain = floorMat
+
+					-- I will comment this out later but for nowe we're not going to change run behavior.
 					howLongHasUserBeenOnThisTerrainS = eventAge
 				end
 				isTouchingNonTerrainRightNow = false
 			else
 				-- basically if the very last thing they do is actively touch a sign, they will not speed up.
-				-- _annotate("is touching nonterrain?)")
+				-- _annotate("is touching nonterrainpay?)")
 				-- isTouchingNonTerrainRightNow = true
 				-- actually just disable this. I'll allow speedup on signs. But I will not allow pausing on a sign, stopping there, and gaining speedup.
 			end
@@ -398,8 +432,8 @@ local adjustSpeed = function()
 		local timeInSection3 = math.max(0, effectiveTimeOnCurrentTerrain - thirdLinearSectionEnd)
 		local timeInSection4 = math.max(0, effectiveTimeOnCurrentTerrain - fourthLinearSectionEnd)
 		local timeInSection5 = math.max(0, effectiveTimeOnCurrentTerrain - fifthLinearSectionEnd)
-		local timeInFinalSection = math.max(0, effectiveTimeOnCurrentTerrain - fifthLinearSectionDivider)
-		local totalGain = timeInSection1 / firstLinearSectionDivider
+		local _timeInFinalSection = math.max(0, effectiveTimeOnCurrentTerrain - fifthLinearSectionDivider)
+		local _totalGain = timeInSection1 / firstLinearSectionDivider
 			+ timeInSection2 / secondLinearSectionDivider
 			+ timeInSection3 / thirdLinearSectionDivider
 			+ timeInSection4 / fourthLinearSectionDivider
@@ -416,9 +450,9 @@ local adjustSpeed = function()
 		if effectiveTimeOnCurrentTerrain < firstLinearSectionEnd then
 			speedMultiplierFromSameTerrain += effectiveTimeOnCurrentTerrain / firstLinearSectionDivider
 		else
-			speedMultiplierFromSameTerrain += firstLinearSectionEnd / firstLinearSectionDivider + (math.log(
-				effectiveTimeOnCurrentTerrain
-			) - math.log(firstLinearSectionEnd - 7)) / 79
+			speedMultiplierFromSameTerrain += firstLinearSectionEnd / firstLinearSectionDivider + (math.log(effectiveTimeOnCurrentTerrain) - math.log(
+				firstLinearSectionEnd - 7
+			)) / 79
 		end
 		if specialMovementAnnotate then
 			_annotate(string.format("speed multiplier: %0.2f", speedMultiplierFromSameTerrain))
@@ -525,16 +559,108 @@ local adjustSpeed = function()
 	end
 
 	InternalSetSpeed(effectiveSpeed)
+
+	-- Build list of all active speed factors (excluding base terrain acceleration phase)
+	local speedReasons: { string } = {}
+	local signName = activeRunSignName
+
+	-- Movement state
+	if globalIsWalking then
+		table.insert(speedReasons, "Walking")
+	end
+
+	-- Environmental penalties
+	if swamInLast4Seconds then
+		if signName == "cOld mOld on a sLate pLate" then
+			table.insert(speedReasons, "Cold Mold (water)")
+		else
+			table.insert(speedReasons, "Swimming")
+		end
+	end
+
+	if lavaInLast4Seconds then
+		if signName == "cOld mOld on a sLate pLate" then
+			table.insert(speedReasons, "Cold Mold (lava)")
+		elseif signName ~= "Lavaslug" then
+			table.insert(speedReasons, "Lava")
+		end
+	end
+
+	-- Jump penalty
+	if secondsOfJumpInWindow > 1.5 and signName ~= "Fosbury" then
+		table.insert(speedReasons, string.format("Jump -%0.1f%%", 1.5 * secondsOfJumpInWindow))
+	end
+
+	-- Special sign runs
+	if signName == "Prefontaine" then
+		table.insert(speedReasons, "Prefontaine")
+	elseif signName == "Bolt" then
+		table.insert(speedReasons, "Bolt")
+	elseif signName == "Lavaslug" then
+		table.insert(speedReasons, "Lavaslug")
+	elseif signName == "cOld mOld on a sLate pLate" and #speedReasons == 0 then
+		table.insert(speedReasons, "Cold Mold")
+	elseif signName == "Fosbury" then
+		table.insert(speedReasons, "Fosbury")
+	elseif signName == "Salekhard" then
+		table.insert(speedReasons, "Salekhard")
+	elseif signName == "Hypergravity" then
+		table.insert(speedReasons, "Hypergravity")
+	elseif signName == "Zoom" then
+		table.insert(speedReasons, "Zoom")
+	end
+
+	-- Combine all reasons with newlines
+	local speedReasonText = table.concat(speedReasons, "\n")
+	activeRunSGui.UpdateSpeedReason(speedReasonText)
+
+	-- Calculate instantaneous acceleration rate (studs/s²)
+	local accelerationRate = 0
+	if playerIsMoving and not isTouchingNonTerrainRightNow and not globalIsWalking then
+		-- Base multiplier from all non-terrain-time factors
+		local baseMultiplier = speedMultiplerFromRunLength
+			* jumpSpeedMultiplier
+			* actualSwimSpeedMultiplier
+			* actualLavaSpeedMultiplier
+			* fasterSignSpeedMultiplier
+			* coldMoldSpeedEffectMultiplier
+
+		-- Calculate derivative of speedMultiplierFromSameTerrain with respect to time
+		local terrainSpeedDerivative = 0
+		if effectiveTimeOnCurrentTerrain < 11 then
+			-- Linear phase: d/dt = 1/120
+			terrainSpeedDerivative = 1 / 120
+		else
+			-- Logarithmic phase: d/dt = 1/(79 * t)
+			terrainSpeedDerivative = 1 / (79 * effectiveTimeOnCurrentTerrain)
+		end
+
+		-- Total acceleration is base speed × multipliers × derivative
+		accelerationRate = movementEnums.constants.globalDefaultRunSpeed * baseMultiplier * terrainSpeedDerivative
+
+		-- Account for jump speed debuff decay (jumps age out, reducing penalty)
+		-- As time passes, jumps older than 3s stop affecting speed, creating positive acceleration
+		-- This is a simplification; actual behavior is discrete as jumps cross the 3s threshold
+		if secondsOfJumpInWindow > 0 and activeRunSignName ~= "Fosbury" then
+			-- Jump debuff is 1.5% per second of jump in window
+			-- As the window slides, old jumps fall off, reducing the debuff
+			-- This creates an additional positive acceleration component
+			local jumpDebuffDecayRate = 0.015 * secondsOfJumpInWindow
+			accelerationRate = accelerationRate + (movementEnums.constants.globalDefaultRunSpeed * baseMultiplier * jumpDebuffDecayRate)
+		end
+	end
+
+	activeRunSGui.UpdateAcceleration(accelerationRate)
 	debounceAdjustSpeed = false
 end
 
 local setRunEffectedSign = function(name: string)
-	if name then
+	if name and name ~= "" then
 		_annotate("Set active sign to: " .. name)
 	else
 		_annotate("Unset active sign.")
 	end
-	activeRunSignName = name
+	setActiveRunSign(name or "")
 end
 
 -------------------------------- EVENT FILTERING ------------------------------
@@ -573,24 +699,24 @@ local handleAvatarEvent = function(ev: aet.avatarEvent)
 	end
 	_annotate(string.format("handling: %s", avatarEventFiring.DescribeEvent(ev)))
 	if ev.eventType == aet.avatarEventTypes.GET_READY_FOR_WARP then
-		isMovementBlockedByWarp = true
-		movementEventHistory = {}
+		setMovementWarpBlocked(true, "GET_READY_FOR_WARP")
+		clearMovementHistory("GET_READY_FOR_WARP")
 		ApplyNewPhysicsFloor("default", movementEnums.constants.DefaultPhysicalProperties)
 		setRunEffectedSign("")
 		InternalSetSpeed(movementEnums.constants.globalDefaultRunSpeed)
 		InternalSetJumpPower(movementEnums.constants.globalDefaultJumpPower)
-		movementEventHistory = {}
+		clearMovementHistory("GET_READY_FOR_WARP end")
 		fireEvent(aet.avatarEventTypes.MOVEMENT_WARPER_READY, { sender = "movement" })
 		_annotate("done with GET_READY_FOR_WARP")
 		return
 	elseif ev.eventType == aet.avatarEventTypes.WARP_DONE_RESTART_MOVEMENT then
-		movementEventHistory = {}
+		clearMovementHistory("WARP_DONE_RESTART_MOVEMENT")
 		ApplyNewPhysicsFloor("default", movementEnums.constants.DefaultPhysicalProperties)
 		setRunEffectedSign("")
 		InternalSetSpeed(movementEnums.constants.globalDefaultRunSpeed)
 		InternalSetJumpPower(movementEnums.constants.globalDefaultJumpPower)
-		movementEventHistory = {}
-		isMovementBlockedByWarp = false
+		clearMovementHistory("WARP_DONE_RESTART_MOVEMENT end")
+		setMovementWarpBlocked(false, "WARP_DONE_RESTART_MOVEMENT")
 		fireEvent(aet.avatarEventTypes.MOVEMENT_RESTARTED, { sender = "movement" })
 		_annotate("done with WARP_DONE_RESTART_MOVEMENT")
 		return
@@ -601,7 +727,7 @@ local handleAvatarEvent = function(ev: aet.avatarEvent)
 		_annotate("ignored event due to being locked by warping:" .. aet.avatarEventTypesReverse[ev.eventType])
 		return
 	end
-	table.insert(movementEventHistory, ev)
+	pushMovementHistory(ev, "handleAvatarEvent")
 
 	if ev.eventType == aet.avatarEventTypes.RUN_START then
 		--- in a sense, we almost want to teleport you to the sign and reset your time from that point.
@@ -621,8 +747,8 @@ local handleAvatarEvent = function(ev: aet.avatarEvent)
 		end
 		local startSignName: string = startSignNameValue :: string
 		setRunEffectedSign(startSignName)
-		movementEventHistory = {}
-		table.insert(movementEventHistory, ev)
+		clearMovementHistory("RUN_START")
+		pushMovementHistory(ev, "RUN_START")
 		if activeRunSignName == "Salekhard" then
 			ApplyNewPhysicsFloor("ice", movementEnums.IceProps)
 		end
@@ -636,9 +762,9 @@ local handleAvatarEvent = function(ev: aet.avatarEvent)
 			warn("retouch while not on a run huh")
 			_annotate("retouch while not on a run huh")
 		end
-		movementEventHistory = {}
+		clearMovementHistory("RETOUCH_SIGN")
 		--fix this up so at least the run history makes some kind of sense.
-		table.insert(movementEventHistory, ev)
+		pushMovementHistory(ev, "RETOUCH_SIGN")
 		--patch it up with current touching floor, too.
 		-- Add a fake event for the current floor
 		-- we fill in all the full fake details too.
@@ -658,7 +784,7 @@ local handleAvatarEvent = function(ev: aet.avatarEvent)
 			id = ev.id,
 		}
 
-		table.insert(movementEventHistory, currentFloorEvent)
+		pushMovementHistory(currentFloorEvent, "RETOUCH_SIGN currentFloor")
 		_annotate(string.format("Added fake floor event for current floor: %s", tostring(humanoid.FloorMaterial)))
 
 		-- also I think we should add a fake started moving event here, if they are moving at all. so that if they hit a sign, then stop, then
@@ -702,7 +828,7 @@ local handleAvatarEvent = function(ev: aet.avatarEvent)
 		end
 		--- clear history and remove knowledge that we're on a run from a certain sign.
 
-		movementEventHistory = {}
+		clearMovementHistory("RUN_END")
 		local desiredPhysicsDetails = movementEnums.GetPropertiesForFloor(humanoid.FloorMaterial)
 		local desiredPhysicsName = desiredPhysicsDetails.name
 		ApplyNewPhysicsFloor(desiredPhysicsName, desiredPhysicsDetails.prop)
@@ -720,12 +846,10 @@ local handleAvatarEvent = function(ev: aet.avatarEvent)
 		-- but that would also clear historical lava touches for example, so we don't.
 	elseif ev.eventType == aet.avatarEventTypes.FLOOR_CHANGED then
 		ApplyFloorPhysics(ev)
-	elseif
-		ev.eventType == aet.avatarEventTypes.CHARACTER_REMOVING or ev.eventType == aet.avatarEventTypes.AVATAR_DIED
-	then
+	elseif ev.eventType == aet.avatarEventTypes.CHARACTER_REMOVING or ev.eventType == aet.avatarEventTypes.AVATAR_DIED then
 		setRunEffectedSign("")
 		_annotate("character removed or avatar died, so killing movementEventHistory and destroying GUI.")
-		movementEventHistory = {}
+		clearMovementHistory("CHARACTER_REMOVING/AVATAR_DIED")
 		activeRunSGui.DestroyGui()
 	else
 		warn("Unhandled movement event: " .. avatarEventFiring.DescribeEvent(ev))
@@ -737,18 +861,24 @@ end
 
 ---------------------- START CONTINUOUS ADJUSTMENT ------------
 
+module.Reset = function()
+	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
+	humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	setMovementWarpBlocked(false, "module.Reset")
+	activeCurrentWorldPhysicsName = "default"
+	lastTouchedFloor = nil
+	clearMovementHistory("module.Reset")
+	setRunEffectedSign("")
+	debounceAdjustSpeed = false
+	activeRunSGui.Init()
+end
+
 local avatarEventConnection = nil
 module.Init = function()
 	_annotate("start of movement.init.")
-	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
-	humanoid = character:WaitForChild("Humanoid") :: Humanoid
-	isMovementBlockedByWarp = false
-	activeCurrentWorldPhysicsName = "default"
-	lastTouchedFloor = nil
-	movementEventHistory = {}
-	activeRunSignName = ""
-	debounceAdjustSpeed = false
-	activeRunSGui.Init()
+
+	module.Reset()
+
 	task.spawn(function()
 		while true do
 			adjustSpeed()

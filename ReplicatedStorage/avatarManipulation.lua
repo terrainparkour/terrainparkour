@@ -135,8 +135,10 @@ module.SetCharacterTransparency = function(_: Player, target: number)
 		data = data,
 	}
 
-	GenericClientUIFunction:InvokeServer(event)
-	_annotate("done setting character transparency")
+	task.spawn(function()
+		GenericClientUIFunction:InvokeServer(event)
+		_annotate("done setting character transparency")
+	end)
 	-- return any
 end
 
@@ -154,14 +156,24 @@ module.ResetPhysicalAvatarMorphs = function(humanoid: Humanoid, character: Model
 		eventKind = "avatarMorph",
 		data = data,
 	}
-	local changedAnythingOnServer = GenericClientUIFunction:InvokeServer(event)
-	if changedAnythingOnServer then
-		_annotate(
-			"client has received response from request to change avatar traints on server, and they DID do something"
-		)
-	else
-		_annotate("client has received response from request to change avatar traints on server, but they did NOTHING")
-	end
+	task.spawn(function()
+		local success, changedAnythingOnServer = pcall(function()
+			return GenericClientUIFunction:InvokeServer(event)
+		end)
+
+		if not success then
+			_annotate("ResetPhysicalAvatarMorphs failed: " .. tostring(changedAnythingOnServer))
+			return
+		end
+
+		if changedAnythingOnServer then
+			_annotate(
+				"client has received response from request to change avatar traints on server, and they DID do something"
+			)
+		else
+			_annotate("client has received response from request to change avatar traints on server, but they did NOTHING")
+		end
+	end)
 
 	local state = humanoid:GetState()
 	if

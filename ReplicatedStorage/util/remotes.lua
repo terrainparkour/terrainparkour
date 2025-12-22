@@ -1,6 +1,7 @@
 --!strict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local refolder: Folder = ReplicatedStorage:WaitForChild("RemoteEvents") :: Folder
 local rffolder: Folder = ReplicatedStorage:WaitForChild("RemoteFunctions") :: Folder
 local befolder: Folder = ReplicatedStorage:WaitForChild("BindableEvents") :: Folder
@@ -51,7 +52,9 @@ local registerRemoteFunction = function(name: string): RemoteFunction
 	end
 
 	local exiInstance: Instance? = rffolder:FindFirstChild(name)
-	local exi: RemoteFunction? = if exiInstance and exiInstance:IsA("RemoteFunction") then exiInstance :: RemoteFunction else nil
+	local exi: RemoteFunction? = if exiInstance and exiInstance:IsA("RemoteFunction")
+		then exiInstance :: RemoteFunction
+		else nil
 	if not exi then
 		local remotes = Instance.new("RemoteFunction")
 		remotes.Name = name
@@ -69,7 +72,9 @@ local registerBindableEvent = function(name: string): BindableEvent
 	end
 
 	local exiInstance: Instance? = befolder:FindFirstChild(name)
-	local exi: BindableEvent? = if exiInstance and exiInstance:IsA("BindableEvent") then exiInstance :: BindableEvent else nil
+	local exi: BindableEvent? = if exiInstance and exiInstance:IsA("BindableEvent")
+		then exiInstance :: BindableEvent
+		else nil
 	if not exi then
 		local be = Instance.new("BindableEvent")
 		be.Name = name
@@ -90,7 +95,12 @@ module.getRemoteEvent = function(name: string): RemoteEvent
 	local exiInstance: Instance? = refolder:FindFirstChild(name)
 	local exi: RemoteEvent? = if exiInstance and exiInstance:IsA("RemoteEvent") then exiInstance :: RemoteEvent else nil
 	if not exi then
-		return registerRemoteEvent(name)
+		if RunService:IsServer() then
+			return registerRemoteEvent(name)
+		else
+			done(name)
+			return refolder:WaitForChild(name) :: RemoteEvent
+		end
 	end
 	done(name)
 	return exi :: RemoteEvent
@@ -103,9 +113,16 @@ module.getRemoteFunction = function(name: string): RemoteFunction
 	end
 
 	local exiInstance: Instance? = rffolder:FindFirstChild(name)
-	local exi: RemoteFunction? = if exiInstance and exiInstance:IsA("RemoteFunction") then exiInstance :: RemoteFunction else nil
+	local exi: RemoteFunction? = if exiInstance and exiInstance:IsA("RemoteFunction")
+		then exiInstance :: RemoteFunction
+		else nil
 	if not exi then
-		return registerRemoteFunction(name)
+		if RunService:IsServer() then
+			return registerRemoteFunction(name)
+		else
+			done(name)
+			return rffolder:WaitForChild(name) :: RemoteFunction
+		end
 	end
 	done(name)
 	return exi :: RemoteFunction
@@ -117,7 +134,9 @@ module.getBindableEvent = function(name: string): BindableEvent
 	end
 	getDebounce("get " .. name)
 	local exiInstance: Instance? = befolder:FindFirstChild(name)
-	local exi: BindableEvent? = if exiInstance and exiInstance:IsA("BindableEvent") then exiInstance :: BindableEvent else nil
+	local exi: BindableEvent? = if exiInstance and exiInstance:IsA("BindableEvent")
+		then exiInstance :: BindableEvent
+		else nil
 	if not exi then
 		return registerBindableEvent(name)
 	end

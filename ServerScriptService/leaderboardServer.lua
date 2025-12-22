@@ -11,6 +11,9 @@ local PlayerService = game:GetService("Players")
 local playerData2 = require(game.ServerScriptService.playerData2)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
+local remotes = require(game.ReplicatedStorage.util.remotes)
+
+local LeaderboardSettingChangedBindableEvent = remotes.getBindableEvent("LeaderboardSettingChangedBindableEvent")
 
 local module = {}
 
@@ -102,6 +105,15 @@ module.UpdateOthersAboutJoinerLb = function(player: Player)
 	_annotate("Player " .. player.Name .. " initial add backfull, so telling others.")
 	updateOthersAboutPlayerImmediate(player)
 end
+
+-- Listen for leaderboard-affecting setting changes (pinned badge, warp permission, etc.)
+LeaderboardSettingChangedBindableEvent.Event:Connect(function(userId: number, settingName: string)
+	_annotate(string.format("Leaderboard setting changed: userId=%d setting=%s", userId, settingName))
+	local player = PlayerService:GetPlayerByUserId(userId)
+	if player then
+		module.UpdateAllAboutPlayerImmediate(player)
+	end
+end)
 
 _annotate("end")
 return module

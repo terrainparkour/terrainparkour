@@ -9,7 +9,7 @@ local _annotate = annotater.getAnnotater(script)
 local commandTypes = require(game.ReplicatedStorage.ChatSystem.commandTypes)
 
 local banning = require(game.ServerScriptService.banning)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 
 local module: commandTypes.CommandModule = {
 	Execute = function(_player: Player, _parts: { string }): boolean

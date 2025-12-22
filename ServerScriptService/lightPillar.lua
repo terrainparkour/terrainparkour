@@ -3,9 +3,7 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
-local remotes = require(game.ReplicatedStorage.util.remotes)
-local tt = require(game.ReplicatedStorage.types.gametypes)
+local colors = require(game.ReplicatedStorage.util.colors)
 
 local module = {}
 
@@ -26,16 +24,16 @@ module.CreateTemporaryLightPillar = function(pos: Vector3, desc: string)
 	part.Shape = Enum.PartType.Cylinder
 	part.Parent = game.Workspace
 	if desc == "source" then
-		part.Color = Color3.fromRGB(255, 160, 160)
+		part.Color = colors.pillarSource
 	elseif desc == "destination" then
-		part.Color = Color3.fromRGB(160, 250, 160)
+		part.Color = colors.pillarDestination
 	else
 		_annotate("bad")
 	end
 
 	task.spawn(function()
 		while true do
-			wait(1 / 37)
+			task.wait(1 / 37)
 			part.Transparency = part.Transparency + 1 / 370
 			if part.Transparency >= 1 then
 				part:Destroy()

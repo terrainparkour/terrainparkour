@@ -1,56 +1,72 @@
 --!strict
 
--- notifier.lua
---runs on playerside for notifications
+-- notifyClient.lua
+-- Client-side handler for all server notifications via ServerToClientEvent.
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
-local module = {}
 
 local config = require(game.ReplicatedStorage.config)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
-local drawRunResultsGui = require(game.ReplicatedStorage.gui.runresults.drawRunResultsGui)
-
+local drawRunResultGui = require(game.ReplicatedStorage.gui.runresults.drawRunResultGui)
 local drawFindGui = require(game.ReplicatedStorage.gui.runresults.drawFindGui)
+local drawWRHistoryProgressionGui = require(game.ReplicatedStorage.gui.menu.drawWRHistoryProgressionGui)
+local badgeCompareGui = require(game.ReplicatedStorage.gui.menu.badgeCompareGui)
 local ephemeralNotifications = require(game.ReplicatedStorage.gui.ephemeralNotificationCreator)
 
-type legacyOptions = {}
+local module = {}
 
---notify player of something.
--- note: 2024, I am taking this over and instead generically probably going ot handle it in clientCommands.
-local function clientReceiveNotification(pythonResponse: any)
+local function clientReceiveNotification(notification: tt.serverToClientNotification)
 	if config.IsInStudio() then
-		_annotate("client receive notifications:" .. tostring(pythonResponse.kind))
+		_annotate("client receive notification: " .. tostring(notification.kind))
 	end
-	if pythonResponse.kind == "race results" then
-		drawRunResultsGui.DrawRunResultsGui(pythonResponse)
-		return
-	elseif pythonResponse.kind == "userFoundSign" then
-		local dcFindResponse = pythonResponse :: tt.dcFindResponse
+
+	if notification.kind == "userFoundSign" then
+		local findResponse = notification :: tt.dcFindResponse
 		_annotate(
 			string.format(
-				"clientReceiveNotification: received userFoundSign userId=%d signId=%d signName=%s foundNew=%s",
-				dcFindResponse.userId,
-				dcFindResponse.signId,
-				dcFindResponse.signName,
-				tostring(dcFindResponse.foundNew)
+				"received userFoundSign userId=%d signId=%d signName=%s foundNew=%s",
+				findResponse.userId,
+				findResponse.signId,
+				findResponse.signName,
+				tostring(findResponse.foundNew)
 			)
 		)
-		drawFindGui.CreateFindScreenGui(dcFindResponse)
-		_annotate("clientReceiveNotification: drawFindGui.CreateFindScreenGui called")
-		return
-	elseif pythonResponse.kind == "marathon results" then
-		pythonResponse = pythonResponse :: tt.userFinishedRunResponse
-		drawRunResultsGui.DrawRunResultsGui(pythonResponse)
-		return
+		drawFindGui.CreateFindScreenGui(findResponse)
+	elseif notification.kind == "raceResults" then
+		local raceResponse = notification :: tt.raceResultsNotification
+		drawRunResultGui.DrawRunResultGui(raceResponse)
+	elseif notification.kind == "marathonResults" then
+		local marathonResponse = notification :: tt.marathonResultsNotification
+		drawRunResultGui.DrawRunResultGui(marathonResponse)
+	elseif notification.kind == "wrProgression" then
+		local wrResponse = notification :: tt.wrProgressionNotification
+		if wrResponse.raceExists then
+			drawWRHistoryProgressionGui.CreateWRHistoryProgressionGui(wrResponse)
+		end
+	elseif notification.kind == "wrProgressionChart" then
+		local wrResponse = notification :: tt.wrProgressionChartNotification
+		if wrResponse.raceExists then
+			drawWRHistoryProgressionGui.ShowWRProgressionChart(wrResponse)
+		end
+	elseif notification.kind == "badgeCompare" then
+		local payload = notification :: tt.badgeCompareNotification
+		badgeCompareGui.ShowBadgeCompare(payload)
+	elseif notification.kind == "badge received" then
+		-- Badge notifications with optional badge icon
+		local badgeOptions = notification :: tt.badgeOptions
+		ephemeralNotifications.notifyBadge(badgeOptions)
 	else
-		if pythonResponse.kind then
-			--fallback to ephemeral
-			local actionResultOptions: tt.ephemeralNotificationOptions =
-				pythonResponse :: tt.ephemeralNotificationOptions
+		-- Ephemeral notifications (action results, etc.)
+		local actionResultOptions = notification :: tt.ephemeralNotificationOptions
+		if actionResultOptions.text then
 			ephemeralNotifications.notify(actionResultOptions)
 		else
-			warn("bad response.")
+			annotater.Error(
+				string.format("clientReceiveNotification: unrecognized notification kind=%s", tostring(notification.kind)),
+				{ kind = notification.kind }
+			)
 		end
 	end
 end

@@ -16,4 +16,18 @@ export type CommandModule = {
 	Aliases: { string }?,
 }
 
-return {}
+type Module = {
+	CommandHandler: CommandHandler?,
+	CommandVisibility: CommandVisibility?,
+	ChannelRestriction: ChannelRestriction?,
+	CommandModule: CommandModule,
+}
+
+local commandTypes: Module = {
+	CommandHandler = nil,
+	CommandVisibility = nil,
+	ChannelRestriction = nil,
+	CommandModule = {} :: CommandModule,
+}
+
+return commandTypes

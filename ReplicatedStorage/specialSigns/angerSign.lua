@@ -21,11 +21,11 @@ local _annotate = annotater.getAnnotater(script)
 local specialSign = {}
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
-local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
+local warper = require(game.StarterPlayer.StarterCharacterScripts.client.warper)
 local activeRunSGui = require(game.ReplicatedStorage.gui.activeRunSGui)
 local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
-local ContentProvider = game:GetService("ContentProvider")
+local _ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
 local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
@@ -37,6 +37,9 @@ local originalTexture
 local lastTerrain: Enum.Material? = nil
 local loopRunning = false
 local killLoop = false
+
+local DESCRIPTION_DURING_RUN = "-40 if you hit a new terrain."
+local DESCRIPTION_ON_START = "You take 40 damage from switching terrain!"
 
 -------------- MAIN --------------
 specialSign.InformRunEnded = function()
@@ -65,7 +68,7 @@ specialSign.InformRunEnded = function()
 end
 
 local startDescriptionLoopingUpdate = function()
-	activeRunSGui.UpdateExtraRaceDescription("-40 if you hit a new terrain.")
+	activeRunSGui.UpdateExtraRaceDescription(DESCRIPTION_DURING_RUN)
 	task.spawn(function()
 		_annotate("spawning desc updater.")
 		local lastHealthText = ""
@@ -91,7 +94,7 @@ local startDescriptionLoopingUpdate = function()
 					break
 				end
 			end
-			wait(1 / 30)
+			task.wait(1 / 30)
 		end
 		_annotate("update text tight loop. done")
 	end)
@@ -112,7 +115,7 @@ specialSign.InformRunStarting = function()
 		end
 	end
 
-	activeRunSGui.UpdateExtraRaceDescription("You take 40 damage from switching terrain!")
+	activeRunSGui.UpdateExtraRaceDescription(DESCRIPTION_ON_START)
 	lastTerrain = nil
 	humanoid.Health = 100
 	assert(not loopRunning, "loop running?")
@@ -141,17 +144,16 @@ specialSign.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?
 			return
 		end
 		humanoid.Health -= 40
-		local theText = string.format(
-			"Ouch, you touched: %s so took 40 damage. Your health is: %d",
-			floorMaterial.Name,
-			humanoid.Health
-		)
+		local theText = string.format("Ouch, you touched: %s so took 40 damage. Your health is: %d", floorMaterial.Name, humanoid.Health)
 		activeRunSGui.UpdateMovementDetails(theText)
 		_annotate("damage taken")
 	end
 end
 
-specialSign.InformRetouch = function() end
+specialSign.InformRetouch = function()
+	-- Re-set description after RestartRun clears it (loop is still running)
+	activeRunSGui.UpdateExtraRaceDescription(DESCRIPTION_DURING_RUN)
+end
 
 specialSign.CanRunEnd = function(): tt.runEndExtraDataForRacing
 	return {

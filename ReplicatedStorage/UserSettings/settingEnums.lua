@@ -55,7 +55,7 @@ local settingDefinitions: { [string]: tt.userSettingValue } = {
 		defaultLuaValue = { -- tt.currentRunUIConfiguration
 			showDistance = true,
 			position = UDim2.new(0.05, 0, 0.75, 0),
-			size = UDim2.new(0.0, 600, 0.0, 100),
+			size = UDim2.new(0.0, 400, 0.0, 40), -- 10:1 compact aspect ratio
 			digitsInTime = 2,
 			transparency = 0.5,
 		},
@@ -66,6 +66,156 @@ local settingDefinitions: { [string]: tt.userSettingValue } = {
 		domain = settingDomains.USERSETTINGS,
 		kind = settingKinds.BOOLEAN,
 		defaultBooleanValue = false,
+	},
+	SHOW_ACCELERATION = {
+		name = "show acceleration rate and speed factors in active run UI",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = true,
+	},
+	-- DEPRECATED: All code migrated to dedicated *_GUI_LAYOUT settings.
+	-- Kept for backward compatibility; data will be orphaned as users save to new settings.
+	VARIANT_POSITIONS = {
+		name = "variant UI positions",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {},
+		editorName = "",
+	},
+
+	-- Per-GUI layout settings (position, size multiplier, etc.)
+	-- Each GUI saves only its own data, avoiding unnecessary re-saves of unrelated GUIs.
+	-- Format: { position: UDim2?, sizeMultiplier: number? }
+	RUN_RESULTS_GUI_LAYOUT = {
+		name = "run results GUI layout",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {},
+		editorName = "",
+	},
+	LEADERBOARD_GUI_LAYOUT = {
+		name = "leaderboard GUI layout",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {},
+		editorName = "",
+	},
+	WR_CHART_GUI_LAYOUT = {
+		name = "WR chart GUI layout",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {},
+		editorName = "",
+	},
+	FAVORITES_GUI_LAYOUT = {
+		name = "favorites modal GUI layout",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {},
+		editorName = "",
+	},
+	SIGN_GRINDING_GUI_LAYOUT = {
+		name = "sign grinding GUI layout",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {},
+		editorName = "",
+	},
+	RUN_RESULTS_GUI_LAYOUT = {
+		name = "run results GUI layout",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {},
+		editorName = "",
+	},
+	FPS_GUI_LAYOUT = {
+		name = "FPS display GUI layout",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {},
+		editorName = "",
+	},
+	ADMIN_TOOLS_GUI_LAYOUT = {
+		name = "admin tools GUI layout",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {},
+		editorName = "",
+	},
+	CONTEST_GUI_LAYOUT = {
+		name = "contest GUI layout",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {},
+		editorName = "",
+	},
+	ARCHIVED_CONTESTS_GUI_LAYOUT = {
+		name = "archived contests GUI layout",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {},
+		editorName = "",
+	},
+	CAMERA_SETTINGS = {
+		name = "camera settings",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {
+			cameraOffset = 0, -- studs to shift camera up (0 = centered, higher = player lower on screen)
+			fov = 70, -- field of view (70 = Roblox default)
+			zoomMin = 0.5, -- minimum zoom distance
+			zoomMax = 10999, -- maximum zoom distance (Roblox default is 128)
+			sensitivity = 1.0, -- camera rotation sensitivity multiplier (1.0 = default)
+		},
+		editorName = "",
+	},
+	CAMERA_CONTROLS_GUI_LAYOUT = {
+		name = "camera controls GUI layout",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {},
+		editorName = "",
+	},
+	RUN_WIDGET_PICKER_GUI_LAYOUT = {
+		name = "run widget picker GUI layout",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {},
+		editorName = "",
+	},
+	WR_PROGRESSION_GUI_LAYOUT = {
+		name = "WR progression GUI layout",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {},
+		editorName = "",
+	},
+	ACTIVE_RUN_WIDGET_POSITIONS = {
+		name = "active run widget positions",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {},
+		editorName = "",
+	},
+	WIDGET_CONFIG = { -- Modular widget system configuration by category
+		name = "widget configuration",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.LUA,
+		defaultLuaValue = {
+			Container = "none",
+			Timer = "transparent-large",
+			Speed = "numeric",
+			SpeedChart = "none",
+			Altitude = "none",
+			Distance = "from-start",
+			Stats = "none",
+			Terrain = "none",
+			Compass = "none",
+			Maps = "none",
+			Acceleration = "none",
+			RunInfo = "viewport",
+		},
+		editorName = "",
 	},
 	ALLOW_WARP = {
 		name = "allow warping at all. If you set this, warping will not work although buttons will still appear. This is useful if you are doing long marathons, for example.",
@@ -90,6 +240,12 @@ local settingDefinitions: { [string]: tt.userSettingValue } = {
 		domain = settingDomains.USERSETTINGS,
 		kind = settingKinds.BOOLEAN,
 		defaultBooleanValue = true,
+	},
+	HIGHLIGHT_TIME_DIGITS_IN_RESULTS = {
+		name = "highlight time digits in results - shows red tint on digits worse than the row above",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = false,
 	},
 	ROTATE_PLAYER_ON_WARP_WHEN_DESTINATION = {
 		name = "when you're warping with an implied destination, rotate your avatar and camera to face the direction",
@@ -144,6 +300,12 @@ local settingDefinitions: { [string]: tt.userSettingValue } = {
 		domain = settingDomains.USERSETTINGS,
 		kind = settingKinds.BOOLEAN,
 		defaultBooleanValue = true,
+	},
+	SHOW_FPS_DISPLAY = {
+		name = "show FPS display",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = false,
 	},
 	LEADERBOARD_ENABLE_FAVORITES = {
 		name = "show favorites",
@@ -287,6 +449,72 @@ local settingDefinitions: { [string]: tt.userSettingValue } = {
 		kind = settingKinds.STRING,
 		defaultStringValue = "",
 		editorName = module.SETTING_EDITOR_NAMES.RACE_PICKER,
+	},
+	LEADERBOARD_ALLOW_INTERNAL_SCROLLING = {
+		name = "leaderboard - allow internal scrolling",
+		domain = settingDomains.LEADERBOARD,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = false,
+	},
+	LEADERBOARD_ENABLE_DISTANCE_FROM_YOU = {
+		name = "show distance from you",
+		domain = settingDomains.LEADERBOARD,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = false,
+	},
+	LEADERBOARD_ENABLE_WARP_TO = {
+		name = "show warp to column",
+		domain = settingDomains.LEADERBOARD,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = false,
+	},
+	WARP_TO_PERMISSION = {
+		name = "who can warp to you",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.STRING,
+		defaultStringValue = "none",
+	},
+	LEADERBOARD_ENABLE_FIND_PERCENT = {
+		name = "show find percent",
+		domain = settingDomains.LEADERBOARD,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = false,
+	},
+	LEADERBOARD_ENABLE_SIMILARITY = {
+		name = "show similarity to you",
+		domain = settingDomains.LEADERBOARD,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = false,
+	},
+	LEADERBOARD_ENABLE_PINNED_BADGE = {
+		name = "show pinned badge",
+		domain = settingDomains.LEADERBOARD,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = false,
+	},
+	PINNED_BADGE = {
+		name = "pinned badge",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.STRING,
+		defaultStringValue = "",
+	},
+	LEADERBOARD_ENABLE_LATEST_BADGE = {
+		name = "show latest badge earned",
+		domain = settingDomains.LEADERBOARD,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = false,
+	},
+	LEADERBOARD_ENABLE_IDLE_TIME = {
+		name = "show idle time",
+		domain = settingDomains.LEADERBOARD,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = false,
+	},
+	SHARE_IDLE_STATUS = {
+		name = "share your idle status with others",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = false,
 	},
 
 	-- MARATHON SETTINGS
@@ -518,6 +746,36 @@ local settingDefinitions: { [string]: tt.userSettingValue } = {
 		domain = settingDomains.SURVEYS,
 	},
 	SURVEY_CHATGPT = { name = "you have used chatGPT", kind = settingKinds.BOOLEAN, domain = settingDomains.SURVEYS },
+
+	-- WR Chart settings
+	WR_CHART_SHOW_PROFILES = {
+		name = "show profiles on WR chart",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = true,
+	},
+	WR_CHART_SHOW_VERSIONS = {
+		name = "show versions on WR chart",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = true,
+	},
+
+	-- Discord presence settings
+	HIDE_RACES_FROM_DISCORD = {
+		name = "hide my race results from the presence channel",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = false,
+	},
+
+	-- Studio admin tools
+	SHOW_ADMIN_TOOLS_BY_DEFAULT = {
+		name = "show admin tools panel by default in Studio",
+		domain = settingDomains.USERSETTINGS,
+		kind = settingKinds.BOOLEAN,
+		defaultBooleanValue = true,
+	},
 }
 
 -- VERY important to do this, so you can look them up easily later.

@@ -6,7 +6,7 @@ local _annotate = annotater.getAnnotater(script)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local rdb = require(game.ServerScriptService.rdb)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
 local config = require(game.ReplicatedStorage.config)
 
@@ -14,15 +14,43 @@ local module = {}
 
 type SignPositionData = { name: string, signId: number, x: number, y: number, z: number }
 
-local setSignPositions = function(dataList: { SignPositionData })
+local setSignPositions = function(dataList: { SignPositionData }): boolean
 	if #dataList == 0 then
-		return
+		return true
 	end
 	local request: tt.postRequest = {
 		remoteActionName = "setSignPositions",
 		data = dataList,
 	}
-	rdb.MakePostRequest(request)
+	local response = rdb.MakePostRequest(request)
+
+	if typeof(response) ~= "table" then
+		annotater.Error("setSignPositions: response was not a table", {
+			responseType = typeof(response),
+			signCount = #dataList,
+		})
+		return false
+	end
+
+	if response.error then
+		annotater.Error("setSignPositions: backend returned error", {
+			error = response.error,
+			message = response.message,
+			signCount = #dataList,
+		})
+		return false
+	end
+
+	if not response.success then
+		annotater.Error("setSignPositions: backend returned failure", {
+			response = response,
+			signCount = #dataList,
+		})
+		return false
+	end
+
+	_annotate(string.format("setSignPositions: successfully uploaded %d signs", response.count or #dataList))
+	return true
 end
 
 local getKnownSignIds = function(): { [number]: boolean }
@@ -93,11 +121,14 @@ module.CheckSignsNeedingPushing = function()
 	end
 
 	-- Batch upload all new signs in single request.
-	-- Note: server will not fully register new signs in its cache until restart,
-	-- which leads to spurious local reposting of signs on server startup occasionally.
 	if #signsToUpload > 0 then
 		_annotate(string.format("uploading %d new sign positions", #signsToUpload))
-		setSignPositions(signsToUpload)
+		local success = setSignPositions(signsToUpload)
+		if not success then
+			annotater.Error("CheckSignsNeedingPushing: failed to upload new signs", {
+				signCount = #signsToUpload,
+			})
+		end
 	end
 end
 

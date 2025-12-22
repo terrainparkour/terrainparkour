@@ -19,7 +19,7 @@ local HARDBAN = 2
 
 module.getBanLevel = function(userId: number): number
 	while banDebounce[userId] do
-		wait(0.2)
+		task.wait(0.2)
 	end
 
 	if banCache[userId] == nil then

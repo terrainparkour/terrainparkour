@@ -11,6 +11,9 @@ local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEn
 local colors = require(game.ReplicatedStorage.util.colors)
 local Players = game:GetService("Players")
 
+-- Use guiUtil for UI creation
+local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+
 --------------- GLOBAL PLAYER --------------
 local localPlayer: Player = Players.LocalPlayer
 local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
@@ -58,48 +61,44 @@ module.CreateSpeedGui = function()
 	vv.HorizontalAlignment = Enum.HorizontalAlignment.Left
 	vv.SortOrder = Enum.SortOrder.Name
 
-	speedIncreaseLabel = Instance.new("TextLabel")
-
-	speedIncreaseLabel.TextScaled = true
-	speedIncreaseLabel.Name = "3SpeedIncreaseLabel"
-	speedIncreaseLabel.TextScaled = true
+	speedIncreaseLabel = guiUtil.getTl(
+		"3SpeedIncreaseLabel",
+		UDim2.new(0.5, 0, 1, 0),
+		0, -- padding
+		speedFrame,
+		colors.black,
+		0, -- borderSizePixel
+		speedGuiTransparency -- transparency
+	)
 	speedIncreaseLabel.TextColor3 = colors.meColor
-	speedIncreaseLabel.Font = Enum.Font.Gotham
-	speedIncreaseLabel.Size = UDim2.new(0.5, 0, 1, 0)
-	speedIncreaseLabel.BackgroundTransparency = speedGuiTransparency
-	speedIncreaseLabel.BorderSizePixel = 0
 	speedIncreaseLabel.FontFace = Font.new("rbxasset://fonts/families/Arimo.json")
-	speedIncreaseLabel.Text = ""
-	speedIncreaseLabel.BackgroundColor3 = colors.black
 	speedIncreaseLabel.TextXAlignment = Enum.TextXAlignment.Left
-	speedIncreaseLabel.Parent = speedFrame
 
-	speedLabel = Instance.new("TextLabel")
-	speedLabel.TextScaled = true
-	speedLabel.Name = "2SpeedLabel"
-	-- speedLabel.Font = Enum.Font.Gotham
-	speedLabel.FontFace = Font.new("rbxasset://fonts/families/Arimo.json")
-	speedLabel.Size = UDim2.new(0.5, 0, 1, 0)
+	speedLabel = guiUtil.getTl(
+		"2SpeedLabel",
+		UDim2.new(0.5, 0, 1, 0),
+		0, -- padding
+		speedFrame,
+		colors.black,
+		0, -- borderSizePixel
+		speedGuiTransparency -- transparency
+	)
 	speedLabel.TextColor3 = colors.meColor
-	speedLabel.BackgroundTransparency = speedGuiTransparency
-	speedLabel.Text = ""
-	speedLabel.BackgroundColor3 = colors.black
+	speedLabel.FontFace = Font.new("rbxasset://fonts/families/Arimo.json")
 	speedLabel.TextXAlignment = Enum.TextXAlignment.Left
-	speedLabel.Parent = speedFrame
 
-	jumpLabel = Instance.new("TextLabel")
-	jumpLabel.Name = "3JumpLabel"
-	jumpLabel.TextScaled = true
+	jumpLabel = guiUtil.getTl(
+		"3JumpLabel",
+		UDim2.new(0.26, 0, 1, 0),
+		0, -- padding
+		speedFrame,
+		colors.black,
+		0, -- borderSizePixel
+		speedGuiTransparency -- transparency
+	)
 	jumpLabel.TextColor3 = colors.meColor
-	jumpLabel.Font = Enum.Font.Gotham
-	jumpLabel.Size = UDim2.new(0.26, 0, 1, 0)
-	jumpLabel.BackgroundTransparency = speedGuiTransparency
-	jumpLabel.BorderSizePixel = 0
-	jumpLabel.Text = ""
-	jumpLabel.BackgroundColor3 = colors.black
 	jumpLabel.FontFace = Font.new("rbxasset://fonts/families/Arimo.json")
 	jumpLabel.TextXAlignment = Enum.TextXAlignment.Center
-	jumpLabel.Parent = speedFrame
 	jumpLabel.Visible = false
 end
 

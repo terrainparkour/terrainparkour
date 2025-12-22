@@ -10,7 +10,7 @@ local config = require(game.ReplicatedStorage.config)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local enums = require(game.ReplicatedStorage.util.enums)
-local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
+local warper = require(game.StarterPlayer.StarterCharacterScripts.client.warper)
 local PlayersService = game:GetService("Players")
 
 local localPlayer = PlayersService.LocalPlayer
@@ -121,6 +121,69 @@ module.notify = function(options: tt.ephemeralNotificationOptions)
 	end
 
 	guiUtil.setupKillOnClick(screenGui, warpName)
+end
+
+-- Badge notification with badge icon displayed prominently
+module.notifyBadge = function(options: tt.badgeOptions)
+	if isTouch then
+		return
+	end
+
+	if config.IsInStudio() then
+		_annotate("badge notifier: " .. options.kind, options)
+	end
+
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Parent = playerGui
+	screenGui.IgnoreGuiInset = true
+	screenGui.Name = "BadgeNotificationSgui"
+
+	local frame = Instance.new("Frame")
+	frame.Name = "badgeNotificationFrame"
+	frame.Size = UDim2.new(0.22, 0, 0.14, 0)
+	frame.Position = UDim2.new(0.76, 0, 0.84, 0)
+	frame.Parent = screenGui
+
+	local contentFrame = Instance.new("Frame")
+	contentFrame.Parent = frame
+	contentFrame.Size = UDim2.new(1, 0, 1, 0)
+	contentFrame.BackgroundTransparency = 1
+
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.Name = "UILayoutH_badge"
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.Parent = contentFrame
+
+	-- Badge icon (left side, square)
+	local badgeIcon = Instance.new("ImageLabel")
+	badgeIcon.Name = "badgeIcon"
+	badgeIcon.Size = UDim2.new(0.35, 0, 1, 0)
+	badgeIcon.BackgroundColor3 = colors.blueDone
+	badgeIcon.BorderSizePixel = 0
+	badgeIcon.ScaleType = Enum.ScaleType.Fit
+	if options.badgeIconImageId then
+		badgeIcon.Image = string.format("rbxassetid://%d", options.badgeIconImageId)
+	else
+		-- Fallback to user portrait if no badge icon
+		local useUserId = options.userId
+		if useUserId == nil or useUserId <= 0 then
+			useUserId = 261
+		end
+		badgeIcon.Image = thumbnails.getThumbnailContent(useUserId, Enum.ThumbnailType.AvatarBust, Enum.ThumbnailSize.Size420x420)
+	end
+	badgeIcon.Parent = contentFrame
+
+	-- Text (right side)
+	local tl = guiUtil.getTl("badgeNotifyText", UDim2.new(0.65, 0, 1, 0), 2, contentFrame, colors.defaultGrey, 1)
+	tl.Text = options.text
+	tl.TextXAlignment = Enum.TextXAlignment.Left
+	tl.TextYAlignment = Enum.TextYAlignment.Center
+	tl.BackgroundTransparency = 0
+	tl.TextColor3 = colors.black
+	tl.RichText = true
+
+	guiUtil.setupKillOnClick(screenGui, nil)
 end
 
 _annotate("end")

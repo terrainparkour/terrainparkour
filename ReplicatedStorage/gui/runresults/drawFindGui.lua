@@ -7,39 +7,27 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local colors = require(game.ReplicatedStorage.util.colors)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
 local wt = require(game.StarterPlayer.StarterPlayerScripts.guis.windowsTypes)
 
+-- Font sizing constants (following runResultGui gold standard)
+local TITLE_TEXT_SIZE = 24
+local SIGN_NAME_TEXT_SIZE = 36
+local DETAILS_TEXT_SIZE = 16
+local LAST_FOUND_TEXT_SIZE = 14
+
 module.CreateFindScreenGui = function(options: tt.dcFindResponse): ScreenGui
-	_annotate(
-		string.format(
-			"CreateFindScreenGui: starting userId=%d signId=%d signName=%s foundNew=%s",
-			options.userId,
-			options.signId,
-			options.signName,
-			tostring(options.foundNew)
-		)
-	)
-	local detailsMessage =
-		string.format("You've found %d out of %d signs!", options.userFindCount, options.totalSignsInGame)
-	local finderMessage =
-		string.format("You are the %s finder of %s!", tpUtil.getCardinalEmoji(options.signTotalFinds), options.signName)
+	_annotate(string.format("CreateFindScreenGui: starting userId=%d signId=%d signName=%s foundNew=%s", options.userId, options.signId, options.signName, tostring(options.foundNew)))
+	local detailsMessage = string.format("You've found %d out of %d signs!", options.userFindCount, options.totalSignsInGame)
+	local finderMessage = string.format("You are the %s finder of %s!", tpUtil.getCardinalEmoji(options.signTotalFinds), options.signName)
 
 	local daysAgo = math.floor(options.lastFindAgoSeconds / 86400)
 	local hoursAgo = math.floor((options.lastFindAgoSeconds - (daysAgo * 86400)) / 3600)
 	local minutesAgo = math.floor((options.lastFindAgoSeconds - (daysAgo * 86400) - (hoursAgo * 3600)) / 60)
-	local secondsAgo =
-		math.floor(options.lastFindAgoSeconds - (daysAgo * 86400) - (hoursAgo * 3600) - (minutesAgo * 60))
-	local lastFoundText = string.format(
-		"Last found by %s, %d days, %d hours, %d minutes, and %d seconds ago.",
-		options.lastFinderUsername,
-		daysAgo,
-		hoursAgo,
-		minutesAgo,
-		secondsAgo
-	)
+	local secondsAgo = math.floor(options.lastFindAgoSeconds - (daysAgo * 86400) - (hoursAgo * 3600) - (minutesAgo * 60))
+	local lastFoundText = string.format("Last found by %s, %d days, %d hours, %d minutes, and %d seconds ago.", options.lastFinderUsername, daysAgo, hoursAgo, minutesAgo, secondsAgo)
 
 	local guiSpec: wt.guiSpec = {
 		name = "FindScreenGui",
@@ -61,7 +49,8 @@ module.CreateFindScreenGui = function(options: tt.dcFindResponse): ScreenGui
 							textColor = colors.black,
 							backgroundColor = colors.meColor,
 							textXAlignment = Enum.TextXAlignment.Center,
-							includeTextSizeConstraint = false,
+							textScaled = false,
+							textSize = TITLE_TEXT_SIZE,
 						},
 					},
 				},
@@ -83,7 +72,8 @@ module.CreateFindScreenGui = function(options: tt.dcFindResponse): ScreenGui
 							backgroundColor = colors.signColor,
 							textColor = colors.white,
 							textXAlignment = Enum.TextXAlignment.Center,
-							includeTextSizeConstraint = false,
+							textScaled = false,
+							textSize = SIGN_NAME_TEXT_SIZE,
 						},
 					},
 				},
@@ -105,6 +95,8 @@ module.CreateFindScreenGui = function(options: tt.dcFindResponse): ScreenGui
 							backgroundColor = colors.meColor,
 							textColor = colors.black,
 							textXAlignment = Enum.TextXAlignment.Center,
+							textScaled = true,
+							textSize = DETAILS_TEXT_SIZE,
 						},
 					},
 					{
@@ -119,6 +111,8 @@ module.CreateFindScreenGui = function(options: tt.dcFindResponse): ScreenGui
 							backgroundColor = colors.meColor,
 							textColor = colors.black,
 							textXAlignment = Enum.TextXAlignment.Center,
+							textScaled = true,
+							textSize = DETAILS_TEXT_SIZE,
 						},
 					},
 				},
@@ -140,6 +134,8 @@ module.CreateFindScreenGui = function(options: tt.dcFindResponse): ScreenGui
 							backgroundColor = colors.defaultGrey,
 							textColor = colors.black,
 							textXAlignment = Enum.TextXAlignment.Center,
+							textScaled = true,
+							textSize = LAST_FOUND_TEXT_SIZE,
 						},
 					},
 				},
@@ -181,8 +177,8 @@ module.CreateFindScreenGui = function(options: tt.dcFindResponse): ScreenGui
 	table.insert(guiSpec.rowSpecs, closeRow)
 
 	local popupName = string.format("NewFindSgui_%s", options.signName)
-	local newFindSgui =
-		windows.CreatePopup(guiSpec, popupName, false, false, false, false, true, true, UDim2.new(0.15, 0, 0, 336))
+	local newFindSguiResult = windows.CreatePopup(guiSpec, popupName, false, false, false, false, true, true, UDim2.new(0.1725, 0, 0, 336))
+	local newFindSgui = newFindSguiResult.sgui
 
 	local outerFrame = newFindSgui:FindFirstChildOfClass("Frame")
 	if outerFrame then
@@ -191,7 +187,7 @@ module.CreateFindScreenGui = function(options: tt.dcFindResponse): ScreenGui
 
 	local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 	newFindSgui.Parent = playerGui
-	_annotate(string.format("CreateFindScreenGui: GUI created and parented to PlayerGui"))
+	_annotate("CreateFindScreenGui: GUI created and parented to PlayerGui")
 
 	return newFindSgui
 end

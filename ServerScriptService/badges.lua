@@ -8,11 +8,12 @@ local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 local tt = require(game.ReplicatedStorage.types.gametypes)
+local playerData2 = require(game.ServerScriptService.playerData2)
 local badgeEnums = require(game.ReplicatedStorage.util.badgeEnums)
 local badgeSorts = require(game.ReplicatedStorage.util.badgeSorts)
 local rdb = require(game.ServerScriptService.rdb)
 local remotes = require(game.ReplicatedStorage.util.remotes)
-local playerData2 = require(game.ServerScriptService.playerData2)
+local usernameCache = require(game.ServerScriptService.usernameCache)
 
 local BadgeService: BadgeService = game:GetService("BadgeService")
 
@@ -23,6 +24,10 @@ local badgeStatusesRAM: { [number]: { [number]: boolean? } } = {}
 -- boolean for if the data getter, running in a separate thread, is done.
 local userIdHasDataPrepared: { [number]: boolean } = {}
 
+-- Pending grants cache: badges that should be granted on join (set via Django admin)
+-- Populated by ensureBadgeDataGotten, consumed by GetAndClearPendingGrants
+local pendingGrantsCache: { [number]: { tt.jsonBadgeStatus } } = {}
+
 -- deb is a map of userId to whether we're actively debouncing their badge lookup work right now.
 local deb = {}
 local function ensureBadgeDataGotten(userId: number, kind: string): boolean
@@ -32,7 +37,7 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 	if userIdHasDataPrepared[userId] == nil then
 		userIdHasDataPrepared[userId] = false
 	end
-	local username = playerData2.GetUsernameByUserId(userId)
+	local username = usernameCache.GetUsernameByUserId(userId)
 
 	-- we are the first caller so we set debouncing for this guy to be true.
 	if deb[userId] == nil or deb[userId] == false then
@@ -41,28 +46,15 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 	else
 		-- we wait for the other task to finish, so never do work ourselves.
 		while deb[userId] do
-			_annotate(
-				string.format(
-					"waiting to get the right to set up ensureBadgeDataGotten for %s, kind: %s",
-					username,
-					kind
-				)
-			)
+			_annotate(string.format("waiting to get the right to set up ensureBadgeDataGotten for %s, kind: %s", username, kind))
 			task.wait(0.1)
 		end
 		-- we should actually be done now so probably just return.
 		-- and then just assume that everyhting is okay
-		_annotate(
-			string.format("well, someone unblocked this user so I'm assuming they're done. %s %s", username, kind)
-		)
+		_annotate(string.format("well, someone unblocked this user so I'm assuming they're done. %s %s", username, kind))
 		-- at least lets return the other function
 		if not userIdHasDataPrepared[userId] then
-			annotater.Error(
-				string.format(
-					"someone else released setup lock but we failed. Returning %s",
-					tostring(userIdHasDataPrepared[userId])
-				)
-			)
+			annotater.Error(string.format("someone else released setup lock but we failed. Returning %s", tostring(userIdHasDataPrepared[userId])))
 			return userIdHasDataPrepared[userId]
 		end
 	end
@@ -80,8 +72,20 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 	if badgeStatusesRAM[userId] == nil then
 		badgeStatusesRAM[userId] = {}
 	end
+
+	-- Collect pending grants (shouldGrantOnJoin=true, hasBadge=false) for later processing
+	local pendingGrants: { tt.jsonBadgeStatus } = {}
 	for _, el in ipairs(res) do
 		badgeStatusesRAM[userId][el.badgeAssetId] = el.hasBadge
+		if el.shouldGrantOnJoin and not el.hasBadge then
+			table.insert(pendingGrants, el)
+		end
+	end
+
+	-- Store pending grants for processing by BackfillBadges (to avoid cyclic require with grantBadge)
+	if #pendingGrants > 0 then
+		_annotate(string.format("Found %d pending badge grants for user %s (will be processed by BackfillBadges)", #pendingGrants, username))
+		pendingGrantsCache[userId] = pendingGrants
 	end
 
 	-- now kick off paginated checking.
@@ -121,9 +125,7 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 				break
 			end
 
-			_annotate(
-				string.format("hitting roblox for %d badge ownership statuses for %s", #badgeAssetIdsToCheck, username)
-			)
+			_annotate(string.format("hitting roblox for %d badge ownership statuses for %s", #badgeAssetIdsToCheck, username))
 			local useUserId = userId
 			if userId < 0 then
 				useUserId = -1 * userId
@@ -154,14 +156,7 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 			rdb.MakePostRequest(request2)
 			task.wait(7)
 		end
-		_annotate(
-			string.format(
-				"ending spawn which checked roblox status after actually checking roblox for %d user %s %s",
-				actualCheckCount,
-				username,
-				kind
-			)
-		)
+		_annotate(string.format("ending spawn which checked roblox status after actually checking roblox for %d user %s %s", actualCheckCount, username, kind))
 		userIdHasDataPrepared[userId] = true
 		deb[userId] = false
 		--leaving spawned task. The user's data is now totally prepared.
@@ -173,32 +168,16 @@ local function ensureBadgeDataGotten(userId: number, kind: string): boolean
 	local waited = 0
 	while not userIdHasDataPrepared[userId] do
 		waited += task.wait(5)
-		annotater.Error(
-			string.format("Have waited so far %0.1f seconds to prepare badge data for user: %s", waited, username)
-		)
+		annotater.Error(string.format("Have waited so far %0.1f seconds to prepare badge data for user: %s", waited, username))
 		if waited > 100 then
 			annotater.Error(string.format("giving up waiting for this user's badge setup to bv done %s", username))
 			return false
 		end
 	end
 	if userIdHasDataPrepared[userId] == false then
-		annotater.Error(
-			string.format(
-				"within badges, exited wait with nil for user data preparation after time %0.1f seconds for user %s",
-				waited,
-				username
-			),
-			userId
-		)
+		annotater.Error(string.format("within badges, exited wait with nil for user data preparation after time %0.1f seconds for user %s", waited, username), userId)
 	elseif userIdHasDataPrepared[userId] == nil then
-		annotater.Error(
-			string.format(
-				"within badges, exited wait with nil for user data preparation after time %0.1f seconds for user %s",
-				waited,
-				username
-			),
-			userId
-		)
+		annotater.Error(string.format("within badges, exited wait with nil for user data preparation after time %0.1f seconds for user %s", waited, username), userId)
 	end
 	deb[userId] = false
 	return userIdHasDataPrepared[userId]
@@ -208,7 +187,7 @@ end
 -- true, false or nil?
 module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor, kind: string): boolean?
 	local prepared = ensureBadgeDataGotten(userId, "UserHasBadge " .. badge.name)
-	local username = playerData2.GetUsernameByUserId(userId)
+	local username = usernameCache.GetUsernameByUserId(userId)
 	if not prepared then
 		annotater.Error(string.format("was unable to prepare badge data for player: %s %s", username, kind), userId)
 		return nil
@@ -216,12 +195,7 @@ module.UserHasBadge = function(userId: number, badge: tt.badgeDescriptor, kind: 
 	return badgeStatusesRAM[userId][badge.assetId]
 end
 
-module.SaveBadgeOwnershipStatusToMyDBAndRAM = function(
-	userId: number,
-	badgeAssetId: number,
-	badgeName: string,
-	hasBadge: boolean
-)
+module.SaveBadgeOwnershipStatusToMyDBAndRAM = function(userId: number, badgeAssetId: number, badgeName: string, hasBadge: boolean)
 	local thingToSave = {}
 	thingToSave[badgeAssetId] = {
 		assetId = badgeAssetId,
@@ -236,7 +210,11 @@ module.SaveBadgeOwnershipStatusToMyDBAndRAM = function(
 		},
 	}
 	badgeStatusesRAM[userId][badgeAssetId] = hasBadge
-	local res: tt.jsonBadgeStatus = rdb.MakePostRequest(request)[1]
+	local response = rdb.MakePostRequest(request)
+	if not response or not response.badgeResults then
+		return nil
+	end
+	local res: tt.jsonBadgeStatus = response.badgeResults[1]
 	return res
 end
 
@@ -278,14 +256,9 @@ end
 -- given that 99% of the data will be stored by me in the future, this would be helpful if (when) badge service is flaky.
 module.GetAllBadgeProgressDetailsForUserId = function(userId: number, kind: string): { tt.badgeProgress }
 	local prepared = ensureBadgeDataGotten(userId, "getAllBadgeProgressDetailsForUserId " .. kind)
-	local username = playerData2.GetUsernameByUserId(userId)
+	local username = usernameCache.GetUsernameByUserId(userId)
 	if not prepared then
-		_annotate(
-			string.format(
-				"getAllBadgeProgressDetailsForUserId: wasn't able to ever get user prepared, so bailing. %s",
-				username
-			)
-		)
+		_annotate(string.format("getAllBadgeProgressDetailsForUserId: wasn't able to ever get user prepared, so bailing. %s", username))
 		return {}
 	end
 
@@ -304,13 +277,7 @@ module.GetAllBadgeProgressDetailsForUserId = function(userId: number, kind: stri
 		ii += 1
 		local userHasBadge: boolean? = badgeStatusesRAM[userId][badgeDescriptor.assetId]
 		if userHasBadge == nil then
-			annotater.Error(
-				string.format(
-					"getAllBadgeProgressDetailsForUserId: user %s has nil badge status for %d which should never happen",
-					username,
-					badgeDescriptor.assetId
-				)
-			)
+			annotater.Error(string.format("getAllBadgeProgressDetailsForUserId: user %s has nil badge status for %d which should never happen", username, badgeDescriptor.assetId))
 			return {}
 		end
 		--calculate progress
@@ -340,10 +307,7 @@ module.GetAllBadgeProgressDetailsForUserId = function(userId: number, kind: stri
 end
 
 --for a bunch of users at once.
-local getBadgeProgressForUserIds = function(
-	userIdsInServer: { number },
-	kind: string
-): { [number]: { tt.badgeProgress } }
+local getBadgeProgressForUserIds = function(userIdsInServer: { number }, kind: string): { [number]: { tt.badgeProgress } }
 	local res: { [number]: { tt.badgeProgress } } = {}
 	for _, oUserId: number in ipairs(userIdsInServer) do
 		local badgeProgress = module.GetAllBadgeProgressDetailsForUserId(oUserId, kind)
@@ -353,7 +317,7 @@ local getBadgeProgressForUserIds = function(
 end
 
 module.getBadgeCountByUser = function(userId: number, kind: string): number
-	local username = playerData2.GetUsernameByUserId(userId)
+	local username = usernameCache.GetUsernameByUserId(userId)
 	local prepared = ensureBadgeDataGotten(userId, "getBadgeCountByUser " .. kind)
 	if not prepared then
 		_annotate(string.format("getBadgeCountByUser: wasn't able to ever get user prepared, so bailing. %s", username))
@@ -367,6 +331,24 @@ module.getBadgeCountByUser = function(userId: number, kind: string): number
 		end
 	end
 	return hasBadgeCount
+end
+
+-- Get pending badge grants for a user and clear the cache.
+-- Called by BackfillBadges in badgeCheckersSecret.lua to process honorific badge grants.
+-- Returns array of {badgeAssetId, badgeName} or empty array if none pending.
+-- This function ensures badge data is loaded first (which populates pendingGrantsCache).
+module.GetAndClearPendingGrants = function(userId: number): { tt.jsonBadgeStatus }
+	-- Ensure badge data is loaded (this populates pendingGrantsCache as a side effect)
+	local username = usernameCache.GetUsernameByUserId(userId)
+	local prepared = ensureBadgeDataGotten(userId, "GetAndClearPendingGrants")
+	if not prepared then
+		_annotate(string.format("GetAndClearPendingGrants: badge data not ready for %s, returning empty", username))
+		return {}
+	end
+
+	local pending = pendingGrantsCache[userId]
+	pendingGrantsCache[userId] = nil
+	return pending or {}
 end
 
 module.Init = function()

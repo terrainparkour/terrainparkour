@@ -12,7 +12,6 @@ local commandUtils = require(game.ReplicatedStorage.ChatSystem.commandUtils)
 local wrProgressionCommand = require(game.ReplicatedStorage.commands.wrProgressionCommand)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 
 local module: commandTypes.CommandModule = {
 	Execute = function(_player: Player, _parts: { string }): boolean
@@ -29,7 +28,7 @@ function module.Execute(player: Player, parts: { string }): boolean
 		return true
 	end
 	local rest = textUtil.stringJoin(" ", parts)
-	local res: tt.RaceParseResult = tpUtil.AttemptToParseRaceFromInput(rest)
+	local res: tt.RaceParseResult = commandUtils.ParseRaceFromInput(rest, player.UserId)
 	_annotate("parsed result of history query to: ", res)
 	if res.error ~= "" then
 		commandUtils.SendMessage(res.error, player)
@@ -41,4 +40,3 @@ end
 
 _annotate("end")
 return module
-

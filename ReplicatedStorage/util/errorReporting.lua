@@ -52,7 +52,7 @@ local periodicallySendErrors = function()
 				remoteActionName = "reportServerErrors",
 				data = { errors = theErrors },
 			}
-			local res = posting.MakePostRequest(request)["res"]
+			local _res = posting.MakePostRequest(request)["res"]
 			theErrors = {}
 		end
 		task.wait(20)
@@ -77,17 +77,78 @@ end
 -- the subsequentFunction will figure out if the sender is a client or server.
 -- if client, will set client and relay
 -- if we're on the game server already, we'll just send it to the cloud.
-module.Error = function(msg: string, userId: number?, data: any?)
+-- Error reporting entrypoint.
+-- NOTE: This is called via annotater.Error(message, payloadTable?) so the 2nd arg is often a payload table,
+-- not a userId. Preserve backward compatibility by accepting:
+-- - Error(msg, payloadTable)
+-- - Error(msg, userIdNumber, payloadTable)
+module.Error = function(msg: string, arg2: any?, arg3: any?)
 	local kind = isServer() and SERVER or CLIENT
+	local userId: number? = nil
+	local data: any = {}
+
+	if type(arg2) == "number" then
+		userId = arg2 :: number
+		data = if arg3 ~= nil then arg3 else {}
+	elseif arg2 ~= nil then
+		data = arg2
+		if type(arg2) == "table" and type((arg2 :: any).userId) == "number" then
+			userId = (arg2 :: any).userId
+		end
+	end
+
 	local extendedError: robloxError = {
 		code = NOTSET,
 		kind = kind,
 		version = enums.gameVersion,
-		data = {},
+		data = data,
 		message = msg,
-		userId = nil,
+		userId = userId,
 	}
 	return doError(extendedError)
+end
+
+-- Wrap a function to capture and forward runtime errors
+-- Usage: errorReporting.SafeCall(function() ... end, "contextName")
+module.SafeCall = function(fn: () -> (), context: string): (boolean, string?)
+	local success, err = pcall(fn)
+	if not success then
+		local errMsg = tostring(err)
+		local kind = isServer() and SERVER or CLIENT
+		local extendedError: robloxError = {
+			code = "RUNTIME",
+			kind = kind,
+			version = enums.gameVersion,
+			data = { context = context, traceback = debug.traceback() },
+			message = string.format("Runtime error in %s: %s", context, errMsg),
+			userId = nil,
+		}
+		doError(extendedError)
+		return false, errMsg
+	end
+	return true, nil
+end
+
+-- Wrap a script's main function - logs crash and re-raises for Roblox to handle
+-- Usage at end of Scripts: errorReporting.WrapScript(main, script)
+module.WrapScript = function(fn: () -> (), scriptRef: LuaSourceContainer)
+	local context = scriptRef:GetFullName()
+	local success, err = pcall(fn)
+	if not success then
+		local errMsg = tostring(err)
+		local kind = isServer() and SERVER or CLIENT
+		local extendedError: robloxError = {
+			code = "SCRIPT_CRASH",
+			kind = kind,
+			version = enums.gameVersion,
+			data = { script = context, traceback = debug.traceback() },
+			message = string.format("Script crashed: %s - %s", context, errMsg),
+			userId = nil,
+		}
+		doError(extendedError)
+		-- Re-raise so Roblox also captures it in their dashboard
+		error(err)
+	end
 end
 
 local innitted = false

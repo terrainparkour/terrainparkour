@@ -31,9 +31,9 @@ end
 DefaultServerSoundEvent = SoundEventFolder:FindFirstChild(DEFAULT_SERVER_SOUND_EVENT_NAME)
 
 if not DefaultServerSoundEvent then
-	DefaultServerSoundEvent = Instance.new("RemoteEvent", SoundEventFolder)
-
+	DefaultServerSoundEvent = Instance.new("RemoteEvent")
 	DefaultServerSoundEvent.Name = DEFAULT_SERVER_SOUND_EVENT_NAME
+	DefaultServerSoundEvent.Parent = SoundEventFolder
 	DefaultServerSoundEvent.OnServerEvent:Connect(function() end)
 end
 
@@ -53,8 +53,9 @@ local function CreateNewSound(name, id, looped, pitch, parent, volume: number?)
 	sound.Parent = parent
 
 	if DefaultServerSoundEvent then
-		local CharacterSoundEvent = Instance.new("RemoteEvent", sound)
+		local CharacterSoundEvent = Instance.new("RemoteEvent")
 		CharacterSoundEvent.Name = "CharacterSoundEvent"
+		CharacterSoundEvent.Parent = sound
 		CharacterSoundEvent.OnServerEvent:Connect(function(player, playing, resetPosition)
 			if type(playing) ~= "boolean" then
 				return

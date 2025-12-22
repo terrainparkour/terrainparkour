@@ -12,8 +12,6 @@ local avatarManipulation = require(game.ReplicatedStorage.avatarManipulation)
 
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
-local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
-local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 ----------- GLOBALS -----------
 
@@ -25,8 +23,6 @@ end
 
 specialSign.InformRunStarting = function()
 	_annotate("ghostSign.Init")
-	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
-	humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	avatarManipulation.SetCharacterTransparency(localPlayer, 0.9)
 end
 

@@ -8,45 +8,40 @@ local _annotate = annotater.getAnnotater(script)
 
 local module = {}
 
-local PlayersService = game:GetService("Players")
-local playerData2 = require(game.ServerScriptService.playerData2)
+local _PlayersService = game:GetService("Players")
+local usernameCache = require(game.ServerScriptService.usernameCache)
+local serverRunTiming = require(game.ServerScriptService.serverRunTiming)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local enums = require(game.ReplicatedStorage.util.enums)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 -- local signInfo = require(game.ReplicatedStorage.signInfo)
 local rdb = require(game.ServerScriptService.rdb)
 local banning = require(game.ServerScriptService.banning)
-local notify = require(game.ReplicatedStorage.notify)
 local tpPlacementLogic = require(game.ReplicatedStorage.product.tpPlacementLogic)
-local MessageDispatcher = require(game.ReplicatedStorage.ChatSystem.messageDispatcher)
+local messageDispatcher = require(game.ReplicatedStorage.ChatSystem.messageDispatcher)
 
 local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
 local remotes = require(game.ReplicatedStorage.util.remotes)
--- local notify = require(game.ReplicatedStorage.notify)
 local runResultsCommand = require(game.ReplicatedStorage.commands.runResultsCommand)
+local playerData2 = require(game.ServerScriptService.playerData2)
 
 local PlayerService = game:GetService("Players")
 
 local ServerEventBindableEvent = remotes.getBindableEvent("ServerEventBindableEvent")
 
-local NEW = 1
-local BETTER = 2
-local WORSE = 3
+local _NEW = 1
+local _BETTER = 2
+local _WORSE = 3
 
 -- calculate a ton of text strings and send them eventually to a user localscript for display there.
 -- TODO 2022 3 19 massive refactor to make this dumb and dependent on python only.
-module.showBestTimes = function(
-	player: Player,
-	startSignId: number,
-	endSignId: number,
-	userFinishedRunResponse: tt.userFinishedRunResponse
-): tt.userFinishedRunResponse
+module.showBestTimes = function(player: Player, startSignId: number, endSignId: number, userFinishedRunResponse: tt.userFinishedRunResponse): tt.userFinishedRunResponse
 	local racerUserId = player.UserId
-	local racerUsername = player.Name
+	local _racerUsername = player.Name
 	local startSignName = tpUtil.signId2signName(startSignId)
 	local endSignName = tpUtil.signId2signName(endSignId)
-	local raceName = string.format("%s-%s", startSignName, endSignName)
+	local _raceName = string.format("%s-%s", startSignName, endSignName)
 
 	local jsonBestRuns: { tt.jsonBestRun } = userFinishedRunResponse.raceBestRuns or {}
 	local legitEntries: { tt.jsonBestRun } = {}
@@ -57,11 +52,11 @@ module.showBestTimes = function(
 	end
 
 	-- the "just run" fake bestrun basically. it didn't actually geet to be a bestRun because it didn't beat that user's past time.
-	local thisRun: tt.jsonBestRun = nil
+	local _thisRun: tt.jsonBestRun = nil
 	if userFinishedRunResponse.extraBestRuns then
 		for _, br in ipairs(userFinishedRunResponse.extraBestRuns) do
 			if br.userId == racerUserId then
-				thisRun = br
+				_thisRun = br
 			end
 		end
 	end
@@ -69,10 +64,10 @@ module.showBestTimes = function(
 	-- if we are in extra, then it means that we just ran a race that didn't beat our past best.
 
 	-- the user's past time.
-	local pastRun: tt.jsonBestRun = nil
+	local _pastRun: tt.jsonBestRun = nil
 	for _, br in ipairs(jsonBestRuns) do
 		if br.userId == racerUserId then
-			pastRun = br
+			_pastRun = br
 		end
 	end
 
@@ -112,11 +107,7 @@ module.showBestTimes = function(
 				targetSignId = userFinishedRunResponse.raceInfo.endSignId,
 				targetSignName = endSignName,
 			}
-			local placementAmongRuns = tpPlacementLogic.GetPlacementAmongRuns(
-				fakeDynamics,
-				racerUserId,
-				userFinishedRunResponse.runUserJustDid.runMilliseconds
-			)
+			local placementAmongRuns = tpPlacementLogic.GetPlacementAmongRuns(fakeDynamics, racerUserId, userFinishedRunResponse.runUserJustDid.runMilliseconds)
 
 			userFinishedRunResponse.runUserJustDid.place = placementAmongRuns.newPlace
 			local yourTextActual, yourColor = tpPlacementLogic.InterleavedToText(placementAmongRuns)
@@ -131,10 +122,8 @@ end
 
 module.DoRunEnd = function(player: Player, data: tt.runEndingDataFromClient)
 	if banning.getBanLevel(player.UserId) > 0 then
-		_annotate(
-			string.format("ban level > 0, not saving run for userName=%s, userId: %d", player.Name, player.UserId)
-		)
-		MessageDispatcher.SendSystemMessageToPlayer(player, "Chat", "You are banned. Please find another game to play.")
+		_annotate(string.format("ban level > 0, not saving run for userName=%s, userId: %d", player.Name, player.UserId))
+		messageDispatcher.SendSystemMessageToPlayer(player, "Chat", "You are banned. Please find another game to play.")
 		return
 	end
 
@@ -142,9 +131,20 @@ module.DoRunEnd = function(player: Player, data: tt.runEndingDataFromClient)
 	local endSignName = data.endSignName
 	local runMilliseconds = data.runMilliseconds
 	local floorSeenCount = data.floorSeenCount
+	local networkPingMs = data.networkPingMs or 0
+	local jumpCount = data.jumpCount or 0
 	local userId: number = player.UserId
 	local startSignId: number = enums.namelower2signId[startSignName:lower()]
 	local endSignId: number = enums.namelower2signId[endSignName:lower()]
+
+	-- Get server-side timing if available (controlled by config.ENABLE_SERVER_TIMING)
+	local serverDurationMs: number? = serverRunTiming.GetServerDurationAndClear(userId, endSignName)
+	if serverDurationMs then
+		local discrepancyMs = serverDurationMs - runMilliseconds
+		_annotate(string.format("run timing: userId=%d race=%s-%s clientMs=%d serverMs=%d discrepancy=%dms ping=%dms", userId, startSignName, endSignName, runMilliseconds, serverDurationMs, discrepancyMs, networkPingMs))
+	else
+		_annotate(string.format("run timing: userId=%d race=%s-%s clientMs=%d (no server start tracked) ping=%dms", userId, startSignName, endSignName, runMilliseconds, networkPingMs))
+	end
 
 	local rawUserIdsInServer: { number } = tpUtil.GetUserIdsInServer()
 	local userIds: string = table.concat(rawUserIdsInServer, ",")
@@ -157,6 +157,8 @@ module.DoRunEnd = function(player: Player, data: tt.runEndingDataFromClient)
 			endSignId = endSignId,
 			runMilliseconds = runMilliseconds,
 			allPlayerUserIds = userIds,
+			networkPingMs = networkPingMs,
+			serverDurationMs = serverDurationMs,
 		}
 		local request: tt.postRequest = {
 			remoteActionName = "userFinishedRun",
@@ -166,31 +168,29 @@ module.DoRunEnd = function(player: Player, data: tt.runEndingDataFromClient)
 
 		local responseAsAny: any = finishedRunResponse
 		if responseAsAny.error then
-			local errorResponse: tt.userFinishedRunErrorResponse =
-				finishedRunResponse :: tt.userFinishedRunErrorResponse
-			annotater.Error(
-				"userFinishedRun returned error response",
-				{ userId = userId, startSignId = startSignId, endSignId = endSignId, error = errorResponse.error }
-			)
+			local errorResponse: tt.userFinishedRunErrorResponse = finishedRunResponse :: tt.userFinishedRunErrorResponse
+			annotater.Error("userFinishedRun returned error response", { userId = userId, startSignId = startSignId, endSignId = endSignId, error = errorResponse.error })
 			if errorResponse.banned == true then
-				MessageDispatcher.SendSystemMessageToPlayer(
-					player,
-					"Chat",
-					"You are banned. Please find another game to play."
-				)
+				messageDispatcher.SendSystemMessageToPlayer(player, "Chat", "You are banned. Please find another game to play.")
 			end
 			return
 		end
 
 		local typedResponse: tt.userFinishedRunResponse = finishedRunResponse :: tt.userFinishedRunResponse
 
-		badgeCheckers.CheckBadgeGrantingAfterRun(userId, typedResponse, startSignId, endSignId, floorSeenCount)
+		badgeCheckers.CheckBadgeGrantingAfterRun(userId, typedResponse, startSignId, endSignId, floorSeenCount, jumpCount)
 
 		typedResponse = module.showBestTimes(player, startSignId, endSignId, typedResponse)
 
 		runResultsCommand.SendRunResults(player, startSignId, endSignId, typedResponse)
 
+		-- Update activity timestamp for idle tracking
+		playerData2.UpdateUserActivity(userId)
+
 		if typedResponse.lbUserStats then
+			-- Check for rank improvements and notify the player
+			playerData2.CheckAndNotifyRankImprovements(userId, typedResponse.lbUserStats)
+
 			for _, anyPlayer in ipairs(PlayerService:GetPlayers()) do
 				lbUpdaterServer.SendUpdateToPlayer(anyPlayer, typedResponse.lbUserStats)
 			end
@@ -203,7 +203,7 @@ module.DoRunEnd = function(player: Player, data: tt.runEndingDataFromClient)
 		endSignId = endSignId,
 		timeMs = runMilliseconds,
 		userId = userId,
-		username = playerData2.GetUsernameByUserId(userId),
+		username = usernameCache.GetUsernameByUserId(userId),
 	}
 	ServerEventBindableEvent:Fire(serverEventUpdateData)
 end

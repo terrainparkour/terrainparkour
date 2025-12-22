@@ -9,13 +9,19 @@ local _annotate = annotater.getAnnotater(script)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local rdb = require(game.ServerScriptService.rdb)
 
+export type AdjustFavoriteRaceResult = {
+	success: boolean,
+	raceNotFound: boolean?,
+	error: string?,
+}
+
 type Module = {
 	AdjustFavoriteRace: (
 		requestingPlayer: Player,
 		signId1: number,
 		signId2: number,
 		favoriteStatus: boolean
-	) -> boolean,
+	) -> AdjustFavoriteRaceResult,
 	GetFavoriteRaces: (
 		requestingPlayer: Player,
 		targetUserId: number,
@@ -31,7 +37,7 @@ module.AdjustFavoriteRace = function(
 	signId1: number,
 	signId2: number,
 	favoriteStatus: boolean
-): boolean
+): AdjustFavoriteRaceResult
 	local req = {
 		remoteActionName = "adjustFavoriteRace",
 		data = {
@@ -43,8 +49,17 @@ module.AdjustFavoriteRace = function(
 	}
 
 	_annotate("adjusting favorite race")
-	rdb.MakePostRequest(req)
-	return true
+	local rawResponse: any = rdb.MakePostRequest(req)
+
+	if rawResponse.raceNotFound then
+		return { success = false, raceNotFound = true }
+	end
+
+	if rawResponse.error then
+		return { success = false, error = rawResponse.error }
+	end
+
+	return { success = true }
 end
 
 module.GetFavoriteRaces = function(
@@ -57,8 +72,33 @@ module.GetFavoriteRaces = function(
 		remoteActionName = "favoriteRacesRequest",
 		data = { targetUserId = targetUserId, otherUserIds = otherUserIds, requestingUserId = requestingUserId },
 	}
-	local theInfo: tt.serverFavoriteRacesResponse = rdb.MakePostRequest(req)
+	local rawResponse: any = rdb.MakePostRequest(req)
 
+	if rawResponse and rawResponse.error then
+		return {
+			success = false,
+			error = rawResponse.error,
+			message = rawResponse.message,
+			targetUserId = targetUserId,
+			requestingUserId = requestingUserId,
+			otherUserIds = otherUserIds,
+		}
+	end
+
+	-- Backend security failures return { error=true, message="failure" } (bool, not string).
+	if rawResponse and typeof(rawResponse.error) == "boolean" then
+		return {
+			success = false,
+			error = "backend_security_failure",
+			message = rawResponse.message,
+			targetUserId = targetUserId,
+			requestingUserId = requestingUserId,
+			otherUserIds = otherUserIds,
+		}
+	end
+
+	local theInfo: tt.serverFavoriteRacesResponse = rawResponse
+	theInfo.success = true
 	return theInfo
 end
 

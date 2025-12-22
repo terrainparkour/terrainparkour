@@ -12,26 +12,26 @@ local module = {}
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
 local scrollingFrameUtils = require(game.ReplicatedStorage.gui.scrollingFrameUtils)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local standardButton = require(game.ReplicatedStorage.gui.standardButton)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local textHighlighting = require(game.ReplicatedStorage.gui.textHighlighting)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
-local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
 local localPlayer = game:GetService("Players").LocalPlayer
 -- local character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
 -- local humanoid = character:WaitForChild("Humanoid") :: Humanoid
-local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
+local warper = require(game.StarterPlayer.StarterCharacterScripts.client.warper)
 
 --------------- FUNCTIONS -------------------------
 
 -- we need to be very careful; if not rr.hasFoundSign, we need to make sure we don't let the player highlight the target.
 local function getIndividualGrindButton(startSignId: number, num: number, rr: tt.relatedRace): TextButton | nil
 	local name = string.format("%03d_GrindUIButtonTo %s", num, rr.signName)
-	local button = guiUtil.getTb(name, UDim2.new(0, 90, 0, 30), 1, nil, colors.warpColor, 1)
+	local button = guiUtil.getPaddedButton(name, UDim2.new(0, 90, 0, 30), 1, nil, colors.warpColor, 1)
 
-	button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+	button.BackgroundColor3 = colors.buttonNeutral
 	button.BorderSizePixel = 0
-	button.BorderColor3 = Color3.fromRGB(100, 100, 100)
+	button.BorderColor3 = colors.buttonBorder
 	button.TextScaled = true
 	local hasFoundSignText = ""
 	if not rr.hasFoundSign then
@@ -40,12 +40,17 @@ local function getIndividualGrindButton(startSignId: number, num: number, rr: tt
 	button.Text = string.format("%s%s (%d)", rr.signName, hasFoundSignText, rr.totalRunnerCount)
 
 	button.MouseEnter:Connect(function()
-		local signProfileSgui: ScreenGui = localPlayer.PlayerGui:FindFirstChild("SignProfileSgui") :: ScreenGui
-		if signProfileSgui then
-			local theBadFrame: Frame = signProfileSgui:FindFirstChild("content_signProfile") :: Frame
-			if theBadFrame then
-				theBadFrame.Visible = false
-			end
+		local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
+		if not playerGui then
+			return
+		end
+		local signProfileSgui = playerGui:FindFirstChild("SignProfileSgui")
+		if not signProfileSgui or not signProfileSgui:IsA("ScreenGui") then
+			return
+		end
+		local theBadFrame = signProfileSgui:FindFirstChild("content_signProfile")
+		if theBadFrame and theBadFrame:IsA("Frame") then
+			theBadFrame.Visible = false
 		end
 	end)
 
@@ -58,7 +63,12 @@ local function getIndividualGrindButton(startSignId: number, num: number, rr: tt
 		end)
 	end
 
-	local par: TextButton = button.Parent :: TextButton
+	local buttonParent = button.Parent
+	if not buttonParent or not buttonParent:IsA("TextButton") then
+		annotater.Error("getIndividualGrindButton: missing padded button parent")
+		return nil
+	end
+	local par: TextButton = buttonParent
 
 	return par
 end
@@ -69,7 +79,22 @@ module.MakeSignProfileGrindingGui = function(
 	sourceName: string,
 	relatedUnrunRacesOfType: { tt.relatedRace }
 ): Frame
-	local d = windowFunctions.SetupFrame("signProfileGrinding", true, true, false, true, UDim2.new(0, 200, 0, 200))
+	local d = windowFunctions.SetupFrame(
+		"signProfileGrinding",
+		true, -- draggable
+		true, -- resizable
+		false, -- minimizable
+		true, -- pinnable
+		UDim2.new(0, 200, 0, 200),
+		false, -- maintainAspectRatio
+		{
+			settingName = "SIGN_GRINDING_GUI_LAYOUT",
+			settingKey = "position",
+			saveSize = false, -- size is dynamic based on content
+			clampOnLoad = true,
+			defaultPosition = UDim2.new(0.75, 0, 0.15, 0), -- right side, avoids chat
+		}
+	)
 	local outerFrame = d.outerFrame
 	local contentFrame = d.contentFrame
 
@@ -88,12 +113,34 @@ module.MakeSignProfileGrindingGui = function(
 		end
 	end
 
-	-- one button for a sign is 30 pixels tall and 95 pixels wide.
-	local pixYHeight = math.min(240, realGuyCount * 30 / 2 + 5)
+	-- one button for a sign is 30 pixels tall and 90 pixels wide.
+	local buttonHeight = 30
+	local buttonsPerRow = 2
+	local rowCount = math.ceil(realGuyCount / buttonsPerRow)
+	local contentHeight = rowCount * buttonHeight
 
-	outerFrame.Size = UDim2.new(0, 2 * 95, 0, pixYHeight + 93)
+	-- Cap at 40 items (20 rows) or screen height
+	local maxItems = 40
+	local maxRows = math.ceil(maxItems / buttonsPerRow) -- 20
+	local maxPreferredHeight = maxRows * buttonHeight -- 600
+
+	local viewportHeight = workspace.CurrentCamera.ViewportSize.Y
+	local maxSafeHeight = math.max(200, viewportHeight * 0.8) -- Use 80% of screen height, min 200
+
+	local limitHeight = math.min(maxPreferredHeight, maxSafeHeight)
+
+	-- We want to expand to fit content, up to limitHeight
+	local pixYHeight = math.min(contentHeight, limitHeight)
+
+	-- Ensure we have at least a bit of height if there are items
+	if realGuyCount > 0 and pixYHeight < buttonHeight then
+		pixYHeight = buttonHeight
+	end
+
+	-- Widen frame to fit 2 columns + scrollbar (90*2 = 180 + 16 = 196 -> use 200 for a tight fit)
+	outerFrame.Size = UDim2.new(0, 200, 0, pixYHeight + 93)
 	outerFrame.BackgroundColor3 = colors.defaultGrey
-	outerFrame.Position = UDim2.new(0, 10, 0.1, 5)
+	-- Position is handled by persistenceConfig with defaultPosition; don't overwrite saved position
 	outerFrame.BackgroundTransparency = 0
 
 	local vv = Instance.new("UIListLayout")
@@ -147,23 +194,18 @@ module.MakeSignProfileGrindingGui = function(
 	scrollFrame.Parent = scrollFrameHolder
 
 	-- (in the test game, some guys won't be real. )
-	scrollFrame.CanvasSize = UDim2.new(1, 0, 0, 10 * realGuyCount / 2) -- Set initial canvas size to 0
+	-- scrollFrame.CanvasSize = UDim2.new(1, 0, 0, 10 * realGuyCount / 2) -- Set initial canvas size to 0
 
 	-- Add close button at the bottom
-	local closeButton = Instance.new("TextButton")
+	local closeButton = standardButton.CreateCloseButton({
+		onClick = function()
+			outerFrame:Destroy()
+		end,
+		size = UDim2.new(1, 0, 0, 30),
+		parent = contentFrame,
+	})
 	closeButton.Name = "04_CloseButton"
-	closeButton.Size = UDim2.new(1, 0, 0, 30)
 	closeButton.Position = UDim2.new(0, 0, 1, -30)
-	closeButton.BackgroundColor3 = Color3.new(0.87, 0.3, 0.3)
-	closeButton.BorderSizePixel = 0
-	closeButton.Text = "Close"
-	closeButton.TextColor3 = Color3.new(1, 1, 1)
-	closeButton.TextScaled = true
-	closeButton.Parent = contentFrame
-
-	closeButton.Activated:Connect(function()
-		outerFrame:Destroy()
-	end)
 
 	local vv2 = Instance.new("UIListLayout")
 	vv2.Parent = scrollFrame
@@ -188,7 +230,7 @@ module.MakeSignProfileGrindingGui = function(
 			button.Size = UDim2.new(0, 90, 0, 30) -- Ensure consistent size
 		end
 	end
-	
+
 	-- Prevent camera scroll when hovering over grinding GUI scrolling frame
 	scrollingFrameUtils.PreventCameraScrollOnHover(scrollFrame)
 

@@ -16,6 +16,9 @@ local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
 local colors = require(game.ReplicatedStorage.util.colors)
 local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
 
+-- Use guiUtil for UI elements
+local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
 
@@ -61,16 +64,17 @@ module.Init = function()
 		windowFunctions.SetupFrame("serverEvents", true, true, true, true, UDim2.new(0, 200, 0, 200))
 	local serverEventsOuterFrame = serverEventsSystemFrames.outerFrame
 	local serverEventsContentFrame = serverEventsSystemFrames.contentFrame
-	local serverEventTitle = Instance.new("TextLabel")
+	local serverEventTitle = guiUtil.getTl(
+		"0ServerEventTitle",
+		UDim2.new(1, 0, 0, 12),
+		0, -- padding
+		serverEventsContentFrame,
+		colors.blueDone,
+		1, -- borderSizePixel
+		0 -- transparency
+	)
 	serverEventTitle.Text = "Server Events"
-	serverEventTitle.Parent = serverEventsContentFrame
-	serverEventTitle.Size = UDim2.new(1, 0, 0, 12)
-	serverEventTitle.TextScaled = true
-	serverEventTitle.Name = "0ServerEventTitle"
-	serverEventTitle.Font = Enum.Font.Gotham
-
-	serverEventTitle.Position = UDim2.new(0, 0, 0, 0)
-	serverEventTitle.BackgroundColor3 = colors.blueDone
+	serverEventTitle.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json")
 	serverEventsOuterFrame.Parent = serverEventScreenGui
 	serverEventsOuterFrame.Size = UDim2.new(0.15, 0, 0.08, 0)
 	serverEventsOuterFrame.Position = UDim2.new(0.8, 0, 0.2, 0)

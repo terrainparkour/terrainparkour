@@ -10,12 +10,13 @@ local PlayersService = game:GetService("Players")
 
 local commandTypes = require(game.ReplicatedStorage.ChatSystem.commandTypes)
 local commandUtils = require(game.ReplicatedStorage.ChatSystem.commandUtils)
+local chatFormatting = require(game.ReplicatedStorage.ChatSystem.chatFormatting)
 
 local PopularResponseTypes = require(game.ReplicatedStorage.types.PopularResponseTypes)
-local playerData2 = require(game.ServerScriptService.playerData2)
+local usernameCache = require(game.ServerScriptService.usernameCache)
 local popular = require(game.ServerScriptService.data.popularRaces)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 
 local module: commandTypes.CommandModule = {
 	Execute = function(_player: Player, _parts: { string }): boolean
@@ -27,9 +28,10 @@ local module: commandTypes.CommandModule = {
 }
 
 function module.Execute(player: Player, _parts: { string }): boolean
-	local userIdsInServer = {}
-	for _, serverPlayer in ipairs(PlayersService:GetPlayers()) do
-		table.insert(userIdsInServer, serverPlayer.UserId)
+	local colorContext = chatFormatting.CreateContext(player)
+	local userIdsInServer: { number } = {}
+	for userId, _ in pairs(colorContext.userIdsInServer) do
+		table.insert(userIdsInServer, userId)
 	end
 	local popResults: { PopularResponseTypes.popularRaceResult } = popular.GetPopularRaces(player, userIdsInServer)
 
@@ -43,7 +45,7 @@ function module.Execute(player: Player, _parts: { string }): boolean
 				continue
 			end
 			local userPlace = el.place
-			local username = playerData2.GetUsernameByUserId(userIdValue)
+			local username = usernameCache.GetUsernameByUserId(userIdValue)
 			local usePlace: string = ""
 
 			if userPlace == nil then
@@ -56,7 +58,9 @@ function module.Execute(player: Player, _parts: { string }): boolean
 			else
 				usePlace = tpUtil.getCardinalEmoji(userPlace)
 			end
-			local msg = username .. ":" .. usePlace
+			
+			local coloredUsername = chatFormatting.FormatUsername(username, userIdValue, colorContext)
+			local msg = coloredUsername .. ":" .. usePlace
 			table.insert(userPlaces, msg)
 		end
 		local placeJoined = textUtil.stringJoin(", ", userPlaces)

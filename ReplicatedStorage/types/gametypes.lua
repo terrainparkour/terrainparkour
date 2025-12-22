@@ -18,6 +18,16 @@ export type runEndingDataFromClient = {
 	endSignName: string,
 	runMilliseconds: number, -- this is the 'actually use' time including penalties so don't rely on it for starting time calculations. re: signs which have penalties, there is only one now (10/2024)
 	floorSeenCount: number,
+	networkPingMs: number, -- client's ping at run end for security analysis
+	jumpCount: number, -- number of jumps during the run
+}
+
+-- sent when client starts a run, controlled by config.ENABLE_SERVER_TIMING
+export type runStartDataFromClient = {
+	startSignName: string,
+	startSignId: number,
+	networkPingMs: number,
+	clientTick: number, -- client's tick() at touch, for deduplicating out-of-order arrivals
 }
 
 export type dcFindResponse = {
@@ -32,7 +42,7 @@ export type dcFindResponse = {
 	signTotalFinds: number,
 	totalSignsInGame: number,
 	lastFindAgoSeconds: number,
-	kind: string, -- the only non-default one in lua side.
+	kind: "userFoundSign",
 }
 
 export type jsonBadgeStatus = {
@@ -41,6 +51,7 @@ export type jsonBadgeStatus = {
 	badgeName: string,
 	badgeTotalGrantCount: number,
 	hasBadge: boolean,
+	shouldGrantOnJoin: boolean?,
 }
 
 export type raceInfo = {
@@ -65,6 +76,9 @@ export type userFinishedRunOptions = {
 	endSignId: number,
 	runMilliseconds: number,
 	allPlayerUserIds: string,
+	-- timing security fields
+	networkPingMs: number?, -- client's ping at run end
+	serverDurationMs: number?, -- server-observed time between run start and end (if tracked)
 }
 
 -- generally you likely want to use jsonBestRun. But if you are displaying a run the user JUST RAN
@@ -118,9 +132,11 @@ export type userFinishedRunResponse = {
 	raceHistoryData: raceHistoryData,
 	isMarathon: boolean,
 	isFavoriteRace: boolean,
+	createdRace: boolean?, -- True if this run discovered a new race (first ever run between these signs)
 }
 
 export type userFinishedRunResponseOrError = userFinishedRunResponse | userFinishedRunErrorResponse
+
 -- okay, now updates are just general and cover all possible lb stats.
 -- keep doing this til the db dies.
 export type lbUserStats = {
@@ -147,6 +163,14 @@ export type lbUserStats = {
 	runsToday: number,
 	pinnedRace: string,
 	userFavoriteRaceCount: number,
+	warpPermission: string?,
+	-- New LB columns
+	pinnedBadge: string?,
+	latestBadge: string?,
+	latestBadgeAssetId: number?,
+	latestBadgeEarnedAt: string?,
+	lastActivityTimestamp: number?,
+	shareIdleStatus: boolean?,
 }
 
 export type genericLeaderboardUpdateDataType = {
@@ -189,6 +213,7 @@ export type getNonTop10RacesByUser = {
 export type badgeDescriptor = {
 	name: string,
 	assetId: number,
+	iconImageId: number?,
 	badgeClass: string,
 	baseNumber: number?,
 	hint: string?,
@@ -206,6 +231,7 @@ export type badgeOptions = {
 	text: string,
 	kind: string,
 	userId: number,
+	badgeIconImageId: number?, -- optional: Roblox asset ID for badge icon image
 }
 
 -- note that these don't have the user on them.
@@ -415,6 +441,7 @@ export type serverWarpRequest = {
 	signId: number?,
 	highlightSignId: number?,
 	position: Vector3 | nil,
+	targetUserId: number?, -- for "player" kind warps
 }
 
 --------------- PARTICLES -------------
@@ -456,7 +483,7 @@ export type RaceParseResult = {
 	signId2: number,
 	signName1: string,
 	signName2: string,
-	error: string, -- if non"" then it's an error.
+	error: string, -- if non"" then it's an error. "Trolling is not allowed." means signId1 == signId2.
 }
 
 export type setSettingResponse = { res: boolean, error: string }
@@ -478,6 +505,38 @@ export type currentRunUIConfiguration = {
 	transparency: number,
 }
 
+-- Interface for active run UI variants - all variants must implement these methods
+-- Variants can choose which data to display but must accept updates for all
+export type ActiveRunUIVariant = {
+	-- Lifecycle
+	Init: () -> (), -- Initialize the variant
+	CreateGui: () -> (), -- Create/show the GUI
+	DestroyGui: () -> (), -- Destroy/hide the GUI
+
+	-- Race lifecycle
+	StartActiveRun: (startTimeTick: number, signName: string, signPosition: Vector3) -> (),
+	KillActiveRun: () -> (),
+	UpdateStartTime: (newStartTick: number) -> (),
+
+	-- Data updates (variants can ignore any they don't display)
+	UpdateSpeed: (speed: number) -> (),
+	UpdateAcceleration: (accelerationRate: number) -> (),
+	UpdateSpeedReason: (reason: string) -> (),
+	UpdateExtraRaceDescription: (description: string) -> boolean,
+	UpdateMovementDetails: (details: string) -> boolean,
+
+	-- Extended data updates (optional - variants can implement as no-ops)
+	UpdateTerrain: ((terrainName: string) -> ())?,
+	UpdateJumpCount: ((count: number) -> ())?,
+	UpdateAltitude: ((altitude: number, verticalVelocity: number) -> ())?,
+	UpdateRotation: ((facing: number, totalSpins: number) -> ())?,
+	UpdateDistanceFromStart: ((distance: number) -> ())?,
+}
+
+-- POST request to Python backend via rdb.MakePostRequest()
+-- Response format: rdb extracts res["res"] and returns it
+-- Mutation endpoints return setSettingResponse: { res: boolean, error: string }
+-- Query endpoints return their specific type (caller casts appropriately)
 export type postRequest = {
 	remoteActionName: string,
 	data: any,
@@ -564,6 +623,8 @@ export type wrProgressionEntry = {
 	userId: number,
 	username: string,
 	recordStood: number,
+	attemptsBetween: number?, -- Total runs between this WR and the previous one
+	attemptsByWinner: number?, -- Runs by the WR setter in that window
 }
 
 -- metadta about a race, not including best run info.
@@ -594,6 +655,88 @@ export type WRProgressionEndpointResponse = {
 	raceExists: boolean,
 	userRaceInfo: userRaceInfo,
 }
+
+-- Discipline results notification: unified type for race and marathon completions.
+-- Terminology from docs/ideas/discipline-performance-model.md:
+--   discipline = race | marathon (the challenge being attempted)
+--   performance = run | marathonRun (one user's completion with a time)
+-- The kind field discriminates between race and marathon results.
+-- For races: raceInfo contains startSignId/endSignId for warp/reverse buttons.
+-- For marathons: raceInfo.startSignId/endSignId are 0 (no meaningful start/end sign).
+export type disciplineResultsNotification = {
+	kind: "raceResults" | "marathonResults",
+	userId: number,
+	username: string,
+	raceInfo: raceInfo,
+	runUserJustDid: JsonRun?,
+	raceBestRuns: { jsonBestRun },
+	extraBestRuns: { jsonBestRun },
+	userRaceStats: userRaceStats,
+	lbUserStats: lbUserStats,
+	actionResults: { actionResult },
+	raceHistoryData: raceHistoryData,
+	isMarathon: boolean,
+	isFavoriteRace: boolean,
+}
+
+-- Aliases for backward compatibility with existing code that references specific types.
+-- These are identical to disciplineResultsNotification but with narrowed kind.
+export type raceResultsNotification = disciplineResultsNotification
+export type marathonResultsNotification = disciplineResultsNotification
+
+-- WR progression notification with kind discriminator
+export type wrProgressionNotification = {
+	kind: "wrProgression",
+	wrProgression: { wrProgressionEntry },
+	raceHistoryData: raceHistoryData,
+	raceExists: boolean,
+	userRaceInfo: userRaceInfo,
+}
+
+-- WR progression chart notification - same data, opens chart directly
+export type wrProgressionChartNotification = {
+	kind: "wrProgressionChart",
+	wrProgression: { wrProgressionEntry },
+	raceHistoryData: raceHistoryData,
+	raceExists: boolean,
+	userRaceInfo: userRaceInfo,
+}
+
+-- Badge compare notification payload
+export type badgeCompareBadgeEntry = {
+	name: string,
+	assetId: number,
+	iconImageId: number?,
+	badgeClass: string,
+	hint: string?,
+}
+
+export type badgeCompareUserSummary = {
+	userId: number,
+	username: string,
+	badgeCount: number,
+	latestBadgeName: string?,
+	latestBadgeAssetId: number?,
+}
+
+export type badgeCompareNotification = {
+	kind: "badgeCompare",
+	userA: badgeCompareUserSummary,
+	userB: badgeCompareUserSummary,
+	sharedBadgeCount: number,
+	onlyA: { badgeCompareBadgeEntry },
+	onlyB: { badgeCompareBadgeEntry },
+}
+
+-- Union of all notification types sent via ServerToClientEvent
+export type serverToClientNotification =
+	dcFindResponse
+	| disciplineResultsNotification
+	| wrProgressionNotification
+	| wrProgressionChartNotification
+	| badgeCompareNotification
+	| badgeOptions
+	| ephemeralNotificationOptions
 
 -- a simple object for adding chips to a row
 export type runChip = {
@@ -636,12 +779,28 @@ export type simpleJsonRun = {
 	place: number,
 }
 
+-- A single run entry with time and date, for getUserRunsForRace endpoint
+export type userRunEntry = {
+	runMilliseconds: number,
+	created: number, -- epoch seconds
+}
+
+-- Response from getUserRunsForRace endpoint
+export type getUserRunsForRaceResponse = {
+	runs: { userRunEntry },
+	raceExists: boolean?,
+	error: string?,
+}
+
 -- we don't just want to list the favorites if you query about someonee else, we also want to know your best runs too.
 export type serverFavoriteRacesResponse = {
-	targetUserId: number,
-	requestingUserId: number,
-	otherUserIds: { number },
-	racesAndInfo: { { theRace: JsonUserFavoriteRace, theResults: { simpleJsonRun } } },
+	success: boolean?,
+	error: string?,
+	message: string?,
+	targetUserId: number?,
+	requestingUserId: number?,
+	otherUserIds: { number }?,
+	racesAndInfo: { { theRace: JsonUserFavoriteRace, theResults: { simpleJsonRun } } }?,
 }
 
 export type interleavedResult = {

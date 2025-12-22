@@ -3,7 +3,7 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local _tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 
 local module = {}
 
@@ -47,10 +47,10 @@ end
 local function playSoundFromSign(sign: Part, soundName: string)
 	local sound = getSound(sounds[soundName])
 	sound.Name = soundName
-	local exi: Sound? = sign:FindFirstChild(soundName) :: Sound
-	if exi then
+	local existingSound = sign:FindFirstChild(soundName)
+	if existingSound and existingSound:IsA("Sound") then
 		_annotate(string.format("replaying old one. %s", sign.Name))
-		exi:Play()
+		existingSound:Play()
 	else
 		_annotate(string.format("adding and play.. %s", sign.Name))
 		sound.Parent = sign

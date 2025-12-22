@@ -14,7 +14,7 @@ local remotes = require(game.ReplicatedStorage.util.remotes)
 local settings = require(game.ReplicatedStorage.settings)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
-local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
+local warper = require(game.StarterPlayer.StarterCharacterScripts.client.warper)
 local aet = require(game.ReplicatedStorage.avatarEventTypes)
 
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
@@ -23,9 +23,9 @@ local fireEvent = avatarEventFiring.FireEvent
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
-local keyboardShortcutButton = require(game.StarterPlayer.StarterPlayerScripts.buttons.keyboardShortcutGui)
+local keyboardShortcutsButton = require(game.ReplicatedStorage.gui.menu.keyboardShortcutsButton)
 -- local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 
 local UserInputService = game:GetService("UserInputService")
 
@@ -35,9 +35,9 @@ local userWantsHighlightingWhenWarpingWithKeyboard = false
 -- local showLB: boolean = true
 
 --------------- "remember" the last runs they've worked on for '1'
-local lastRunStartSignId = nil
-local lastCompleteRunStart = nil
-local lastCompleteRunEnd = nil
+local lastRunStartSignId: number? = nil
+local lastCompleteRunStart: number? = nil
+local lastCompleteRunEnd: number? = nil
 
 local function GetChatVisibility(): boolean
 	local TextChatService = game:GetService("TextChatService")
@@ -105,58 +105,6 @@ local function ToggleChat(intendedState: boolean)
 	end
 end
 
-local function HideChatIfVisible()
-	-- X key: Always hide chat if visible, do nothing if already hidden
-	local isVisible = GetChatVisibility()
-	if isVisible then
-		ToggleChat(false)
-		_annotate("X key: Chat hidden")
-	else
-		_annotate("X key: Chat already hidden, doing nothing")
-	end
-end
-
-local function _ToggleChatVisibility()
-	-- Tab key: Toggle chat visibility
-	local isVisible = GetChatVisibility()
-	ToggleChat(not isVisible)
-	_annotate(string.format("Tab key: Chat toggled to %s", tostring(not isVisible)))
-end
-
-local function EnableChatAndFocusInput()
-	-- Slash key: Enable chat if disabled, then focus input bar with "/" pre-filled
-	local isVisible = GetChatVisibility()
-	if not isVisible then
-		ToggleChat(true)
-		_annotate("Slash key: Chat enabled")
-	end
-
-	-- Wait a brief moment for UI to update, then focus the input
-	task.spawn(function()
-		task.wait(0.1)
-		local TextChatService = game:GetService("TextChatService")
-		local chatInputBarConfig = TextChatService:FindFirstChild("ChatInputBarConfiguration")
-		if chatInputBarConfig then
-			local ok, err = pcall(function()
-				local config = chatInputBarConfig :: any
-				if config.TextBox then
-					local textBox = config.TextBox :: TextBox
-					textBox:CaptureFocus()
-					textBox.Text = "/"
-					_annotate("Slash key: Chat input focused with '/' pre-filled")
-				else
-					_annotate("Warn: ChatInputBarConfiguration.TextBox not found")
-				end
-			end)
-			if not ok then
-				_annotate(string.format("Warn: Failed to focus chat input (%s)", tostring(err)))
-			end
-		else
-			_annotate("Warn: ChatInputBarConfiguration not found")
-		end
-	end)
-end
-
 local function ToggleServerEventScreenGui(intendedState: boolean)
 	_annotate("toggle server event screen gui, intended: " .. tostring(intendedState))
 	local gui = localPlayer:WaitForChild("PlayerGui"):FindFirstChild("ServerEventScreenGui")
@@ -197,15 +145,85 @@ local function ToggleSettingsButton(intendedState: boolean)
 	end
 end
 
+local function ToggleWidgetScreenGui(intendedState: boolean)
+	_annotate("toggle widget screen gui, intended: " .. tostring(intendedState))
+	local gui = localPlayer:WaitForChild("PlayerGui"):FindFirstChild("WidgetComposerGui")
+	if gui and gui:IsA("ScreenGui") then
+		(gui :: ScreenGui).Enabled = intendedState
+	else
+		_annotate("no widget composer screen gui found.")
+	end
+end
+
+local function HideChatIfVisible()
+	-- X key: Always hide chat if visible, do nothing if already hidden
+	local isVisible = GetChatVisibility()
+	if isVisible then
+		ToggleChat(false)
+		_annotate("X key: Chat hidden")
+	else
+		_annotate("X key: Chat already hidden, doing nothing")
+	end
+end
+
+local function _ToggleChatVisibility()
+	-- Tab key: Toggle chat visibility
+	local isVisible = GetChatVisibility()
+	ToggleChat(not isVisible)
+	_annotate(string.format("Tab key: Chat toggled to %s", tostring(not isVisible)))
+end
+
+local function EnableChatAndFocusInput()
+	-- Slash key: Enable chat if disabled, then focus input bar with "/" pre-filled
+	-- If UI was hidden via Tab, show ALL UI to maintain sync, then focus chat
+	local chatVisible = GetChatVisibility()
+	if not chatVisible then
+		-- UI was hidden - show all to maintain sync (same as Tab when hidden)
+		ToggleLB(true)
+		ToggleSettingsButton(true)
+		ToggleChat(true)
+		ToggleServerEventScreenGui(true)
+		ToggleMarathonScreenGui(true)
+		ToggleWidgetScreenGui(true)
+		_annotate("Slash key: UI was hidden, showing all")
+	end
+
+	-- Wait a brief moment for UI to update, then focus the input
+	task.spawn(function()
+		task.wait(0.1)
+		local TextChatService = game:GetService("TextChatService")
+		local chatInputBarConfig = TextChatService:FindFirstChild("ChatInputBarConfiguration")
+		if chatInputBarConfig then
+			local ok, err = pcall(function()
+				local config = chatInputBarConfig :: any
+				if config.TextBox then
+					local textBox = config.TextBox :: TextBox
+					textBox:CaptureFocus()
+					textBox.Text = "/"
+					_annotate("Slash key: Chat input focused with '/' pre-filled")
+				else
+					_annotate("Warn: ChatInputBarConfiguration.TextBox not found")
+				end
+			end)
+			if not ok then
+				_annotate(string.format("Warn: Failed to focus chat input (%s)", tostring(err)))
+			end
+		else
+			_annotate("Warn: ChatInputBarConfiguration not found")
+		end
+	end)
+end
+
 local function ToggleChatAndLeaderboardTogether()
-	-- Tab key: Keep chat and leaderboard in sync
-	-- If out of sync (one shown, one hidden), hide both
-	-- If in sync (both shown or both hidden), toggle both
+	-- Tab key: Toggle UI visibility (chat, leaderboard, settings, etc.) but NOT widgets
+	-- Uses chat and leaderboard as reference points for sync detection:
+	-- - If in sync (both shown or both hidden), toggle all UI to opposite state
+	-- - If out of sync, show all UI to restore consistent state
 	local chatVisible = GetChatVisibility()
 	local lbVisible = GetLeaderboardVisibility()
-	
+
 	local areInSync = chatVisible == lbVisible
-	
+
 	if areInSync then
 		-- Both are in sync, toggle both
 		local newState = not chatVisible
@@ -214,15 +232,15 @@ local function ToggleChatAndLeaderboardTogether()
 		ToggleChat(newState)
 		ToggleServerEventScreenGui(newState)
 		ToggleMarathonScreenGui(newState)
-		_annotate(string.format("Tab key: Chat and leaderboard toggled together to %s", tostring(newState)))
+		_annotate(string.format("Tab key: UI toggled to %s", tostring(newState)))
 	else
-		-- Out of sync, hide both
-		ToggleLB(false)
-		ToggleSettingsButton(false)
-		ToggleChat(false)
-		ToggleServerEventScreenGui(false)
-		ToggleMarathonScreenGui(false)
-		_annotate("Tab key: Chat and leaderboard out of sync, hiding both")
+		-- Out of sync, show both to restore sync
+		ToggleLB(true)
+		ToggleSettingsButton(true)
+		ToggleChat(true)
+		ToggleServerEventScreenGui(true)
+		ToggleMarathonScreenGui(true)
+		_annotate("Tab key: UI out of sync, showing all")
 	end
 end
 
@@ -241,6 +259,8 @@ local function KillPopups()
 		elseif string.sub(el.Name, 0, 14) == "SignProfileSgui" then
 			el:Destroy()
 		elseif el.Name == "EphemeralNotificationSgui" then
+			el:Destroy()
+		elseif el.Name == "BadgeNotificationSgui" then
 			el:Destroy()
 		elseif el.Name == "ToolTipGui" then
 			el:Destroy()
@@ -277,15 +297,25 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 			end
 		elseif inputObject.KeyCode == Enum.KeyCode.Two or inputObject.KeyCode == Enum.KeyCode.R then
 			_annotate("hit 2, doing warp to last run start.")
-			if lastRunStartSignId ~= nil then
-				warper.WarpToSignId(lastRunStartSignId)
+			-- If the player hasn't started a run yet, this key should be a no-op.
+			if lastRunStartSignId == nil then
+				_annotate("hit 2, but no lastRunStartSignId is set; no-op")
+				return
 			end
+
+			-- Illegal state: should never happen. If it does, alert and refuse to send a warp request.
+			if lastRunStartSignId <= 0 then
+				annotater.Error(string.format("KEY 2 illegal lastRunStartSignId=%s", tostring(lastRunStartSignId)), localPlayer.UserId)
+				return
+			end
+
+			warper.WarpToSignId(lastRunStartSignId)
 		elseif inputObject.KeyCode == Enum.KeyCode.H then
 			_annotate("hit h, killing highlights.")
 			textHighlighting.KillAllExistingHighlights()
 			_annotate("kill all highlights.")
 		elseif inputObject.KeyCode == Enum.KeyCode.Tab then
-			_annotate("hit tab, syncing chat and leaderboard visibility.")
+			_annotate("hit tab, toggling all UI visibility.")
 			ToggleChatAndLeaderboardTogether()
 		elseif inputObject.KeyCode == Enum.KeyCode.X then
 			_annotate("kill all popups and hide chat.")
@@ -301,7 +331,17 @@ local function onInputBegin(inputObject, gameProcessedEvent)
 			_annotate("hit slash, enabling chat and focusing input if needed.")
 			EnableChatAndFocusInput()
 		elseif inputObject.KeyCode == Enum.KeyCode.K then
-			keyboardShortcutButton.CreateShortcutGui()
+			-- Show keyboard shortcuts modal
+			local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
+			if playerGui then
+				-- Remove existing if present
+				local existing = playerGui:FindFirstChild("KeyboardShortcutsPopup")
+				if existing then
+					existing:Destroy()
+				end
+				local popup = keyboardShortcutsButton.keyboardShortcutsButton.contentsGetter(localPlayer)
+				popup.Parent = playerGui
+			end
 			-- elseif inputObject.KeyCode == Enum.KeyCode.P then
 			-- 	particleExplanationGui.CreateParticleGui()
 		end
@@ -317,46 +357,50 @@ local function handleUserSettingChanged(item: tt.userSettingValue): any
 end
 
 -- we track the last run start so that they can warp back there.
-local debHandleAvatarEvent = false
 local function handleAvatarEvent(ev: aet.avatarEvent)
-	while debHandleAvatarEvent do
-		_annotate("was locked while trying to set keyboard.")
-		_annotate(avatarEventFiring.DescribeEvent(ev))
-		return
-	end
-	debHandleAvatarEvent = true
+	-- _annotate(string.format("handleAvatarEvent: %s", avatarEventFiring.DescribeEvent(ev)))
+
 	if ev.eventType == aet.avatarEventTypes.RUN_START then
 		local startSignId = ev.details and ev.details.startSignId
-		if startSignId then
-			_annotate(string.format("run start, setting lastRunStartSignId=%s", tpUtil.signId2signName(startSignId)))
-			lastRunStartSignId = startSignId
+		if startSignId == nil then
+			return
 		end
+
+		-- Illegal state: should never happen. If it does, alert and refuse to cache it.
+		if startSignId <= 0 then
+			annotater.Error(string.format("RUN_START illegal startSignId=%s", tostring(startSignId)), localPlayer.UserId)
+			return
+		end
+
+		local name = tpUtil.signId2signName(startSignId)
+		if name == "" then
+			annotater.Error(string.format("RUN_START startSignId missing from enums: %s", tostring(startSignId)), localPlayer.UserId)
+			return
+		end
+
+		_annotate(string.format("run start, setting lastRunStartSignId=%s", name))
+		lastRunStartSignId = startSignId
+		_annotate(string.format("KEY 2 target updated to: %s (%d)", name, startSignId))
 	elseif ev.eventType == aet.avatarEventTypes.RUN_COMPLETE then
 		local details = ev.details
 		if details then
 			local startSignName = details.startSignName or "unknown"
 			local endSignName = details.endSignName or "unknown"
-			_annotate(
-				string.format(
-					"run complete, storing the last completed start and end: %s => %s",
-					startSignName,
-					endSignName
-				)
-			)
+			_annotate(string.format("run complete, storing the last completed start and end: %s => %s", startSignName, endSignName))
 			if details.startSignId then
 				lastCompleteRunStart = details.startSignId
+				_annotate(string.format("KEY 1 target START updated to: %s (%d)", startSignName, lastCompleteRunStart :: number))
 			end
 			if details.endSignId then
 				lastCompleteRunEnd = details.endSignId
+				_annotate(string.format("KEY 1 target END updated to: %s (%d)", endSignName, lastCompleteRunEnd :: number))
 			end
 		end
 	end
-	debHandleAvatarEvent = false
 end
 local avatarEventConnection: RBXScriptConnection?
 module.Init = function()
 	_annotate("init")
-	debHandleAvatarEvent = false
 
 	if avatarEventConnection then
 		avatarEventConnection:Disconnect()
@@ -365,17 +409,19 @@ module.Init = function()
 	avatarEventConnection = AvatarEventBindableEvent.Event:Connect(handleAvatarEvent) :: RBXScriptConnection
 	UserInputService.InputBegan:Connect(onInputBegin)
 
-	settings.RegisterFunctionToListenForSettingName(
-		handleUserSettingChanged,
-		settingEnums.settingDefinitions.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP.name,
-		"keyboard"
-	)
+	settings.RegisterFunctionToListenForSettingName(handleUserSettingChanged, settingEnums.settingDefinitions.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP.name, "keyboard")
 
-	handleUserSettingChanged(
-		settings.GetSettingByName(settingEnums.settingDefinitions.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP.name)
-	)
+	handleUserSettingChanged(settings.GetSettingByName(settingEnums.settingDefinitions.HIGHLIGHT_ON_KEYBOARD_1_TO_WARP.name))
 	_annotate("init done")
 end
 
 _annotate("end")
 return module
+
+--[[SPEC (keyboard shortcut '2' / 'r' warp):
+Expected behavior:
+- If the player has not started a run in this session, pressing `2` / `r` does nothing.
+- If an illegal "last run start" sign id is observed (should not happen), we emit an error and do not warp.
+Rationale:
+- `2` / `r` is intentionally unavailable until a run has started; illegal states are surfaced and must be fixed upstream.
+]]

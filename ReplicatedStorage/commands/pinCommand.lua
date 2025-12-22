@@ -12,7 +12,6 @@ local commandUtils = require(game.ReplicatedStorage.ChatSystem.commandUtils)
 local pinRaceCommand = require(game.ReplicatedStorage.commands.pinRaceCommand)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
 
 local module: commandTypes.CommandModule = {
 	Execute = function(_player: Player, _parts: { string }): boolean
@@ -29,7 +28,7 @@ function module.Execute(player: Player, parts: { string }): boolean
 		return true
 	end
 	local userInput = textUtil.stringJoin(" ", parts)
-	local ret: tt.RaceParseResult = tpUtil.AttemptToParseRaceFromInput(userInput)
+	local ret: tt.RaceParseResult = commandUtils.ParseRaceFromInput(userInput, player.UserId)
 	if ret.error ~= "" then
 		commandUtils.SendMessage(ret.error, player)
 		return true
@@ -42,4 +41,3 @@ end
 
 _annotate("end")
 return module
-

@@ -1,6 +1,6 @@
 --!strict
 
-local MovementLogger = {}
+local MovementLogger: any = {}
 MovementLogger.__index = MovementLogger
 
 local Players = game:GetService("Players")
@@ -14,85 +14,81 @@ MovementLogger.Vector3Position = {
 	Z = 0,
 }
 
-type MovementLogger = typeof(setmetatable(
-	{} :: {
-		player: Player,
-		character: Model,
-		humanoidRootPart: any?,
-		isLogging: boolean,
-		logData: {[number]: {Position: Vector3}},
-		previousPosition: Vector3,
-		visualFolder: Folder,
-
-		startLogging: (self: MovementLogger) -> (),
-		stopLogging: (self: MovementLogger) -> (),
-		onUpdate: (self: MovementLogger) -> (),
-		createPoint: (self: MovementLogger, position: Vector3) -> (),
-		visualizeLog: (self: MovementLogger) -> (),
-	},
-	
-	{} :: {__call: (self: MovementLogger) -> ()}
-))
-
 function MovementLogger.Init()
-	local self: MovementLogger = setmetatable({}, MovementLogger)
-	
-	self.player = Players.LocalPlayer
-	self.character = self.player.Character or self.player.CharacterAdded:Wait()
-	self.humanoidRootPart = self.character:WaitForChild("HumanoidRootPart")
-	self.isLogging = false
-	self.logData = {}
-	self.previousPosition = self.humanoidRootPart.Position
-	self.visualFolder = Instance.new("Folder")
-	self.visualFolder.Name = "MovementPoints"
-	self.visualFolder.Parent = workspace
+	local player = Players.LocalPlayer
+	local character = player.Character or player.CharacterAdded:Wait()
+	local humanoidRootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
+	local visualFolder = Instance.new("Folder") :: Folder
+	visualFolder.Name = "MovementPoints"
+	visualFolder.Parent = workspace
+
+	local self = setmetatable({
+		player = player,
+		character = character,
+		humanoidRootPart = humanoidRootPart,
+		isLogging = false,
+		logData = {},
+		previousPosition = humanoidRootPart.Position,
+		visualFolder = visualFolder,
+	}, MovementLogger)
 
 	local keyBindings = {
-		[Enum.KeyCode.F] = function() self:startLogging() end,
-		[Enum.KeyCode.G] = function() self:stopLogging() end,
+		[Enum.KeyCode.F] = function()
+			self:startLogging()
+		end,
+		[Enum.KeyCode.G] = function()
+			self:stopLogging()
+		end,
 	}
 
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if not gameProcessed and keyBindings[input.KeyCode] then keyBindings[input.KeyCode]() end
+		if not gameProcessed and keyBindings[input.KeyCode] then
+			keyBindings[input.KeyCode]()
+		end
 	end)
 
-	RunService.RenderStepped:Connect(function() self:onUpdate() end)
+	RunService.RenderStepped:Connect(function()
+		self:onUpdate()
+	end)
 
 	return self
 end
 
 function MovementLogger:createPoint(position: Vector3)
 	local point = Instance.new("Part")
-	
+
 	point.Size = Vector3.new(0.3, 0.3, 0.3)
 	point.Position = position
 	point.Anchored = true
 	point.CanCollide = false
 	point.Shape = Enum.PartType.Ball
-	point.BrickColor = BrickColor.Random()
+	point.BrickColor = BrickColor.random()
 	point.Material = Enum.Material.Neon
 	point.Parent = self.visualFolder
-	
+
 	Debris:AddItem(point, 10)
 end
 
 function MovementLogger:visualizeLog()
 	local pathSize = #self.logData
 
-	if pathSize < 2 then  warn("Not enough data to visualize.")  return end
+	if pathSize < 2 then
+		warn("Not enough data to visualize.")
+		return
+	end
 
 	for i = 1, pathSize - 1 do
-		local pointA = self.logData[i]
-		local pointB = self.logData[i + 1]
+		local pointA: { Position: Vector3 } = self.logData[i]
+		local pointB: { Position: Vector3 } = self.logData[i + 1]
 
 		self:createPoint(pointA.Position)
 
-		local distance = (pointB.Position - pointA.Position).magnitude
+		local distance = (pointB.Position - pointA.Position).Magnitude
 		local colorValue = math.clamp(distance / 20, 0, 1)
 		local color = Color3.fromRGB(255 * (1 - colorValue), 255 * colorValue, 0)
 
 		local line = Instance.new("LineHandleAdornment")
-		
+
 		line.Adornee = self.humanoidRootPart
 		line.Name = "PathLine" .. i
 		line.Length = distance
@@ -101,7 +97,7 @@ function MovementLogger:visualizeLog()
 		line.Transparency = 0.5
 		line.AlwaysOnTop = true
 
-		local direction = (pointB.Position - pointA.Position).unit
+		local direction: Vector3 = (pointB.Position - pointA.Position).Unit
 		line.CFrame = CFrame.new(pointA.Position + direction * (distance / 2), pointB.Position)
 
 		line.Parent = self.visualFolder
@@ -113,9 +109,9 @@ end
 
 function MovementLogger:onUpdate()
 	if self.isLogging then
-		local currentPosition = self.humanoidRootPart.Position
-		
-		if (currentPosition - self.previousPosition).magnitude >= 1 then
+		local currentPosition: Vector3 = self.humanoidRootPart.Position
+
+		if (currentPosition - self.previousPosition).Magnitude >= 1 then
 			table.insert(self.logData, { Position = currentPosition })
 			self.previousPosition = currentPosition
 		end

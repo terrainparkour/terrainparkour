@@ -8,17 +8,16 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local specialSign = {}
 
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
-local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
 local activeRunSGui = require(game.ReplicatedStorage.gui.activeRunSGui)
-local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
 local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
-local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 ----------- GLOBALS -----------
 local HasTouchedRed = false
+
+local DESCRIPTION_NEED_SANDSTONE = "You must touch Sandstone of Mars to complete your run."
+local DESCRIPTION_TOUCHED_SANDSTONE = "You have touched Sandstone so you may end the run now."
 
 -------------- MAIN --------------
 
@@ -29,12 +28,12 @@ end
 specialSign.InformRunStarting = function()
 	localPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
 	HasTouchedRed = false
-	activeRunSGui.UpdateExtraRaceDescription("You must touch Sandstone of Mars")
+	activeRunSGui.UpdateExtraRaceDescription(DESCRIPTION_NEED_SANDSTONE)
 end
 
 specialSign.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?)
 	if floorMaterial == Enum.Material.Sandstone then
-		activeRunSGui.UpdateExtraRaceDescription("You have touched Sandstone so you may end the race now.")
+		activeRunSGui.UpdateExtraRaceDescription(DESCRIPTION_TOUCHED_SANDSTONE)
 		HasTouchedRed = true
 	end
 end
@@ -51,6 +50,8 @@ end
 
 specialSign.InformRetouch = function()
 	HasTouchedRed = false
+	-- Re-set description after RestartRun clears it
+	activeRunSGui.UpdateExtraRaceDescription(DESCRIPTION_NEED_SANDSTONE)
 end
 
 _annotate("end")

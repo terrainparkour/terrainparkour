@@ -27,6 +27,9 @@ local function getMarathonKindLeaders(marathonKind: string): string
 		data = { marathonKind = marathonKind },
 	}
 	local res = rdb.MakePostRequest(request)
+	if type(res) ~= "string" then
+		return "Couldn't find that marathon."
+	end
 	return res
 end
 
@@ -36,9 +39,6 @@ function module.Execute(player: Player, parts: { string }): boolean
 		return true
 	end
 	local res = getMarathonKindLeaders(parts[1])
-	if not res then
-		res = "Couldn't find that marathon."
-	end
 	commandUtils.SendMessage(res, player)
 	commandUtils.GrantCmdlineBadge(player.UserId)
 	return true

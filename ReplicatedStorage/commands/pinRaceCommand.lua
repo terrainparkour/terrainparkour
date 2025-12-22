@@ -8,11 +8,13 @@ local _annotate = annotater.getAnnotater(script)
 
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local _remotes = require(game.ReplicatedStorage.util.remotes)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local leaderboardServer = require(game.ServerScriptService.leaderboardServer)
 local playerData2 = require(game.ServerScriptService.playerData2)
 local userSettings = require(game.ServerScriptService.settingsServer)
+local notify = require(game.ReplicatedStorage.notify)
+
+local PlayersService = game:GetService("Players")
 
 type pinRaceResult = {
 	success: boolean,
@@ -57,6 +59,20 @@ module.PinRace = function(player: Player, signId1: number, signId2: number): pin
 	end
 
 	leaderboardServer.UpdateAllAboutPlayerImmediate(player)
+
+	-- Notify other players about the pin
+	local notifyText = string.format("%s pinned the race %s-%s", player.Name, signName1, signName2)
+	for _, otherPlayer in ipairs(PlayersService:GetPlayers()) do
+		if otherPlayer.UserId ~= player.UserId then
+			notify.notifyPlayerAboutActionResult(otherPlayer, {
+				userId = player.UserId,
+				text = notifyText,
+				kind = "race pinned",
+				warpToSignId = 0,
+			})
+		end
+	end
+
 	return {
 		success = true,
 		message = string.format("%s pinned race %s-%s to their leaderboard.", player.Name, signName1, signName2),

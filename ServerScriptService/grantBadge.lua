@@ -7,9 +7,9 @@ local module = {}
 
 local notify = require(game.ReplicatedStorage.notify)
 local badges = require(game.ServerScriptService.badges)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local config = require(game.ReplicatedStorage.config)
-local playerData2 = require(game.ServerScriptService.playerData2)
+local usernameCache = require(game.ServerScriptService.usernameCache)
 
 local leaderboardBadgeEvents = require(game.ServerScriptService.leaderboardBadgeEvents)
 local PlayersService = game:GetService("Players")
@@ -23,9 +23,8 @@ local Players = game:GetService("Players")
 -- return whether the user actually got the newly granted badge.
 -- public function for anyone to make a user get the badge.
 module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
-	local username = playerData2.GetUsernameByUserId(userId)
-	local has =
-		badges.UserHasBadge(userId, badge, string.format("checking during grant of %s to %s", badge.name, username))
+	local username = usernameCache.GetUsernameByUserId(userId)
+	local has = badges.UserHasBadge(userId, badge, string.format("checking during grant of %s to %s", badge.name, username))
 	if has then
 		_annotate(string.format("GrantBadge %s but user already has badge %s", username, badge.name))
 		return
@@ -34,10 +33,7 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 	-- somehow the user ownership status is null.
 	if has == nil then
 		-- we failed to prepare data for this user at all.
-		annotater.Error(
-			string.format("GrantBadge to user: %s but user ownership status is nil. %s", username, badge.name),
-			userId
-		)
+		annotater.Error(string.format("GrantBadge to user: %s but user ownership status is nil. %s", username, badge.name), userId)
 		if config.IsInStudio() then
 			_annotate("in studio, has is nil, why are we bailing" .. badge.name)
 		else
@@ -46,13 +42,10 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 		return
 	end
 
-	local s, e = pcall(function()
+	local s, _e = pcall(function()
 		local granted = BadgeService:AwardBadge(userId, badge.assetId)
 		if not granted then
-			annotater.Error(
-				string.format("BadgeService Failed to grant badge %s to user %s", badge.name, username),
-				userId
-			)
+			annotater.Error(string.format("BadgeService Failed to grant badge %s to user %s", badge.name, username), userId)
 		end
 	end)
 
@@ -64,10 +57,7 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 	local myDbRes = badges.SaveBadgeOwnershipStatusToMyDBAndRAM(userId, badge.assetId, badge.name, true)
 
 	if not myDbRes then
-		annotater.Error(
-			string.format("badgeStatus is nil for badge %s, while trying to grant it to: %s", badge.name, username),
-			userId
-		)
+		annotater.Error(string.format("badgeStatus is nil for badge %s, while trying to grant it to: %s", badge.name, username), userId)
 		return
 	end
 	if myDbRes.badgeTotalGrantCount == 1 then
@@ -76,16 +66,14 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 		end
 	end
 
-	local text: string =
-		string.format("You were %d to get the '%s' Badge!", myDbRes.badgeTotalGrantCount + 1, myDbRes.badgeName)
-	tpUtil.getCardinalEmoji(myDbRes.badgeTotalGrantCount + 1)
+	local text: string = string.format("You were %s to get the '%s' Badge!", tpUtil.getCardinalEmoji(myDbRes.badgeTotalGrantCount + 1), myDbRes.badgeName)
 
 	local player: Player? = PlayersService:GetPlayerByUserId(userId)
 	if not player then
 		annotater.Error(string.format("player not found for user: %s", username), userId)
 		return
 	end
-	local badgeOptions: tt.badgeOptions = { userId = userId, text = text, kind = "badge received" }
+	local badgeOptions: tt.badgeOptions = { userId = userId, text = text, kind = "badge received", badgeIconImageId = badge.iconImageId }
 	notify.notifyPlayerAboutBadge(player, badgeOptions)
 
 	local doOthersAlreadyHaveThisBadge = {}
@@ -93,11 +81,7 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 		if otherPlayer.UserId == userId then
 			continue
 		end
-		doOthersAlreadyHaveThisBadge[otherPlayer.UserId] = badges.UserHasBadge(
-			otherPlayer.UserId,
-			badge,
-			string.format("otherPlayer check during grant of %s to %s", badge.name, username)
-		)
+		doOthersAlreadyHaveThisBadge[otherPlayer.UserId] = badges.UserHasBadge(otherPlayer.UserId, badge, string.format("otherPlayer check during grant of %s to %s", badge.name, username))
 	end
 
 	local thisUserbadgeCount = badges.getBadgeCountByUser(userId, "grantBadge")
@@ -115,16 +99,10 @@ module.GrantBadge = function(userId: number, badge: tt.badgeDescriptor)
 			relativeDescriptor = " Which you do not have!"
 		end
 
-		local otherText = string.format(
-			"%s was %s to get badge: '%s'%s",
-			username,
-			tpUtil.getCardinalEmoji(myDbRes.badgeTotalGrantCount + 1),
-			badge.name,
-			relativeDescriptor
-		)
+		local otherText = string.format("%s was %s to get badge: '%s'%s", username, tpUtil.getCardinalEmoji(myDbRes.badgeTotalGrantCount + 1), badge.name, relativeDescriptor)
 		leaderboardBadgeEvents.updateBadgeLb(player, otherPlayer.UserId, thisUserbadgeCount)
 
-		notify.notifyPlayerAboutBadge(otherPlayer, { userId = userId, text = otherText, kind = "badge received" })
+		notify.notifyPlayerAboutBadge(otherPlayer, { userId = userId, text = otherText, kind = "badge received", badgeIconImageId = badge.iconImageId })
 	end
 
 	if thisUserbadgeCount >= 100 then

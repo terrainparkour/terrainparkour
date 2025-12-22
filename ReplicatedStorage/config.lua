@@ -7,7 +7,8 @@ local module = {}
 -- Module internals
 module.ENABLE_RUN_DATA_COLLECTION = false
 module.ENABLE_LUA2JSON_DIAGNOSTICS = false
-module.STARTUP_PROFILING_ENABLED = false
+module.ENABLE_SERVER_TIMING = true -- Send run starts to server for timing security analysis
+module.AUTO_OPEN_WIDGET_PICKER = false -- Automatically open run widget picker on game start (dev toggle)
 
 module.IsInStudio = function()
 	local forceProd = false

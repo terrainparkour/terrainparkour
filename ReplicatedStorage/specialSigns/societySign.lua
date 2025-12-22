@@ -13,7 +13,7 @@ local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEn
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
 local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
-local humanoid = character:WaitForChild("Humanoid") :: Humanoid
+local _humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 ---- GLOBALS ------------
 local lastSeenTerrainType: Enum.Material? = nil
@@ -29,14 +29,11 @@ specialSign.InformRunEnded = function()
 	reset()
 end
 
+local signDescription = "Will add 1s to your time every time you touch a new terrain. (+%ds)"
+
 specialSign.InformRunStarting = function()
 	reset()
-	activeRunSGui.UpdateExtraRaceDescription(
-		string.format(
-			"Your time is: actual time + 1 second per time you change terrain type touched. (+%ds)",
-			changeTerrainTypeCount
-		)
-	)
+	activeRunSGui.UpdateExtraRaceDescription(string.format(signDescription, changeTerrainTypeCount))
 end
 
 specialSign.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?)
@@ -48,22 +45,12 @@ specialSign.InformSawFloorDuringRunFrom = function(floorMaterial: Enum.Material?
 	end
 	changeTerrainTypeCount += 1
 	lastSeenTerrainType = floorMaterial
-	activeRunSGui.UpdateExtraRaceDescription(
-		string.format(
-			"Your time is: actual time + 1 second per time you change terrain type touched. (+%ds)",
-			changeTerrainTypeCount
-		)
-	)
+	activeRunSGui.UpdateExtraRaceDescription(string.format(signDescription, changeTerrainTypeCount))
 end
 
 specialSign.InformRetouch = function()
 	reset()
-	activeRunSGui.UpdateExtraRaceDescription(
-		string.format(
-			"Your time is: actual time + 1 second per time you change terrain type touched. (+%ds)",
-			changeTerrainTypeCount
-		)
-	)
+	activeRunSGui.UpdateExtraRaceDescription(string.format(signDescription, changeTerrainTypeCount))
 end
 
 specialSign.CanRunEnd = function(): tt.runEndExtraDataForRacing

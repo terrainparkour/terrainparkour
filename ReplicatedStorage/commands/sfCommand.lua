@@ -8,10 +8,11 @@ local _annotate = annotater.getAnnotater(script)
 
 local commandTypes = require(game.ReplicatedStorage.ChatSystem.commandTypes)
 local commandUtils = require(game.ReplicatedStorage.ChatSystem.commandUtils)
+local chatFormatting = require(game.ReplicatedStorage.ChatSystem.chatFormatting)
 
 local userFavoriteRacesCommand = require(game.ReplicatedStorage.commands.userFavoriteRacesCommand)
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 
 local module: commandTypes.CommandModule = {
 	Execute = function(_player: Player, _parts: { string }): boolean
@@ -23,7 +24,9 @@ local module: commandTypes.CommandModule = {
 }
 
 function module.Execute(player: Player, _parts: { string }): boolean
+	local colorContext = chatFormatting.CreateContext(player)
 	local otherUsersInServer = tpUtil.GetUserIdsInServer()
+	
 	local theFavorites: tt.serverFavoriteRacesResponse =
 		userFavoriteRacesCommand.GetFavoriteRaces(player, player.UserId, player.UserId, otherUsersInServer)
 	for _, el in pairs(theFavorites.racesAndInfo) do
@@ -31,8 +34,8 @@ function module.Execute(player: Player, _parts: { string }): boolean
 		commandUtils.SendMessage(raceHead, player)
 		for _2, simpleRunInfo in pairs(el.theResults) do
 			local theTime = (simpleRunInfo.runMilliseconds / 1000)
-			local line =
-				string.format("\t%s %s %0.3f", tpUtil.getCardinal(simpleRunInfo.place), simpleRunInfo.username, theTime)
+			local coloredUsername = chatFormatting.FormatUsername(simpleRunInfo.username, simpleRunInfo.userId, colorContext)
+			local line = string.format("\t%s %s %0.3f", tpUtil.getCardinal(simpleRunInfo.place), coloredUsername, theTime)
 			commandUtils.SendMessage(line, player)
 		end
 	end

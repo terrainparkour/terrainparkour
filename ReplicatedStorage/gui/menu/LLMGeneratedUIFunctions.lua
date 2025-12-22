@@ -2,20 +2,36 @@
 
 -- LLMGeneratedUIFunctions: Utility module for creating UI elements
 -- Used in both client and server scripts
-
--- lets genericize my UI system.
+-- Focus: TextSize-based UI with property bag configuration
+-- Best for: Tooltips, modals, precise text layouts
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 local tt = require(game.ReplicatedStorage.types.gametypes)
+local colors = require(game.ReplicatedStorage.util.colors)
 
 local module = {}
 
 export type Properties = { [string]: any }
 
+export type LayoutType = "UIListLayout" | "UIGridLayout" | "UITableLayout" | "UIPageLayout"
+
+export type DetailItem = {
+	name: string,
+	sizeProportion: number,
+	color: Color3,
+	order: number,
+	text: string?,
+	isMonospaced: boolean?,
+	isButton: boolean?,
+	isPortrait: boolean?,
+	onClick: (() -> ())?,
+	TextXAlignment: Enum.TextXAlignment?,
+}
+
 -- Add these global variables for text size constraints
 local globalTextSize = 20
-local globalMinTextSize = 8
+local globalMinTextSize = 14
 local globalMaxTextSize = 24
 local globalFixedWidthFontSize = 26
 
@@ -28,20 +44,51 @@ function module.getFont(isMonospaced: boolean?): Enum.Font
 	end
 end
 
+-- Core UI element creation with improved error handling
 function module.createUIElement(elementType: string, properties: Properties): Instance
-	local element = Instance.new(elementType)
-	for key, value in pairs(properties) do
-		element[key] = value
+	local success, element = pcall(Instance.new, elementType)
+	if not success then
+		annotater.Error(string.format("Failed to create UI element of type: %s", elementType))
+		error(string.format("Invalid UI element type: %s", elementType))
 	end
+
+	-- Apply properties with error handling
+	for key, value in pairs(properties) do
+		local propSuccess, propError = pcall(function()
+			element[key] = value
+		end)
+		if not propSuccess then
+			_annotate(string.format("Warning: Failed to set property %s on %s: %s", key, elementType, propError))
+		end
+	end
+
 	return element
 end
 
+-- TextLabel with consistent defaults
 function module.createTextLabel(properties: Properties): TextLabel
-	properties.BackgroundTransparency = properties.BackgroundTransparency or 0
-	properties.Font = module.getFont(properties.isMonospaced)
-	properties.TextSize = properties.TextSize or globalFixedWidthFontSize
-	properties.TextXAlignment = properties.TextXAlignment or Enum.TextXAlignment.Left
-	properties.isMonospaced = nil -- Remove this property as it's not a valid TextLabel property
+	-- Set LLMGenerated-specific defaults
+	local defaults = {
+		BackgroundTransparency = 0,
+		Font = module.getFont(properties.isMonospaced),
+		TextSize = globalFixedWidthFontSize,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Center,
+		TextWrapped = false,
+		RichText = false,
+		AutoLocalize = true,
+	}
+
+	-- Merge defaults with provided properties
+	for key, value in pairs(defaults) do
+		if properties[key] == nil then
+			properties[key] = value
+		end
+	end
+
+	-- Remove internal properties
+	properties.isMonospaced = nil
+
 	return module.createUIElement("TextLabel", properties) :: TextLabel
 end
 
@@ -56,11 +103,7 @@ function module.createFrame(properties: Properties): Frame
 	return module.createUIElement("Frame", properties) :: Frame
 end
 
-function module.createLayout(
-	layoutType: string,
-	parent: Instance,
-	properties: Properties
-): UIGridStyleLayout | UIListLayout
+function module.createLayout(layoutType: string, parent: Instance, properties: Properties): UIGridStyleLayout | UIListLayout
 	local layout = module.createUIElement(layoutType, properties) :: UIGridStyleLayout | UIListLayout
 	layout.Parent = parent
 	return layout
@@ -72,11 +115,28 @@ function module.createScrollingFrame(properties: Properties): ScrollingFrame
 	return module.createUIElement("ScrollingFrame", properties) :: ScrollingFrame
 end
 
-function module.createButton(properties: Properties): TextButton
-	properties.Font = properties.Font or module.getFont(properties.isMonospaced)
-	properties.TextSize = properties.TextSize or globalTextSize
-	properties.TextXAlignment = properties.TextXAlignment or Enum.TextXAlignment.Center
-	properties.isMonospaced = nil -- Remove this property as it's not a valid TextButton property
+-- Consistent TextButton creation
+function module.createTextButton(properties: Properties): TextButton
+	-- Set LLMGenerated-specific defaults for buttons
+	local defaults = {
+		Font = module.getFont(properties.isMonospaced),
+		TextSize = globalTextSize,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextYAlignment = Enum.TextYAlignment.Center,
+		AutoButtonColor = true,
+		BackgroundTransparency = 0,
+	}
+
+	-- Merge defaults with provided properties
+	for key, value in pairs(defaults) do
+		if properties[key] == nil then
+			properties[key] = value
+		end
+	end
+
+	-- Remove internal properties
+	properties.isMonospaced = nil
+
 	return module.createUIElement("TextButton", properties) :: TextButton
 end
 
@@ -85,9 +145,7 @@ function module.createContainer(
 	layoutType: LayoutType,
 	properties: Properties
 ): Frame | ScrollingFrame
-	local container = if containerType == "Frame"
-		then module.createFrame(properties)
-		else module.createScrollingFrame(properties)
+	local container = if containerType == "Frame" then module.createFrame(properties) else module.createScrollingFrame(properties)
 
 	module.createLayout(layoutType, container, {
 		FillDirection = Enum.FillDirection.Vertical,
@@ -122,13 +180,6 @@ function module.createRow(parent: Instance, elements: { Properties }, spacing: n
 	end
 
 	return row
-end
-
-function module.createTextButton(properties: Properties): TextButton
-	properties.Font = properties.Font or module.getFont(properties.isMonospaced)
-	properties.TextSize = properties.TextSize or globalTextSize
-	properties.isMonospaced = nil -- Remove this property as it's not a valid TextButton property
-	return module.createUIElement("TextButton", properties) :: TextButton
 end
 
 function module.addInvisibleButton(parent: Instance, callback: () -> ()): TextButton
@@ -313,6 +364,132 @@ function module.createScaledTextLabel(properties: Properties): TextLabel
 	module.addTextSizeConstraint(innerLabel, properties.MaxTextSize)
 
 	return innerLabel
+end
+
+-- Helper function to create consistent modal-style frames
+function module.createModalFrame(properties: Properties): Frame
+	local defaults = {
+		Size = UDim2.new(0, 400, 0, 300),
+		Position = UDim2.new(0.5, -200, 0.5, -150),
+		BackgroundColor3 = Color3.fromRGB(45, 45, 45),
+		BorderSizePixel = 2,
+		BorderColor3 = Color3.fromRGB(100, 100, 100),
+		BackgroundTransparency = 0,
+	}
+
+	for key, value in pairs(defaults) do
+		if properties[key] == nil then
+			properties[key] = value
+		end
+	end
+
+	local frame = module.createFrame(properties)
+
+	-- Add standard UI elements for modals
+	local titleBar = module.createFrame({
+		Name = "TitleBar",
+		Size = UDim2.new(1, 0, 0, 30),
+		BackgroundColor3 = Color3.fromRGB(60, 60, 60),
+		Parent = frame,
+	})
+
+	local titleLabel = module.createTextLabel({
+		Name = "Title",
+		Size = UDim2.new(1, -60, 1, 0),
+		Position = UDim2.new(0, 10, 0, 0),
+		Text = properties.Title or "Modal",
+		TextSize = 18,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		BackgroundTransparency = 1,
+		TextColor3 = Color3.fromRGB(255, 255, 255),
+		Parent = titleBar,
+	})
+
+	local closeButton = module.createTextButton({
+		Name = "CloseButton",
+		Size = UDim2.new(0, 25, 0, 25),
+		Position = UDim2.new(1, -27, 0, 2),
+		Text = "×",
+		TextSize = 20,
+		BackgroundColor3 = colors.closeButtonBg,
+		TextColor3 = colors.white,
+		Parent = titleBar,
+	})
+
+	local contentFrame = module.createFrame({
+		Name = "Content",
+		Size = UDim2.new(1, -20, 1, -50),
+		Position = UDim2.new(0, 10, 0, 35),
+		BackgroundTransparency = 1,
+		Parent = frame,
+	})
+
+	return frame, contentFrame, closeButton
+end
+
+-- Helper for creating consistent list items
+function module.createListItem(properties: Properties): Frame
+	local defaults = {
+		Size = UDim2.new(1, 0, 0, 30),
+		BackgroundColor3 = Color3.fromRGB(60, 60, 60),
+		BorderSizePixel = 1,
+		BorderColor3 = Color3.fromRGB(80, 80, 80),
+	}
+
+	for key, value in pairs(defaults) do
+		if properties[key] == nil then
+			properties[key] = value
+		end
+	end
+
+	local itemFrame = module.createFrame(properties)
+
+	-- Add hover effect
+	local originalColor = itemFrame.BackgroundColor3
+	itemFrame.MouseEnter:Connect(function()
+		itemFrame.BackgroundColor3 = Color3.fromRGB(
+			math.min(originalColor.R * 255 + 20, 255) / 255,
+			math.min(originalColor.G * 255 + 20, 255) / 255,
+			math.min(originalColor.B * 255 + 20, 255) / 255
+		)
+	end)
+
+	itemFrame.MouseLeave:Connect(function()
+		itemFrame.BackgroundColor3 = originalColor
+	end)
+
+	return itemFrame
+end
+
+-- Improved tooltip creation with better positioning
+function module.createTooltip(text: string, maxWidth: number?): Frame
+	local tooltip = module.createFrame({
+		Name = "Tooltip",
+		Size = UDim2.new(0, maxWidth or 200, 0, 50),
+		BackgroundColor3 = Color3.fromRGB(40, 40, 40),
+		BorderColor3 = Color3.fromRGB(100, 100, 100),
+		BorderSizePixel = 1,
+		ZIndex = 1000,
+	})
+
+	local textLabel = module.createTextLabel({
+		Size = UDim2.new(1, -10, 1, -10),
+		Position = UDim2.new(0, 5, 0, 5),
+		Text = text,
+		TextSize = 14,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		BackgroundTransparency = 1,
+		TextColor3 = Color3.fromRGB(255, 255, 255),
+		Parent = tooltip,
+	})
+
+	-- Auto-resize height based on text
+	local textBounds = textLabel.TextBounds
+	tooltip.Size = UDim2.new(0, maxWidth or 200, 0, textBounds.Y + 15)
+
+	return tooltip
 end
 
 _annotate("end")

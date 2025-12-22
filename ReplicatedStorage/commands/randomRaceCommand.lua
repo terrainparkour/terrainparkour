@@ -15,8 +15,8 @@ local config = require(game.ReplicatedStorage.config)
 local enums = require(game.ReplicatedStorage.util.enums)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local playerData2 = require(game.ServerScriptService.playerData2)
-local serverWarping = require(game.ServerScriptService.serverWarping)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local serverWarping = require(game.ServerScriptService.serverwarping)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 
 local module: commandTypes.CommandModule = {
 	Execute = function(_player: Player, _parts: { string }): boolean
@@ -125,7 +125,7 @@ function module.Execute(player: Player, _parts: { string }): boolean
 
 		if not reusingRace then
 			for _, el in pairs(entries) do
-				commandUtils.SendMessage(el.message, player)
+				commandUtils.SendMessage(el.message, player, el.options)
 			end
 		end
 		local userJoinMes = player.Name

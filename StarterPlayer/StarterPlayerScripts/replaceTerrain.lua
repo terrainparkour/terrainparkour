@@ -48,7 +48,7 @@ local allTerrain = {
 	[21] = Enum.Material.Glacier,
 }
 
-local function randomizeTerrainAround4() end
+local function _randomizeTerrainAround4() end
 
 local function randomizeTerrainAround2(pos)
 	local radius = 10
@@ -65,5 +65,7 @@ local function randomizeTerrainAround2(pos)
 end
 
 -- Example usage:
-local part: Part = game.Workspace:FindFirstChild("Part")
-randomizeTerrainAround2(part.Position)
+local partInstance = game.Workspace:FindFirstChild("Part")
+if partInstance and partInstance:IsA("Part") then
+	randomizeTerrainAround2((partInstance :: Part).Position)
+end

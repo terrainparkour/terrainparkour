@@ -169,12 +169,14 @@ module.Init = function()
 	local _character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 	-- humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
-	seenTerrainFloorTypes = {}
+	if currentRunSignName == "" then
+		seenTerrainFloorTypes = {}
 
-	timesSeenTerrainFloorTypeCounts = {}
-	seenFloorCount = 0
-	currentRunSignName = ""
-	lastSeenTerrain = nil
+		timesSeenTerrainFloorTypeCounts = {}
+		seenFloorCount = 0
+		currentRunSignName = ""
+		lastSeenTerrain = nil
+	end
 end
 
 _annotate("end")

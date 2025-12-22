@@ -5,10 +5,8 @@ local module = {}
 local HttpService = game:GetService("HttpService")
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
-local config = require(game.ReplicatedStorage.config)
-
 local host
-local s, c = pcall(function()
+local s, _c = pcall(function()
 	host = require(game.ServerScriptService.hostSecret)
 end)
 if not s then
@@ -24,10 +22,13 @@ local postUrl = "http://" .. host.HOST .. "terrain/postEndpoint/"
 -- TODO also someone at some point should automatically ora t least sometimes chek that JSONEncode isn't being called on items with vector2s and otehr roblox object in them
 -- because they'll just show up null with no warning.
 module.MakePostRequest = function(request: tt.postRequest): any
+	if not HttpService.HttpEnabled then
+		error("HttpService.HttpEnabled is false; enable Game Settings > Security > Allow HTTP Requests")
+	end
+
 	host.addSecretTbl(request)
 	local post = HttpService:JSONEncode(request)
 	if not request.remoteActionName then
-		
 		error("no remoteActionName")
 	end
 	if not request.data then
@@ -38,7 +39,7 @@ module.MakePostRequest = function(request: tt.postRequest): any
 
 	local res
 	local s, theError = pcall(function()
-		res = HttpService:PostAsync(url, post, Enum.HttpContentType.ApplicationUrlEncoded)
+		res = HttpService:PostAsync(url, post, Enum.HttpContentType.ApplicationJson)
 	end)
 
 	if not s then

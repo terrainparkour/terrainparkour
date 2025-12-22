@@ -8,9 +8,47 @@ local _annotate = annotater.getAnnotater(script)
 
 local commandUtils = require(game.ReplicatedStorage.ChatSystem.commandUtils)
 
-local MessageDispatcher = require(game.ReplicatedStorage.ChatSystem.messageDispatcher)
+local messageDispatcher = require(game.ReplicatedStorage.ChatSystem.messageDispatcher)
 local commandTypes = require(game.ReplicatedStorage.ChatSystem.commandTypes)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
+
+-- Distance-based color gradient: dull brown (far) → rich green (close)
+-- Stops: brown → red → orange → yellow → blue → light green → rich green
+local colorStops: { { dist: number, color: Color3 } } = {
+	{ dist = 4000, color = Color3.fromRGB(100, 60, 30) }, -- dull brown (far)
+	{ dist = 3000, color = Color3.fromRGB(180, 50, 50) }, -- dull red
+	{ dist = 2000, color = Color3.fromRGB(200, 120, 50) }, -- orange
+	{ dist = 1200, color = Color3.fromRGB(220, 200, 60) }, -- yellow
+	{ dist = 600, color = Color3.fromRGB(80, 140, 220) }, -- blue
+	{ dist = 300, color = Color3.fromRGB(120, 220, 120) }, -- light green
+	{ dist = 100, color = Color3.fromRGB(30, 180, 60) }, -- rich green (close)
+}
+
+local function getChomikColor(dist: number): Color3
+	-- Clamp to range
+	if dist >= colorStops[1].dist then
+		return colorStops[1].color
+	end
+	if dist <= colorStops[#colorStops].dist then
+		return colorStops[#colorStops].color
+	end
+
+	-- Find which two stops we're between
+	for i = 1, #colorStops - 1 do
+		local farStop = colorStops[i]
+		local nearStop = colorStops[i + 1]
+		if dist <= farStop.dist and dist >= nearStop.dist then
+			-- Interpolate between the two stops
+			local t = (farStop.dist - dist) / (farStop.dist - nearStop.dist)
+			return farStop.color:Lerp(nearStop.color, t)
+		end
+	end
+
+	return colorStops[1].color
+end
+
+-- Track users who have already received the "has moved" message this session
+local usersWhoHaveSeenMovedMessage: { [number]: boolean } = {}
 
 local module: commandTypes.CommandModule = {
 	Execute = function(_player: Player, _parts: { string }): boolean
@@ -18,7 +56,7 @@ local module: commandTypes.CommandModule = {
 	end,
 	Visibility = "public",
 	ChannelRestriction = "any",
-	AutocompleteVisible = false
+	AutocompleteVisible = false,
 }
 
 function module.Execute(player: Player, _parts: { string }): boolean
@@ -43,11 +81,14 @@ function module.Execute(player: Player, _parts: { string }): boolean
 		return true
 	end
 	local dist = tpUtil.getDist(root.Position, chomik.Position)
-	local message = string.format("The Chomik is %dd away from %s", dist, player.Name)
-	local success = MessageDispatcher.SendSystemMessage("Chat", message)
-	if not success then
-		_annotate("Warn: Failed to broadcast chomik message to Chat channel")
+	local isFirstUse = not usersWhoHaveSeenMovedMessage[player.UserId]
+	if isFirstUse then
+		usersWhoHaveSeenMovedMessage[player.UserId] = true
 	end
+	local prefix = isFirstUse and "The Chomik has moved! " or ""
+	local message = string.format("%sThe Chomik is %dd away from %s", prefix, dist, player.Name)
+	local options = { ChatColor = getChomikColor(dist) }
+	messageDispatcher.SendSystemMessage("Chat", message, options)
 	commandUtils.GrantCmdlineBadge(player.UserId)
 	return true
 end

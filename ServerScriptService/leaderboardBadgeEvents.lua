@@ -15,8 +15,11 @@ local module = {}
 -- that is, tell player about this other guy's badge count.
 module.updateBadgeLb = function(player: Player, userIdToInformThemAbout: number, badgecount: number)
 	task.spawn(function()
-		local lbUserStats: tt.lbUserStats =
-			{ kind = "badge update", userId = userIdToInformThemAbout, badgeCount = badgecount }
+		local playerData2 = require(game.ServerScriptService.playerData2)
+		local lbUserStats: tt.lbUserStats = playerData2.GetStatsByUserId(userIdToInformThemAbout, "badge update")
+		-- Override the badge count with the fresh value
+		lbUserStats.badgeCount = badgecount
+		lbUserStats.kind = "badge update"
 		_annotate("Updating " .. player.UserId .. " about badges from: " .. userIdToInformThemAbout)
 		lbUpdaterServer.SendUpdateToPlayer(player, lbUserStats)
 	end)

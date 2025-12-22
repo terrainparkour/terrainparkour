@@ -168,8 +168,8 @@ local function _TestMe()
 		name = "Test",
 		rowSpecs = rowSpecs,
 	}
-	local popup = windows.CreatePopup(guiSpec, "Test", true, true, true, true, true, false, UDim2.new(0, 400, 0, 300))
-	popup.Parent = playerGui
+	local popupResult = windows.CreatePopup(guiSpec, "Test", true, true, true, true, true, false, UDim2.new(0, 400, 0, 300))
+	popupResult.sgui.Parent = playerGui
 end
 
 module.Init = function()

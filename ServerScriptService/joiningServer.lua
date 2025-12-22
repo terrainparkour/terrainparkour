@@ -9,7 +9,7 @@ local _annotate = annotater.getAnnotater(script)
 local colors = require(game.ReplicatedStorage.util.colors)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
-local MessageDispatcher = require(ReplicatedStorage.ChatSystem.messageDispatcher)
+local messageDispatcher = require(ReplicatedStorage.ChatSystem.messageDispatcher)
 local playerData2 = require(game.ServerScriptService.playerData2)
 
 local module = {}
@@ -33,12 +33,8 @@ module.PostJoinToJoinsImmediate = function(player: Player)
 	local playerCount = getServerPlayerCount()
 	local text = string.format("[%s] %s joined! (%d players) %s", timeStr, player.Name, playerCount, statTag)
 	local options = { ChatColor = colors.greenGo }
-	if not MessageDispatcher.SendSystemMessage("Joins", text, options) then
-		return
-	end
-	_annotate(
-		string.format("PostJoinToJoins DONE for %s (%.3fs: %.3fs fetch)", player.Name, tick() - start, fetchTime)
-	)
+	messageDispatcher.SendSystemMessage("Joins", text, options)
+	_annotate(string.format("PostJoinToJoins DONE for %s (%.3fs: %.3fs fetch)", player.Name, tick() - start, fetchTime))
 end
 
 module.PostLeaveToJoinsImmediate = function(player: Player)
@@ -48,7 +44,7 @@ module.PostLeaveToJoinsImmediate = function(player: Player)
 	local playerCount = getServerPlayerCount()
 	local text = string.format("[%s] %s left! (%d players) %s", timeStr, player.Name, playerCount, statTag)
 	local options = { ChatColor = colors.redStop }
-	MessageDispatcher.SendSystemMessage("Joins", text, options)
+	messageDispatcher.SendSystemMessage("Joins", text, options)
 end
 
 _annotate("end")

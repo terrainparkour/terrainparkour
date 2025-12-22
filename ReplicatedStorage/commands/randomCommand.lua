@@ -10,7 +10,7 @@ local commandTypes = require(game.ReplicatedStorage.ChatSystem.commandTypes)
 local commandUtils = require(game.ReplicatedStorage.ChatSystem.commandUtils)
 
 local playerData2 = require(game.ServerScriptService.playerData2)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 
 local module: commandTypes.CommandModule = {
 	Execute = function(_player: Player, _parts: { string }): boolean

@@ -4,7 +4,7 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local colors = require(game.ReplicatedStorage.util.colors)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local fonts = require(game.StarterPlayer.StarterPlayerScripts.guis.fonts)
 ---------------- CONSTANTS--------------
 --max visualization (CAMERA, not PLAYER) range.

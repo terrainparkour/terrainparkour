@@ -6,7 +6,7 @@ local _annotate = annotater.getAnnotater(script)
 
 -- local notify = require(game.ReplicatedStorage.notify)
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local locationMonitor = require(game.ReplicatedStorage.locationMonitor)
 
 local rdb = require(game.ServerScriptService.rdb)
@@ -95,10 +95,10 @@ module.LogLocationOnDeath = function(player: Player): nil
 	return nil
 end
 
-module.LogQuit = function(player: Player): nil
+module.LogQuit = function(player: Player)
 	--player may already be gone, so we just use the last tracked loc.
 	local loc = locationMonitor.getLocation(player.UserId)
-	if loc == nil or loc.X == nil then --already gone so just leave.
+	if not loc then --already gone so just leave.
 		--this led to bugs when we just returned here since we no longer location track for some reason?
 		--TODO: this is a hack, just default to this location as having left so we don't have infinitely long sessions.
 		return
@@ -108,16 +108,15 @@ module.LogQuit = function(player: Player): nil
 		remoteActionName = "userQuit",
 		data = { userId = player.UserId, x = tpUtil.noe(loc.X), y = tpUtil.noe(loc.Y), z = tpUtil.noe(loc.Z) },
 	}
-	local response = rdb.MakePostRequest(request)
-	return nil
+	rdb.MakePostRequest(request) -- result unused
 end
 
-module.LogPlayerLeft = function(player): nil
+module.LogPlayerLeft = function(player)
 	local request: tt.postRequest = {
 		remoteActionName = "userLeft",
 		data = { userId = player.UserId },
 	}
-	local response = rdb.MakePostRequest(request)
+	rdb.MakePostRequest(request) -- result unused
 end
 
 _annotate("end")

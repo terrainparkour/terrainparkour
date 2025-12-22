@@ -18,28 +18,29 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local module = {}
+local enums = require(game.ReplicatedStorage.util.enums)
 
 --TYPE
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local leaderboardEnums = require(game.StarterPlayer.StarterCharacterScripts.lb.leaderboardEnums)
-local leaderboardGui = require(game.StarterPlayer.StarterCharacterScripts.lb.leaderboardGui)
-local lt = require(game.StarterPlayer.StarterCharacterScripts.lb.leaderboardTypes)
+local leaderboardEnums = require(game.StarterPlayer.StarterPlayerScripts.lb.leaderboardEnums)
+local leaderboardGui = require(game.StarterPlayer.StarterPlayerScripts.lb.leaderboardGui)
+local lt = require(game.StarterPlayer.StarterPlayerScripts.lb.leaderboardTypes)
 local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
 
 --UTIL
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 local config = require(game.ReplicatedStorage.config)
 local settings = require(game.ReplicatedStorage.settings)
-local enums = require(game.ReplicatedStorage.util.enums)
+-- local enums = require(game.ReplicatedStorage.util.enums)
 
 local colors = require(game.ReplicatedStorage.util.colors)
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 
 local remotes = require(game.ReplicatedStorage.util.remotes)
 
-local leaderboardButtons = require(game.StarterPlayer.StarterCharacterScripts.lb.leaderboardButtons)
+local leaderboardButtons = require(game.StarterPlayer.StarterPlayerScripts.lb.leaderboardButtons)
 
 local marathonClient = require(game.StarterPlayer.StarterCharacterScripts.client.marathonClient)
 local localRdb = require(game.ReplicatedStorage.localRdb)
@@ -69,17 +70,33 @@ local lbOuterFrame: Frame? = nil
 local userId2rowframe: { [number]: Frame } = {}
 
 local lbUserRowFrame: Frame? = nil
+local lbScrollingFrame: ScrollingFrame? = nil
 local lbIsEnabled: boolean = true
+local lbAllowInternalScrolling: boolean = false
 
-local removeUserLBRow -- forward declaration
+-- removeUserLBRow is defined later in the file
 
 -- the initial width and height scales.
 
 local headerRowYOffsetFixed = 24
+local fixedRowHeightPixels = 40
+-- Default size matches settingEnums.LEADERBOARD_CONFIGURATION.defaultLuaValue.size (35% screen height)
+local defaultLbSize = UDim2.new(0.44, 0, 0.35, 0)
 
 -- local headerRowShrinkFactor = 0.6
 
 local enabledDescriptors: { [string]: boolean } = {}
+
+local function setDescriptorEnabled(descriptorName: string, newValue: boolean): boolean
+	local currentValue = enabledDescriptors[descriptorName]
+	-- Treat nil as false for comparison purposes to avoid false positives
+	local normalizedCurrent = if currentValue == nil then false else currentValue
+	if normalizedCurrent == newValue then
+		return false
+	end
+	enabledDescriptors[descriptorName] = newValue
+	return true
+end
 
 -- this will block things like adding rows.
 local loadedSettings = false
@@ -88,9 +105,33 @@ local leaderboardConfiguration: tt.lbConfig? = nil
 local lastSaveRequestCount = 0
 
 ----------------------- FOR SAVING LB CONFIGURATION -----------------
+-- Helper to convert absolute position to scale-based UDim2 for monitor independence
+local function absoluteToScale(absoluteX: number, absoluteY: number): UDim2
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return UDim2.fromOffset(absoluteX, absoluteY)
+	end
+	local viewportSize = camera.ViewportSize
+	local scaleX = absoluteX / viewportSize.X
+	local scaleY = absoluteY / viewportSize.Y
+	return UDim2.fromScale(scaleX, scaleY)
+end
+
+-- Helper to convert absolute size to scale-based UDim2
+local function sizeToScale(absoluteWidth: number, absoluteHeight: number): UDim2
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return UDim2.fromOffset(absoluteWidth, absoluteHeight)
+	end
+	local viewportSize = camera.ViewportSize
+	local scaleX = absoluteWidth / viewportSize.X
+	local scaleY = absoluteHeight / viewportSize.Y
+	return UDim2.fromScale(scaleX, scaleY)
+end
+
 local function saveLeaderboardConfiguration()
-	-- reconstruct the configuration and save it.
-	-- yes, this will happen a lot.
+	-- Reconstruct the configuration and save it.
+	-- Uses scale-based positions for monitor independence (consistent with windowFunctions).
 	if not lbOuterFrame then
 		_annotate("No lbOuterFrame in saveLeaderboardConfiguration")
 		return
@@ -107,27 +148,30 @@ local function saveLeaderboardConfiguration()
 		if yourSaveRequestCount ~= lastSaveRequestCount then
 			return
 		end
-		local topInset = game:GetService("GuiService"):GetGuiInset().Y
 		local absolutePosition = lbOuterFrame.AbsolutePosition
-		local positionInOffset = UDim2.new(0, absolutePosition.X, 0, absolutePosition.Y + topInset)
+		local absoluteSize = lbOuterFrame.AbsoluteSize
+		-- Convert to scale-based for monitor independence (matches windowFunctions persistence)
+		local positionAsScale = absoluteToScale(absolutePosition.X, absolutePosition.Y)
+		local sizeAsScale = sizeToScale(absoluteSize.X, absoluteSize.Y)
 		local setting: tt.userSettingValue = {
 			name = settingEnums.settingDefinitions.LEADERBOARD_CONFIGURATION.name,
 			domain = settingEnums.settingDomains.LEADERBOARD,
 			kind = settingEnums.settingKinds.LUA,
 			luaValue = {
-				position = positionInOffset,
-				size = lbOuterFrame.Size,
+				position = positionAsScale,
+				size = sizeAsScale,
 				minimized = lbOuterFrame:GetAttribute("IsMinimized"),
 				sortDirection = lbConfig.sortDirection,
 				sortColumn = lbConfig.sortColumn,
 			},
 		}
-		_annotate("saving leaderboard configuration", setting)
+		_annotate(string.format("saving leaderboard configuration: pos=scale(%.3f,%.3f) size=scale(%.3f,%.3f)", positionAsScale.X.Scale, positionAsScale.Y.Scale, sizeAsScale.X.Scale, sizeAsScale.Y.Scale))
 		settings.SetSetting(setting)
 	end)
 end
 
-local MIN_LEADERBOARD_HEIGHT = 60 -- Set a minimum height in pixels
+-- Minimum height: header + 1 row = 24 + 40 = 64 pixels (must fit at least 1 row without scrollbar)
+local MIN_LEADERBOARD_HEIGHT = 64
 
 local function ensureLeaderboardOnScreen(reason: string?)
 	_annotate("ensureLeaderboardOnScreen " .. (reason or ""))
@@ -146,6 +190,7 @@ local function ensureLeaderboardOnScreen(reason: string?)
 	local sizeX = size.X.Scale * viewportSize.X + size.X.Offset
 	local sizeY = size.Y.Scale * viewportSize.Y + size.Y.Offset
 
+	local originalSizeY = sizeY
 	-- Ensure minimum height
 	sizeY = math.max(sizeY, MIN_LEADERBOARD_HEIGHT)
 
@@ -157,40 +202,26 @@ local function ensureLeaderboardOnScreen(reason: string?)
 	local maxX = math.max(0, viewportSize.X - sizeX)
 	local maxY = math.max(0, viewportSize.Y - sizeY)
 
-	-- -- Clamp position within boundaries
-	-- if maxX > minX then
-	-- 	annotater.Error(
-	-- 		string.format(
-	-- 			"maxX > minX %f > %f for user %s in this situation ensureLeaderboardOnScreen: %s",
-	-- 			maxX,
-	-- 			minX,
-	-- 			Players.LocalPlayer.Name,
-	-- 			reason or ""
-	-- 		)
-	-- 	)
-	-- end
 	local newX = math.clamp(positionX, minX, maxX)
 	local newY = math.clamp(positionY, minY, maxY)
 
-	-- Check if position or size needs adjustment
-	if newX ~= positionX or newY ~= positionY or sizeY ~= size.Y.Offset then
-		-- Convert back to UDim2
-		local newPosition = UDim2.new(0, newX, 0, newY)
-		local newSize = UDim2.new(size.X.Scale, size.X.Offset, 0, sizeY)
+	-- Check if position or size needs adjustment (compare pixels, not mixed formats)
+	local positionChanged = math.abs(newX - positionX) > 0.5 or math.abs(newY - positionY) > 0.5
+	local sizeChanged = math.abs(sizeY - originalSizeY) > 0.5
+
+	if positionChanged or sizeChanged then
+		-- Convert back to scale-based UDim2 for monitor independence
+		local newPosition = absoluteToScale(newX, newY)
+		local newSize = sizeToScale(sizeX, sizeY)
 
 		leaderboardConfiguration.position = newPosition
 		leaderboardConfiguration.size = newSize
 		lbOuterFrame.Position = newPosition
 		lbOuterFrame.Size = newSize
 
-		_annotate(
-			string.format(
-				"Adjusted Leaderboard position to %s and size to %s",
-				tostring(newPosition),
-				tostring(newSize)
-			)
-		)
-		saveLeaderboardConfiguration()
+		_annotate(string.format("Adjusted Leaderboard: pos=scale(%.3f,%.3f) size=scale(%.3f,%.3f)", newPosition.X.Scale, newPosition.Y.Scale, newSize.X.Scale, newSize.Y.Scale))
+		-- Position/size changes trigger windowFunctions persistence via PropertyChanged signals
+		-- No need to call saveLeaderboardConfiguration() here
 	end
 
 	_annotate("done with ensureLeaderboardOnScreen " .. (reason or ""))
@@ -214,7 +245,7 @@ local function monitorLeaderboardFrame()
 			lbConfig.size = lbOuterFrame.Size
 
 			ensureLeaderboardOnScreen("deferredUpdate")
-			saveLeaderboardConfiguration()
+			-- Position/size/minimized are automatically saved by windowFunctions persistence system
 		end)
 	end
 
@@ -231,7 +262,7 @@ local function monitorLeaderboardFrame()
 		if type(minimizeState) == "boolean" then
 			lbConfig.minimized = minimizeState
 			ensureLeaderboardOnScreen('GetAttributeChangedSignal("IsMinimized")')
-			saveLeaderboardConfiguration()
+			-- Minimized state is automatically saved by windowFunctions persistence system
 		else
 			annotater.Error(string.format("Invalid type for IsMinimized attribute: %s", tostring(minimizeState)))
 		end
@@ -263,14 +294,73 @@ local function setSize()
 	for _, _ in pairs(lbUserDataCache) do
 		rowCount += 1
 	end
-	local normalizedPlayerRowYScale = 1 / rowCount
 
-	for _, child in ipairs(lbUserRowFrame:GetChildren()) do
-		if child:IsA("Frame") and child.Name ~= "LeaderboardHeaderRow" then
-			child.Size = UDim2.fromScale(1, normalizedPlayerRowYScale)
+	if lbAllowInternalScrolling then
+		-- Fixed-height rows for scrolling mode
+		for _, child in ipairs(lbUserRowFrame:GetChildren()) do
+			if child:IsA("Frame") and child.Name ~= "LeaderboardHeaderRow" then
+				child.Size = UDim2.new(1, 0, 0, fixedRowHeightPixels)
+				child.Position = UDim2.new(0, 0, 0, 0)
+			end
 		end
+		-- Update canvas size for the scrolling frame
+		if lbScrollingFrame then
+			local canvasHeight = rowCount * fixedRowHeightPixels
+			lbScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, canvasHeight)
+			_annotate(string.format("SIZE_DEBUG: setSize canvas=%d (%d rows * %d), scrollFrame.AbsoluteSize.Y=%d", canvasHeight, rowCount, fixedRowHeightPixels, lbScrollingFrame.AbsoluteSize.Y))
+		end
+
+		-- Clamp max height to content height so user can't drag below actual rows
+		-- Content height = header + all data rows
+		if lbOuterFrame then
+			local contentHeight = headerRowYOffsetFixed + (rowCount * fixedRowHeightPixels)
+			-- Minimum height: header + at least 1 row (exact, no buffer)
+			-- This ensures scroll frame has exactly enough space to show 1 row without scrollbar
+			local minHeight = headerRowYOffsetFixed + fixedRowHeightPixels
+			lbOuterFrame:SetAttribute("MaxHeight", contentHeight)
+			lbOuterFrame:SetAttribute("MinHeight", minHeight)
+
+			-- Enable height snapping to row boundaries (prevents partial rows and unnecessary scrollbars)
+			lbOuterFrame:SetAttribute("HeightSnapInterval", fixedRowHeightPixels)
+			lbOuterFrame:SetAttribute("HeightSnapOffset", headerRowYOffsetFixed)
+
+			-- Enforce height bounds: grow if too small, shrink if too large
+			local currentHeight = lbOuterFrame.AbsoluteSize.Y
+			if currentHeight < minHeight then
+				-- Frame is too short - would show scrollbar. Grow to minHeight.
+				local currentSize = lbOuterFrame.Size
+				lbOuterFrame.Size = UDim2.new(currentSize.X.Scale, currentSize.X.Offset, 0, minHeight)
+				_annotate(string.format("Grew LB height from %d to %d (too short for content)", currentHeight, minHeight))
+			elseif currentHeight > contentHeight then
+				-- Frame is too tall (e.g., player left). Shrink to fit.
+				local currentSize = lbOuterFrame.Size
+				lbOuterFrame.Size = UDim2.new(currentSize.X.Scale, currentSize.X.Offset, 0, contentHeight)
+				_annotate(string.format("Shrunk LB height from %d to %d (player left)", currentHeight, contentHeight))
+			end
+
+			_annotate(string.format("Set MaxHeight to %d (header %d + %d rows * %d)", contentHeight, headerRowYOffsetFixed, rowCount, fixedRowHeightPixels))
+		end
+
+		_annotate("adjusted row fixed heights and canvas size.")
+	else
+		-- Original behavior: scale rows to fit
+		-- No MaxHeight or snapping constraints in non-scrolling mode
+		if lbOuterFrame then
+			lbOuterFrame:SetAttribute("MaxHeight", nil)
+			lbOuterFrame:SetAttribute("MinHeight", nil)
+			lbOuterFrame:SetAttribute("HeightSnapInterval", nil)
+			lbOuterFrame:SetAttribute("HeightSnapOffset", nil)
+		end
+
+		local normalizedPlayerRowYScale = 1 / rowCount
+		for _, child in ipairs(lbUserRowFrame:GetChildren()) do
+			if child:IsA("Frame") and child.Name ~= "LeaderboardHeaderRow" then
+				child.Size = UDim2.new(1, 0, normalizedPlayerRowYScale, 0)
+				child.Position = UDim2.new(0, 0, 0, 0)
+			end
+		end
+		_annotate("adjusted row scales.")
 	end
-	_annotate("adjusted row scales.")
 end
 
 --important to use all lbUserCellParams here to make the row complete
@@ -279,19 +369,13 @@ local function getNameForDescriptor(descriptor: lt.lbColumnDescriptor): string
 	return string.format("%02d.cell.%s", descriptor.num, descriptor.name)
 end
 
-local function ensureValueLabelForDescriptor(
-	containerFrame: Frame,
-	descriptor: lt.lbColumnDescriptor,
-	bgcolor: Color3
-): (TextLabel, TextLabel)
+local function ensureValueLabelForDescriptor(containerFrame: Frame, descriptor: lt.lbColumnDescriptor, bgcolor: Color3): (TextLabel, TextLabel)
 	-- pinned/favs columns are frame-backed instead of TextLabel-backed. They must expose a TextLabel with an Inner child
 	-- so downstream handlers can write text or swap in buttons. This helper enforces that exact structure so we never
 	-- improvise at update-time.
 	local desiredLabelName = string.format("%02d.cell.%s.valueHolder", descriptor.num, descriptor.name)
 	local holderInstance = containerFrame:FindFirstChild(desiredLabelName)
-	local holderLabel: TextLabel? = if holderInstance and holderInstance:IsA("TextLabel")
-		then holderInstance :: TextLabel
-		else nil
+	local holderLabel: TextLabel? = if holderInstance and holderInstance:IsA("TextLabel") then holderInstance :: TextLabel else nil
 	local innerLabel: TextLabel? = if holderLabel then holderLabel:FindFirstChild("Inner") :: TextLabel? else nil
 
 	if not holderLabel or not innerLabel then
@@ -409,11 +493,13 @@ local function getOrCreateRowForUser(userId: number): Frame?
 			if existingPortrait then
 				existingPortrait.Parent = nil
 			end
-			local portraitCell = thumbnails.createAvatarPortraitPopup(userId, true, colors.defaultGrey)
+			-- Pass borderSizePixel=1 with black border to match other cells
+			local portraitCell = thumbnails.createAvatarPortraitPopup(userId, true, colors.defaultGrey, 1, colors.black)
 			portraitCell.Parent = userRowFrame
 			portraitCell.Size = UDim2.fromScale(widthYScale, 1)
 			portraitCell.Name = getNameForDescriptor(lbColumnDescriptor)
-		elseif lbColumnDescriptor.name == "pinnedRace" or lbColumnDescriptor.name == "userFavoriteRaceCount" then
+			portraitCell.LayoutOrder = lbColumnDescriptor.num
+		elseif lbColumnDescriptor.columnKind == "computed" or lbColumnDescriptor.columnKind == "interactive" then
 			local cellName = getNameForDescriptor(lbColumnDescriptor)
 			local containerInstance = userRowFrame:FindFirstChild(cellName)
 			local containerFrame: Frame?
@@ -432,13 +518,15 @@ local function getOrCreateRowForUser(userId: number): Frame?
 			if containerFrame then
 				local descriptorFrame: Frame = containerFrame
 				descriptorFrame.Size = UDim2.fromScale(widthYScale, 1)
-				descriptorFrame.BackgroundColor3 = bgcolor
-				descriptorFrame.BackgroundTransparency = 0
-				descriptorFrame.BorderMode = Enum.BorderMode.Inset
-				descriptorFrame.BorderSizePixel = 1
+				-- Outer frame is invisible; inner TextLabel holder handles all styling
+				descriptorFrame.BackgroundTransparency = 1
+				descriptorFrame.BorderSizePixel = 0
 				descriptorFrame.LayoutOrder = lbColumnDescriptor.num
 
-				ensureValueLabelForDescriptor(descriptorFrame, lbColumnDescriptor, bgcolor)
+				-- Skip text holder for columns with custom rendering (e.g. badge icons)
+				if not lbColumnDescriptor.customRendering then
+					ensureValueLabelForDescriptor(descriptorFrame, lbColumnDescriptor, bgcolor)
+				end
 			end
 		else --it's a textlabel whatever we're generating anyway.
 			local cellName = getNameForDescriptor(lbColumnDescriptor)
@@ -455,7 +543,15 @@ local function getOrCreateRowForUser(userId: number): Frame?
 				tl.TextScaled = true
 				tl.TextWrapped = true
 				tl.RichText = shouldEnableRichText(lbColumnDescriptor)
-				tl.LayoutOrder = lbColumnDescriptor.num
+				-- Set LayoutOrder on the outer element (parent) for proper UIListLayout sorting
+				-- getTl returns the inner label, so we need to set LayoutOrder on its parent
+				do
+					local parentInstance = tl.Parent
+					if parentInstance and parentInstance:IsA("TextLabel") then
+						local outerLabel = parentInstance :: TextLabel
+						outerLabel.LayoutOrder = lbColumnDescriptor.num
+					end
+				end
 			end
 		end
 	end
@@ -470,8 +566,7 @@ local function GetDataFromCacheForUser(userId: number): { tt.leaderboardUserData
 	local guyCache = lbUserDataCache[userId]
 	if guyCache then
 		for key, thing in pairs(guyCache) do
-			local change: tt.leaderboardUserDataChange =
-				{ userId = userId, key = key, oldValue = MAGIC, newValue = thing }
+			local change: tt.leaderboardUserDataChange = { userId = userId, key = key, oldValue = MAGIC, newValue = thing }
 			table.insert(res, change)
 		end
 	end
@@ -504,14 +599,67 @@ local function applyUserDataChanges(userDataChanges, subjectUserId: number)
 		end
 
 		local ovt = change.oldValue and tostring(change.oldValue) or ""
-		_annotate(
-			string.format(
-				"trying to update lb for change %s %s=>%s",
-				tostring(change.key),
-				tostring(ovt),
-				tostring(change.newValue)
-			)
-		)
+		_annotate(string.format("trying to update lb for change %s %s=>%s", tostring(change.key), tostring(ovt), tostring(change.newValue)))
+
+		-- warpPermission is a data key that drives the warpTo column, not a column itself
+		-- Handle it specially before the descriptor check
+		if change.key == "warpPermission" then
+			local warpToDescriptor = leaderboardEnums.LbColumnDescriptors["warpTo"]
+			if warpToDescriptor and enabledDescriptors["warpTo"] then
+				if warpToDescriptor.columnKind ~= "interactive" then
+					annotater.Error("warpTo column should have columnKind='interactive'")
+				end
+				local warpToCellName = getNameForDescriptor(warpToDescriptor)
+				local warpToFrameInstance: Instance? = userRowFrame:FindFirstChild(warpToCellName)
+				if warpToFrameInstance and warpToFrameInstance:IsA("Frame") then
+					local warpToFrame: Frame = warpToFrameInstance :: Frame
+
+					-- Apply green flash for warp permission changes
+					-- Flash the inner holder label, not the transparent outer frame
+					local shouldFlash = change.oldValue ~= MAGIC and change.oldValue ~= change.newValue
+					local holderToFlash: TextLabel? = nil
+					local innerToFlash: TextLabel? = nil
+					if shouldFlash then
+						local holderName = string.format("%02d.cell.%s.valueHolder", warpToDescriptor.num, warpToDescriptor.name)
+						local holderInstance = warpToFrame:FindFirstChild(holderName)
+						if holderInstance and holderInstance:IsA("TextLabel") then
+							local holder = holderInstance :: TextLabel
+							holder.BackgroundColor3 = colors.greenGo
+							local innerInstance = holder:FindFirstChild("Inner")
+							if innerInstance and innerInstance:IsA("TextLabel") then
+								local inner = innerInstance :: TextLabel
+								inner.BackgroundColor3 = colors.greenGo
+								innerToFlash = inner
+							end
+							holderToFlash = holder
+						end
+					end
+
+					local localFindCount = 0
+					local localCache = lbUserDataCache[localPlayer.UserId]
+					if localCache and localCache.findCount then
+						localFindCount = localCache.findCount
+					end
+					leaderboardGui.DrawWarpToCell(warpToFrame, subjectUserId, change.newValue :: string, localPlayer.UserId, localFindCount)
+
+					-- Tween background back to normal after flash
+					if shouldFlash and holderToFlash then
+						local tween = TweenService:Create(holderToFlash, TweenInfo.new(enums.greenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundColor3 = bgcolor })
+						tween:Play()
+						if innerToFlash then
+							local tween2 = TweenService:Create(innerToFlash, TweenInfo.new(enums.greenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundColor3 = bgcolor })
+							tween2:Play()
+						end
+					end
+				elseif warpToFrameInstance then
+					annotater.Error(string.format("warpTo cell expected Frame but got %s", warpToFrameInstance.ClassName))
+				else
+					annotater.Error(string.format("warpTo cell '%s' not found for user %d", warpToCellName, subjectUserId))
+				end
+			end
+			continue
+		end
+
 		if enabledDescriptors[change.key] == nil then
 			_annotate("missing descriptor status at all for received change for: " .. tostring(change.key))
 			continue
@@ -524,20 +672,43 @@ local function applyUserDataChanges(userDataChanges, subjectUserId: number)
 
 		local descriptor = leaderboardEnums.LbColumnDescriptors[change.key]
 		if not descriptor then
-			-- this semems not okay.
-			_annotate("W. Error, this descriptor should not be missing. " .. change.key)
+			annotater.Error(string.format("LB change key '%s' has no descriptor in leaderboardEnums - data/enum mismatch", change.key))
 			continue
 		end
 
 		local targetName = getNameForDescriptor(descriptor)
-		--it's important this targetname matches via interpolatino
 		local oldTextLabelParentInstance: Instance? = userRowFrame:FindFirstChild(targetName)
 		if not oldTextLabelParentInstance then
-			-- this user isn't displaying that data.
-			-- still, we have stored it so if they re-enable it we are good.
-			_annotate(string.format("missing oldTextLabelParent for %s", targetName))
+			-- Column is enabled (we passed the enabledDescriptors check) but cell doesn't exist.
+			-- This could indicate a timing issue or a bug in row creation.
+			warn(string.format("LB cell '%s' not found for user %d but column is enabled - possible timing issue or creation bug", targetName, subjectUserId))
 			continue
 		end
+
+		-- Custom rendering columns (e.g. badge icons) skip text holder logic entirely
+		-- They handle everything in their draw function
+		if descriptor.customRendering then
+			if not oldTextLabelParentInstance:IsA("Frame") then
+				annotater.Error(string.format("Custom rendering column '%s' expected Frame but got %s", change.key, oldTextLabelParentInstance.ClassName))
+				continue
+			end
+			local customFrame: Frame = oldTextLabelParentInstance :: Frame
+
+			-- Dispatch to draw function (no green flash for custom rendering columns)
+			if descriptor.drawFunctionName == "DrawPinnedBadgeCell" then
+				local isOwnRow = subjectUserId == localPlayer.UserId
+				leaderboardGui.DrawPinnedBadgeCell(customFrame, change.newValue :: string, isOwnRow)
+			elseif descriptor.drawFunctionName == "DrawLatestBadgeCell" then
+				local isOwnRow = subjectUserId == localPlayer.UserId
+				local userCache = lbUserDataCache[subjectUserId]
+				local earnedAt = if userCache then userCache.latestBadgeEarnedAt else nil
+				leaderboardGui.DrawLatestBadgeCell(customFrame, change.newValue :: string, earnedAt, isOwnRow)
+			else
+				annotater.Error(string.format("Custom rendering column '%s' has unknown drawFunctionName '%s'", change.key, tostring(descriptor.drawFunctionName)))
+			end
+			continue
+		end
+
 		local oldTextLabelParent: Frame?
 		local oldTextLabel: TextLabel?
 		local parTextLabel: TextLabel?
@@ -550,9 +721,7 @@ local function applyUserDataChanges(userDataChanges, subjectUserId: number)
 			oldTextLabel = innerLabel
 		else
 			local oldTextLabelInstance: Instance? = oldTextLabelParentInstance:FindFirstChild("Inner")
-			local parentTextLabel = if oldTextLabelParentInstance:IsA("TextLabel")
-				then oldTextLabelParentInstance :: TextLabel
-				else nil
+			local parentTextLabel = if oldTextLabelParentInstance:IsA("TextLabel") then oldTextLabelParentInstance :: TextLabel else nil
 			if oldTextLabelInstance and oldTextLabelInstance:IsA("TextLabel") then
 				oldTextLabel = oldTextLabelInstance :: TextLabel
 				parTextLabel = parentTextLabel or oldTextLabel
@@ -564,13 +733,7 @@ local function applyUserDataChanges(userDataChanges, subjectUserId: number)
 
 		if not oldTextLabel or not parTextLabel then
 			debounceUpdateUserLeaderboardRow[subjectUserId] = nil
-			annotater.Error(
-				string.format(
-					"Missing old label to put in - this should not happen %d %s",
-					descriptor.num,
-					descriptor.name
-				)
-			)
+			annotater.Error(string.format("Missing old label to put in - this should not happen %d %s", descriptor.num, descriptor.name))
 			continue
 		end
 
@@ -623,19 +786,57 @@ local function applyUserDataChanges(userDataChanges, subjectUserId: number)
 			newIntermediateText = change.newValue
 		end
 
-		if change.key == "pinnedRace" then
+		-- Interactive columns: dispatch to their draw function when change arrives
+		if descriptor.columnKind == "interactive" then
 			if not oldTextLabelParent then
+				annotater.Error(string.format("Interactive column '%s' enabled but cell frame not found for user %d", change.key, subjectUserId))
 				continue
 			end
-			local pinnedFrame: Frame = oldTextLabelParent
-			leaderboardGui.DrawRaceWarper(pinnedFrame, change)
-		elseif change.key == "userFavoriteRaceCount" then
-			if not oldTextLabelParent then
-				continue
+			local interactiveFrame: Frame = oldTextLabelParent
+
+			-- Apply green flash for interactive columns too (if value actually changed)
+			-- Flash the inner holder label, not the transparent outer frame
+			local shouldFlash = change.oldValue ~= MAGIC and change.oldValue ~= change.newValue
+			local holderToFlash: TextLabel? = nil
+			local innerToFlash: TextLabel? = nil
+			if shouldFlash then
+				local holderName = string.format("%02d.cell.%s.valueHolder", descriptor.num, descriptor.name)
+				local holderInstance = interactiveFrame:FindFirstChild(holderName)
+				if holderInstance and holderInstance:IsA("TextLabel") then
+					local holder = holderInstance :: TextLabel
+					holder.BackgroundColor3 = colors.greenGo
+					local innerInstance = holder:FindFirstChild("Inner")
+					if innerInstance and innerInstance:IsA("TextLabel") then
+						local inner = innerInstance :: TextLabel
+						inner.BackgroundColor3 = colors.greenGo
+						innerToFlash = inner
+					end
+					holderToFlash = holder
+				end
 			end
-			local favFrame: Frame = oldTextLabelParent
-			leaderboardGui.DrawShowFavoriteRacesButton(favFrame, change, subjectUserId, localPlayer.UserId)
-			--phase to new color if needed
+
+			-- Dispatch based on drawFunctionName (functions have different signatures, so we match explicitly)
+			if descriptor.drawFunctionName == "DrawRaceWarper" then
+				leaderboardGui.DrawRaceWarper(interactiveFrame, change)
+			elseif descriptor.drawFunctionName == "DrawShowFavoriteRacesButton" then
+				leaderboardGui.DrawShowFavoriteRacesButton(interactiveFrame, change, subjectUserId, localPlayer.UserId)
+			elseif descriptor.drawFunctionName == "DrawBadgeCountCell" then
+				local isOwnRow = subjectUserId == localPlayer.UserId
+				leaderboardGui.DrawBadgeCountCell(interactiveFrame, change.newValue :: number, isOwnRow)
+			else
+				annotater.Error(string.format("Interactive column '%s' has unknown drawFunctionName '%s'", change.key, tostring(descriptor.drawFunctionName)))
+			end
+
+			-- Tween background back to normal after flash
+			if shouldFlash and holderToFlash then
+				local tween = TweenService:Create(holderToFlash, TweenInfo.new(enums.greenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundColor3 = bgcolor })
+				tween:Play()
+				if innerToFlash then
+					local tween2 = TweenService:Create(innerToFlash, TweenInfo.new(enums.greenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundColor3 = bgcolor })
+					tween2:Play()
+				end
+			end
+			-- warpTo is handled separately via warpPermission change key, not here
 		elseif newIntermediateText == nil then
 			oldTextLabel.Text = newFinalText
 			oldTextLabel.BackgroundColor3 = bgcolor
@@ -658,25 +859,17 @@ local function applyUserDataChanges(userDataChanges, subjectUserId: number)
 				local label = oldTextLabel
 				local parLabel = parTextLabel
 				task.spawn(function()
-					wait(enums.greenTime)
+					task.wait(enums.greenTime)
 					if label then
 						label.Text = finalText
 					end
 				end)
 
 				--phase the cell and the parent back to the default color.
-				local tween = TweenService:Create(
-					oldTextLabel,
-					TweenInfo.new(enums.greenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-					{ BackgroundColor3 = bgcolor }
-				)
+				local tween = TweenService:Create(oldTextLabel, TweenInfo.new(enums.greenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundColor3 = bgcolor })
 				tween:Play()
 
-				local tween2 = TweenService:Create(
-					parLabel,
-					TweenInfo.new(enums.greenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-					{ BackgroundColor3 = bgcolor }
-				)
+				local tween2 = TweenService:Create(parLabel, TweenInfo.new(enums.greenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundColor3 = bgcolor })
 				tween2:Play()
 			end
 
@@ -685,9 +878,75 @@ local function applyUserDataChanges(userDataChanges, subjectUserId: number)
 		_annotate("done with updateUserLeaderboardRow")
 	end
 
+	-- Helper: get Frame cell for a non-standard column with loud error on mismatch
+	local function getFrameCellForColumn(columnName: string): Frame?
+		if not enabledDescriptors[columnName] then
+			return nil
+		end
+		local descriptor = leaderboardEnums.LbColumnDescriptors[columnName]
+		if not descriptor then
+			annotater.Error(string.format("LB column '%s' enabled but descriptor missing from leaderboardEnums", columnName))
+			return nil
+		end
+		if descriptor.columnKind ~= "computed" and descriptor.columnKind ~= "interactive" then
+			annotater.Error(string.format("LB column '%s' used as computed/interactive but columnKind is '%s'", columnName, tostring(descriptor.columnKind)))
+			return nil
+		end
+		local cellName = getNameForDescriptor(descriptor)
+		local cellInstance = userRowFrame:FindFirstChild(cellName)
+		if not cellInstance then
+			annotater.Error(string.format("LB column '%s' cell '%s' not found in row frame", columnName, cellName))
+			return nil
+		end
+		if not cellInstance:IsA("Frame") then
+			annotater.Error(string.format("LB column '%s' cell '%s' expected Frame but got %s - check columnKind in descriptor", columnName, cellName, cellInstance.ClassName))
+			return nil
+		end
+		return cellInstance :: Frame
+	end
+
+	-- Update computed columns (these derive from cached data, not individual change keys)
+	local function updateComputedColumns()
+		local userCache = lbUserDataCache[subjectUserId]
+		if not userCache then
+			return
+		end
+
+		local isOwnRow = subjectUserId == localPlayer.UserId
+
+		-- Find Percent column
+		local findPercentFrame = getFrameCellForColumn("findPercent")
+		if findPercentFrame then
+			local findCount = userCache.findCount or 0
+			local totalSigns = userCache.serverPatchedInTotalSignCount or 1
+			leaderboardGui.DrawFindPercentCell(findPercentFrame, findCount, totalSigns, bgcolor)
+		end
+
+		-- Similarity column
+		local similarityFrame = getFrameCellForColumn("similarity")
+		if similarityFrame then
+			local myCache = lbUserDataCache[localPlayer.UserId] or {}
+			leaderboardGui.DrawSimilarityCell(similarityFrame, myCache, userCache, isOwnRow)
+		end
+
+		-- pinnedBadge and latestBadge are interactive columns with custom draw functions
+
+		-- Idle Time column
+		local idleTimeFrame = getFrameCellForColumn("idleTime")
+		if idleTimeFrame then
+			local lastActivity = userCache.lastActivityTimestamp
+			local shareIdle = userCache.shareIdleStatus
+			leaderboardGui.DrawIdleTimeCell(idleTimeFrame, lastActivity, shareIdle, isOwnRow)
+		end
+	end
+	updateComputedColumns()
+
 	setSize()
 	debounceUpdateUserLeaderboardRow[subjectUserId] = nil
 end
+
+-- forward declaration
+local removeUserLBRow: (number) -> () = nil
 
 local function sortLeaderboard()
 	_annotate("sortLeaderboard with userId2rowframe: " .. #userId2rowframe)
@@ -829,7 +1088,50 @@ local function completelyResetUserLB(forceResize: boolean, kind: string)
 
 	--previous lb frame items now just are floating independently and adjustable freely.
 
-	local lbSystemFrames = windowFunctions.SetupFrame("lb", true, true, true, true, UDim2.new(0, 300, 0, 100))
+	-- draggable=true, resizable=true, minimizable=false, pinnable=false
+	-- Use persistence with callback to save position + size + minimized + sort settings together
+	local initialSize = if leaderboardConfiguration and leaderboardConfiguration.size then leaderboardConfiguration.size else defaultLbSize
+	local lbSystemFrames = windowFunctions.SetupFrame(
+		"lb",
+		true, -- draggable
+		true, -- resizable
+		false, -- minimizable
+		false, -- pinnable
+		initialSize,
+		false, -- maintainAspectRatio
+		{
+			settingName = "LEADERBOARD_CONFIGURATION",
+			settingKey = "position",
+			saveSize = true,
+			sizeKey = "size",
+			clampOnLoad = true,
+			onSave = function(position: UDim2, size: UDim2?, minimized: boolean?)
+				if not lbOuterFrame or not leaderboardConfiguration then
+					return
+				end
+				-- Save position + size + minimized + sort settings together
+				local setting: tt.userSettingValue = {
+					name = settingEnums.settingDefinitions.LEADERBOARD_CONFIGURATION.name,
+					domain = settingEnums.settingDomains.LEADERBOARD,
+					kind = settingEnums.settingKinds.LUA,
+					luaValue = {
+						position = position,
+						size = if size then size else lbOuterFrame.Size,
+						minimized = if minimized ~= nil then minimized else (lbOuterFrame:GetAttribute("IsMinimized") or false),
+						sortDirection = leaderboardConfiguration.sortDirection,
+						sortColumn = leaderboardConfiguration.sortColumn,
+					},
+				}
+				_annotate("saving leaderboard configuration via persistence callback", setting)
+				settings.SetSetting(setting)
+			end,
+		},
+		{
+			position = "bottomRight", -- resize handle at bottom-right corner, below the frame
+			positionBelow = true, -- Position resize handle just below the LB, not overlapping it
+			zIndex = 30, -- Higher priority for click handling over action buttons
+		}
+	)
 	lbOuterFrame = lbSystemFrames.outerFrame
 	local lbContentFrame = lbSystemFrames.contentFrame
 	if not lbOuterFrame then
@@ -842,12 +1144,47 @@ local function completelyResetUserLB(forceResize: boolean, kind: string)
 		return
 	end
 	lbOuterFrame.Parent = lbSgui
-	lbOuterFrame.Position = leaderboardConfiguration.position
-	lbOuterFrame.Size = leaderboardConfiguration.size
+	-- Position and size are automatically loaded by windowFunctions persistence system
+	-- If not loaded, use saved configuration
+	if lbOuterFrame.Position.X.Offset == 0 and lbOuterFrame.Position.Y.Offset == 0 and lbOuterFrame.Position.X.Scale == 0 and lbOuterFrame.Position.Y.Scale == 0 then
+		lbOuterFrame.Position = leaderboardConfiguration.position
+	end
+
+	-- Read internal scrolling setting first so we can enforce min height
+	local scrollingSetting = settings.GetSettingByName(settingEnums.settingDefinitions.LEADERBOARD_ALLOW_INTERNAL_SCROLLING.name)
+	lbAllowInternalScrolling = scrollingSetting.booleanValue or false
+
+	-- Restore size, but enforce minimum height in scrolling mode to prevent scrollbar for single row
+	-- Fall back to default if size is nil or has zero dimensions (corrupted data)
+	local restoredSize = leaderboardConfiguration.size
+	if not restoredSize or (restoredSize.Y.Scale == 0 and restoredSize.Y.Offset == 0) then
+		_annotate(string.format("SIZE_DEBUG: invalid restored size, using default. size=%s", tostring(restoredSize)))
+		restoredSize = defaultLbSize
+	end
+	_annotate(string.format("SIZE_DEBUG: config size = (%s, %s, %s, %s), scrolling=%s", tostring(restoredSize.X.Scale), tostring(restoredSize.X.Offset), tostring(restoredSize.Y.Scale), tostring(restoredSize.Y.Offset), tostring(lbAllowInternalScrolling)))
+	if lbAllowInternalScrolling then
+		-- Minimum height: header + at least 1 row (no extra buffer needed)
+		local minHeight = headerRowYOffsetFixed + fixedRowHeightPixels
+		-- Convert to absolute pixels to handle both Scale and Offset components
+		local camera = workspace.CurrentCamera
+		local viewportHeight = camera and camera.ViewportSize.Y or 1080
+		local restoredHeight = restoredSize.Y.Scale * viewportHeight + restoredSize.Y.Offset
+		_annotate(string.format("SIZE_DEBUG: minHeight=%d (header=%d + row=%d), restoredHeight=%d (scale=%.3f, offset=%d, viewport=%d)", minHeight, headerRowYOffsetFixed, fixedRowHeightPixels, restoredHeight, restoredSize.Y.Scale, restoredSize.Y.Offset, viewportHeight))
+		-- Always enforce minimum height if restored height is smaller
+		if restoredHeight < minHeight then
+			-- Convert to pure offset to avoid Scale rounding issues
+			restoredSize = UDim2.new(restoredSize.X.Scale, restoredSize.X.Offset, 0, minHeight)
+			_annotate(string.format("SIZE_DEBUG: Enforced min height on load: %d -> %d", restoredHeight, minHeight))
+		end
+	end
+	lbOuterFrame.Size = restoredSize
+	_annotate(string.format("SIZE_DEBUG: lbOuterFrame.Size set to offset Y=%d", restoredSize.Y.Offset))
+	ensureLeaderboardOnScreen("completelyResetUserLB initial placement")
+	_annotate(string.format("SIZE_DEBUG: after ensureOnScreen, AbsoluteSize.Y=%d", lbOuterFrame.AbsoluteSize.Y))
 
 	local headerRow = leaderboardGui.MakeLeaderboardHeaderRow(enabledDescriptors, headerRowYOffsetFixed)
 	headerRow.Parent = lbContentFrame
-	headerRow.Position = UDim2.new(0, 0, 0, 0)
+	headerRow.Position = UDim2.new(0, 1, 0, 0)
 	for _, elbInstance: Instance in pairs(headerRow:GetChildren()) do
 		if not elbInstance:IsA("TextButton") then
 			continue
@@ -870,12 +1207,52 @@ local function completelyResetUserLB(forceResize: boolean, kind: string)
 		end)
 	end
 
+	-- Create either a direct frame or a scrolling frame based on setting
+	local rowsParent: Frame | ScrollingFrame
+	if lbAllowInternalScrolling then
+		-- Create scrolling frame wrapper
+		-- Match header row's size and position for consistent alignment
+		local newScrollingFrame: ScrollingFrame = Instance.new("ScrollingFrame")
+		newScrollingFrame.Name = "lbScrollingFrame"
+		newScrollingFrame.Parent = lbContentFrame
+		newScrollingFrame.BorderMode = Enum.BorderMode.Inset
+		newScrollingFrame.BorderSizePixel = 0
+		newScrollingFrame.BackgroundTransparency = 1
+		newScrollingFrame.BackgroundColor3 = colors.defaultGrey
+		newScrollingFrame.Size = UDim2.new(1, -2, 1, -1 * headerRowYOffsetFixed)
+		newScrollingFrame.Position = UDim2.new(0, 1, 0, headerRowYOffsetFixed)
+		newScrollingFrame.ScrollBarThickness = 10
+		-- Use None instead of Always to avoid reserving scroll bar width when not scrolling,
+		-- which would cause column misalignment with the header row
+		newScrollingFrame.VerticalScrollBarInset = Enum.ScrollBarInset.None
+		newScrollingFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+		newScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+		newScrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.None
+		lbScrollingFrame = newScrollingFrame
+		rowsParent = newScrollingFrame
+		_annotate(string.format("SIZE_DEBUG: scrollingFrame created, Size=(%s, %d, %s, %d)", tostring(newScrollingFrame.Size.X.Scale), newScrollingFrame.Size.X.Offset, tostring(newScrollingFrame.Size.Y.Scale), newScrollingFrame.Size.Y.Offset))
+		task.defer(function()
+			_annotate(string.format("SIZE_DEBUG: (deferred) scrollingFrame AbsoluteSize.Y=%d, CanvasSize.Y=%d", newScrollingFrame.AbsoluteSize.Y, newScrollingFrame.CanvasSize.Y.Offset))
+		end)
+	else
+		lbScrollingFrame = nil
+		rowsParent = lbContentFrame
+	end
+
 	local newLbUserRowFrame: Frame = Instance.new("Frame")
-	newLbUserRowFrame.Parent = lbContentFrame
+	newLbUserRowFrame.Parent = rowsParent
 	newLbUserRowFrame.BorderMode = Enum.BorderMode.Inset
 	newLbUserRowFrame.BorderSizePixel = 0
-	newLbUserRowFrame.Size = UDim2.new(1, 0, 1, -1 * headerRowYOffsetFixed)
-	newLbUserRowFrame.Position = UDim2.new(0, 0, 0, headerRowYOffsetFixed)
+	if lbAllowInternalScrolling then
+		-- In scrolling mode, match header row alignment: parent is scrollingFrame which is
+		-- already offset from contentFrame, so use full width and no extra offset
+		newLbUserRowFrame.Size = UDim2.new(1, 0, 0, 0)
+		newLbUserRowFrame.Position = UDim2.new(0, 0, 0, 0)
+		newLbUserRowFrame.AutomaticSize = Enum.AutomaticSize.Y
+	else
+		newLbUserRowFrame.Size = UDim2.new(1, -2, 1, -1 * headerRowYOffsetFixed)
+		newLbUserRowFrame.Position = UDim2.new(0, 1, 0, headerRowYOffsetFixed)
+	end
 	newLbUserRowFrame.Name = "lbUserRowFrame"
 	newLbUserRowFrame.BackgroundTransparency = 1
 	newLbUserRowFrame.BackgroundColor3 = colors.defaultGrey
@@ -888,9 +1265,12 @@ local function completelyResetUserLB(forceResize: boolean, kind: string)
 
 	leaderboardButtons.initActionButtons(lbOuterFrame)
 
-	for _, v in pairs(userId2rowframe) do
-		_annotate("\tuserId2rowframe: " .. v.Name)
-		annotater.Error(string.format("which is weird cause we're reserttings it. %s", kind))
+	-- Only log error if entries exist during initial setup; user-initiated resets will have entries
+	if kind == "initial setup." then
+		for _, v in pairs(userId2rowframe) do
+			_annotate("\tuserId2rowframe: " .. v.Name)
+			annotater.Error(string.format("unexpected pre-existing row during initial setup: %s", v.Name))
+		end
 	end
 
 	userId2rowframe = {}
@@ -901,6 +1281,14 @@ local function completelyResetUserLB(forceResize: boolean, kind: string)
 	end
 	monitorLeaderboardFrame()
 	setSize()
+
+	-- Deferred size check after all setup complete
+	task.defer(function()
+		if lbOuterFrame and lbScrollingFrame then
+			_annotate(string.format("SIZE_DEBUG: (end of reset) outer.AbsoluteSize.Y=%d, scrollFrame.AbsoluteSize.Y=%d, canvas.Y=%d", lbOuterFrame.AbsoluteSize.Y, lbScrollingFrame.AbsoluteSize.Y, lbScrollingFrame.CanvasSize.Y.Offset))
+		end
+	end)
+
 	comdeb = false
 end
 
@@ -909,7 +1297,7 @@ end
 local storeUserDataDebounce = false
 local function StoreUserData(userId: number, data: tt.lbUserStats): { tt.leaderboardUserDataChange }
 	while storeUserDataDebounce do
-		wait(0.1)
+		task.wait(0.1)
 	end
 	storeUserDataDebounce = true
 	local res: { tt.leaderboardUserDataChange } = {}
@@ -931,8 +1319,7 @@ local function StoreUserData(userId: number, data: tt.lbUserStats): { tt.leaderb
 		local oldValue = lbUserDataCache[userId][key]
 		if newValue ~= oldValue then
 			--reset source of truth to the new data that came in.
-			local change: tt.leaderboardUserDataChange =
-				{ userId = userId, key = key, oldValue = oldValue, newValue = newValue }
+			local change: tt.leaderboardUserDataChange = { userId = userId, key = key, oldValue = oldValue, newValue = newValue }
 			lbUserDataCache[userId][key] = newValue
 			table.insert(res, change)
 		end
@@ -946,7 +1333,7 @@ end
 local function updateUserLeaderboardRow(userStats: tt.lbUserStats): ()
 	_annotate(string.format("Updating leaderboard row for user %s", tostring(userStats.userId)))
 	while not loadedSettings do
-		wait(0.1)
+		task.wait(0.1)
 		_annotate("waiting for settings to load for updateUserLeaderboardRow")
 	end
 	if lbUserRowFrame == nil then
@@ -963,7 +1350,7 @@ local function updateUserLeaderboardRow(userStats: tt.lbUserStats): ()
 
 	while debounceUpdateUserLeaderboardRow[subjectUserId] do
 		_annotate(string.format("waiting for user %s to finish receiving their lb update", tostring(userStats.userId)))
-		wait(0.1)
+		task.wait(0.1)
 	end
 	debounceUpdateUserLeaderboardRow[subjectUserId] = true
 	if not lbIsEnabled then
@@ -981,8 +1368,109 @@ local function updateUserLeaderboardRow(userStats: tt.lbUserStats): ()
 	_annotate(string.format("Finished updating leaderboard row for user %s", tostring(userStats.userId)))
 end
 
+-- Distance calculation for "distance from you" column
+local distanceUpdateConnection: RBXScriptConnection? = nil
+local DISTANCE_UPDATE_INTERVAL = 1.0 -- seconds between distance updates
+local lastDistanceUpdate = 0
+
+local function getLocalPlayerPosition(): Vector3?
+	local character = localPlayer.Character
+	if not character then
+		return nil
+	end
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp or not hrp:IsA("BasePart") then
+		return nil
+	end
+	return hrp.Position
+end
+
+local function getPlayerPosition(userId: number): Vector3?
+	local player = Players:GetPlayerByUserId(userId)
+	if not player then
+		return nil
+	end
+	local character = player.Character
+	if not character then
+		return nil
+	end
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp or not hrp:IsA("BasePart") then
+		return nil
+	end
+	return hrp.Position
+end
+
+local function formatDistanceInK(distanceStuds: number): string
+	local distanceK = math.floor(distanceStuds / 1000 + 0.5) -- round to nearest 1k
+	return string.format("%dk", distanceK)
+end
+
+local function updateAllDistances()
+	if not enabledDescriptors["distanceFromYou"] then
+		return
+	end
+
+	local localPos = getLocalPlayerPosition()
+	if not localPos then
+		return
+	end
+
+	for userId, _ in pairs(lbUserDataCache) do
+		if userId == localPlayer.UserId then
+			-- Show "you" for self since distance to yourself is meaningless
+			local oldValue = lbUserDataCache[userId]["distanceFromYou"]
+			local newValue = "you"
+			if oldValue ~= newValue then
+				lbUserDataCache[userId]["distanceFromYou"] = newValue
+				local changes: { tt.leaderboardUserDataChange } = {
+					{ userId = userId, key = "distanceFromYou", oldValue = MAGIC, newValue = newValue },
+				}
+				applyUserDataChanges(changes, userId)
+			end
+		else
+			local otherPos = getPlayerPosition(userId)
+			if otherPos then
+				local distance = (localPos - otherPos).Magnitude
+				local newValue = formatDistanceInK(distance)
+				local oldValue = lbUserDataCache[userId]["distanceFromYou"]
+				if oldValue ~= newValue then
+					lbUserDataCache[userId]["distanceFromYou"] = newValue
+					local changes: { tt.leaderboardUserDataChange } = {
+						{ userId = userId, key = "distanceFromYou", oldValue = MAGIC, newValue = newValue },
+					}
+					applyUserDataChanges(changes, userId)
+				end
+			end
+		end
+	end
+end
+
+local function startDistanceUpdates()
+	if distanceUpdateConnection then
+		return
+	end
+	local RunService = game:GetService("RunService")
+	distanceUpdateConnection = RunService.Heartbeat:Connect(function()
+		local now = tick()
+		if now - lastDistanceUpdate >= DISTANCE_UPDATE_INTERVAL then
+			lastDistanceUpdate = now
+			updateAllDistances()
+		end
+	end)
+	_annotate("Started distance update loop")
+end
+
+local function stopDistanceUpdates()
+	if distanceUpdateConnection then
+		distanceUpdateConnection:Disconnect()
+		distanceUpdateConnection = nil
+		_annotate("Stopped distance update loop")
+	end
+end
+
 local removeDebouncers = {}
-local function removeUserLBRow(userId: number): ()
+removeUserLBRow = function(userId: number): ()
 	if removeDebouncers[userId] then
 		return
 	end
@@ -1050,9 +1538,7 @@ local function handleUserSettingChanged(setting: tt.userSettingValue, initial: b
 	elseif setting.stringValue ~= nil then
 		useValue = tostring(setting.stringValue)
 	end
-	_annotate(
-		string.format("leaderboard handleUserSettingChanged: loading setting: %s=%s", tostring(setting.name), useValue)
-	)
+	_annotate(string.format("leaderboard handleUserSettingChanged: loading setting: %s=%s", tostring(setting.name), useValue))
 	if setting.name == settingEnums.settingDefinitions.HIDE_LEADERBOARD.name then
 		if setting.booleanValue ~= lbIsEnabled then
 			lbIsEnabled = not setting.booleanValue
@@ -1066,10 +1552,7 @@ local function handleUserSettingChanged(setting: tt.userSettingValue, initial: b
 		return
 	end
 
-	if
-		setting.name == settingEnums.settingDefinitions.LEADERBOARD_CONFIGURATION.name
-		and setting.domain == settingEnums.settingDomains.LEADERBOARD
-	then
+	if setting.name == settingEnums.settingDefinitions.LEADERBOARD_CONFIGURATION.name and setting.domain == settingEnums.settingDomains.LEADERBOARD then
 		if setting.luaValue then
 			leaderboardConfiguration = setting.luaValue :: tt.lbConfig
 			_annotate("loaded leaderboardConfiguration")
@@ -1086,61 +1569,90 @@ local function handleUserSettingChanged(setting: tt.userSettingValue, initial: b
 		return
 	end
 
+	local descriptorChanged = false
+
 	if setting.domain == settingEnums.settingDomains.LEADERBOARD then
 		if setting.name == settingEnums.settingDefinitions.LEADERBOARD_PINNED_RACE.name then
-			_annotate(
-				"received pinned race name but we don't apparently care. (since the info arrives with the update from db."
-			)
+			_annotate("received pinned race name but we don't apparently care. (since the info arrives with the update from db.")
 		else
 			if setting.booleanValue == nil then
-				annotater.Error(
-					"a LB setting value boolean value was nil, which isn't possible for the remaining LB settings which are all toggles (until we add more)"
-				)
+				annotater.Error("a LB setting value boolean value was nil, which isn't possible for the remaining LB settings which are all toggles (until we add more)")
 				error("a LB setting value boolean value was nil, which isn't possible")
 			end
 			local actualValue = setting.booleanValue or false
+			local function applyDescriptor(descriptorName: string)
+				if setDescriptorEnabled(descriptorName, actualValue) then
+					descriptorChanged = true
+				end
+			end
+
 			if setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_PORTRAIT.name then
-				enabledDescriptors["portrait"] = actualValue
+				applyDescriptor("portrait")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_USERNAME.name then
-				enabledDescriptors["username"] = actualValue
+				applyDescriptor("username")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_AWARDS.name then
-				enabledDescriptors["awardCount"] = actualValue
+				applyDescriptor("awardCount")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_TIX.name then
-				enabledDescriptors["userTix"] = actualValue
+				applyDescriptor("userTix")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_FINDS.name then
-				enabledDescriptors["findCount"] = actualValue
+				applyDescriptor("findCount")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_FINDRANK.name then
-				enabledDescriptors["findRank"] = actualValue
+				applyDescriptor("findRank")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_CWRS.name then
-				enabledDescriptors["cwrs"] = actualValue
+				applyDescriptor("cwrs")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_CWRANK.name then
-				enabledDescriptors["cwrRank"] = actualValue
+				applyDescriptor("cwrRank")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_CWRTOP10S.name then
-				enabledDescriptors["cwrTop10s"] = actualValue
+				applyDescriptor("cwrTop10s")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_TOP10S.name then
-				enabledDescriptors["top10s"] = actualValue
+				applyDescriptor("top10s")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_WRS.name then
-				enabledDescriptors["wrCount"] = actualValue
+				applyDescriptor("wrCount")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_WRRANK.name then
-				enabledDescriptors["wrRank"] = actualValue
+				applyDescriptor("wrRank")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_RACES.name then
-				enabledDescriptors["userTotalRaceCount"] = actualValue
+				applyDescriptor("userTotalRaceCount")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_RUNS.name then
-				enabledDescriptors["userTotalRunCount"] = actualValue
+				applyDescriptor("userTotalRunCount")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_BADGES.name then
-				enabledDescriptors["badgeCount"] = actualValue
+				applyDescriptor("badgeCount")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_DAYSINGAME_COLUMN.name then
-				enabledDescriptors["daysInGame"] = actualValue
+				applyDescriptor("daysInGame")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_PINNED_RACE_COLUMN.name then
-				enabledDescriptors["pinnedRace"] = actualValue
+				applyDescriptor("pinnedRace")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_FAVORITES.name then
-				enabledDescriptors["userFavoriteRaceCount"] = actualValue
+				applyDescriptor("userFavoriteRaceCount")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_RUNSTODAY_COLUMN.name then
-				enabledDescriptors["runsToday"] = actualValue
+				applyDescriptor("runsToday")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_WRSTODAY_COLUMN.name then
-				enabledDescriptors["wrsToday"] = actualValue
+				applyDescriptor("wrsToday")
 			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_CWRSTODAY_COLUMN.name then
-				enabledDescriptors["cwrsToday"] = actualValue
+				applyDescriptor("cwrsToday")
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_DISTANCE_FROM_YOU.name then
+				applyDescriptor("distanceFromYou")
+				if actualValue then
+					startDistanceUpdates()
+				else
+					stopDistanceUpdates()
+				end
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_WARP_TO.name then
+				applyDescriptor("warpTo")
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_FIND_PERCENT.name then
+				applyDescriptor("findPercent")
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_SIMILARITY.name then
+				applyDescriptor("similarity")
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_PINNED_BADGE.name then
+				applyDescriptor("pinnedBadge")
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_LATEST_BADGE.name then
+				applyDescriptor("latestBadge")
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ENABLE_IDLE_TIME.name then
+				applyDescriptor("idleTime")
+			elseif setting.name == settingEnums.settingDefinitions.LEADERBOARD_ALLOW_INTERNAL_SCROLLING.name then
+				-- Internal scrolling setting requires a complete reset
+				if not initial then
+					_annotate("completely resetting userLB due to internal scrolling setting change")
+					completelyResetUserLB(false, "internal scrolling setting changed")
+				end
 			else
 				warn("unknown leaderboard setting: " .. tostring(setting.name))
 			end
@@ -1148,12 +1660,9 @@ local function handleUserSettingChanged(setting: tt.userSettingValue, initial: b
 	end
 
 	-- this is the fallthrough for any of the columnsEnabled changes.
-	if not initial then
+	if not initial and descriptorChanged then
 		_annotate("completely resetting userLB cause setting changed")
-		completelyResetUserLB(
-			false,
-			"non-initial reset within handleUserSettingChanged for setting: " .. tostring(setting.name)
-		)
+		completelyResetUserLB(false, "non-initial reset within handleUserSettingChanged for setting: " .. tostring(setting.name))
 	end
 	return nil
 end
@@ -1184,6 +1693,7 @@ local lb: tt.lbUserStats = {
 	runsToday = 0,
 	pinnedRace = "",
 	userFavoriteRaceCount = 0,
+	warpPermission = "none",
 }
 
 local fakeUserStats: tt.genericLeaderboardUpdateDataType = {
@@ -1218,6 +1728,7 @@ local lb2: tt.lbUserStats = {
 	runsToday = 10,
 	pinnedRace = "",
 	userFavoriteRaceCount = 12,
+	warpPermission = "robloxFriends",
 }
 
 local fakeUserStats2: tt.genericLeaderboardUpdateDataType = {
@@ -1252,6 +1763,7 @@ local lb3: tt.lbUserStats = {
 	runsToday = 0,
 	pinnedRace = "",
 	userFavoriteRaceCount = 10,
+	warpPermission = "all",
 }
 
 local fakeUserStats3: tt.genericLeaderboardUpdateDataType = {
@@ -1260,8 +1772,7 @@ local fakeUserStats3: tt.genericLeaderboardUpdateDataType = {
 	lbUserStats = lb3,
 }
 
-module.Init = function()
-	_annotate("Starting leaderboard initialization")
+module.Reset = function()
 	loadedSettings = false
 	enabledDescriptors = {}
 	userId2rowframe = {}
@@ -1269,10 +1780,7 @@ module.Init = function()
 	lbIsEnabled = true
 
 	localPlayer = Players.LocalPlayer
-	handleUserSettingChanged(
-		settings.GetSettingByName(settingEnums.settingDefinitions.LEADERBOARD_CONFIGURATION.name),
-		true
-	)
+	handleUserSettingChanged(settings.GetSettingByName(settingEnums.settingDefinitions.LEADERBOARD_CONFIGURATION.name), true)
 	handleUserSettingChanged(settings.GetSettingByName(settingEnums.settingDefinitions.HIDE_LEADERBOARD.name), true)
 
 	for _, userSetting in pairs(settings.GetSettingByDomain(settingEnums.settingDomains.LEADERBOARD)) do
@@ -1281,6 +1789,11 @@ module.Init = function()
 
 	completelyResetUserLB(true, "initial setup.")
 	loadedSettings = true
+end
+
+module.Init = function()
+	_annotate("Starting leaderboard initialization")
+	module.Reset()
 
 	LeaderboardUpdateEvent.OnClientEvent:Connect(function(data)
 		_annotate("Received leaderboard update event")
@@ -1299,6 +1812,31 @@ module.Init = function()
 	settings.RegisterFunctionToListenForDomain(function(item: tt.userSettingValue): any
 		return handleUserSettingChanged(item, false)
 	end, settingEnums.settingDomains.LEADERBOARD)
+
+	-- Listen for warp permission changes to update the local user's leaderboard row
+	settings.RegisterFunctionToListenForSettingName(function(item: tt.userSettingValue): any
+		_annotate(string.format("WARP_TO_PERMISSION changed to: %s", tostring(item.stringValue)))
+		local newPermission = item.stringValue or "none"
+		local userId = localPlayer.UserId
+
+		-- Update local cache
+		if lbUserDataCache[userId] then
+			local oldValue = lbUserDataCache[userId]["warpPermission"]
+			if oldValue ~= newPermission then
+				lbUserDataCache[userId]["warpPermission"] = newPermission
+				-- Trigger UI update
+				local changes: { tt.leaderboardUserDataChange } = {
+					{ userId = userId, key = "warpPermission", oldValue = oldValue, newValue = newPermission },
+				}
+				applyUserDataChanges(changes, userId)
+				_annotate(string.format("Updated warpPermission UI: %s -> %s", tostring(oldValue), newPermission))
+			end
+		else
+			_annotate("No cache entry for local user, cannot update warpPermission UI")
+		end
+		return nil
+	end, settingEnums.settingDefinitions.WARP_TO_PERMISSION.name, "leaderboard_warp")
+
 	if config.IsInStudio() and false then
 		task.wait(0.2)
 		module.ClientReceiveNewLeaderboardData(fakeUserStats)
@@ -1307,6 +1845,38 @@ module.Init = function()
 		task.wait(0.2)
 		module.ClientReceiveNewLeaderboardData(fakeUserStats3)
 	end
+
+	-- Periodic refresh for idle time column (once per minute)
+	-- Active users get updates naturally via data events; this catches idle users
+	task.spawn(function()
+		local IDLE_REFRESH_INTERVAL = 60
+		while true do
+			task.wait(IDLE_REFRESH_INTERVAL)
+			if not lbIsEnabled or not enabledDescriptors["idleTime"] then
+				continue
+			end
+			local idleDescriptor = leaderboardEnums.LbColumnDescriptors["idleTime"]
+			if not idleDescriptor then
+				continue
+			end
+			for userId, rowFrame in pairs(userId2rowframe) do
+				local userCache = lbUserDataCache[userId]
+				if not userCache then
+					continue
+				end
+				local cellName = getNameForDescriptor(idleDescriptor)
+				local frameInstance = rowFrame:FindFirstChild(cellName)
+				if frameInstance and frameInstance:IsA("Frame") then
+					local lastActivity = userCache.lastActivityTimestamp
+					local shareIdle = userCache.shareIdleStatus
+					local isOwnRow = userId == localPlayer.UserId
+					leaderboardGui.DrawIdleTimeCell(frameInstance :: Frame, lastActivity, shareIdle, isOwnRow)
+				end
+			end
+			_annotate("Periodic idle time refresh complete")
+		end
+	end)
+
 	_annotate("init done")
 end
 

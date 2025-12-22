@@ -5,10 +5,7 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local notify = require(game.ReplicatedStorage.notify)
-local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
 local mt = require(game.ServerScriptService.EphemeralMarathons.ephemeralMarathonTypes)
-local PlayerService = game:GetService("Players")
 local colors = require(game.ReplicatedStorage.util.colors)
 
 local module = {}
@@ -20,7 +17,13 @@ local marathonId = 1
 --put best run into best runs for this marathon.
 local integrateRun = function(run: mt.lbUpdateFromEphemeralMarathonRun): mt.emRunResults?
 	local em = run.em
-	table.insert(em.bestRuns, run)
+	local bestRun: mt.ephemeralMarathonBestRun = {
+		userId = run.userId,
+		timeMs = run.timeMs,
+		rank = 1, -- Will be recalculated
+		userRunCount = 1, -- Will be recalculated
+	}
+	table.insert(em.bestRuns, bestRun)
 	local res: mt.emRunResults = {
 		userId = run.userId,
 		formattedRunMilliseconds = "100",
@@ -37,9 +40,9 @@ local integrateRun = function(run: mt.lbUpdateFromEphemeralMarathonRun): mt.emRu
 	return res
 end
 
-local findEphemeralMarathon = function(marathonId: number): mt.ephemeralMarathon?
+local findEphemeralMarathon = function(targetMarathonId: number): mt.ephemeralMarathon?
 	for ii, em in ipairs(ephemeralMarathons) do
-		if em.marathonId == marathonId then
+		if em.marathonId == targetMarathonId then
 			return em
 		end
 	end
@@ -64,8 +67,8 @@ local serverInvokeCreateEphemeralMarathon = function(player: Player, ...): any
 	return { result = "Succcess" }
 end
 
-local serverInvokeEphemeralMarathonComplete = function(player: Player, marathonId: number, runMilliseconds: number)
-	local can = findEphemeralMarathon(marathonId)
+local serverInvokeEphemeralMarathonComplete = function(player: Player, targetMarathonId: number, runMilliseconds: number)
+	local can = findEphemeralMarathon(targetMarathonId)
 	if can == nil then
 		_annotate("no such")
 		return
@@ -74,17 +77,24 @@ local serverInvokeEphemeralMarathonComplete = function(player: Player, marathonI
 	local run: mt.lbUpdateFromEphemeralMarathonRun = {
 		em = em,
 		userId = player.UserId,
-		marathonId = marathonId,
+		marathonId = targetMarathonId,
 		timeMs = runMilliseconds,
 	}
 
-	local res: mt.emRunResults = integrateRun(run)
-	notify.notifyPlayerOfEphemeralMarathonRun(player, res)
+	local res: mt.emRunResults? = integrateRun(run)
+	if not res then
+		_annotate("no res from integrateRun")
+		return
+	end
+	-- TODO: Implement notify.notifyPlayerOfEphemeralMarathonRun(player, res)
+	-- This function does not exist yet - ephemeral marathon notifications not implemented
+	_annotate(string.format("Ephemeral marathon completed for player %d, result: %s", player.UserId, tostring(res)))
 
 	--TODO fix this to update their marathon display.
-	for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
-		lbUpdaterServer.updateLeaderboardForEphemeralMarathon(otherPlayer, run)
-	end
+	-- Ephemeral marathon leaderboard updates not yet implemented
+	-- for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do
+	-- 	lbUpdaterServer.updateLeaderboardForEphemeralMarathon(otherPlayer, run)
+	-- end
 end
 
 local remotes = require(game.ReplicatedStorage.util.remotes)

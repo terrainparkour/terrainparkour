@@ -6,8 +6,7 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local rdb = require(game.ServerScriptService.rdb)
-local notify = require(game.ReplicatedStorage.notify)
-local MessageDispatcher = require(game.ReplicatedStorage.ChatSystem.messageDispatcher)
+local messageDispatcher = require(game.ReplicatedStorage.ChatSystem.messageDispatcher)
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local lbUpdaterServer = require(game.ServerScriptService.lbUpdaterServer)
@@ -17,6 +16,7 @@ local grantBadge = require(game.ServerScriptService.grantBadge)
 
 local mds = require(game.ReplicatedStorage.marathon.marathonDescriptors)
 local remotes = require(game.ReplicatedStorage.util.remotes)
+local runResultsCommand = require(game.ReplicatedStorage.commands.runResultsCommand)
 
 --the client has decided a marathon is complete.
 --this should actually be determined from python server.
@@ -38,27 +38,31 @@ local serverInvokeMarathonComplete = function(
 		},
 	}
 
-	local userFinishedRunResponse: tt.userFinishedRunResponseOrError = rdb.MakePostRequest(request)
+	local rawResponse: any = rdb.MakePostRequest(request)
 
-	local responseAsAny: any = userFinishedRunResponse
-	if responseAsAny.error or responseAsAny.banned then
-		local errorResponse: tt.userFinishedRunErrorResponse =
-			userFinishedRunResponse :: tt.userFinishedRunErrorResponse
+	if not rawResponse then
+		annotater.Error("userFinishedMarathon: nil response from backend", {
+			userId = player.UserId,
+			marathonKind = marathonKind,
+		})
+		return
+	end
+	if rawResponse.error or rawResponse.banned then
 		annotater.Error("userFinishedMarathon returned error response", {
 			userId = player.UserId,
 			marathonKind = marathonKind,
-			error = errorResponse.error,
-			banned = errorResponse.banned,
+			error = rawResponse.error,
+			banned = rawResponse.banned,
 		})
-		if errorResponse.banned == true then
-			MessageDispatcher.SendSystemMessageToPlayer(player, "Chat", "You are banned. Please find another game to play.")
+		if rawResponse.banned == true then
+			messageDispatcher.SendSystemMessageToPlayer(player, "Chat", "You are banned. Please find another game to play.")
 		end
 		return
 	end
 
-	local typedResponse: tt.userFinishedRunResponse = userFinishedRunResponse :: tt.userFinishedRunResponse
+	local typedResponse: tt.userFinishedRunResponse = rawResponse :: tt.userFinishedRunResponse
 
-	local descTry = mds[marathonKind]
+	local descTry = mds.marathons[marathonKind]
 	if descTry == nil then
 		_annotate(string.format("bad mk %s", marathonKind))
 	end
@@ -68,13 +72,8 @@ local serverInvokeMarathonComplete = function(
 		end
 	end
 
-	local responseWithKind: any = {}
-	for k, v in pairs(typedResponse) do
-		responseWithKind[k] = v
-	end
-	responseWithKind.kind = "marathon results"
-
-	notify.notifyPlayerAboutMarathonResults(player, responseWithKind :: tt.userFinishedRunResponse)
+	-- Use shared command to send discipline results notification (symmetric with race completion)
+	runResultsCommand.SendDisciplineResults(player, "marathonResults", typedResponse)
 
 	if typedResponse.lbUserStats then
 		for _, otherPlayer in ipairs(PlayerService:GetPlayers()) do

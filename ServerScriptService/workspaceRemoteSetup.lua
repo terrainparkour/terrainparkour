@@ -3,37 +3,36 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local function ensureFolderExists(folderName: string): Folder
+	local folder = ReplicatedStorage:FindFirstChild(folderName)
+	if not folder then
+		local message = string.format("Required ReplicatedStorage.%s folder is missing", folderName)
+		annotater.Error(message)
+		error(message)
+	end
+	if not folder:IsA("Folder") then
+		local message = string.format(
+			"ReplicatedStorage.%s is a %s, expected Folder",
+			folderName,
+			folder.ClassName
+		)
+		annotater.Error(message)
+		error(message)
+	end
+	_annotate(string.format("Info: %s folder already exists", folderName))
+	return folder :: Folder
+end
+
 local module = {}
 
 module.CreateRemoteEventsAndRemoteFunctions = function()
-	_annotate("Creating RemoteEvents, RemoteFunctions, and BindableEvents folders")
-	
-	-- Create the folders that remotes.lua expects
-	local ReplicatedStorage = game:GetService("ReplicatedStorage")
-	if not ReplicatedStorage:FindFirstChild("RemoteEvents") then
-		local folder = Instance.new("Folder")
-		folder.Name = "RemoteEvents"
-		folder.Parent = ReplicatedStorage
-		_annotate("Info: Created RemoteEvents folder")
-	else
-		_annotate("Info: RemoteEvents folder already exists")
-	end
-	if not ReplicatedStorage:FindFirstChild("RemoteFunctions") then
-		local folder = Instance.new("Folder")
-		folder.Name = "RemoteFunctions"
-		folder.Parent = ReplicatedStorage
-		_annotate("Info: Created RemoteFunctions folder")
-	else
-		_annotate("Info: RemoteFunctions folder already exists")
-	end
-	if not ReplicatedStorage:FindFirstChild("BindableEvents") then
-		local folder = Instance.new("Folder")
-		folder.Name = "BindableEvents"
-		folder.Parent = ReplicatedStorage
-		_annotate("Info: Created BindableEvents folder")
-	else
-		_annotate("Info: BindableEvents folder already exists")
-	end
+	_annotate("Validating RemoteEvents, RemoteFunctions, and BindableEvents folders")
+
+	ensureFolderExists("RemoteEvents")
+	ensureFolderExists("RemoteFunctions")
+	ensureFolderExists("BindableEvents")
 
 	local remotes = require(game.ReplicatedStorage.util.remotes)
 
@@ -94,6 +93,7 @@ module.CreateRemoteEventsAndRemoteFunctions = function()
 	remotes.getRemoteFunction("GetNewRacesFunction")
 	remotes.getRemoteFunction("GetContestsFunction")
 	remotes.getRemoteFunction("GetSingleContestFunction")
+	remotes.getRemoteFunction("GetArchivedContestsFunction")
 
 	--new 2024.09. Why again do I have a billion types of events.
 	remotes.getRemoteEvent("ClientToServerEvent")

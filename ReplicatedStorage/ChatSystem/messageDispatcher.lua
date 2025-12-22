@@ -1,15 +1,14 @@
 --!strict
 
--- MessageDispatcher.lua :: ReplicatedStorage.ChatSystem.MessageDispatcher
+-- messageDispatcher.lua :: ReplicatedStorage.ChatSystem.messageDispatcher
 -- Sends RichText system messages into TextChat channels via RemoteEvent (server-only).
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local ChannelManager = require(script.Parent.channelManager)
-local MessageFormatter = require(script.Parent.messageFormatter)
+local channelManager = require(game.ReplicatedStorage.ChatSystem.channelManager)
+local remotes = require(game.ReplicatedStorage.util.remotes)
+local messageFormatter = require(game.ReplicatedStorage.ChatSystem.messageFormatter)
 
 type MessageOptions = {
 	ChatColor: Color3?,
@@ -24,67 +23,33 @@ local function formatText(text: string, options: MessageOptions?): string
 
 	local formatted = text
 	if options.ChatColor then
-		formatted = MessageFormatter.formatWithColor(formatted, options.ChatColor)
+		formatted = messageFormatter.formatWithColor(formatted, options.ChatColor)
 	end
 	return formatted
 end
 
-module.SendSystemMessage = function(channelName: string, text: string, options: MessageOptions?): boolean
-	local channel = ChannelManager.GetChannel(channelName)
+module.SendSystemMessage = function(channelName: string, text: string, options: MessageOptions?): ()
+	local channel = channelManager.GetChannel(channelName)
 	if not channel then
-		annotater.Error("SendSystemMessage missing channel", {
-			channelName = channelName,
-			text = text,
-		})
-		return false
+		error(string.format("SendSystemMessage: channel '%s' not registered. Valid channels: Chat, Data, Joins", channelName))
 	end
 
 	local formatted = formatText(text, options)
-	local remoteEventFolder = ReplicatedStorage:FindFirstChild("RemoteEvents")
-	if not remoteEventFolder then
-		annotater.Error("SendSystemMessage: RemoteEvents folder missing")
-		return false
-	end
-	local displayMsg = remoteEventFolder:FindFirstChild("DisplaySystemMessageEvent")
-	if not displayMsg or not displayMsg:IsA("RemoteEvent") then
-		annotater.Error("SendSystemMessage: DisplaySystemMessageEvent RemoteEvent missing")
-		return false
-	end
-	displayMsg:FireAllClients(formatted, channelName)
+	local displayMsgEvent = remotes.getRemoteEvent("DisplaySystemMessageEvent")
+	displayMsgEvent:FireAllClients(formatted, channelName)
 	_annotate(string.format("SendSystemMessage -> [%s]: %s", channelName, text))
-	return true
 end
 
-module.SendSystemMessageToPlayer = function(
-	player: Player,
-	channelName: string,
-	text: string,
-	options: MessageOptions?
-): boolean
-	local channel = ChannelManager.GetChannel(channelName)
+module.SendSystemMessageToPlayer = function(player: Player, channelName: string, text: string, options: MessageOptions?): ()
+	local channel = channelManager.GetChannel(channelName)
 	if not channel then
-		annotater.Error("SendSystemMessageToPlayer missing channel", {
-			channelName = channelName,
-			text = text,
-			player = player.Name,
-		})
-		return false
+		error(string.format("SendSystemMessageToPlayer: channel '%s' not registered. Valid channels: Chat, Data, Joins", channelName))
 	end
 
 	local formatted = formatText(text, options)
-	local remoteEventFolder = ReplicatedStorage:FindFirstChild("RemoteEvents")
-	if not remoteEventFolder then
-		annotater.Error("SendSystemMessageToPlayer: RemoteEvents folder missing")
-		return false
-	end
-	local displayMsg = remoteEventFolder:FindFirstChild("DisplaySystemMessageEvent")
-	if not displayMsg or not displayMsg:IsA("RemoteEvent") then
-		annotater.Error("SendSystemMessageToPlayer: DisplaySystemMessageEvent RemoteEvent missing")
-		return false
-	end
-	displayMsg:FireClient(player, formatted, channelName)
+	local displayMsgEvent = remotes.getRemoteEvent("DisplaySystemMessageEvent")
+	displayMsgEvent:FireClient(player, formatted, channelName)
 	_annotate(string.format("SendSystemMessageToPlayer -> player=%s channel=[%s]: %s", player.Name, channelName, text))
-	return true
 end
 
 _annotate("end")

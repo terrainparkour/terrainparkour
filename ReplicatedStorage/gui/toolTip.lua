@@ -5,6 +5,10 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
+
 local localPlayer: Player = Players.LocalPlayer
 ------------------ SETUP ------------------
 local module = {}
@@ -58,17 +62,16 @@ end
 --right=they float right+down rather than left+down from cursor. default is right.
 local LLMGeneratedUIFunctions = require(game.ReplicatedStorage.gui.menu.LLMGeneratedUIFunctions)
 
-module.setupToolTip = function(
-	target: TextLabel | TextButton | ImageLabel | Frame,
-	tooltipContents: string | ImageLabel | { signName: string, extraText: string },
-	size: UDim2,
-	right: boolean?,
-	xalignment: any?,
-	alongBottom: boolean?,
-	frame: Frame?
-)
+export type TooltipStyle = {
+	backgroundColor: Color3?,
+	textColor: Color3?,
+	font: Enum.Font?, -- Legacy: Enum.Font
+	fontFace: Font?, -- Preferred: FontFace for exact font matching
+}
+
+module.setupToolTip = function(target: TextLabel | TextButton | ImageLabel | Frame, tooltipContents: string | ImageLabel | { signName: string, extraText: string }, size: UDim2, right: boolean?, xalignment: any?, alongBottom: boolean?, frame: Frame?, style: TooltipStyle?)
 	if tooltipContents == nil or tooltipContents == "" then
-		warn("Tooltip contents is empty or nil")
+		warn(string.format("Tooltip contents is empty or nil, %s", target:GetFullName()))
 		return
 	end
 
@@ -101,13 +104,18 @@ module.setupToolTip = function(
 			})
 		end
 
+		local useBackgroundColor = Color3.new(0.8, 0.8, 0.8) -- Default: light grey
+		if style and style.backgroundColor then
+			useBackgroundColor = style.backgroundColor
+		end
+
 		local tooltipFrame = LLMGeneratedUIFunctions.createFrame({
 			Name = ephemeralToolTipFrameName,
 			Size = size,
 			Parent = ttgui,
 			ZIndex = 10,
 			BackgroundTransparency = 0,
-			BackgroundColor3 = Color3.new(0.8, 0.8, 0.8), -- Light grey background
+			BackgroundColor3 = useBackgroundColor,
 		})
 
 		local numberValue = Instance.new("NumberValue")
@@ -117,20 +125,34 @@ module.setupToolTip = function(
 
 		if typeof(tooltipContents) == "string" then
 			_annotate(string.format("Creating text tooltip: %s", tooltipContents)) -- Debug print
+			local useTextColor = Color3.new(0, 0, 0) -- Default: black
+			local useFont = Enum.Font.GothamBold -- Default: GothamBold
+			if style and style.textColor then
+				useTextColor = style.textColor
+			end
+			if style and style.font then
+				useFont = style.font
+			end
+
 			local tl = LLMGeneratedUIFunctions.createTextLabel({
 				Name = "TooltipContent",
 				Size = UDim2.new(1, -10, 1, -10), -- Fill most of the frame, leaving a small margin
 				Position = UDim2.new(0, 5, 0, 5), -- Small offset from the edges
 				Text = tooltipContents,
-				TextColor3 = Color3.new(0, 0, 0), -- Black text
+				TextColor3 = useTextColor,
 				BackgroundTransparency = 1,
 				TextScaled = true, -- Enable text scaling
-				Font = Enum.Font.GothamBold, -- Use a bold font for better visibility
+				Font = useFont,
 				TextXAlignment = xalignment,
 				TextYAlignment = Enum.TextYAlignment.Center, -- Center text vertically
 				Parent = tooltipFrame,
 				ZIndex = 11, -- Higher Z-index than the tooltipFrame
 			})
+
+			-- Apply FontFace if provided (overrides Enum.Font for exact matching)
+			if style and style.fontFace then
+				tl.FontFace = style.fontFace
+			end
 
 			-- Add text size constraint
 			local sizeConstraint = Instance.new("UITextSizeConstraint")
@@ -139,6 +161,16 @@ module.setupToolTip = function(
 		elseif typeof(tooltipContents) == "table" then
 			-- Handle the case for insane mouseover sign names
 			-- This part needs to be implemented based on your specific requirements
+		elseif typeof(tooltipContents) == "Instance" then
+			-- Clone the Instance so it can be reused across multiple tooltip displays
+			-- (the original stays intact when the tooltip is destroyed)
+			local s, e = pcall(function()
+				local cloned = (tooltipContents :: Instance):Clone()
+				cloned.Parent = tooltipFrame
+			end)
+			if not s then
+				warn(e)
+			end
 		else
 			local s, e = pcall(function()
 				tooltipContents.Parent = tooltipFrame
@@ -149,30 +181,15 @@ module.setupToolTip = function(
 		end
 
 		local function updatePosition()
-			local mousePos = game:GetService("UserInputService"):GetMouseLocation()
-			local viewportSize = workspace.CurrentCamera.ViewportSize
-			local xPos, yPos
-
-			if right then
-				xPos = mousePos.X + 10
-				yPos = mousePos.Y + 10
-			else
-				xPos = mousePos.X - size.X.Offset - 10
-				yPos = mousePos.Y + 10
-			end
-
-			-- Ensure the tooltip doesn't go off-screen
-			xPos = math.clamp(xPos, 0, viewportSize.X - size.X.Offset)
-			yPos = math.clamp(yPos, 0, viewportSize.Y - size.Y.Offset)
-
-			tooltipFrame.Position = UDim2.fromOffset(xPos, yPos)
+			local mousePos = UserInputService:GetMouseLocation()
+			tooltipFrame.Position = guiUtil.clampTooltipPosition(mousePos.X, mousePos.Y, size.X.Offset, size.Y.Offset, right, 10)
 		end
 
 		updatePosition()
 
 		-- Update position when the mouse moves
 		local connection
-		connection = game:GetService("UserInputService").InputChanged:Connect(function(input)
+		connection = UserInputService.InputChanged:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseMovement then
 				updatePosition()
 			end

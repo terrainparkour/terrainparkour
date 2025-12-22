@@ -38,6 +38,7 @@ local function createSettingRowSpec(setting: tt.userSettingValue, n: number): wt
 		name = string.format("%04d-%s", n, setting.name),
 		order = n,
 		height = UDim.new(0, generalRowHeight),
+		searchText = setting.name,
 		tileSpecs = {
 			{
 				name = "SettingName",
@@ -76,14 +77,15 @@ function module.CalculateSettingsEditorSize(domain: string): UDim2
 
 	local generalRowHeight = 36
 	local titleHeight = generalRowHeight
+	local searchHeight = 30 -- windows.CreatePopup injects a search row when scrollingFrameSpec.searchConfig is set
 	local headerHeight = generalRowHeight
 	local closeButtonHeight = 30
 	local maxRowsToShow = 12
 	local actualRowsToShow = math.min(settingsCount, maxRowsToShow)
 	local contentHeight = actualRowsToShow * generalRowHeight
 
-	local totalHeight = titleHeight + headerHeight + contentHeight + closeButtonHeight
-	local maxHeight = titleHeight + headerHeight + (maxRowsToShow * generalRowHeight) + closeButtonHeight
+	local totalHeight = titleHeight + searchHeight + headerHeight + contentHeight + closeButtonHeight
+	local maxHeight = titleHeight + searchHeight + headerHeight + (maxRowsToShow * generalRowHeight) + closeButtonHeight
 
 	return UDim2.new(0.5, 0, 0, math.min(totalHeight, maxHeight))
 end
@@ -167,6 +169,10 @@ function module.CreateGenericSettingsEditor(domain: string): wt.guiSpec
 		stickyRows = {},
 		rowHeight = generalRowHeight,
 		howManyRowsToShow = actualRowsToShow,
+		searchConfig = {
+			placeholderText = "Search settings...",
+			countNoun = "settings",
+		},
 	}
 
 	-- Define row specs

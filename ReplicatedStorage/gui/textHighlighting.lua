@@ -5,20 +5,18 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local config = require(game.ReplicatedStorage.config)
-local enums = require(game.ReplicatedStorage.util.enums)
 local aet = require(game.ReplicatedStorage.avatarEventTypes)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local settings = require(game.ReplicatedStorage.settings)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer
 
-local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
+local character: Model? = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
 
@@ -57,7 +55,7 @@ module.KillAllExistingHighlights = function()
 	currentHighlights = {}
 end
 
-local function innerDoHighlight(sign: Part)
+local function innerDoHighlight(sign: BasePart)
 	if not sign then
 		if config.IsTestGame() then
 			_annotate("trying to highlight a nil sign?")
@@ -136,16 +134,17 @@ local function innerDoHighlight(sign: Part)
 end
 
 module.PointHumanoidAtSignId = function(signId: number)
-	local sign: Part? = tpUtil.signId2Sign(signId)
+	local sign: BasePart? = tpUtil.signId2Sign(signId)
 	if not sign then
 		return
 	end
 	_annotate("pointing player at sign" .. sign.Name)
 	------------ point the player at the target -------------------
 	_annotate(string.format("pointing player at sign: %s", sign.Name))
-	local humanoidRootPart: Part? = nil
-	if localPlayer and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
-		humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	local humanoidRootPart: BasePart? = nil
+	local currentCharacter = localPlayer.Character
+	if currentCharacter and currentCharacter:FindFirstChild("HumanoidRootPart") then
+		humanoidRootPart = currentCharacter:FindFirstChild("HumanoidRootPart")
 		if humanoidRootPart then
 			local direction = (sign.Position - humanoidRootPart.Position).Unit
 			humanoidRootPart.CFrame = CFrame.new(humanoidRootPart.Position, humanoidRootPart.Position + direction)
@@ -159,9 +158,11 @@ module.RotateCameraToFaceSignId = function(signId: number?)
 		return
 	end
 	------ point the camera at the location. ------------
-	character = localPlayer.Character
-	local humanoidRootPart: Part? = nil
-	humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	local currentCharacter = localPlayer.Character
+	local humanoidRootPart: BasePart? = nil
+	if currentCharacter then
+		humanoidRootPart = currentCharacter:FindFirstChild("HumanoidRootPart")
+	end
 	local camera = workspace.CurrentCamera
 
 	if camera then
@@ -189,7 +190,7 @@ module.DoHighlightSingleSignId = function(signId: number, context: string)
 	if not doHighlightAtAll then
 		return
 	end
-	local sign: Part? = tpUtil.signId2Sign(signId)
+	local sign: BasePart? = tpUtil.signId2Sign(signId)
 
 	if not sign then
 		if not config.IsTestGame() then
@@ -208,7 +209,8 @@ end
 module.DoHighlightMultiple = function(signIds: { number })
 	_annotate(string.format("Highlighting multiple signs: %s", table.concat(signIds, ", ")))
 	for _, signId in pairs(signIds) do
-		local sign: Part? = tpUtil.signId2Sign(signId)
+		local signInstance: BasePart? = tpUtil.signId2Sign(signId)
+		local sign = signInstance
 		if sign == nil then
 			continue
 		end
@@ -247,7 +249,6 @@ end
 local avatarEventConnection = nil
 module.Init = function()
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-	humanoid = character:WaitForChild("Humanoid")
 	if avatarEventConnection then
 		avatarEventConnection:Disconnect()
 		avatarEventConnection = nil

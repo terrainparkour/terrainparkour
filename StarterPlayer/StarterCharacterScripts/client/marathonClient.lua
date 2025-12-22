@@ -1,52 +1,104 @@
 --!strict
+-- marathonClient.lua @ StarterCharacterScripts.client.marathonClient
+-- Manages client-side marathon tracking, UI, and warp coordination.
 
---2022.02.13 split it from main leaderboard code.
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local module = {}
+local Players = game:GetService("Players")
+local PlayersService = game:GetService("Players")
 
-local tt = require(game.ReplicatedStorage.types.gametypes)
 local aet = require(game.ReplicatedStorage.avatarEventTypes)
-local mt = require(game.StarterPlayer.StarterPlayerScripts.marathon.marathonTypes)
-local mds = require(game.ReplicatedStorage.marathon.marathonDescriptors)
-
-local colors = require(game.ReplicatedStorage.util.colors)
 local avatarEventFiring = require(game.StarterPlayer.StarterPlayerScripts.avatarEventFiring)
-local fireEvent = avatarEventFiring.FireEvent
-local marathonStatic = require(game.ReplicatedStorage.marathon.marathonStatic)
+local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
-local textUtil = require(game.ReplicatedStorage.util.textUtil)
-local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
--- local lbMarathonRowY = 18
+local marathonStatic = require(game.ReplicatedStorage.marathon.marathonStatic)
+local mds = require(game.ReplicatedStorage.marathon.marathonDescriptors)
+local mt = require(game.StarterPlayer.StarterPlayerScripts.marathon.marathonTypes)
+local _fonts = require(game.StarterPlayer.StarterPlayerScripts.guis.fonts)
 local remotes = require(game.ReplicatedStorage.util.remotes)
-local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 local settings = require(game.ReplicatedStorage.settings)
 local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+local textUtil = require(game.ReplicatedStorage.util.textUtil)
+local toolTip = require(game.ReplicatedStorage.gui.toolTip)
+local tt = require(game.ReplicatedStorage.types.gametypes)
+local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
+
+local fireEvent = avatarEventFiring.FireEvent
+local localPlayer: Player = Players.LocalPlayer
 
 local marathonCompleteEvent = remotes.getRemoteEvent("MarathonCompleteEvent")
 local ephemeralMarathonCompleteEvent = remotes.getRemoteEvent("EphemeralMarathonCompleteEvent")
-local PlayersService = game:GetService("Players")
-local Players = game:GetService("Players")
-local localPlayer: Player = Players.LocalPlayer
-
------------------ EVENTS ----------------
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
 
------------------- GLOBAL STATE VARIABLES -----------------------
+type Module = {
+	Init: () -> (),
+	Reset: (string?) -> (),
+	InitMarathonVisually: (mt.marathonDescriptor) -> (),
+	receiveHit: (string, number) -> (),
+	CloseAllMarathons: () -> (),
+}
+
+local module: Module = {} :: Module
+
+-- Module state
 local joinableMarathonKinds: { mt.marathonDescriptor } = {}
-
--- warp monitoring
 local isMarathonBlockedByWarp = false
+local marathonClientReceiveAvatarEventDebouncer = false
+local avatarEventConnection: RBXScriptConnection? = nil
 
-local getMarathonKindFrameName = function(desc: mt.marathonDescriptor): string
+local MARATHON_ROW_HEIGHT_PIXELS = 18
+
+local function isMarathonRowFrame(frame: Frame): boolean
+	return string.sub(frame.Name, 1, #"MarathonFrame_") == "MarathonFrame_"
+end
+
+local function getVisibleMarathonRowFrames(marathonContentFrame: Frame): { Frame }
+	local frames: { Frame } = {}
+	for _, child in ipairs(marathonContentFrame:GetChildren()) do
+		if child:IsA("Frame") then
+			local frame = child :: Frame
+			if isMarathonRowFrame(frame) and frame.Visible then
+				table.insert(frames, frame)
+			end
+		end
+	end
+	return frames
+end
+
+-- State logging
+local function describeMarathonState(): string
+	return string.format(
+		"marathon state { isMarathonBlockedByWarp=%s marathonCount=%d debouncer=%s }",
+		tostring(isMarathonBlockedByWarp),
+		#joinableMarathonKinds,
+		tostring(marathonClientReceiveAvatarEventDebouncer)
+	)
+end
+
+local function logMarathonState(context: string)
+	_annotate(string.format("%s %s", context, describeMarathonState()))
+end
+
+local function logRedundantStateRequest(fieldName: string, attemptedValue: any, context: string)
+	_annotate(string.format("redundant state request: %s already %s (%s)", fieldName, tostring(attemptedValue), context), nil, false)
+end
+
+local function setIsMarathonBlockedByWarp(nextValue: boolean, context: string)
+	if isMarathonBlockedByWarp == nextValue then
+		logRedundantStateRequest("isMarathonBlockedByWarp", nextValue, context)
+		return
+	end
+	isMarathonBlockedByWarp = nextValue
+	logMarathonState(string.format("isMarathonBlockedByWarp -> %s (%s)", tostring(nextValue), context))
+end
+
+-- Utility functions
+local function getMarathonKindFrameName(desc: mt.marathonDescriptor): string
 	local targetName = "MarathonFrame_" .. desc.highLevelType .. "_" .. desc.sequenceNumber
 	return targetName
 end
 
------------------- UTIL ,  SIZING -----------------
-
---just re-get the outer lbframe by name.
 local function getMarathonContentFrame(): Frame?
 	local plInstance: Instance = PlayersService.LocalPlayer:WaitForChild("PlayerGui")
 	if not plInstance:IsA("PlayerGui") then
@@ -71,28 +123,23 @@ local function setMarathonSize()
 		return
 	end
 	local marathonOuterFrame: Frame = marathonOuterFrameInstance :: Frame
-	marathonOuterFrame.Size = UDim2.new(
-		marathonOuterFrame.Size.Width.Scale,
-		marathonOuterFrame.Size.Width.Offset,
-		0,
-		18 * #joinableMarathonKinds
-	)
 
-	-- Use GetChildren() instead of manually iterating through children
-	local anyMarathons = false
-	local theMarathons = {}
+	local visibleMarathonFrames = getVisibleMarathonRowFrames(marathonContentFrame)
+	local anyMarathons = #visibleMarathonFrames > 0
+
+	-- Fixed-height rows so filtering doesn't distort proportions.
 	for _, child in ipairs(marathonContentFrame:GetChildren()) do
 		if child:IsA("Frame") then
-			table.insert(theMarathons, child)
+			local frame = child :: Frame
+			if isMarathonRowFrame(frame) then
+				frame.Size = UDim2.new(1, 0, 0, MARATHON_ROW_HEIGHT_PIXELS)
+			end
 		end
 	end
 
-	for _, singleMarathonFrame in pairs(theMarathons) do
-		if singleMarathonFrame:IsA("Frame") then
-			singleMarathonFrame.Size = UDim2.new(1, 0, 1 / #theMarathons, 0)
-			anyMarathons = true
-		end
-	end
+	local totalHeightPixels = MARATHON_ROW_HEIGHT_PIXELS * #visibleMarathonFrames
+
+	marathonOuterFrame.Size = UDim2.new(marathonOuterFrame.Size.Width.Scale, marathonOuterFrame.Size.Width.Offset, 0, totalHeightPixels)
 
 	local parInstance = marathonContentFrame.Parent
 	if parInstance and parInstance:IsA("Frame") then
@@ -104,15 +151,13 @@ local function setMarathonSize()
 	end
 end
 
-----------------------FUNCTIONS -----------------------
-
+-- Marathon timer functions
 local function startMarathonRunTimer(desc: mt.marathonDescriptor, baseTime: number)
 	desc.startTime = baseTime
 	if desc.runningTimeTileUpdater then
 		return
 	end
 
-	--loop spawn to measure timing for a marathon
 	task.spawn(function()
 		desc.runningTimeTileUpdater = true
 		while true do
@@ -121,7 +166,7 @@ local function startMarathonRunTimer(desc: mt.marathonDescriptor, baseTime: numb
 				desc.runningTimeTileUpdater = false
 				break
 			end
-			wait(1 / 3.1)
+			task.wait(1 / 3.1)
 			local gap = tick() - baseTime
 			local timeTileValue: TextLabel? = desc.timeTile
 			if timeTileValue then
@@ -138,15 +183,15 @@ local function stopTimerForKind(desc: mt.marathonDescriptor): boolean
 		return true
 	end
 	_annotate("stopTimerForKind.start." .. desc.kind)
-	desc.killTimerSemaphore = true --wait til the timer catches this and dies.
+	desc.killTimerSemaphore = true
 	local ii = 0
 	while true do
 		ii += 1
-		wait(1 / 25.1)
+		task.wait(1 / 25.1)
 		if not desc.runningTimeTileUpdater then
 			return true
 		end
-		if ii > 20 then --TODO this is a hack.
+		if ii > 20 then
 			desc.runningTimeTileUpdater = false
 			return true
 		end
@@ -165,8 +210,9 @@ local function resetMarathonProgress(desc: mt.marathonDescriptor)
 	_annotate("resetMarathon.end." .. desc.kind)
 end
 
-local function getMarathonHH()
-	local hh = Instance.new("UIListLayout")
+-- UI tile creation functions
+local function getMarathonHH(): UIListLayout
+	local hh: UIListLayout = Instance.new("UIListLayout")
 	hh.FillDirection = Enum.FillDirection.Horizontal
 	hh.Name = "MarathonInnerTiles.hh"
 	hh.HorizontalFlex = Enum.UIFlexAlignment.Fill
@@ -178,34 +224,27 @@ local function getNameTileWidth(name: string): number
 end
 
 local function getNameTile(name: string): Frame
-	local fakeParent = Instance.new("Frame")
-
 	local namePixX = getNameTileWidth(name)
-	local nameTileInstance = guiUtil.getTl(
-		"00-marathonName",
-		UDim2.new(0, namePixX, 1, 0),
-		1,
-		fakeParent,
-		colors.defaultGrey,
-		1,
-		0,
-		Enum.AutomaticSize.None
-	)
+
+	local wrapper = Instance.new("Frame")
+	wrapper.Name = "00-marathonNameWrapper"
+	wrapper.Size = UDim2.new(0, namePixX, 1, 0)
+	wrapper.BackgroundTransparency = 1
+	wrapper.BorderSizePixel = 0
+
+	local nameTileInstance =
+		guiUtil.getTl("00-marathonName", UDim2.new(1, 0, 1, 0), 1, wrapper, colors.defaultGrey, 1, 0, Enum.AutomaticSize.None)
 	if not nameTileInstance or not nameTileInstance:IsA("TextLabel") then
 		error("getNameTile: getTl did not return TextLabel")
 	end
+
 	local nameTile: TextLabel = nameTileInstance
 	nameTile.Text = name
-	local parentFrameInstance: Instance? = nameTile.Parent
-	if not parentFrameInstance or not parentFrameInstance:IsA("Frame") then
-		error("getNameTile: parent is not a Frame")
-	end
-	return parentFrameInstance :: Frame
+	return wrapper
 end
 
-local function getTimeTile(kind: string)
-	--moved this to inside here.
-	local timeTile = Instance.new("TextLabel")
+local function getTimeTile(kind: string): TextLabel
+	local timeTile: TextLabel = Instance.new("TextLabel")
 	timeTile.Name = "03-TimeTile" .. kind
 	timeTile.Text = ""
 	timeTile.AutomaticSize = Enum.AutomaticSize.None
@@ -216,8 +255,8 @@ local function getTimeTile(kind: string)
 	return timeTile
 end
 
-local function getResetTile(kind: string)
-	local resetTile = Instance.new("TextButton")
+local function getResetTile(kind: string): TextButton
+	local resetTile: TextButton = Instance.new("TextButton")
 	resetTile.Name = "99-resetTile" .. kind
 	resetTile.Text = "R"
 	resetTile.TextScaled = true
@@ -226,8 +265,6 @@ local function getResetTile(kind: string)
 	return resetTile
 end
 
---get or create frame; swap out the tiles with new ones.
---does it do deduplication?
 module.InitMarathonVisually = function(desc: mt.marathonDescriptor)
 	_annotate("initMarathonVisually.start." .. desc.highLevelType .. "_" .. desc.sequenceNumber)
 	local marathonContentFrame = getMarathonContentFrame()
@@ -242,7 +279,6 @@ module.InitMarathonVisually = function(desc: mt.marathonDescriptor)
 		thisMarathonFrame = foundFrameInstance :: Frame
 	else
 		_annotate("init visual marathon: " .. desc.humanName)
-		--this happens the first time you start a marathon from client-side.
 		local newFrame = Instance.new("Frame")
 		newFrame.BorderMode = Enum.BorderMode.Inset
 		newFrame.BorderSizePixel = 0
@@ -250,16 +286,15 @@ module.InitMarathonVisually = function(desc: mt.marathonDescriptor)
 		newFrame.Parent = marathonContentFrame
 		thisMarathonFrame = newFrame
 	end
+
 	for _, oldTile in pairs(thisMarathonFrame:GetChildren()) do
 		oldTile:Destroy()
 	end
 
 	local nameTile = getNameTile(desc.humanName)
 	local hintTextValue: string? = desc.hint
-	if hintTextValue then
+	if hintTextValue and hintTextValue ~= "" then
 		toolTip.setupToolTip(nameTile, hintTextValue, toolTip.enum.toolTipSize.NormalText)
-	else
-		toolTip.setupToolTip(nameTile, "", toolTip.enum.toolTipSize.NormalText)
 	end
 	nameTile.Parent = thisMarathonFrame
 
@@ -285,13 +320,11 @@ module.InitMarathonVisually = function(desc: mt.marathonDescriptor)
 	setMarathonSize()
 end
 
---restore tile to marathon finish time.
 local function updateTimeTileForKindToCompletion(runMilliseconds: number, timeTile: TextLabel)
 	timeTile.Text = string.format("%0.3f", runMilliseconds / 1000.0)
 	timeTile.BackgroundColor3 = colors.blueDone
 end
 
---kill the ongoing update timer.  set  the final time and background blue.
 local function finishMarathonVisually(desc: mt.marathonDescriptor, runMilliseconds: number, marathonRow: Frame)
 	stopTimerForKind(desc)
 	local timeTileValue: TextLabel? = desc.timeTile
@@ -301,17 +334,13 @@ local function finishMarathonVisually(desc: mt.marathonDescriptor, runMillisecon
 	_annotate("finishMarathonVisually.end." .. desc.kind)
 end
 
---handle the juggling of marathonKindFinds keys and stuff.
 local function tellDescAboutFind(desc: mt.marathonDescriptor, signName: string): mt.userFoundSignResult
 	if desc.addDebounce[signName] then
 		return { added = false, marathonDone = false, started = false }
 	end
 	desc.addDebounce[signName] = true
-	--special exclusion case:
-	--if the timer is NOT running but we are done.
-	if not desc.runningTimeTileUpdater then --not being updated atm.
+	if not desc.runningTimeTileUpdater then
 		if desc.count ~= nil and desc.count > 0 then
-			--note that this will spam logs for hitting sign 20 times while first one is being processed
 			return { added = false, marathonDone = false, started = false }
 		end
 	end
@@ -336,8 +365,6 @@ local function reportEphemeralMarathonResults(desc: mt.marathonDescriptor, runMi
 	end
 end
 
---look in the datastores and figure out something to upload to the endpoint.
---can require munging aound
 local function reportMarathonResults(desc: mt.marathonDescriptor, runMilliseconds)
 	local reportingSignIds = desc.SummarizeResults(desc)
 	local joined = table.concat(reportingSignIds, ",")
@@ -349,7 +376,6 @@ local function reportMarathonResults(desc: mt.marathonDescriptor, runMillisecond
 	end
 end
 
---receive a touch on a sign for a given marathon.
 local function innerReceiveHit(desc: mt.marathonDescriptor, signName: string, innerTick: number)
 	local resValue: mt.userFoundSignResult? = tellDescAboutFind(desc, signName)
 	if not resValue then
@@ -374,9 +400,7 @@ local function innerReceiveHit(desc: mt.marathonDescriptor, signName: string, in
 	end
 	local marathonRow: Frame = foundRowInstance :: Frame
 
-	--NOTE: Why do this here, separated, not above in evaluateFind?
 	desc.UpdateRow(desc, marathonRow, signName)
-	--previously this also initialized them visually.
 
 	if res.started then
 		startMarathonRunTimer(desc, innerTick)
@@ -411,7 +435,6 @@ module.receiveHit = function(signName: string, innerTick: number)
 	end
 end
 
---BOTH tell the system that the setting value is this, AND init it visually.
 local deb = false
 local initMarathon = function(desc: mt.marathonDescriptor): any
 	while deb do
@@ -427,7 +450,6 @@ local initMarathon = function(desc: mt.marathonDescriptor): any
 		end
 	end
 
-	--only if its not already initialized.
 	if not intable then
 		table.insert(joinableMarathonKinds, desc)
 		resetMarathonProgress(desc)
@@ -437,7 +459,6 @@ local initMarathon = function(desc: mt.marathonDescriptor): any
 	return nil
 end
 
---disable from the UI
 local disableMarathon = function(desc: mt.marathonDescriptor)
 	local target = 0
 	for ii, d in pairs(joinableMarathonKinds) do
@@ -457,7 +478,7 @@ local disableMarathon = function(desc: mt.marathonDescriptor)
 		task.wait(1)
 		_annotate("W")
 	end
-	local foundExiInstance: Instance? = marathonContentFrame:FindFirstChild(frameName)
+	local foundExiInstance: Instance? = marathonContentFrame and marathonContentFrame:FindFirstChild(frameName)
 	if foundExiInstance and foundExiInstance:IsA("Frame") then
 		foundExiInstance:Destroy()
 	end
@@ -471,16 +492,16 @@ module.CloseAllMarathons = function()
 	while #joinableMarathonKinds > 0 do
 		local item = joinableMarathonKinds[1]
 		disableMarathon(item)
-		--hold marathons enabled from settings in here, so that when lb is reenabled, they show up again.
 	end
 end
 
 local eventsWeCareAbout = {
 	aet.avatarEventTypes.GET_READY_FOR_WARP,
 	aet.avatarEventTypes.WARP_DONE_RESTART_MARATHONS,
+	aet.avatarEventTypes.AVATAR_DIED,
+	aet.avatarEventTypes.AVATAR_RESET,
 }
 
-local marathonClientReceiveAvatarEventDebouncer = false
 local function handleAvatarEvent(ev: aet.avatarEvent)
 	if not avatarEventFiring.EventIsATypeWeCareAbout(ev, eventsWeCareAbout) then
 		return
@@ -491,8 +512,9 @@ local function handleAvatarEvent(ev: aet.avatarEvent)
 		task.wait(0.1)
 	end
 	marathonClientReceiveAvatarEventDebouncer = true
+
 	if ev.eventType == aet.avatarEventTypes.GET_READY_FOR_WARP then
-		isMarathonBlockedByWarp = true
+		setIsMarathonBlockedByWarp(true, "GET_READY_FOR_WARP event")
 		for _, desc: mt.marathonDescriptor in ipairs(joinableMarathonKinds) do
 			resetMarathonProgress(desc)
 			module.InitMarathonVisually(desc)
@@ -505,10 +527,19 @@ local function handleAvatarEvent(ev: aet.avatarEvent)
 		for _, desc: mt.marathonDescriptor in ipairs(joinableMarathonKinds) do
 			resetMarathonProgress(desc)
 		end
-		isMarathonBlockedByWarp = false
+		setIsMarathonBlockedByWarp(false, "WARP_DONE_RESTART_MARATHONS event")
 		fireEvent(aet.avatarEventTypes.MARATHON_RESTARTED, { sender = "marathonClient" })
 		marathonClientReceiveAvatarEventDebouncer = false
 		_annotate("WARP_DONE_RESTART_MARATHONS DONE")
+		return
+	elseif ev.eventType == aet.avatarEventTypes.AVATAR_DIED or ev.eventType == aet.avatarEventTypes.AVATAR_RESET then
+		_annotate(string.format("resetting marathons due to %s", aet.avatarEventTypesReverse[ev.eventType]))
+		setIsMarathonBlockedByWarp(false, string.format("%s event", aet.avatarEventTypesReverse[ev.eventType]))
+		for _, desc: mt.marathonDescriptor in ipairs(joinableMarathonKinds) do
+			resetMarathonProgress(desc)
+			module.InitMarathonVisually(desc)
+		end
+		marathonClientReceiveAvatarEventDebouncer = false
 		return
 	else
 		warn("received unhandled event: " .. avatarEventFiring.DescribeEvent(ev))
@@ -516,8 +547,6 @@ local function handleAvatarEvent(ev: aet.avatarEvent)
 	marathonClientReceiveAvatarEventDebouncer = false
 end
 
---ideally filter at the registration layer but whatever.
---also why is this being done here rather than in marathon client?
 local function HandleMarathonSettingsChanged(setting: tt.userSettingValue): any
 	if setting.domain ~= settingEnums.settingDomains.MARATHONS then
 		_annotate("wrong domain.")
@@ -527,7 +556,6 @@ local function HandleMarathonSettingsChanged(setting: tt.userSettingValue): any
 	local sp = string.split(setting.name, " ")
 	local remainder = textUtil.coalesceFrom(sp, 2)
 	local key = remainder:gsub(" ", "")
-	-- local key = string.split(setting.name, " ")[2]
 	local targetMarathon: mt.marathonDescriptor = mds.marathons[key]
 	if targetMarathon == nil then
 		warn("bad setting probably legacy bad naming, shouldn't be many and no effect." .. key)
@@ -541,13 +569,36 @@ local function HandleMarathonSettingsChanged(setting: tt.userSettingValue): any
 	return nil
 end
 
-local avatarEventConnection
+module.Reset = function(context: string?)
+	local resetContext = context or "module.Reset"
+	_annotate(string.format("Reset (%s)", resetContext))
+	setIsMarathonBlockedByWarp(false, string.format("%s (Reset isMarathonBlockedByWarp)", resetContext))
+	marathonClientReceiveAvatarEventDebouncer = false
+	logMarathonState(string.format("Reset (%s) complete", resetContext))
+end
 
--- when user warps, kill outstanding marathons.
 module.Init = function()
-	joinableMarathonKinds = {}
-	--blocker to confirm the user has completed warp
-	isMarathonBlockedByWarp = false
+	_annotate("MARATHON CLIENT init")
+
+	module.Reset("module.Init")
+
+	if avatarEventConnection then
+		_annotate("disconnecting existing avatarEventConnection")
+		avatarEventConnection:Disconnect()
+		avatarEventConnection = nil
+	else
+		_annotate("no existing avatarEventConnection")
+	end
+
+	avatarEventConnection = AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
+
+	settings.RegisterFunctionToListenForDomain(function(item: tt.userSettingValue): any
+		return HandleMarathonSettingsChanged(item)
+	end, settingEnums.settingDomains.MARATHONS)
+
+	for _, userSetting in pairs(settings.GetSettingByDomain(settingEnums.settingDomains.MARATHONS)) do
+		HandleMarathonSettingsChanged(userSetting)
+	end
 
 	local pguiInstance: Instance = localPlayer:WaitForChild("PlayerGui")
 	if not pguiInstance:IsA("PlayerGui") then
@@ -563,11 +614,13 @@ module.Init = function()
 	marathonScreenGui.Parent = pgui
 	marathonScreenGui.IgnoreGuiInset = true
 
-	local marathonFrames = windowFunctions.SetupFrame("marathons", true, true, false, true, UDim2.new(0, 200, 0, 200))
+	-- Marathon frame: draggable but NOT resizable - rows use fixed pixel heights that don't scale
+	-- Content auto-sizes based on visible marathons via setMarathonSize()
+	local marathonFrames = windowFunctions.SetupFrame("marathons", true, false, false, false, UDim2.new(0, 200, 0, 200))
 	local marathonOuterFrame = marathonFrames.outerFrame
 	local marathonContentFrame = marathonFrames.contentFrame
 	marathonOuterFrame.Parent = marathonScreenGui
-	marathonOuterFrame.Size = UDim2.new(0.4, 0, 0, 0) -- Set height to 0 initially
+	marathonOuterFrame.Size = UDim2.new(0.4, 0, 0, 0)
 	marathonOuterFrame.Position = UDim2.new(0.6, 0, 0.35, 0)
 	local hh = Instance.new("UIListLayout")
 	hh.Name = "marathons-hh"
@@ -575,18 +628,11 @@ module.Init = function()
 	hh.FillDirection = Enum.FillDirection.Vertical
 	hh.SortOrder = Enum.SortOrder.Name
 	setMarathonSize()
-	if avatarEventConnection then
-		avatarEventConnection:Disconnect()
-	end
-	avatarEventConnection = AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 
-	for _, userSetting in pairs(settings.GetSettingByDomain(settingEnums.settingDomains.MARATHONS)) do
-		HandleMarathonSettingsChanged(userSetting)
+	for _, desc in ipairs(joinableMarathonKinds) do
+		module.InitMarathonVisually(desc)
 	end
 
-	settings.RegisterFunctionToListenForDomain(function(item: tt.userSettingValue): any
-		return HandleMarathonSettingsChanged(item)
-	end, settingEnums.settingDomains.MARATHONS)
 	_annotate("init done")
 end
 

@@ -4,7 +4,7 @@
 -- Manages UI element positioning to keep them on screen
 
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
@@ -13,14 +13,30 @@ local module = {}
 
 local managedFrames: { Frame } = {}
 local adjustingFrames: { [Frame]: boolean } = {}
+local draggingFrames: { [Frame]: boolean } = {}
+
+-- Called by windowFunctions when drag starts/ends
+function module.setDragging(frame: Frame, isDragging: boolean)
+	draggingFrames[frame] = isDragging or nil
+end
 
 local function adjustFramePosition(frame: Frame)
+	-- Skip frames that are currently being dragged - drag logic handles clamping
+	if draggingFrames[frame] then
+		return
+	end
+
 	-- Prevent re-entrancy - if we're already adjusting this frame, ignore this call
 	if adjustingFrames[frame] then
 		return
 	end
 
-	local viewportSize = workspace.CurrentCamera.ViewportSize
+	local currentCamera = Workspace.CurrentCamera
+	if not currentCamera then
+		return
+	end
+
+	local viewportSize = currentCamera.ViewportSize
 	local frameSize = frame.AbsoluteSize
 	local framePosition = frame.AbsolutePosition
 
@@ -40,11 +56,18 @@ local function adjustFramePosition(frame: Frame)
 		newY = 0
 	end
 
-	if newX ~= framePosition.X or newY ~= framePosition.Y then
+	-- Use tolerance to avoid floating-point jitter triggering unnecessary adjustments
+	local tolerance = 1
+	if math.abs(newX - framePosition.X) > tolerance or math.abs(newY - framePosition.Y) > tolerance then
 		adjustingFrames[frame] = true
-		frame.Position = UDim2.new(0, newX, 0, newY)
+		-- Preserve scale-based positioning: convert clamped pixels back to scale
+		local scaleX = newX / viewportSize.X
+		local scaleY = newY / viewportSize.Y
+		frame.Position = UDim2.fromScale(scaleX, scaleY)
 		adjustingFrames[frame] = false
-		_annotate(string.format("Adjusted position of frame %s to (%d, %d)", frame.Name, newX, newY))
+		-- Note: If this fires constantly during drag, there may be a GUI inset mismatch
+		-- or duplicate clamping between drag logic and this manager
+		_annotate(string.format("[CLAMP] %s: (%.0f,%.0f)->(%.0f,%.0f) size=%.0fx%.0f", frame.Name, framePosition.X, framePosition.Y, newX, newY, frameSize.X, frameSize.Y))
 	end
 end
 
@@ -66,16 +89,46 @@ function module.registerFrame(frame: Frame)
 	frame:GetPropertyChangedSignal("Position"):Connect(function()
 		adjustFramePosition(frame)
 	end)
+
+	frame:GetPropertyChangedSignal("Size"):Connect(function()
+		adjustFramePosition(frame)
+	end)
+
+	-- Note: We intentionally do NOT listen to AbsoluteSize.
+	-- When Size changes, AbsoluteSize also changes, causing double-fire.
+	-- When viewport resizes, the ViewportSize listener already calls checkAllFrames().
+
+	-- Note: Removed automatic adjustment on registration.
+	-- Persistence system handles initial clamping; this avoids
+	-- conflicting with intentionally loaded positions.
 end
 
--- Set up periodic check
-RunService.Heartbeat:Connect(function()
-	checkAllFrames()
-end)
+local viewportConnection: RBXScriptConnection? = nil
+
+local function bindViewportResizeListener()
+	if viewportConnection then
+		viewportConnection:Disconnect()
+		viewportConnection = nil
+	end
+
+	local camera = Workspace.CurrentCamera
+	if not camera then
+		return
+	end
+
+	viewportConnection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(onWindowResize)
+end
 
 -- Listen for window resize events
 UserInputService.WindowFocused:Connect(onWindowResize)
 UserInputService.WindowFocusReleased:Connect(onWindowResize)
+
+bindViewportResizeListener()
+
+Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+	bindViewportResizeListener()
+	onWindowResize()
+end)
 
 _annotate("end")
 return module

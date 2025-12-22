@@ -16,6 +16,10 @@ local module = {}
 
 local function checkContestBadgeGranting(player: Player, contest)
 	--if user has joined all races, award badge
+	if not contest.races then
+		return
+	end
+
 	local bad = true
 	local completed = 0
 
@@ -39,12 +43,7 @@ local function checkContestBadgeGranting(player: Player, contest)
 end
 
 local function checkLeadContestBadgeGranting(player: Player, contest)
-	if
-		contest ~= nil
-		and contest.leaders ~= nil
-		and contest.leaders["1"] ~= nil
-		and contest.leaders["1"].userId == player.UserId
-	then
+	if contest ~= nil and contest.leaders ~= nil and contest.leaders["1"] ~= nil and contest.leaders["1"].userId == player.UserId then
 		grantBadge.GrantBadge(player.UserId, badgeEnums.badges.LeadContest)
 	end
 end
@@ -88,6 +87,15 @@ local function GetContests(player: Player): { ContestResponseTypes.Contest }
 	return contests
 end
 
+local function GetArchivedContests(player: Player): { ContestResponseTypes.ArchivedContest }
+	local request: tt.postRequest = {
+		remoteActionName = "getArchivedContests",
+		data = { userId = player.UserId },
+	}
+	local archivedContests: { ContestResponseTypes.ArchivedContest } = rdb.MakePostRequest(request)
+	return archivedContests
+end
+
 module.Init = function()
 	local func = remotes.getRemoteFunction("GetContestsFunction") :: RemoteFunction
 	func.OnServerInvoke = function(player: Player): any
@@ -97,6 +105,11 @@ module.Init = function()
 	local func2 = remotes.getRemoteFunction("GetSingleContestFunction") :: RemoteFunction
 	func2.OnServerInvoke = function(player: Player, contestId: number): any
 		return GetSingleContest(player, contestId)
+	end
+
+	local func3 = remotes.getRemoteFunction("GetArchivedContestsFunction") :: RemoteFunction
+	func3.OnServerInvoke = function(player: Player): any
+		return GetArchivedContests(player)
 	end
 end
 

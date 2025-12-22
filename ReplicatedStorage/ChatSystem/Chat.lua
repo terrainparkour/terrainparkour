@@ -1,6 +1,6 @@
 --!strict
 
--- Chat.lua :: ReplicatedStorage.ChatSystem.Chat
+-- chat.lua :: ReplicatedStorage.ChatSystem.chat
 -- CLIENT-ONLY: Handles incoming chat messages and command routing.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
@@ -9,9 +9,10 @@ local _annotate = annotater.getAnnotater(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
-local channelManager = require(script.Parent.channelManager)
-local MessageFormatter = require(script.Parent.messageFormatter)
+local channelManager = require(game.ReplicatedStorage.ChatSystem.channelManager)
+local messageFormatter = require(game.ReplicatedStorage.ChatSystem.messageFormatter)
 local colors = require(game.ReplicatedStorage.util.colors)
+local enums = require(game.ReplicatedStorage.util.enums)
 
 local ProcessCommandFunction: RemoteFunction? = nil
 
@@ -155,14 +156,16 @@ function ChatUI:HandleIncomingMessage(message: TextChatMessage): TextChatMessage
 		username = player.Name
 	end
 
-	-- Determine color: meColor for local player, otherGuyPresentColor for others
-	local usernameColor: Color3 = colors.otherGuyPresentColor
+	-- Determine color: meColor for local player, groupMemberColor for group members, inServerColor for others
+	local usernameColor: Color3 = colors.inServerColor
 	if isLocalPlayer then
 		usernameColor = colors.meColor
+	elseif player and player:IsInGroup(enums.objects.ninjaParkourGroupId) then
+		usernameColor = colors.groupMemberColor
 	end
 
 	-- Format username with color using RichText
-	local coloredUsername = MessageFormatter.formatWithColor(username, usernameColor)
+	local coloredUsername = messageFormatter.formatWithColor(username, usernameColor)
 	local prefixText = coloredUsername .. ": "
 
 	-- Create properties with colored prefix
@@ -170,13 +173,20 @@ function ChatUI:HandleIncomingMessage(message: TextChatMessage): TextChatMessage
 	props.PrefixText = prefixText
 	props.Text = messageText
 
+	local colorName = "inServerColor"
+	if isLocalPlayer then
+		colorName = "meColor"
+	elseif player and player:IsInGroup(enums.objects.ninjaParkourGroupId) then
+		colorName = "groupMemberColor"
+	end
+	
 	_annotate(
 		string.format(
 			"Info: Applied username color for user message. channel=%s userId=%d username=%s color=%s",
 			channelName,
 			userId or 0,
 			username,
-			isLocalPlayer and "meColor" or "otherGuyPresentColor"
+			colorName
 		)
 	)
 

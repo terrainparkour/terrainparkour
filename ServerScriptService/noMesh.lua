@@ -17,7 +17,7 @@ local function handle(character: Model)
 				humanoid = humanoidInstance :: Humanoid
 				break
 			end
-			wait(0.1)
+			task.wait(0.1)
 		end
 		if not humanoid then
 			warn("noMesh.handle: Failed to get Humanoid")
@@ -32,7 +32,7 @@ local function handle(character: Model)
 		desc.LeftLeg = 0
 		desc.RightLeg = 0
 		desc.BodyTypeScale = 1.0
-		wait(0.1)
+		task.wait(0.1)
 		humanoid:ApplyDescription(desc)
 		for _, el in ipairs(character:GetChildren()) do
 			if el.Name == "CharacterMesh" then
@@ -69,7 +69,7 @@ module.StandardizeCharacter = function(player: Player)
 			handle(character :: Model)
 			break
 		end
-		wait(0.1)
+		task.wait(0.1)
 	end
 	_annotate(string.format("StandardizeCharacter DONE for %s (%.3fs, mesh work spawned)", player.Name, tick() - start))
 end

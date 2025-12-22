@@ -9,13 +9,13 @@ local _annotate = annotater.getAnnotater(script)
 local PlayersService = game:GetService("Players")
 
 local commandUtils = require(game.ReplicatedStorage.ChatSystem.commandUtils)
+local chatFormatting = require(game.ReplicatedStorage.ChatSystem.chatFormatting)
 
-local MessageFormatter = require(game.ReplicatedStorage.ChatSystem.messageFormatter)
 local config = require(game.ReplicatedStorage.config)
 local enums = require(game.ReplicatedStorage.util.enums)
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local colors = require(game.ReplicatedStorage.util.colors)
 local playerData2 = require(game.ServerScriptService.playerData2)
+local usernameCache = require(game.ServerScriptService.usernameCache)
 local rdb = require(game.ServerScriptService.rdb)
 
 type DescribeSignFunction = (player: Player, signId: number) -> ()
@@ -23,12 +23,9 @@ type DescribeSignFunction = (player: Player, signId: number) -> ()
 local module: { Execute: DescribeSignFunction } = {} :: { Execute: DescribeSignFunction }
 
 function module.Execute(player: Player, signId: number): ()
-	local userIdsInServer: { [number]: boolean } = {}
-	for _, serverPlayer in ipairs(PlayersService:GetPlayers()) do
-		userIdsInServer[serverPlayer.UserId] = true
-	end
+	local colorContext = chatFormatting.CreateContext(player)
 	if config.IsInStudio() then
-		userIdsInServer[enums.objects.BrouhahahaUserId] = true
+		colorContext.userIdsInServer[enums.objects.BrouhahahaUserId] = true
 	end
 	local request: tt.postRequest = {
 		remoteActionName = "getTotalFindCountBySign",
@@ -77,11 +74,11 @@ function module.Execute(player: Player, signId: number): ()
 			if userId < 0 then
 				username = "TestUser" .. userId
 			else
-				username = playerData2.GetUsernameByUserId(userId)
+				username = usernameCache.GetUsernameByUserId(userId)
 			end
 			countsByUserId[userId] = { to = 0, from = 0, username = username, inServer = false, userId = userId }
 		end
-		if userIdsInServer[userId] then
+		if colorContext.userIdsInServer[userId] then
 			countsByUserId[userId].inServer = true
 		end
 		countsByUserId[userId].from = countsByUserId[userId].from + leader.count
@@ -94,11 +91,11 @@ function module.Execute(player: Player, signId: number): ()
 			if userId < 0 then
 				username = "TestUser" .. userId
 			else
-				username = playerData2.GetUsernameByUserId(userId)
+				username = usernameCache.GetUsernameByUserId(userId)
 			end
 			countsByUserId[userId] = { to = 0, from = 0, username = username, inServer = false, userId = userId }
 		end
-		if userIdsInServer[userId] then
+		if colorContext.userIdsInServer[userId] then
 			countsByUserId[userId].inServer = true
 		end
 		countsByUserId[userId].to = countsByUserId[userId].to + leader.count
@@ -113,12 +110,8 @@ function module.Execute(player: Player, signId: number): ()
 	end)
 
 	for ii, item in ipairs(tbl) do
-		local line = string.format("%d. %s - %d (%d/%d)", ii, item.username, item.to + item.from, item.from, item.to)
-		if item.inServer then
-			line = MessageFormatter.formatWithColor(line, colors.greenGo)
-		else
-			line = MessageFormatter.formatWithColor(line, colors.white)
-		end
+		local coloredUsername = chatFormatting.FormatUsername(item.username, item.userId, colorContext)
+		local line = string.format("%d. %s - %d (%d/%d)", ii, coloredUsername, item.to + item.from, item.from, item.to)
 		commandUtils.SendMessage(line, player)
 	end
 end

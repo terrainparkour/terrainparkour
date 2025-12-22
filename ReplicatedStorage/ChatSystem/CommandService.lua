@@ -1,6 +1,6 @@
 --!strict
 
--- CommandService.lua :: ReplicatedStorage.ChatSystem.CommandService
+-- commandService.lua :: ReplicatedStorage.ChatSystem.commandService
 -- SERVER-ONLY: Routes chat commands to individual command handlers.
 
 local annotater = require(game.ReplicatedStorage.util.annotater)
@@ -9,15 +9,14 @@ local _annotate = annotater.getAnnotater(script)
 local PlayersService = game:GetService("Players")
 
 local commandUtils = require(game.ReplicatedStorage.ChatSystem.commandUtils)
-local _commandTypes = require(game.ReplicatedStorage.ChatSystem.commandTypes)
-local MessageFormatter = require(game.ReplicatedStorage.ChatSystem.messageFormatter)
+local messageFormatter = require(game.ReplicatedStorage.ChatSystem.messageFormatter)
 
 local config = require(game.ReplicatedStorage.config)
 local enums = require(game.ReplicatedStorage.util.enums)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local playerData2 = require(game.ServerScriptService.playerData2)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 
 local adminWarpCommand = require(game.ReplicatedStorage.commands.adminWarpCommand)
 local anyBanCommand = require(game.ReplicatedStorage.commands.anyBanCommand)
@@ -42,23 +41,25 @@ local randomRaceCmd = require(game.ReplicatedStorage.commands.randomRaceCommand)
 CommandService.Commands = {
 	-- Help and Information
 	help = helpCmd,
+	["?"] = helpCmd,
 	meta = require(game.ReplicatedStorage.commands.metaCommand),
 	hint = require(game.ReplicatedStorage.commands.hintCommand),
-	
+
 	-- Player Information
 	player = playerCmd,
 	p = playerCmd,
 	badges = require(game.ReplicatedStorage.commands.badgesCommand),
+	badgecompare = require(game.ReplicatedStorage.commands.badgeCompareCommand),
 	found = require(game.ReplicatedStorage.commands.foundCommand),
 	awards = require(game.ReplicatedStorage.commands.awardsCommand),
-	
+
 	-- Sign Information
 	sign = require(game.ReplicatedStorage.commands.signCommand),
 	closest = require(game.ReplicatedStorage.commands.closestCommand),
 	show = require(game.ReplicatedStorage.commands.showCommand),
 	common = require(game.ReplicatedStorage.commands.commonCommand),
 	missing = require(game.ReplicatedStorage.commands.missingCommand),
-	
+
 	-- Race/Competition Data
 	wrs = require(game.ReplicatedStorage.commands.wrsCommand),
 	cwrs = require(game.ReplicatedStorage.commands.cwrsCommand),
@@ -66,7 +67,7 @@ CommandService.Commands = {
 	finders = require(game.ReplicatedStorage.commands.findersCommand),
 	popular = require(game.ReplicatedStorage.commands.popularCommand),
 	challenge = require(game.ReplicatedStorage.commands.challengeCommand),
-	
+
 	-- Personal Management
 	favorite = favoriteCmd,
 	fav = favoriteCmd,
@@ -75,34 +76,45 @@ CommandService.Commands = {
 	pin = require(game.ReplicatedStorage.commands.pinCommand),
 	unpin = require(game.ReplicatedStorage.commands.unpinCommand),
 	sf = require(game.ReplicatedStorage.commands.sfCommand),
-	
+
 	-- Race Details
 	res = require(game.ReplicatedStorage.commands.resCommand),
 	history = historyCmd,
 	h = historyCmd,
-	
+
 	-- Random/Discovery
 	random = require(game.ReplicatedStorage.commands.randomCommand),
 	randomRace = randomRaceCmd,
 	rr = randomRaceCmd,
-	
+	["9run"] = require(game.ReplicatedStorage.commands.nineRunCommand),
+
 	-- Marathon System
 	marathon = require(game.ReplicatedStorage.commands.marathonCommand),
 	marathons = require(game.ReplicatedStorage.commands.marathonsCommand),
-	
+
 	-- Utility/System
 	stats = require(game.ReplicatedStorage.commands.statsCommand),
 	time = require(game.ReplicatedStorage.commands.timeCommand),
 	uptime = require(game.ReplicatedStorage.commands.uptimeCommand),
 	version = require(game.ReplicatedStorage.commands.versionCommand),
+	changelog = require(game.ReplicatedStorage.commands.changelogCommand),
 	tix = require(game.ReplicatedStorage.commands.tixCommand),
 	beckon = require(game.ReplicatedStorage.commands.beckonCommand),
 	chomik = require(game.ReplicatedStorage.commands.chomikCommand),
-	
+	bugreport = require(game.ReplicatedStorage.commands.bugreportCommand),
+	idea = require(game.ReplicatedStorage.commands.ideaCommand),
+	confess = require(game.ReplicatedStorage.commands.confessCommand),
+
 	-- Hidden/Special
 	secret = require(game.ReplicatedStorage.commands.secretCommand),
 	showInteresting = require(game.ReplicatedStorage.commands.showInterestingCommand),
-	
+
+	-- Run Management
+	requestRemoval = require(game.ReplicatedStorage.commands.requestRemovalCommand),
+	removalStatus = require(game.ReplicatedStorage.commands.removalStatusCommand),
+	cancelRemoval = require(game.ReplicatedStorage.commands.cancelRemovalCommand),
+	yes = require(game.ReplicatedStorage.commands.yesCommand),
+
 	-- Admin Only (Visibility="private" in module)
 	ban = anyBanCommand,
 	unban = anyBanCommand,
@@ -112,7 +124,7 @@ CommandService.Commands = {
 }
 
 local function Usage(speaker: Player): ()
-	commandUtils.SendMessage(MessageFormatter.usageCommandDesc, speaker)
+	commandUtils.SendMessage(messageFormatter.usageCommandDesc, speaker)
 end
 
 function CommandService:ProcessCommand(commandText: string, player: Player, sourceChannelName: string?): any
@@ -139,7 +151,7 @@ function CommandService:ProcessCommand(commandText: string, player: Player, sour
 	local commandModule = self.Commands[verb]
 	if commandModule then
 		_annotate(string.format("Info: Found exact command match: '%s'", verb))
-		
+
 		-- Check if command requires admin permission
 		if commandModule.Visibility == "private" then
 			if player.UserId ~= enums.objects.TerrainParkourUserId and player.UserId ~= -1 and player.UserId ~= -2 then
@@ -147,12 +159,20 @@ function CommandService:ProcessCommand(commandText: string, player: Player, sour
 				return true
 			end
 		end
-		
+
 		local argParts = {}
 		for i = 2, #parts do
 			table.insert(argParts, parts[i])
 		end
-		local result = commandModule.Execute(player, argParts)
+		commandUtils.SetActiveCommandChannel(player, sourceChannelName)
+		local success, resultOrErr = pcall(function()
+			return commandModule.Execute(player, argParts)
+		end)
+		commandUtils.ClearActiveCommandChannel(player)
+		if not success then
+			error(resultOrErr)
+		end
+		local result = resultOrErr
 		if result == nil then
 			result = true
 		end
@@ -194,15 +214,12 @@ function CommandService:ProcessCommand(commandText: string, player: Player, sour
 		end
 	end
 
-	local res: tt.RaceParseResult = tpUtil.AttemptToParseRaceFromInput(message)
+	local res: tt.RaceParseResult = commandUtils.ParseRaceFromInput(message, player.UserId)
 	if res.error ~= "" then
 		commandUtils.SendMessage(res.error, player)
 		return true
 	end
-	if
-		not playerData2.HasUserFoundSign(player.UserId, res.signId1)
-		or not playerData2.HasUserFoundSign(player.UserId, res.signId2)
-	then
+	if not playerData2.HasUserFoundSign(player.UserId, res.signId1) or not playerData2.HasUserFoundSign(player.UserId, res.signId2) then
 		commandUtils.SendMessage("You haven't found one of those signs.", player)
 		commandUtils.GrantCmdlineBadge(player.UserId)
 		return true
@@ -215,10 +232,9 @@ function CommandService:ProcessCommand(commandText: string, player: Player, sour
 	if config.IsInStudio() then
 		table.insert(userIdsInServer, enums.objects.BrouhahahaUserId)
 	end
-	local entries =
-		playerData2.describeRaceHistoryMultilineText(res.signId1, res.signId2, player.UserId, userIdsInServer)
+	local entries = playerData2.describeRaceHistoryMultilineText(res.signId1, res.signId2, player.UserId, userIdsInServer)
 	for _, el in pairs(entries) do
-		commandUtils.SendMessage(el.message, player)
+		commandUtils.SendMessage(el.message, player, el.options)
 	end
 	commandUtils.GrantCmdlineBadge(player.UserId)
 	return true

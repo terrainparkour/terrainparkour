@@ -1,21 +1,49 @@
 --!strict
 
+local changelog = require(game.ReplicatedStorage.util.changelog)
+
 local module = {}
 
-module.gameVersion = "0.4.3"
+module.gameVersion = "0.4.415a"
+-- for changelogs: this system means this is really version 409 of total
+-- the preceding 0 means we're still beta
+-- the 4 means this ist he 4th major rewrite/redo of this game
+-- 409 is the actual planned reqlease squence
+-- d is an internal marker for days worked on it before releasing, or just to distinguish files
+
+-- Updated by touch-sync.ps1 or manually; used to show "synced X ago" in Studio
+module.syncTimestamp = 1765830204
 
 --do not change these! only deletions without fillin are allowed.
 local name2signId: { [string]: number } = {
+	["Giant Leap"] = 612,
+	["Wei"] = 611,
+	["xd"] = 610,
+	["Crystal"] = 609,
+	["Stateless"] = 608,
+	["⊘"] = 607,
+	["⊖"] = 606,
+	["⊕"] = 605,
+	["⊗"] = 604,
+	["Propinquity"] = 603, --⋱
+	["⚠️"] = 602,
+	["Gewgaw"] = 601,
+	["2212221"] = 600,
+	["Delve"] = 599,
+	["Apotheosis"] = 598, --
+	["Z̸̢̡͎̱̯̝͇̎͒̒̀̌͜a̵̛͕̮̭͖̿͑̎͘l̶̨̛̦̱͚̘̲̊̋̓̾̈́g̷͔̣̩̞̪͋̃̊͗"] = 597,
+	["Ever Given"] = 596,
+	["Muck"] = 595, --used
+	["⸎"] = 594, --used
 	["Pickleball"] = 593,
-	["Schlafli"] = 592,
+	["Schläfli"] = 592,
 	["Elon"] = 591,
 	["Society"] = 590,
 	["Lavaslug"] = 589,
 	["Alone"] = 588,
 	["Auryn"] = 587,
-	-- ["Hypernormalization"] = 586, --
+	["Hypernormalization"] = 586, --
 	["Nimbus"] = 585,
-
 	-- ["Hyperparasite"] = 584, --
 	["Hypernudge"] = 583, --
 	["Tesla"] = 582,
@@ -75,7 +103,7 @@ local name2signId: { [string]: number } = {
 	["Tenochtitlan"] = 34,
 	["Steps of Infinity"] = 35,
 	["Beehive"] = 36,
-	["Pharoah"] = 37,
+	["Pharaoh"] = 37,
 	["Helix"] = 38,
 	["Mondrian"] = 39,
 	["Maze"] = 40,
@@ -220,7 +248,7 @@ local name2signId: { [string]: number } = {
 	["Ice Cave"] = 179,
 	["Wirtual"] = 180,
 	["STS"] = 181,
-	["Erdos"] = 182,
+	["Erdős"] = 182,
 	["Junkevin"] = 183,
 	["Erg"] = 184,
 	["Shiny"] = 185,
@@ -233,7 +261,7 @@ local name2signId: { [string]: number } = {
 	["Metamodern"] = 192,
 	["Foundation"] = 193,
 	["Balaji"] = 194,
-	["Phlogistron"] = 195,
+	["Phlogiston"] = 195,
 	["Brand"] = 196,
 	["Corbusier"] = 197,
 	["Union"] = 198,
@@ -531,7 +559,7 @@ local name2signId: { [string]: number } = {
 	["Wallfacer"] = 486,
 	["Glasnost"] = 487,
 	["HPMOR"] = 488,
-	["Teotwaki"] = 489,
+	["Teotwawki"] = 489,
 	["Jackie"] = 490,
 	["Hide"] = 491,
 	["Skill Susie"] = 492,
@@ -596,7 +624,7 @@ local name2signId: { [string]: number } = {
 	["◄"] = 551,
 	["🗯"] = 552,
 	["Gemelo"] = 553,
-	-- ["Cow"] = 554,
+	["Cow"] = 554, -- Physically disabled sign - invisible, untouchable. Kept for historical run data integrity.
 	["Claude"] = 555,
 	["Molière"] = 556,
 	["Éliante"] = 557,
@@ -610,6 +638,14 @@ local name2signId: { [string]: number } = {
 --aliases of symbolic signs to their english alias.
 --for example: [🔥:"flame"]
 module.signName2Alias = {}
+module.signName2Alias["Erdős"] = "Erdos"
+module.signName2Alias["Schläfli"] = "Schlafli"
+module.signName2Alias["⊘"] = "circleslash"
+module.signName2Alias["⊖"] = "circleminus"
+module.signName2Alias["⊕"] = "circleplus"
+module.signName2Alias["⊗"] = "circlex"
+module.signName2Alias["⚠️"] = "warning"
+module.signName2Alias["⸎"] = "coronis"
 module.signName2Alias["💀"] = "skull"
 module.signName2Alias["Molière"] = "Moliere"
 module.signName2Alias["Éliante"] = "Eliante"
@@ -638,12 +674,7 @@ module.signName2Alias["Jökulhlaup"] = "Jokulhlaup"
 module.signName2Alias["►"] = "right"
 module.signName2Alias["◄"] = "left"
 module.signName2Alias["🗯"] = "anger"
-
--- exclusion list.
-module.aliasesWhichAreVeryCloseSoDontNeedToBeShown = {}
-module.aliasesWhichAreVeryCloseSoDontNeedToBeShown["Jökulhlaup"] = true
-module.aliasesWhichAreVeryCloseSoDontNeedToBeShown["Éliante"] = true
-module.aliasesWhichAreVeryCloseSoDontNeedToBeShown["Molière"] = true
+module.signName2Alias["⚠️"] = "warning"
 
 local useLeftFaceSignNames = { ["cOld mOld on a sLate pLate"] = 1, ["Tetromino"] = 2 }
 local usesBackFaceSignNames = { ["Brussel Sprouts"] = 1 }
@@ -654,7 +685,7 @@ module.unanchoredSignNames = unanchoredSignNames
 module.usesBackFaceSignNames = usesBackFaceSignNames
 
 module.signNameToExtraVisualSetupCallback = {}
-local alternateNames = [[Tiramisu Parboil
+local _alternateNames = [[Tiramisu Parboil
 Turin Parchment
 Tar Heel Parker
 Tureen Parfait
@@ -674,8 +705,10 @@ module.name2signId = name2signId
 module.ExcludeSignNamesFromEndingAt = {
 	"007",
 	"65536",
+	"Z̸̢̡͎̱̯̝͇̎͒̒̀̌͜a̵̛͕̮̭͖̿͑̎͘l̶̨̛̦̱͚̘̲̊̋̓̾̈́g̷͔̣̩̞̪͋̃̊͗ó",
 	"POGGOD",
 	"Mauna Loa",
+	"Cow", -- disabled sign
 }
 
 --random race cannot start from these for preservation of sanctity reasons.
@@ -688,6 +721,7 @@ module.ExcludeSignNamesFromStartingAt = {
 	"Nyx",
 	"👻",
 	"💀",
+	"Z̸̢̡͎̱̯̝͇̎͒̒̀̌͜a̵̛͕̮̭͖̿͑̎͘l̶̨̛̦̱͚̘̲̊̋̓̾̈́g̷͔̣̩̞̪͋̃̊͗ó",
 	"🔥",
 	"Ø",
 	"Chirality",
@@ -698,7 +732,30 @@ module.ExcludeSignNamesFromStartingAt = {
 	"Kew",
 	"Neandertal",
 	"Troll Bridge", -- the above should likely never be warpable.
+	"Cow", -- disabled sign
+	"Asana", -- no good warp position (terrain geometry issue)
 }
+
+-- Disabled signs: exist in enum for historical data integrity but are physically invisible/untouchable
+-- These signs cannot be interacted with at all - they're just placeholders in the database
+-- Dictionary keyed by lowercase sign name for easy lookup
+local disabledSignNames = {
+	["cow"] = true,
+} :: { [string]: boolean }
+module.disabledSignNames = disabledSignNames
+
+-- Build disabled sign IDs dictionary for signId-based lookups
+local disabledSignIds = {} :: { [number]: boolean }
+module.disabledSignIds = disabledSignIds
+for signNameLower, _ in pairs(disabledSignNames) do
+	-- Find the proper-cased name from name2signId
+	for signName, signId in pairs(module.name2signId) do
+		if signName:lower() == signNameLower then
+			disabledSignIds[signId] = true
+			break
+		end
+	end
+end
 
 local SignIdIsExcludedFromStart: { [number]: boolean } = {}
 module.SignIdIsExcludedFromStart = SignIdIsExcludedFromStart
@@ -750,8 +807,7 @@ objects.TerrainParkourDevGamePlaceId = 1
 objects.TerrainParkourDevGameUniverseId = 1
 objects.ShedletskyUserId = 261
 
-local topPlayerUserIds: { number } =
-	{ 1796098297, 2546938052, 3682042001, 507095653, 183056632, 1905672054, 299045490, 1444105681 }
+local topPlayerUserIds: { number } = { 1796098297, 2546938052, 3682042001, 507095653, 183056632, 1905672054, 299045490, 1444105681 }
 objects.topPlayerUserIds = topPlayerUserIds
 
 module.objects = objects
@@ -759,148 +815,7 @@ module.objects = objects
 --amount of time to do green 'something changed' ui
 module.greenTime = 24
 
-local releaseNotes: { [number]: string } = {
-	[185] = [[* fix challenge for long sign names
-* move marathon configuration to an easier new button, removed from settings
-* mouseovers for leaderboard headers
-* fixed marathon timing to be more exact
-* fixed settings "hide leaderboard" function
-]],
-	[186] = [[* make surveys have 3 possible answers: yes, unset, no.
-* make a new setting to shorten digit display in contest window
-* some improvements to make settings better in the future
-]],
-	[187] = [[* make dynamic running into a setting.
-* setting for digit display of contest UI
-* fixed internal sign representation
-* fix live-application of settings and marathon configurations when you reset character
-]],
-	[188] = [[* redo dynamic running to always position yoru run against the current result, not your prior result
-]],
-	[189] = [[* marathon ui bugfixes
-* keyboard shortcut '1' to warp to the last completed race.
-* worse lava behavior
-]],
-	[191] = [[* server events interactive loop with payouts]],
-	[192] = [[* fix bugs when someone leaves the server who had dynamic running on]],
-	[194] = [[* improve dynamic running]],
-	[195] = [[* Fix dynamic running more.]],
-	[196] = [[* Other small fixes and server event badges.
-* webhooks for server event completion]],
-	[197] = [[* New signs 
-* New areas
-* New slogans
-* New badges
-* Badge for being the first person to win a certain badge
-* Improved UI for badge notifications
-* "beckon" command
-* Special signs with badges
-* Improvement to discord webhooks
-* <tab> now only toggles LB, not LB+Chat
-* Server events can only be started from signs which someone in the server has found
-* Shrunk LB somewhat to handle more people
-* Fixed mouseovers
-* Fixed mouseover and green highlighting
-* Cleaned up a bunch of old code - test warping
-* Warning: disable dynamic running if you have performance problems with it
-]],
-	[198] = [[* Bugfixes for resetting
-* fix dynamic running efficiency
-* fix beckon terminology
-* redo movement setup (?)
-]],
-	[202] = [[* Various bugfixes]],
-	[203] = [[* Sign lore badge]],
-	[205] = [[* Survey server integration]],
-	[206] = [[* Freedom]],
-	[208] = [[* Badge fixes]],
-	[211] = [[* Add other server user info into sign history lookups
-* starting on user sign profiles. try "/sign tripool"]],
-	[216] = [[* First release in a while, new sign, catching up.]],
-	[231] = [[* First release in a very great while. 
-	* Rewrote warping, movement, refactor lots of things, lots of new funky signs. 
-	* Some UI and cmdline fixes. Basically, this is about rebooting game development]],
-	[235] = [[ Redid the way i manage movement, warping etc
-* Fixed special signs including mOld
-* Show command
-* Warping now highlights the related sign a lot of the time.
-* This should be configurable with a setting which is also easy to modify whether we highlight at all (and also kill active highlighting)
-* And rotates you and camera towards it
-* Particles changed
-* Excluded more signs from being involved in server events
-
-Internals
-* Added script load timing
-* Particles can do and see a lot more stuff now. Not optimized
-* Converted most scripts to be characterScripts not playerScripts
-* robloxServerError
-* ...getFoundSignIds
-* Delete a bunch of events in workspaceSetup
-* avatarEventMonitor
-* main.client.lua to clearly control order of client script loading 
-* cool features I can do
-]],
-	[236] = [[ * fix game even when the user dies or gets reset.
-* Fix aligning player to point at warp target
-* Optional highlight when doing /rr, joining a popular or new race, joining a server event, joining a race someone else ran, hitting 1 to rejoin your prior race, 
-* User settings for highlighting in some situations, plus globally
-* Sort user settings now
-* Global 'show' command
-* Keyboard command to kill highlight 'h'
- ]],
-	[237] = [[* draggable leaderboard (!) claude+1 hour
-* keyboard shortcuts.
-* new server slogans
-]],
-	[251] = [[* The leaderboard, server events, and marathon windows are now separate, draggable, resizable, and minimizable.
-* Tracking gamejoin versions
-]],
-	[252] = [[* fix sign profile mouseovers somewhat.]],
-	[257] = [[* leaderboard redos. server fixes. fixed swim bug with flying and i think also with stopping swimming slowdown incorrectly.
-also, some particles. working on fixing them and giving them all meaning, also will bea ble to be turned off
-also fixed small UI bugs with minimize buttons not working totally.
-and I'm working on more stuff soon.]],
-	[258] = [[* fixed a few speedup bugs where you wouldn't accelerate sometimes.
-* reduced particles and made them hopefully more useful. lots of other ideas here including a "random particle sign". But for now really turned them down a lot. I've been thinking that in a way, they are like gears in trackmania. Or could be... see unreleased code.
-* I have some more ideas about this but all that should change here today is fixing things.
-* Some other logical fixes in here too, nothing that should effect runs normally.
-* moved running UI to center and gave it a light background. This UI will likely change and also be more configurable and moveable and controllable, etc in the future for you.]],
-	[261] = [[* actually fix lacking speedups as you run? Also somewhat improve race running UI
-* make speed display continuous rather than only showing up when you are on a run.]],
-	[304] = [["Swift as wind, footsteps like verse",
-"Mountains as paths, clouds as bounds",
-"Each step anew, each leap unique",
-"Endless terrain, boundless chance",
-"Speed and passion, perfect blend",
-"Challenge self, surpass the peak",
-"Write with speed, compose with leaps",
-"In chaos seek, the finest route",
-"Parkour's way, supreme and high",
-"Break limits, transcend mortal realm"
-
-Scavenger hunt speedrunning!
-
-3d terrain routing and speedrunning!
-
-Race and explore a huge world!  Find the best routes and set world records!
-
-"No more invisible walls!"
-"Just One More Race"
-"Everything matters"
-
-Updates
-* Weekly Contests
-* More Signs
-* Neko Sign!
-* Beluga Sign!
-
-Join the group for special chat color! https://www.roblox.com/My/Groups.aspx?gid=3200785
-
-Update: MovementV2
-
-Note: Source code for the Lua part of this game is available online here: github terrainparkour]],
-	[400] = "next generation of game development",
-}
+-- Release notes moved to changelog.lua
 
 local SpecialSignDescriptions = {
 	["Triple"] = "Limited to 3 terrain types:",
@@ -916,6 +831,6 @@ local SpecialSignDescriptions = {
 }
 module.SpecialSignDescriptions = SpecialSignDescriptions
 
-module.releaseNotes = releaseNotes
+module.releaseNotes = changelog.releaseNotes
 
 return module

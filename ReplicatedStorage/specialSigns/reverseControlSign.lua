@@ -10,20 +10,12 @@ local _annotate = annotater.getAnnotater(script)
 local specialSign = {}
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
-local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
-local activeRunSGui = require(game.ReplicatedStorage.gui.activeRunSGui)
-local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
 local Players = game:GetService("Players")
-local localPlayer: Player = Players.LocalPlayer
-local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
-local humanoid = character:WaitForChild("Humanoid") :: Humanoid
-local UserInputService = game:GetService("UserInputService")
+local _localPlayer: Player = Players.LocalPlayer
 
 ----------- GLOBALS -----------
-local ContextActionService = game:GetService("ContextActionService")
 
-local function reverseControls()
+local function _reverseControls()
 	-- ContextActionService:UnbindAction("moveForwardAction")
 	-- ContextActionService:UnbindAction("moveBackwardAction")
 	-- ContextActionService:UnbindAction("moveLeftAction")
@@ -35,7 +27,7 @@ local function reverseControls()
 	-- ContextActionService:BindAction("moveRightAction", reverseControls, true, Enum.UserInputState.Begin)
 	-- local input = ""
 	-- local keyCode = input.KeyCode
-	local oppositeKey = ""
+	local _oppositeKey = ""
 
 	-- if keyCode == Enum.KeyCode.W then
 	-- 	oppositeKey = Enum.KeyCode.S
@@ -60,8 +52,6 @@ end
 
 specialSign.InformRunStarting = function()
 	_annotate("init")
-	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
-	humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	_annotate("init done")
 end
 

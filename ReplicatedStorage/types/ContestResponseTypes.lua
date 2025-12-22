@@ -37,5 +37,16 @@ export type Contest = {
 	user: Runner,
 }
 
+-- Summary of a contest for list display (lightweight, used for picking which to view)
+-- Same logical entity as Contest, just with minimal fields for the list UI
+export type ArchivedContest = {
+	contestId: number,
+	name: string,
+	startDate: string,
+	endDate: string,
+	raceCount: number,
+	active: boolean,
+}
+
 _annotate("end")
 return module

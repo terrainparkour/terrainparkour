@@ -10,14 +10,14 @@ local module = {}
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local thumbnails = require(game.ReplicatedStorage.thumbnails)
 local toolTip = require(game.ReplicatedStorage.gui.toolTip)
 local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
 
-local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
+local warper = require(game.StarterPlayer.StarterCharacterScripts.client.warper)
 
 local replServerEvent = function(serverEvent: tt.runningServerEvent): string
 	local from = tpUtil.signId2signName(serverEvent.startSignId)
@@ -30,11 +30,12 @@ local function getServerEventContentsFrame(initial: boolean?): Frame | nil
 	_annotate("getServerEventFrame")
 
 	local playerGui = localPlayer:WaitForChild("PlayerGui")
-	local serverEventContents: Frame = playerGui:FindFirstChild("content_serverEvents", true)
-	if serverEventContents == nil then
+	local serverEventContentsInstance = playerGui:FindFirstChild("content_serverEvents", true)
+	if not serverEventContentsInstance or not serverEventContentsInstance:IsA("Frame") then
 		--we'll fix it up later.
-		return
+		return nil
 	end
+	local serverEventContents = serverEventContentsInstance :: Frame
 	local runningEvents = serverEventContents:GetChildren()
 	local runningEventFrames = {}
 	for _, event in pairs(runningEvents) do
@@ -53,11 +54,11 @@ local function getServerEventContentsFrame(initial: boolean?): Frame | nil
 				event.Size = UDim2.new(1, 0, targetSize, -12 / #runningEventFrames)
 			end
 		end
-		for _, event: Frame in pairs(runningEventFrames) do
-			event.Size = UDim2.new(1, 0, targetSize, -12 / #runningEventFrames)
+		for _, event in pairs(runningEventFrames) do
+			(event :: Frame).Size = UDim2.new(1, 0, targetSize, -12 / #runningEventFrames)
 		end
 	end
-	local outer: Frame = serverEventContents.Parent
+	local outer = serverEventContents.Parent :: Frame
 	outer.Size = UDim2.new(outer.Size.X.Scale, outer.Size.X.Offset, 0, height + 12)
 	local par = outer :: Frame
 	if #runningEventFrames == 0 then
@@ -89,8 +90,7 @@ local function makeTile(el: tt.runningServerEventUserBest, ii: number, isMe: boo
 	im.Name = "00-serverEvent-position"
 	im.BorderSizePixel = 1
 
-	local content2 =
-		thumbnails.getThumbnailContent(el.userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+	local content2 = thumbnails.getThumbnailContent(el.userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 	local useColor = isMe and colors.yellow or colors.defaultGrey
 
 	im.Image = content2
@@ -165,29 +165,13 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 
 	local combined = string.format("%s", cleanName)
 	local raceToolTip = string.format("(%0.0fd)", serverEvent.distance)
-	local nameTl = guiUtil.getTl(
-		"01-serverEvent-name",
-		UDim2.fromScale(nameWidth, 1),
-		3,
-		servereventRow1,
-		colors.defaultGrey,
-		1,
-		0
-	)
+	local nameTl = guiUtil.getTl("01-serverEvent-name", UDim2.fromScale(nameWidth, 1), 3, servereventRow1, colors.defaultGrey, 1, 0)
 
 	nameTl.Text = combined
 	toolTip.setupToolTip(nameTl, raceToolTip, UDim2.new(0, 70, 0, 30), false)
 
 	--prize tile
-	local prizeTl = guiUtil.getTl(
-		"02-serverEvent-prize",
-		UDim2.fromScale(prizeWidth, 1),
-		3,
-		servereventRow1,
-		colors.defaultGrey,
-		1,
-		0
-	)
+	local prizeTl = guiUtil.getTl("02-serverEvent-prize", UDim2.fromScale(prizeWidth, 1), 3, servereventRow1, colors.defaultGrey, 1, 0)
 	prizeTl.Text = string.format("%d tix", serverEvent.tixValue)
 
 	-- prizeTl.Text = "-"
@@ -203,40 +187,26 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 	toolTip.setupToolTip(prizeTl, awardMouseoverText, UDim2.new(0, 150, 0, lines * 24), false, Enum.TextXAlignment.Left)
 
 	--remaining tile
-	local remainingTl = guiUtil.getTl(
-		"03-serverEvent-timeRemaining",
-		UDim2.fromScale(remainingTimeWidth, 1),
-		3,
-		servereventRow1,
-		colors.defaultGrey,
-		1,
-		0
-	)
+	local remainingTl =
+		guiUtil.getTl("03-serverEvent-timeRemaining", UDim2.fromScale(remainingTimeWidth, 1), 3, servereventRow1, colors.defaultGrey, 1, 0)
 	remainingTl.Text = ""
 
 	task.spawn(function()
 		local loopEndTick = tick() + serverEvent.remainingTick
 		while true do
-			if remainingTl == nil then
+			if not remainingTl then
 				break
 			end
 			local remaining = math.max(loopEndTick - tick(), 0)
 			remainingTl.Text = string.format("%0.0fs", remaining)
-			wait(1)
+			task.wait(1)
 		end
 	end)
 
 	--warp tile
 
-	local warpTile = guiUtil.getTb(
-		"04-serverEvent-warptile",
-		UDim2.fromScale(warpWidth, 1),
-		1,
-		servereventRow1,
-		colors.warpColor,
-		1,
-		0
-	)
+	local warpTile =
+		guiUtil.getPaddedButton("04-serverEvent-warptile", UDim2.fromScale(warpWidth, 1), 1, servereventRow1, colors.warpColor, 1, 0)
 	warpTile.Text = "Warp"
 
 	warpTile.Activated:Connect(function()
@@ -248,15 +218,8 @@ local function makeNewServerEventRow(serverEvent: tt.runningServerEvent, userId:
 	--row2bufferWidthMin
 	local row2bufferWidthMin = 0.02
 
-	local summaryTile = guiUtil.getTl(
-		"01-serverEvent-summaryWidth",
-		UDim2.fromScale(row2bufferWidthMin, 1),
-		3,
-		serverEventRow2,
-		colors.defaultGrey,
-		1,
-		1
-	)
+	local summaryTile =
+		guiUtil.getTl("01-serverEvent-summaryWidth", UDim2.fromScale(row2bufferWidthMin, 1), 3, serverEventRow2, colors.defaultGrey, 1, 1)
 	local par = summaryTile.Parent :: TextLabel
 
 	summaryTile.Text = "    "
@@ -297,7 +260,7 @@ module.updateEventVisually = function(serverEvent: tt.runningServerEvent, userId
 	local serverEventContentsFrame = getServerEventContentsFrame()
 
 	while serverEventContentsFrame == nil do
-		wait(1)
+		task.wait(1)
 		_annotate("waited on SEF.")
 	end
 	while true do
@@ -309,17 +272,18 @@ module.updateEventVisually = function(serverEvent: tt.runningServerEvent, userId
 		task.wait(0.1)
 	end
 	_annotate("update" .. replServerEvent(serverEvent))
-	if serverEventContentsFrame == nil then
+	if not serverEventContentsFrame then
 		annotater.Error("no serverEventContentsFrame")
+		return
 	end
 	local serverEventRowName = determineServerEventRowName(serverEvent)
 
-	local exi: Frame = serverEventContentsFrame:FindFirstChild(serverEventRowName, true)
-	if exi then
-		exi:Destroy()
+	local exiInstance = serverEventContentsFrame:FindFirstChild(serverEventRowName, true)
+	if exiInstance then
+		exiInstance:Destroy()
 	end
 
-	exi = makeNewServerEventRow(serverEvent, userId)
+	local exi = makeNewServerEventRow(serverEvent, userId)
 	exi.Parent = serverEventContentsFrame
 	getServerEventContentsFrame()
 end
@@ -327,6 +291,9 @@ end
 module.endEventVisually = function(serverEvent: tt.runningServerEvent)
 	_annotate("ending" .. replServerEvent(serverEvent))
 	local serverEventContentsFrame = getServerEventContentsFrame()
+	if not serverEventContentsFrame then
+		return
+	end
 	local serverEventRowName = determineServerEventRowName(serverEvent)
 	local exi = serverEventContentsFrame:FindFirstChild(serverEventRowName)
 	if exi then

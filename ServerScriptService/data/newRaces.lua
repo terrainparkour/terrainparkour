@@ -4,13 +4,13 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local playerData2 = require(game.ServerScriptService.playerData2)
+local usernameCache = require(game.ServerScriptService.usernameCache)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local rdb = require(game.ServerScriptService.rdb)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local PopularResponseTypes = require(game.ReplicatedStorage.types.PopularResponseTypes)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
-local enums = require(game.ReplicatedStorage.util.enums)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 
 local module = {}
 
@@ -28,20 +28,23 @@ module.getNewRaces = function(player: Player, userIds: { number }): { PopularRes
 	local pops = rdb.MakePostRequest(request)
 
 	local signs = game.Workspace:FindFirstChild("Signs")
+	if not signs then
+		return pops
+	end
 	for _, el in ipairs(pops) do
 		el.hasFoundStart = playerData2.HasUserFoundSign(player.UserId, el.startSignId)
 		--also patch up username
 		for _, thing in ipairs(el.userPlaces) do
-			thing.username = playerData2.GetUsernameByUserId(thing.userId)
+			thing.username = usernameCache.GetUsernameByUserId(thing.userId)
 		end
 
-		local sInstance: Instance? = signs:FindFirstChild(el.startSignName)
-		local eInstance: Instance? = signs:FindFirstChild(el.endSignName)
-		if not eInstance or not eInstance:IsA("Part") or not sInstance or not sInstance:IsA("Part") then
+		local sInstance = signs:FindFirstChild(el.startSignName) :: Instance?
+		local eInstance = signs:FindFirstChild(el.endSignName) :: Instance?
+		if not sInstance or not sInstance:IsA("Part") or not eInstance or not eInstance:IsA("Part") then
 			el.distance = 0
 		else
-			local s: Part = sInstance :: Part
-			local e: Part = eInstance :: Part
+			local s = sInstance :: Part
+			local e = eInstance :: Part
 			el.distance = tpUtil.getDist(s.Position, e.Position)
 		end
 	end

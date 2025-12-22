@@ -14,14 +14,8 @@ local _annotate = annotater.getAnnotater(script)
 local specialSign = {}
 local tt = require(game.ReplicatedStorage.types.gametypes)
 
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
-local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
-local activeRunSGui = require(game.ReplicatedStorage.gui.activeRunSGui)
-local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
-local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
-local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 ----------- GLOBALS -----------
 -------------- MAIN --------------

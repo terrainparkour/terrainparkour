@@ -4,17 +4,10 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local doNotCheckModule: any = nil
-local doNotCheckInstance = game.ReplicatedStorage:FindFirstChild("doNotCheckInGameIdentifier")
-if doNotCheckInstance and doNotCheckInstance:IsA("ModuleScript") then
-	local ok, result = pcall(require, doNotCheckInstance)
-	if ok then
-		doNotCheckModule = result
-	end
-end
+local environment = require(game.ReplicatedStorage.environment)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local MessageDispatcher = require(ReplicatedStorage.ChatSystem.messageDispatcher)
+local messageDispatcher = require(ReplicatedStorage.ChatSystem.messageDispatcher)
 
 local config = require(game.ReplicatedStorage.config)
 
@@ -31,7 +24,7 @@ module.rotate = function(sign: Part)
 			end
 			for deg = 0, 360 do
 				sign.Rotation = Vector3.new(0, -1 * deg, 0)
-				wait(0.1)
+				task.wait(0.1)
 			end
 		end
 	end)
@@ -48,7 +41,7 @@ module.rotateMeshpart = function(sign: MeshPart)
 		while true do
 			for deg = 0, 360 do
 				sign.Rotation = Vector3.new(0, -1 * deg, 0)
-				wait(0.1)
+				task.wait(0.1)
 			end
 		end
 	end)
@@ -73,7 +66,7 @@ module.riseandspin = function(sign: Part)
 				local val = math.sin(frac)
 				sign.Position = adjustedOrig + Vector3.new(val * vec.X, val * vec.Y, val * vec.Z)
 				--TODO this should be physics stepped.
-				wait(1 / 60)
+				task.wait(1 / 60)
 			end
 		end
 	end)
@@ -101,7 +94,7 @@ module.fadeInSign = function(sign: Part)
 	end
 
 	surfaceGui.Enabled = true
-	MessageDispatcher.SendSystemMessage("Chat", "007 has appeared")
+	messageDispatcher.SendSystemMessage("Chat", "007 has appeared")
 end
 
 module.fadeOutSign = function(sign: Part?, first: boolean)
@@ -119,14 +112,14 @@ module.fadeOutSign = function(sign: Part?, first: boolean)
 	task.spawn(function()
 		while sign.Transparency < 1 do
 			sign.Transparency += 0.01
-			wait(0.03)
+			task.wait(0.03)
 		end
 	end)
 
 	sign.CanCollide = false
 	sign.CanTouch = false
 	if not first then
-		MessageDispatcher.SendSystemMessage("Chat", "007 has disappeared")
+		messageDispatcher.SendSystemMessage("Chat", "007 has disappeared")
 	end
 end
 
@@ -162,7 +155,7 @@ module.SetupGrowingDistantPinnacle = function()
 	local waitTime = 1
 	local mult = 1
 	local maxAdditions = 1000
-	if doNotCheckModule and doNotCheckModule.useTestDb and doNotCheckModule.useTestDb() then --test game
+	if environment.UseTestDb() then --test/studio game
 		target = Vector3.new(836.921, 3.393, -635.989)
 		addVector = Vector3.new(3, 1, 17) / 5
 		ballSize = 14
@@ -190,7 +183,7 @@ module.SetupGrowingDistantPinnacle = function()
 			if additions > maxAdditions then
 				break
 			end
-			wait(waitTime)
+			task.wait(waitTime)
 		end
 	end)
 end

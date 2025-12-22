@@ -9,17 +9,96 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local enums = require(game.ReplicatedStorage.util.enums)
-local emojis = require(game.ReplicatedStorage.enums.emojis)
 
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
 local rdb = require(game.ServerScriptService.rdb)
+local settingsServer = require(game.ServerScriptService.settingsServer)
+local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
+local notify = require(game.ReplicatedStorage.notify)
 
 local PlayersService = game:GetService("Players")
 
-local gameTotalSigncount = nil
+-- In-memory tracking of last activity timestamp per user (for idle time column)
+local lastActivityTimestamps: { [number]: number } = {}
+
+-- In-memory tracking of previous ranks for rank improvement notifications
+local previousRanks: { [number]: { findRank: number?, cwrRank: number?, wrRank: number? } } = {}
+
+-- Call this when a user does something meaningful (run finish, sign find, etc.)
+module.UpdateUserActivity = function(userId: number)
+	lastActivityTimestamps[userId] = tick()
+end
+
+module.GetUserLastActivity = function(userId: number): number?
+	return lastActivityTimestamps[userId]
+end
+
+-- Check if ranks improved and notify the player
+-- A rank "improves" when it goes from a higher number to a lower number (e.g., #15 → #14)
+-- Only notifies if the previous rank was tracked (not on first load)
+module.CheckAndNotifyRankImprovements = function(userId: number, newStats: tt.lbUserStats)
+	local player = PlayersService:GetPlayerByUserId(userId)
+	if not player then
+		return
+	end
+
+	local prev = previousRanks[userId]
+	if not prev then
+		-- First time seeing this user, just store their ranks
+		previousRanks[userId] = {
+			findRank = newStats.findRank,
+			cwrRank = newStats.cwrRank,
+			wrRank = newStats.wrRank,
+		}
+		return
+	end
+
+	-- Check findRank improvement
+	if prev.findRank and newStats.findRank and newStats.findRank > 0 and prev.findRank > newStats.findRank then
+		local text = string.format("Congratulations! Find Rank: #%d → #%d", prev.findRank, newStats.findRank)
+		notify.notifyPlayerAboutActionResult(player, {
+			userId = userId,
+			text = text,
+			kind = "rank improvement",
+			warpToSignId = 0,
+		})
+		_annotate(string.format("Notified userId=%d of findRank improvement: %d → %d", userId, prev.findRank, newStats.findRank))
+	end
+
+	-- Check cwrRank improvement
+	if prev.cwrRank and newStats.cwrRank and newStats.cwrRank > 0 and prev.cwrRank > newStats.cwrRank then
+		local text = string.format("Congratulations! CWR Rank: #%d → #%d", prev.cwrRank, newStats.cwrRank)
+		notify.notifyPlayerAboutActionResult(player, {
+			userId = userId,
+			text = text,
+			kind = "rank improvement",
+			warpToSignId = 0,
+		})
+		_annotate(string.format("Notified userId=%d of cwrRank improvement: %d → %d", userId, prev.cwrRank, newStats.cwrRank))
+	end
+
+	-- Check wrRank improvement
+	if prev.wrRank and newStats.wrRank and newStats.wrRank > 0 and prev.wrRank > newStats.wrRank then
+		local text = string.format("Congratulations! WR Rank: #%d → #%d", prev.wrRank, newStats.wrRank)
+		notify.notifyPlayerAboutActionResult(player, {
+			userId = userId,
+			text = text,
+			kind = "rank improvement",
+			warpToSignId = 0,
+		})
+		_annotate(string.format("Notified userId=%d of wrRank improvement: %d → %d", userId, prev.wrRank, newStats.wrRank))
+	end
+
+	-- Update stored ranks
+	previousRanks[userId] = {
+		findRank = newStats.findRank,
+		cwrRank = newStats.cwrRank,
+		wrRank = newStats.wrRank,
+	}
+end
 
 module.getGameStats = function()
 	local request: tt.postRequest = {
@@ -64,16 +143,29 @@ module.getNonWRsByToSignIdAndUserId = function(to: string, signId: number, userI
 	return stats
 end
 
--- hmmm this is fake and probably wrong.
-local getServerPatchedInTotalSignCountGameSignCount = function(): number
-	if gameTotalSigncount == nil then
-		gameTotalSigncount = #(game.Workspace:WaitForChild("Signs"):GetChildren())
-	end
-	return gameTotalSigncount
-end
-
 local userIdStatsCache: { [number]: { time: number, userstats: tt.lbUserStats } } = {}
 local getStatsDebounce = false
+
+local function normalizeLbUserStats(payload: any, context: string): tt.lbUserStats
+	if typeof(payload) ~= "table" then
+		annotater.Error("lbUserStats payload invalid", {
+			context = context,
+			payloadType = typeof(payload),
+		})
+		error(string.format("lbUserStats payload invalid: %s", context))
+	end
+
+	local currentUserId = payload.userId
+	if typeof(currentUserId) ~= "number" then
+		annotater.Error("lbUserStats.userId not numeric", {
+			context = context,
+			rawUserId = currentUserId,
+		})
+		error(string.format("lbUserStats.userId invalid: %s", context))
+	end
+
+	return payload :: tt.lbUserStats
+end
 --kind is just a description for debugging.
 module.GetStatsByUserId = function(userId: number, kind: string): tt.lbUserStats
 	while getStatsDebounce do
@@ -99,11 +191,46 @@ module.GetStatsByUserId = function(userId: number, kind: string): tt.lbUserStats
 		remoteActionName = "getStatsByUserId",
 		data = { userId = userId, kind = kind },
 	}
-	local stats: tt.lbUserStats = rdb.MakePostRequest(request)
+	local stats: tt.lbUserStats = normalizeLbUserStats(rdb.MakePostRequest(request), "GetStatsByUserId:" .. kind)
 	userIdStatsCache[userId] = { time = thisTick, userstats = stats }
 	stats.kind = kind
-	local serverPatchedInTotalSignCount = getServerPatchedInTotalSignCountGameSignCount()
-	stats.serverPatchedInTotalSignCount = serverPatchedInTotalSignCount
+	-- serverPatchedInTotalSignCount now comes from Python backend (Sign.objects.count())
+
+	-- Add warpPermission from user settings (defaults to "none" if not set)
+	local warpPermissionValue = settingsServer.GetSettingValueByUserId(userId, settingEnums.settingDefinitions.WARP_TO_PERMISSION.name)
+	stats.warpPermission = if warpPermissionValue then tostring(warpPermissionValue) else "none"
+
+	-- Add pinnedBadge from user settings
+	local pinnedBadgeValue = settingsServer.GetSettingValueByUserId(userId, settingEnums.settingDefinitions.PINNED_BADGE.name)
+	stats.pinnedBadge = if pinnedBadgeValue then tostring(pinnedBadgeValue) else ""
+
+	-- Add latest badge received (fetched from DB)
+	local latestBadgeRequest: tt.postRequest = {
+		remoteActionName = "getLatestBadgeReceived",
+		data = { userId = userId },
+	}
+	local latestBadgeResponse = rdb.MakePostRequest(latestBadgeRequest)
+	if latestBadgeResponse and latestBadgeResponse.badgeName then
+		stats.latestBadge = latestBadgeResponse.badgeName
+		stats.latestBadgeAssetId = latestBadgeResponse.badgeAssetId
+		stats.latestBadgeEarnedAt = latestBadgeResponse.earnedAt
+	else
+		stats.latestBadge = nil
+		stats.latestBadgeAssetId = nil
+		stats.latestBadgeEarnedAt = nil
+	end
+
+	-- Add idle status sharing preference
+	local shareIdleValue = settingsServer.GetSettingValueByUserId(userId, settingEnums.settingDefinitions.SHARE_IDLE_STATUS.name)
+	stats.shareIdleStatus = if shareIdleValue == true then true else false
+
+	-- Add last activity timestamp (only if user shares idle status)
+	if stats.shareIdleStatus then
+		stats.lastActivityTimestamp = lastActivityTimestamps[userId] or tick()
+	else
+		stats.lastActivityTimestamp = nil
+	end
+
 	getStatsDebounce = false
 	return stats
 end
@@ -113,9 +240,9 @@ module.GetPlayerStatsByUsername = function(username: string, kind: string): tt.l
 		remoteActionName = "getStatsByUsername",
 		data = { username = username },
 	}
-	local stats: tt.lbUserStats = rdb.MakePostRequest(request)
+	local stats: tt.lbUserStats = normalizeLbUserStats(rdb.MakePostRequest(request), "GetPlayerStatsByUsername:" .. kind)
 	stats.kind = kind
-	stats.serverPatchedInTotalSignCount = getServerPatchedInTotalSignCountGameSignCount()
+	-- serverPatchedInTotalSignCount now comes from Python backend (Sign.objects.count())
 	return stats
 end
 
@@ -231,18 +358,22 @@ end
 local findCache: { [number]: { [number]: boolean } } = {}
 module.GetUserSignFinds = function(userId: number, kind: string): { [number]: boolean }
 	if findCache[userId] == nil then
+		_annotate(string.format("GetUserSignFinds: CACHE MISS userId=%d kind=%s, fetching from backend", userId, kind))
 		local request: tt.postRequest = {
 			remoteActionName = "getUserSignFinds",
 			data = { userId = userId, kind = kind },
 		}
 		local raw = rdb.MakePostRequest(request)
 		findCache[userId] = {}
+		local count = 0
 		for strSignId, val in pairs(raw) do
 			local num = tonumber(strSignId)
 			if num then
 				findCache[userId][num] = true
+				count = count + 1
 			end
 		end
+		_annotate(string.format("GetUserSignFinds: loaded %d finds for userId=%d", count, userId))
 	end
 	return findCache[userId]
 end
@@ -275,7 +406,7 @@ module.getCommonFoundSignIdsExcludingNoobs = function(requiredFinderUserId)
 	local targetFounds = {}
 	local userFinds = module.GetUserSignFinds(requiredFinderUserId, "userFinds. getCommonFoundSignIdsExcludingNoobs")
 	for signId: number, _ in pairs(userFinds) do
-		local name = tpUtil.signId2signName(signId)
+		local _name = tpUtil.signId2signName(signId)
 		local bad = false
 		local sign = tpUtil.signId2Sign(signId)
 		if not tpUtil.SignCanBeHighlighted(sign) then
@@ -290,8 +421,7 @@ module.getCommonFoundSignIdsExcludingNoobs = function(requiredFinderUserId)
 		if serverPlayer.UserId == requiredFinderUserId then
 			continue
 		end
-		local otherPlayerFounds =
-			module.GetUserSignFinds(serverPlayer.UserId, " serverPlayer getCommonFoundSignIdsExcludingNoobs")
+		local otherPlayerFounds = module.GetUserSignFinds(serverPlayer.UserId, " serverPlayer getCommonFoundSignIdsExcludingNoobs")
 		if #otherPlayerFounds <= 5 then
 			continue
 		end
@@ -321,35 +451,6 @@ module.HasUserFoundSign = function(userId: number, signId: number)
 	return res
 end
 
---this is only available on the server unfortunately.
-local playerUsernamesCache = {}
-module.GetUsernameByUserId = function(userId: number)
-	if not playerUsernamesCache[userId] then
-		--just shortcut this to save time on async lookup.
-		if userId < 0 then
-			playerUsernamesCache[userId] = "TestUser" .. userId
-			return playerUsernamesCache[userId]
-		end
-		if userId == 0 then
-			--missing userid escalate to shedletsky
-			userId = enums.objects.ShedletskyUserId
-		end
-		local res
-		local s, e = pcall(function()
-			res = PlayersService:GetNameFromUserIdAsync(userId)
-		end)
-		if not s then
-			warn(e)
-			return "Unknown Username for " .. userId
-		end
-
-		playerUsernamesCache[userId] = res
-		return res
-	end
-
-	return playerUsernamesCache[userId]
-end
-
 --before sending upstream call to let the db the user found a sign, also set it in the user sign find cache
 module.ImmediatelySetUserFoundSignInCache = function(userId, signId)
 	findCache[userId][signId] = true
@@ -357,12 +458,7 @@ end
 
 --later this should be an autocompleter
 --signnames = "A-B"
-module.describeRaceHistoryMultilineText = function(
-	signId1: number,
-	signId2: number,
-	playerUserId: number,
-	userIdsInServer: { number }
-): { { message: string, options: {} | nil } }
+module.describeRaceHistoryMultilineText = function(signId1: number, signId2: number, playerUserId: number, userIdsInServer: { number }): { { message: string, options: { ChatColor: Color3? }? } }
 	if signId1 == signId2 then
 		return { { message = "Nice try mister. You can't race from a sign to itself." } }
 	end
@@ -377,7 +473,7 @@ module.describeRaceHistoryMultilineText = function(
 	local signsFolder: Instance? = game.Workspace:FindFirstChild("Signs")
 	if not signsFolder or not signsFolder:IsA("Folder") then
 		warn("playerData2: Signs folder not found")
-		return 987654
+		return {}
 	end
 	local sign1Instance: Instance? = signsFolder:FindFirstChild(real1)
 	local sign2Instance: Instance? = signsFolder:FindFirstChild(real2)
@@ -401,7 +497,7 @@ module.describeRaceHistoryMultilineText = function(
 	local runEntries = rdb.MakePostRequest(request)
 
 	local headerRow = string.format("Top Runs for the race from: %s to %s (%0.1fd)\n", real1, real2, dist)
-	local entries = {}
+	local entries: { { message: string, options: { ChatColor: Color3? }? } } = {}
 	table.insert(entries, { message = headerRow, options = { ChatColor = colors.white } })
 	for ii, entry in ipairs(runEntries) do
 		if not entry then
@@ -409,13 +505,7 @@ module.describeRaceHistoryMultilineText = function(
 		end
 		local placeText = tpUtil.getCardinalEmoji(ii)
 		local speed = dist / entry.runMilliseconds * 1000
-		local row = string.format(
-			"%s %s - %s - (%0.1fd/s)",
-			placeText,
-			tpUtil.fmtms(entry.runMilliseconds),
-			entry.username,
-			speed
-		)
+		local row = string.format("%s %s - %s - (%0.1fd/s)", placeText, tpUtil.fmtms(entry.runMilliseconds), entry.username, speed)
 		local options = { ChatColor = colors.white }
 		if playerUserId == entry.userId then
 			options.ChatColor = colors.meColor
@@ -430,19 +520,15 @@ module.describeRaceHistoryMultilineText = function(
 		table.insert(entries, { message = row, options = options })
 	end
 
-	local request: tt.postRequest = {
+	local countRequest: tt.postRequest = {
 		remoteActionName = "getTotalRunCountByRace",
 		data = { startSignId = signId1, endSignId = signId2 },
 	}
-	local runCount = rdb.MakePostRequest(request)["count"]
+	local runCount = rdb.MakePostRequest(countRequest)["count"]
 	if runCount == 0 then
 		return {
 			{
-				message = "Nobody has ever run the race from "
-					.. real1
-					.. " to "
-					.. real2
-					.. "!  You can be the first!",
+				message = "Nobody has ever run the race from " .. real1 .. " to " .. real2 .. "!  You can be the first!",
 			},
 		}
 	end
@@ -450,16 +536,12 @@ module.describeRaceHistoryMultilineText = function(
 	if runCount == 1 then
 		table.insert(entries, { message = "This race has only been run once!", options = { ChatColor = colors.white } })
 	else
-		local request: tt.postRequest = {
+		local runnerRequest: tt.postRequest = {
 			remoteActionName = "getTotalBestRunCountByRace",
 			data = { startSignId = signId1, endSignId = signId2 },
 		}
-		local runnerCount = rdb.MakePostRequest(request)["count"]
-		local last = "This race has been run "
-			.. tostring(runCount)
-			.. " times, by "
-			.. tostring(runnerCount)
-			.. " racers!"
+		local runnerCount = rdb.MakePostRequest(runnerRequest)["count"]
+		local last = "This race has been run " .. tostring(runCount) .. " times, by " .. tostring(runnerCount) .. " racers!"
 		table.insert(entries, { message = last, options = { ChatColor = colors.white } })
 	end
 

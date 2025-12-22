@@ -8,7 +8,7 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 
 local emojis = require(game.ReplicatedStorage.enums.emojis)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local signProfileGrindingGui = require(game.ReplicatedStorage.gui.signProfile.signProfileGrindingGui)
 local Players = game:GetService("Players")
@@ -49,15 +49,12 @@ local createPlacementRowForSetOfRaces = function(
 		local relationshipsForThisPlacementRank: { tt.userSignSignRelationship } = placementRelatedRaces[ii]
 
 		if relationshipsForThisPlacementRank then
-			table.sort(
-				relationshipsForThisPlacementRank,
-				function(a: tt.userSignSignRelationship, b: tt.userSignSignRelationship)
-					if a.runCount ~= b.runCount then
-						return a.runCount > b.runCount
-					end
-					return a.endSignName > b.endSignName
+			table.sort(relationshipsForThisPlacementRank, function(a: tt.userSignSignRelationship, b: tt.userSignSignRelationship)
+				if a.runCount ~= b.runCount then
+					return a.runCount > b.runCount
 				end
-			)
+				return a.endSignName > b.endSignName
+			end)
 		end
 		local term
 		if ii < 11 then
@@ -85,8 +82,7 @@ local createPlacementRowForSetOfRaces = function(
 					}
 					table.insert(fakeRrs, tehFake)
 				end
-				local subwindowTitle =
-					string.format("Grinding %s races from %s where you place %s", sourceContext, sourceSignName, term)
+				local subwindowTitle = string.format("Grinding %s races from %s where you place %s", sourceContext, sourceSignName, term)
 				local s = signProfileGrindingGui.MakeSignProfileGrindingGui(startSignId, subwindowTitle, fakeRrs)
 				local playerGui: PlayerGui? = localPlayer:FindFirstChildOfClass("PlayerGui") :: PlayerGui
 				if playerGui == nil then
@@ -193,13 +189,7 @@ local signProfilePlacementRowMaker = function(data: tt.playerSignProfileData): {
 		end
 		table.insert(relatedRelationships, rel)
 	end
-	local otherChips = createPlacementRowForSetOfRaces(
-		data.signName,
-		"nonCWRs",
-		relatedRelationships,
-		data.unrunRaces,
-		data.unrunRaces
-	)
+	local otherChips = createPlacementRowForSetOfRaces(data.signName, "nonCWRs", relatedRelationships, data.unrunRaces, data.unrunRaces)
 	for _, chip in ipairs(otherChips) do
 		table.insert(placementChips, chip)
 	end
@@ -217,8 +207,7 @@ local signProfileCRWRowMaker = function(data: tt.playerSignProfileData): { tt.si
 		end
 		table.insert(relatedRelationships, rel)
 	end
-	local otherChips =
-		createPlacementRowForSetOfRaces(data.signName, "CWRs", relatedRelationships, data.unrunCwrs, data.unrunCwrs)
+	local otherChips = createPlacementRowForSetOfRaces(data.signName, "CWRs", relatedRelationships, data.unrunCwrs, data.unrunCwrs)
 	for _, chip in ipairs(otherChips) do
 		table.insert(placementChips, chip)
 	end
@@ -266,21 +255,12 @@ local signProfileGeneralInfoRowMaker = function(data: tt.playerSignProfileData):
 	table.insert(res, { text = string.format("You hold %d/%d cwrs", totalCwrLed, totalCwrs) })
 	if longestRelationship then
 		table.insert(res, {
-			text = string.format(
-				"Your Longest run: %s (%0.0dd)",
-				longestRelationship.endSignName,
-				longestRelationship.dist
-			),
+			text = string.format("Your Longest run: %s (%0.0dd)", longestRelationship.endSignName, longestRelationship.dist),
 		})
 	end
 	if mostRun then
 		table.insert(res, {
-			text = string.format(
-				"Most frequent run: %s %d - (%0.0dd)",
-				mostRun.endSignName,
-				mostRun.runCount,
-				mostRun.dist
-			),
+			text = string.format("Most frequent run: %s %d - (%0.0dd)", mostRun.endSignName, mostRun.runCount, mostRun.dist),
 		})
 	end
 	table.insert(res, { text = string.format("Never run signs (%d)", #data.neverRunSignIds) })
@@ -319,7 +299,7 @@ local function wrap(
 	local inner = function(data: tt.playerSignProfileData): { TextButton | TextLabel }
 		local res: { tt.signProfileChipType } = rowGenerator(data)
 		local out: { TextButton | TextLabel } = {}
-		local total = 0
+		local total: number = 0
 		for _, el in pairs(res) do
 			if el.widthWeight then
 				total += el.widthWeight
@@ -328,10 +308,18 @@ local function wrap(
 				total += 1
 			end
 		end
+		if total == 0 then
+			total = 1 -- Prevent division by zero
+		end
+		local index = 1
 		for _, el in pairs(res) do
-			local btn: TextButton | TextLabel = makeChip(el)
-			btn.Size = UDim2.new(el.widthWeight / total, 0, 1, 0)
-			table.insert(out, btn)
+			local btn = makeChip(el)
+			local widthWeight: number = el.widthWeight or 1
+			local sizeValue: number = widthWeight / total
+			local btnGui = btn :: GuiObject
+			btnGui.Size = UDim2.new(sizeValue, 0, 1, 0)
+			out[index] = btn
+			index += 1
 		end
 		return out
 	end

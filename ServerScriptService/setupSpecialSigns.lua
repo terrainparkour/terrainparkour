@@ -4,7 +4,7 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local enums = require(game.ReplicatedStorage.util.enums)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 
 local module = {}
 
@@ -66,26 +66,29 @@ do
 			newLabel.Parent = billboardGui
 			label = newLabel
 		end
-		configureLabel(label :: TextLabel)
 
-		if textLabelProperties then
-			if textLabelProperties.Text ~= nil then
-				label.Text = textLabelProperties.Text
-			end
-			if textLabelProperties.AutoLocalize ~= nil then
-				label.AutoLocalize = textLabelProperties.AutoLocalize
-			end
-			if textLabelProperties.RichText ~= nil then
-				label.RichText = textLabelProperties.RichText
-			end
-			if textLabelProperties.TextColor3 ~= nil then
-				label.TextColor3 = textLabelProperties.TextColor3
+		if label then
+			configureLabel(label)
+
+			if textLabelProperties then
+				if textLabelProperties.Text ~= nil then
+					label.Text = textLabelProperties.Text
+				end
+				if textLabelProperties.AutoLocalize ~= nil then
+					label.AutoLocalize = textLabelProperties.AutoLocalize
+				end
+				if textLabelProperties.RichText ~= nil then
+					label.RichText = textLabelProperties.RichText
+				end
+				if textLabelProperties.TextColor3 ~= nil then
+					label.TextColor3 = textLabelProperties.TextColor3
+				end
 			end
 		end
 	end
 
 	enums.signNameToExtraVisualSetupCallback["Pickleball"] = function(sign: BasePart)
-		local extractedText: string? = nil
+		local _extractedText: string? -- unused
 		local extractedAutoLocalize: boolean? = nil
 		local extractedRichText: boolean? = nil
 		local extractedTextColor3: Color3? = nil
@@ -95,7 +98,7 @@ do
 				local surfaceGui = child :: SurfaceGui
 				local textLabel = surfaceGui:FindFirstChildOfClass("TextLabel") :: TextLabel?
 				if textLabel then
-					extractedText = textLabel.Text
+					_extractedText = textLabel.Text
 					extractedAutoLocalize = textLabel.AutoLocalize
 					extractedRichText = textLabel.RichText
 					extractedTextColor3 = textLabel.TextColor3
@@ -137,6 +140,54 @@ do
 	end
 end
 
+-- Signs that display their name on cylinder end caps (Left and Right faces)
+do
+	local CYLINDER_END_FACES = {
+		Enum.NormalId.Left,
+		Enum.NormalId.Right,
+	}
+
+	local function createCylinderEndFacesSurfaceGuis(sign: BasePart)
+		-- Remove existing SurfaceGuis
+		for _, child in ipairs(sign:GetChildren()) do
+			if child:IsA("SurfaceGui") then
+				child:Destroy()
+			end
+		end
+
+		local signSize = sign.Size
+
+		for _, face in ipairs(CYLINDER_END_FACES) do
+			local surfaceGui = Instance.new("SurfaceGui")
+			surfaceGui.Name = "SignGui_" .. tostring(face.Name)
+			surfaceGui.Face = face
+
+			-- Left and Right faces on a cylinder: canvas uses Y and Z dimensions
+			local canvasSize = Vector2.new(signSize.Z * 30, signSize.Y * 30)
+
+			surfaceGui.CanvasSize = canvasSize
+			surfaceGui.Brightness = 1.5
+			surfaceGui.Parent = sign
+
+			local textLabel = Instance.new("TextLabel")
+			textLabel.Name = "TextLabel"
+			textLabel.Text = sign.Name
+			textLabel.Font = Enum.Font.Gotham
+			textLabel.BackgroundTransparency = 1
+			textLabel.Size = UDim2.new(1, 0, 1, 0)
+			textLabel.TextScaled = true
+			textLabel.RichText = true
+			textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+			textLabel.Parent = surfaceGui
+		end
+	end
+
+	local cylinderEndSignNames = { "⊘", "⊖", "⊕", "⊗", "lava slug" }
+	for _, signName in ipairs(cylinderEndSignNames) do
+		enums.signNameToExtraVisualSetupCallback[signName] = createCylinderEndFacesSurfaceGuis
+	end
+end
+
 --loop repeatedly, enabling new day of week signs when they come online.
 local function setupDayOfWeekSigns()
 	local daySigns = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" }
@@ -147,7 +198,7 @@ local function setupDayOfWeekSigns()
 			local theTick = tick()
 			local dayOfWeek = os.date("%A", theTick)
 			if dayOfWeek == outerDayOfWeek and outerDayOfWeek ~= nil then
-				wait(n)
+				task.wait(n)
 				continue
 			end
 			for _, signName in pairs(daySigns) do
@@ -176,7 +227,7 @@ local function setupDayOfWeekSigns()
 			--passed update time.
 			outerDayOfWeek = dayOfWeek
 
-			wait(n)
+			task.wait(n)
 		end
 	end)
 end
@@ -260,7 +311,7 @@ module.Init = function()
 					end
 				end
 
-				wait(1)
+				task.wait(1)
 			end
 		end)
 	end)

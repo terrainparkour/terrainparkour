@@ -152,7 +152,7 @@ nonMaterialEnumTypes[Enum.Material.Plastic] = true --spawn
 
 module.nonMaterialEnumTypes = nonMaterialEnumTypes
 
-local allTerrain = {
+local _allTerrain = {
 	Enum.Material.WoodPlanks,
 	Enum.Material.Slate,
 	Enum.Material.Concrete,

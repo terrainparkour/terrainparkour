@@ -16,7 +16,7 @@ PhysicsService:RegisterCollisionGroup(PLAYER_GROUP)
 PhysicsService:CollisionGroupSetCollidable(PLAYER_GROUP, PLAYER_GROUP, false)
 
 -------------------TEMP-------------------------
-local createParticleEmitter = function(player: Player, desc: tt.particleDescriptor)
+local _createParticleEmitter = function(player: Player, desc: tt.particleDescriptor)
 	local character = player.Character or player.CharacterAdded:Wait()
 	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
@@ -33,8 +33,8 @@ local createParticleEmitter = function(player: Player, desc: tt.particleDescript
 	particleEmitter.Orientation = desc.orientation
 	particleEmitter.Rate = desc.rate
 	particleEmitter.Rotation = desc.rotation
-	particleEmitter.Shape = desc.shape
-	particleEmitter.ShapeStyle = desc.shapeStyle
+	particleEmitter.Shape = desc.shape or Enum.ParticleEmitterShape.Sphere
+	particleEmitter.ShapeStyle = desc.shapeStyle or Enum.ParticleEmitterShapeStyle.Volume
 	particleEmitter.Size = desc.size
 	particleEmitter.SpreadAngle = desc.spreadAngle
 	particleEmitter.VelocityInheritance = desc.velocityInheritance
@@ -49,9 +49,10 @@ end
 -------------------TEMP-------------------------
 
 local function setPlayerCollisionGroup(character: Model)
-	for _, part: BasePart in ipairs(character:GetDescendants()) do
+	for _, part: Instance in ipairs(character:GetDescendants()) do
 		if part:IsA("BasePart") then
-			part.CollisionGroup = PLAYER_GROUP
+			local basePart = part :: BasePart
+			basePart.CollisionGroup = PLAYER_GROUP
 		end
 	end
 end
@@ -129,10 +130,10 @@ export type particleDescriptor = {
 local function onPlayerAdded(player: Player)
 	player.CharacterAdded:Connect(onCharacterAdded)
 	-- if player.UserId == -1 then
-	-- 	createParticleEmitter(player, xx)
+	-- 	_createParticleEmitter(player, xx)
 	-- end
 	-- if player.UserId == -2 then
-	-- 	createParticleEmitter(player, xx2)
+	-- 	_createParticleEmitter(player, xx2)
 	-- end
 end
 
@@ -143,6 +144,7 @@ for _, player in ipairs(Players:GetPlayers()) do
 	if player.Character then
 		onCharacterAdded(player.Character)
 	end
+	player.CharacterAdded:Connect(onCharacterAdded)
 end
 
 module.Init = function() end

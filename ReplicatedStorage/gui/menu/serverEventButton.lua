@@ -5,9 +5,6 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local colors = require(game.ReplicatedStorage.util.colors)
-local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
-local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local serverEventEnums = require(game.ReplicatedStorage.enums.serverEventEnums)
 local remotes = require(game.ReplicatedStorage.util.remotes)
 local PlayersService = game:GetService("Players")

@@ -18,22 +18,29 @@ local Players = game:GetService("Players")
 local SOUND_EVENT_FOLDER_NAME = "DefaultSoundEvents"
 local DEFAULT_SERVER_SOUND_EVENT_NAME = "DefaultServerSoundEvent"
 
-local SoundEventFolder: Folder = ReplicatedStorage:FindFirstChild(SOUND_EVENT_FOLDER_NAME)
+local SoundEventFolder: Folder = (function(): Folder
+	local existingFolder = ReplicatedStorage:FindFirstChild(SOUND_EVENT_FOLDER_NAME)
+	if existingFolder and existingFolder:IsA("Folder") then
+		return existingFolder
+	else
+		local newFolder = Instance.new("Folder")
+		newFolder.Name = SOUND_EVENT_FOLDER_NAME
+		newFolder.Archivable = false
+		newFolder.Parent = ReplicatedStorage
+		return newFolder
+	end
+end)()
+
 local DefaultServerSoundEvent = nil
 
-if not SoundEventFolder then
-	SoundEventFolder = Instance.new("Folder")
-	SoundEventFolder.Name = SOUND_EVENT_FOLDER_NAME
-	SoundEventFolder.Archivable = false
-	SoundEventFolder.Parent = ReplicatedStorage
-end
+local foundEvent = SoundEventFolder:FindFirstChild(DEFAULT_SERVER_SOUND_EVENT_NAME)
+if foundEvent and foundEvent:IsA("RemoteEvent") then
+	DefaultServerSoundEvent = foundEvent
+else
 
-DefaultServerSoundEvent = SoundEventFolder:FindFirstChild(DEFAULT_SERVER_SOUND_EVENT_NAME)
-
-if not DefaultServerSoundEvent then
-	DefaultServerSoundEvent = Instance.new("RemoteEvent", SoundEventFolder)
-
+	DefaultServerSoundEvent = Instance.new("RemoteEvent")
 	DefaultServerSoundEvent.Name = DEFAULT_SERVER_SOUND_EVENT_NAME
+	DefaultServerSoundEvent.Parent = SoundEventFolder
 	DefaultServerSoundEvent.OnServerEvent:Connect(function() end)
 end
 
@@ -41,20 +48,17 @@ local function CreateNewSound(name, id, looped, pitch, parent, volume: number?)
 	local sound = Instance.new("Sound")
 	sound.SoundId = id
 	sound.Name = name
-	sound.archivable = false
-	sound.Pitch = pitch
+	sound.Archivable = false
+	sound.PlaybackSpeed = pitch
 	sound.Looped = looped
-	sound.MinDistance = 5
-	sound.MaxDistance = 150
-	if volume == nil then
-		volume = 0.65
-	end
-	sound.Volume = volume
+	local finalVolume: number = volume or 0.65
+	sound.Volume = finalVolume
 	sound.Parent = parent
 
 	if DefaultServerSoundEvent then
-		local CharacterSoundEvent = Instance.new("RemoteEvent", sound)
+		local CharacterSoundEvent = Instance.new("RemoteEvent")
 		CharacterSoundEvent.Name = "CharacterSoundEvent"
+		CharacterSoundEvent.Parent = sound
 		CharacterSoundEvent.OnServerEvent:Connect(function(player, playing, resetPosition)
 			if type(playing) ~= "boolean" then
 				return
@@ -63,14 +67,17 @@ local function CreateNewSound(name, id, looped, pitch, parent, volume: number?)
 				return
 			end
 
-			if player.Character ~= script.Parent then
+			-- script.Parent is the character at runtime (this script is in StarterCharacterScripts)
+			if player.Character ~= (script.Parent :: any) then
 				return
 			end
 			for _, p in pairs(Players:GetPlayers()) do
 				if p ~= player then
 					-- Connect to the dispatcher to check if the player has loaded.
 					local soundDispatcher = SoundEventFolder:FindFirstChild("SoundDispatcher")
-					soundDispatcher:Fire(p, sound, playing, resetPosition)
+					if soundDispatcher and soundDispatcher:IsA("RemoteEvent") then
+						soundDispatcher:FireClient(p, sound, playing, resetPosition)
+					end
 				end
 			end
 		end)

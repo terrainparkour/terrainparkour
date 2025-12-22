@@ -1,15 +1,20 @@
 --!strict
 
+-- menu.lua @ ReplicatedStorage.gui.menu.menu
+-- Hamburger menu button and menu list modal using standard windows system.
+
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
-local scrollingFrameUtils = require(game.ReplicatedStorage.gui.scrollingFrameUtils)
-local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
+local windows = require(game.StarterPlayer.StarterPlayerScripts.guis.windows)
+local wt = require(game.StarterPlayer.StarterPlayerScripts.guis.windowsTypes)
 
 local module = {}
+
+local ROW_HEIGHT = 40
 
 module.getHamburger = function(): ScreenGui
 	local screenGui = Instance.new("ScreenGui")
@@ -28,64 +33,138 @@ module.getHamburger = function(): ScreenGui
 	return screenGui
 end
 
-module.getMenuList = function(localPlayer: Player, buttons: { gt.button }, pgui: PlayerGui)
-	local userId = localPlayer.UserId
-	local screenGui = Instance.new("ScreenGui")
-	screenGui.IgnoreGuiInset = true
-	screenGui.Name = "MenuList"
-	local outerFrame = Instance.new("Frame")
-	outerFrame.Parent = screenGui
-	outerFrame.Size = UDim2.new(0.4, 0, 0, 0)
-	outerFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
-	outerFrame.AutomaticSize = Enum.AutomaticSize.Y
-	local vv2 = Instance.new("UIListLayout")
-	vv2.FillDirection = Enum.FillDirection.Vertical
-	vv2.Parent = outerFrame
+module.getMenuList = function(localPlayer: Player, buttons: { gt.button }, pgui: PlayerGui): ScreenGui
+	-- Build button row specs for the scrolling frame
+	local buttonRowSpecs: { wt.rowSpec } = {}
 
-	local frameName = "MenuListModal"
+	for i, but in ipairs(buttons) do
+		-- Capture loop variables for closure
+		local buttonName = but.name
+		local contentsGetter = but.contentsGetter
 
-	local scrollingFrame = Instance.new("ScrollingFrame")
-	scrollingFrame.AutomaticSize = Enum.AutomaticSize.Y
-	scrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	scrollingFrame.ScrollBarThickness = 10
-	scrollingFrame.CanvasSize = UDim2.new(1, 0, 1, 0)
-	scrollingFrame.Name = frameName
-	scrollingFrame.ScrollingDirection = Enum.ScrollingDirection.Y
-	scrollingFrame.Parent = outerFrame
-	scrollingFrame.Position = UDim2.new(1, 0, 1, 0)
-	scrollingFrame.Size = UDim2.new(1, 0, 0, 0)
-	local vv = Instance.new("UIListLayout")
-	vv.FillDirection = Enum.FillDirection.Vertical
-	vv.Parent = scrollingFrame
+		local buttonSpec: wt.buttonTileSpec = {
+			type = "button",
+			text = buttonName,
+			isMonospaced = false,
+			isBold = false,
+			backgroundColor = colors.defaultGrey,
+			hoverBackgroundColor = colors.lightGrey,
+			textColor = colors.black,
+			textXAlignment = Enum.TextXAlignment.Center,
+			onClick = function(_: InputObject, theButton: TextButton)
+				-- Find the ScreenGui ancestor and destroy it after opening content
+				local screenGui = theButton:FindFirstAncestorOfClass("ScreenGui")
+				task.spawn(function()
+					local content = contentsGetter(localPlayer)
+					content.Parent = pgui
+					if screenGui then
+						screenGui:Destroy()
+					end
+				end)
+			end,
+		}
 
-	for ii, but in ipairs(buttons) do
-		local buttonTb = guiUtil.getTbSimple()
-		buttonTb.Name = string.format("Button%02d_%s", ii, but.name)
-		buttonTb.Text = but.name
-		buttonTb.Size = UDim2.new(1, 0, 0, 50)
-		buttonTb.Parent = scrollingFrame
-		buttonTb.Activated:Connect(function()
-			task.spawn(function()
-				local content = but.contentsGetter(localPlayer)
-				content.Parent = pgui
-				screenGui:Destroy()
-			end)
-		end)
+		local rowSpec: wt.rowSpec = {
+			name = string.format("Button%02d_%s", i, buttonName),
+			order = i,
+			height = UDim.new(0, ROW_HEIGHT),
+			tileSpecs = {
+				{
+					name = "Button",
+					order = 1,
+					width = UDim.new(1, 0),
+					spec = buttonSpec,
+				},
+			},
+		}
+		table.insert(buttonRowSpecs, rowSpec)
 	end
 
-	local tb = guiUtil.getTbSimple()
-	tb.Text = "Close"
-	tb.Size = UDim2.new(1, 0, 0, 50)
-	tb.BackgroundColor3 = colors.redStop
-	tb.Parent = outerFrame
-	tb.Activated:Connect(function()
-		screenGui:Destroy()
-	end)
-	
-	-- Prevent camera scroll when hovering over menu scrolling frame
-	scrollingFrameUtils.PreventCameraScrollOnHover(scrollingFrame)
-	
-	return screenGui
+	-- Header row for the scrolling frame - shows "Menu" title
+	local headerRowSpec: wt.rowSpec = {
+		name = "Header",
+		order = 0,
+		height = UDim.new(0, ROW_HEIGHT),
+		tileSpecs = {
+			{
+				name = "TitleText",
+				order = 1,
+				width = UDim.new(1, 0),
+				spec = {
+					type = "text",
+					text = "Menu",
+					isMonospaced = false,
+					isBold = true,
+					backgroundColor = colors.blueDone,
+					textColor = colors.black,
+					textXAlignment = Enum.TextXAlignment.Center,
+				} :: wt.textTileSpec,
+			},
+		},
+	}
+
+	-- Calculate how many rows to show (cap at 10 for reasonable screen usage)
+	local maxRowsToShow = 10
+	local actualRowsToShow = math.min(#buttons + 1, maxRowsToShow) -- +1 for header
+
+	-- Scrolling frame spec for the button list
+	local scrollingFrameSpec: wt.scrollingFrameTileSpec = {
+		type = "scrollingFrameTileSpec",
+		name = "MenuButtonsScrollingFrame",
+		headerRow = headerRowSpec,
+		dataRows = buttonRowSpecs,
+		stickyRows = {},
+		rowHeight = ROW_HEIGHT,
+		howManyRowsToShow = actualRowsToShow,
+	}
+
+	-- Content row with scrolling frame (includes header inside)
+	local contentRowSpec: wt.rowSpec = {
+		name = "Content",
+		order = 1,
+		height = UDim.new(1, 0), -- Fill remaining space
+		tileSpecs = {
+			{
+				name = "ScrollingFrame",
+				order = 1,
+				width = UDim.new(1, 0),
+				spec = scrollingFrameSpec,
+			},
+		},
+	}
+
+	-- Assemble the guiSpec with close button at bottom
+	local guiSpec: wt.guiSpec = {
+		name = "MenuListModal",
+		rowSpecs = {
+			contentRowSpec,
+			{
+				name = "CloseButtonRow",
+				order = 2,
+				height = UDim.new(0, ROW_HEIGHT),
+				tileSpecs = { windows.StandardCloseButton },
+			},
+		},
+	}
+
+	-- Calculate total height based on content
+	local scrollingFrameHeight = actualRowsToShow * ROW_HEIGHT
+	local totalHeight = scrollingFrameHeight + ROW_HEIGHT -- content (includes header) + close
+	local desiredSize = UDim2.new(0.4, 0, 0, totalHeight)
+
+	local screenGuiResult = windows.CreatePopup(
+		guiSpec,
+		"MenuList",
+		true, -- draggable
+		false, -- resizable
+		false, -- minimizable
+		false, -- pinnable
+		true, -- dismissableWithX
+		false, -- dismissableByClick
+		desiredSize
+	)
+
+	return screenGuiResult.sgui
 end
 
 _annotate("end")

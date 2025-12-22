@@ -6,7 +6,7 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local module = {}
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local _tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 
 local playerLocations: { Vector3 } = {}
 

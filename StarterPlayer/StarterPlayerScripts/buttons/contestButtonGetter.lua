@@ -8,13 +8,15 @@ local _annotate = annotater.getAnnotater(script)
 
 local PlayersService = game:GetService("Players")
 local localPlayer = PlayersService.LocalPlayer
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local scrollingFrameUtils = require(game.ReplicatedStorage.gui.scrollingFrameUtils)
+local standardButton = require(game.ReplicatedStorage.gui.standardButton)
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local gt = require(game.ReplicatedStorage.gui.guiTypes)
 local settings = require(game.ReplicatedStorage.settings)
+local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
 
 local ContestResponseTypes = require(game.ReplicatedStorage.types.ContestResponseTypes)
 local enums = require(game.ReplicatedStorage.util.enums)
@@ -25,8 +27,9 @@ local settingEnums = require(game.ReplicatedStorage.UserSettings.settingEnums)
 
 local GetContestsFunction = remotes.getRemoteFunction("GetContestsFunction")
 local GetSingleContestFunction = remotes.getRemoteFunction("GetSingleContestFunction")
+local GetArchivedContestsFunction = remotes.getRemoteFunction("GetArchivedContestsFunction")
 
-local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
+local warper = require(game.StarterPlayer.StarterCharacterScripts.client.warper)
 
 type ActionButton = gt.actionButton
 type Contest = ContestResponseTypes.Contest
@@ -35,11 +38,16 @@ type ContestRace = ContestResponseTypes.ContestRace
 type Module = {
 	contestButton: ActionButton?,
 	Init: () -> nil,
+	getArchivedContestsUI: (player: Player) -> ScreenGui,
 }
 
 local module: Module = {
 	contestButton = nil,
 	Init = function() end,
+	getArchivedContestsUI = function(_player: Player): ScreenGui
+		-- Placeholder, replaced below
+		return Instance.new("ScreenGui")
+	end,
 }
 
 local maxUsersToDisplayInContest = 10
@@ -109,8 +117,7 @@ local function makeLeaderCell(runner: ContestResponseTypes.Runner, ii: number, l
 	img.BorderMode = Enum.BorderMode.Outline
 	img.BorderSizePixel = 0
 	img.Size = UDim2.new(1, 0, 0.5, 0)
-	local content =
-		thumbnails.getThumbnailContent(runner.userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+	local content = thumbnails.getThumbnailContent(runner.userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 	img.Image = content
 	img.BackgroundColor3 = useColor
 	img.Name = "03LeaderPortrait"
@@ -186,19 +193,16 @@ local function makeContestRow(
 		local num = string.format("%02d", 3 + pos)
 
 		if guy == nil then --there isn't even an maxth runner at ALL
-			local posTl =
-				guiUtil.getTl(num, UDim2.new(widths.leads / userSizedColumns, 0, 1, 0), 1, fr, colors.lightGrey)
+			local posTl = guiUtil.getTl(num, UDim2.new(widths.leads / userSizedColumns, 0, 1, 0), 1, fr, colors.lightGrey)
 			posTl.Text = ""
 		else
 			local theRun = getPlaceByUsername(race.runners, guy.username)
 
 			if theRun == nil then
-				local posTl =
-					guiUtil.getTl(num, UDim2.new(widths.leads / userSizedColumns, 0, 1, 0), 7, fr, colors.lightGrey)
+				local posTl = guiUtil.getTl(num, UDim2.new(widths.leads / userSizedColumns, 0, 1, 0), 7, fr, colors.lightGrey)
 				posTl.Text = missingRunPlaceholder
 			else
-				local posTl =
-					guiUtil.getTl(num, UDim2.new(widths.leads / userSizedColumns, 0, 1, 0), 1, fr, colors.defaultGrey)
+				local posTl = guiUtil.getTl(num, UDim2.new(widths.leads / userSizedColumns, 0, 1, 0), 1, fr, colors.defaultGrey)
 				if shortenContestDigitDisplay then
 					posTl.Text = string.format("%0.0fs", theRun.timeMs / 1000)
 				else
@@ -229,25 +233,6 @@ local function makeContestRow(
 		youTl.Text = string.format("%0.3fs", theRun.timeMs / 1000)
 		local gap = theRun.timeMs - race.best.timeMs
 		local plus, gapColor = getColorForTimeGap(gap)
-
-		-- local plus = "+"
-		-- --determining colors for relative position to leader.
-		-- if gap == 0 then
-		-- 	plus = ""
-		-- 	useColor = colors.greenGo
-		-- elseif gap < 1000 then
-		-- 	plus = "+"
-		-- 	useColor = colors.lightGreen
-		-- elseif gap < 3000 then
-		-- 	plus = "+"
-		-- 	useColor = colors.lightYellow
-		-- elseif gap < 10000 then
-		-- 	plus = "+"
-		-- 	useColor = colors.lightOrange
-		-- elseif gap < 20000 then
-		-- 	plus = "+"
-		-- 	useColor = colors.lightRed
-		-- end
 		local diffTl = guiUtil.getTl("02", UDim2.new(0.5, 0, 1, 0), 1, youFrame, gapColor)
 		diffTl.Text = string.format("%s%0.03fs", plus, gap / 1000)
 	else
@@ -255,7 +240,7 @@ local function makeContestRow(
 		youTl.Text = missingRunPlaceholder
 	end
 
-	local warp = guiUtil.getTb("21.ContestWarp", UDim2.new(widths.warp, 0, 1, 0), 1, fr, colors.warpColor, 1)
+	local warp = guiUtil.getPaddedButton("21.ContestWarp", UDim2.new(widths.warp, 0, 1, 0), 1, fr, colors.warpColor, 1)
 	warp.Text = "Warp"
 
 	warp.Activated:Connect(function()
@@ -275,53 +260,86 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.IgnoreGuiInset = true
 	screenGui.Name = "ContestScreenGui"
-	local outerFrame = Instance.new("Frame")
-	outerFrame.Name = "ContestFrame"
-	outerFrame.BorderMode = Enum.BorderMode.Inset
-	outerFrame.BorderSizePixel = 0
-	outerFrame.Parent = screenGui
-	outerFrame.Size = UDim2.new(0.85, 0, 0.75, 0)
-	outerFrame.Position = UDim2.new(0.15 / 2, 0, 0.25 / 2, 0)
-	outerFrame.BackgroundTransparency = 1
-	--setup header on list.
-	local outerLayout = Instance.new("UIListLayout")
-	outerLayout.FillDirection = Enum.FillDirection.Vertical
-	outerLayout.Parent = outerFrame
 
-	local introduction = guiUtil.getTl("00.Introduction", UDim2.new(1, 0, 0, 40), 2, outerFrame, colors.defaultGrey, 1)
-	introduction.Text = "Welcome to Contests. Run each race below to compete!"
+	-- Use modern window frame for drag/resize/persistence
+	local persistenceConfig: windowFunctions.PositionPersistenceConfig = {
+		settingName = "CONTEST_GUI_LAYOUT",
+		settingKey = "position",
+		saveSize = true,
+		sizeKey = "size",
+		clampOnLoad = true,
+		defaultPosition = UDim2.new(0.075, 0, 0.125, 0),
+	}
+
+	local frameResult = windowFunctions.SetupFrame(
+		"ContestFrame",
+		true, -- draggable
+		true, -- resizable
+		false, -- minimizable
+		false, -- pinnable
+		UDim2.new(0.85, 0, 0.75, 0), -- size
+		false, -- maintainAspectRatio
+		persistenceConfig,
+		nil, -- resizeConfig
+		nil, -- guiSpec (we're using existing content)
+		nil, -- contentOptions
+		nil -- popupOptions
+	)
+
+	local outerFrame = frameResult.outerFrame
+	outerFrame.Parent = screenGui
+	outerFrame.BackgroundTransparency = 1
+
+	-- Use contentFrame for all the existing content
+	local contentFrame = frameResult.contentFrame
+	contentFrame.BackgroundTransparency = 1
+	-- Ensure contentFrame fills outerFrame (scale-based sizing for proper resize behavior)
+	contentFrame.Size = UDim2.new(1, 0, 1, 0)
+	contentFrame.Position = UDim2.new(0, 0, 0, 0)
+
+	-- Enable clipping to prevent overflow during resize
+	task.defer(function()
+		if outerFrame and outerFrame.Parent then
+			outerFrame.ClipsDescendants = true
+		end
+	end)
+
+	-- Fixed heights for layout calculation (use absolute positioning for proper resize behavior)
+	local INTRO_HEIGHT = 40
+	local AWARDS_HEIGHT = 30
+	local LEADER_SUMMARY_HEIGHT = 120
+	local HEADER_HEIGHT = rowHeight -- 30
+	local CLOSE_HEIGHT = 30
+	local FIXED_TOP_HEIGHT = INTRO_HEIGHT + AWARDS_HEIGHT + LEADER_SUMMARY_HEIGHT + HEADER_HEIGHT
+
+	local introduction = guiUtil.getTl("00.Introduction", UDim2.new(1, 0, 0, INTRO_HEIGHT), 2, contentFrame, colors.defaultGrey, 1)
+	introduction.Position = UDim2.new(0, 0, 0, 0)
+	if contest.active then
+		introduction.Text = "Welcome to Contests. Run each race below to compete!"
+	else
+		introduction.Text = string.format("Historical archive view of %s", contest.name)
+	end
 	introduction.TextXAlignment = Enum.TextXAlignment.Left
 
-	local awards = guiUtil.getTl("01.ContestTitle", UDim2.new(1, 0, 0, 30), 4, outerFrame, colors.defaultGrey, 1)
-	local t = string.format(
-		"%s - Prizes: Gold contest badge + %s tix, Silver + %s tix, Bronze + %s tix. Completing all runs: Participation badge + %s tix",
-		contest.name,
-
-		tpUtil.getNumberEmojis(1111),
-
-		tpUtil.getNumberEmojis(555),
-
-		tpUtil.getNumberEmojis(333),
-		tpUtil.getNumberEmojis(111)
-	)
-	awards.Text = t
+	local awards = guiUtil.getTl("01.ContestTitle", UDim2.new(1, 0, 0, AWARDS_HEIGHT), 4, contentFrame, colors.defaultGrey, 1)
+	awards.Position = UDim2.new(0, 0, 0, INTRO_HEIGHT)
+	if contest.active then
+		local t = string.format("%s - Prizes: Gold contest badge + %s tix, Silver + %s tix, Bronze + %s tix. Completing all runs: Participation badge + %s tix", contest.name, tpUtil.getNumberEmojis(1111), tpUtil.getNumberEmojis(555), tpUtil.getNumberEmojis(333), tpUtil.getNumberEmojis(111))
+		awards.Text = t
+	else
+		awards.Text = string.format("Ran from %s to %s. Times shown are from the contest period only.", contest.conteststart, contest.contestend)
+	end
 
 	awards.TextXAlignment = Enum.TextXAlignment.Left
 
 	---------LEADER SUMMARY AND CURRENT RESULTS------------
 	local leaderSummaryRow = Instance.new("Frame")
 	-- headerFrame.BorderMode = Enum.BorderMode.Inset
-	leaderSummaryRow.Parent = outerFrame
+	leaderSummaryRow.Parent = contentFrame
 	leaderSummaryRow.Name = "02.LeaderSummaryRow"
-	leaderSummaryRow.Size = UDim2.new(1, 0, 0, 120)
-	local holderIntro = guiUtil.getTl(
-		"01.Holder",
-		UDim2.new(widths.number + widths.race + widths.dist + widths.leads / userSizedColumns, 0, 1, 0),
-		4,
-		leaderSummaryRow,
-		colors.defaultGrey,
-		1
-	)
+	leaderSummaryRow.Size = UDim2.new(1, 0, 0, LEADER_SUMMARY_HEIGHT)
+	leaderSummaryRow.Position = UDim2.new(0, 0, 0, INTRO_HEIGHT + AWARDS_HEIGHT)
+	local holderIntro = guiUtil.getTl("01.Holder", UDim2.new(widths.number + widths.race + widths.dist + widths.leads / userSizedColumns, 0, 1, 0), 4, leaderSummaryRow, colors.defaultGrey, 1)
 	if contest.contestremaining > 0 then
 		task.spawn(function()
 			local ii = 0
@@ -330,15 +348,11 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 				if introduction.Parent == nil then
 					break
 				end
-				holderIntro.Text = "Contest End: "
-					.. contest.contestend
-					.. " UTC\nRemaining: "
-					.. tostring(contest.contestremaining - ii)
-					.. " seconds."
+				holderIntro.Text = "Contest End: " .. contest.contestend .. " UTC\nRemaining: " .. tostring(contest.contestremaining - ii) .. " seconds."
 				if screenGui.Parent == nil then
 					break
 				end
-				wait(1)
+				task.wait(1)
 				_annotate("stuck in leaderSummaryRow")
 			end
 		end)
@@ -371,9 +385,10 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	----------------HEADER--------------
 	local headerFrame = Instance.new("Frame")
 	-- headerFrame.BorderMode = Enum.BorderMode.Inset
-	headerFrame.Parent = outerFrame
+	headerFrame.Parent = contentFrame
 	headerFrame.Name = "03.contestHeaderRow"
-	headerFrame.Size = UDim2.new(1, 0, 0, rowHeight)
+	headerFrame.Size = UDim2.new(1, 0, 0, HEADER_HEIGHT)
+	headerFrame.Position = UDim2.new(0, 0, 0, INTRO_HEIGHT + AWARDS_HEIGHT + LEADER_SUMMARY_HEIGHT)
 	local headerLayout = Instance.new("UIListLayout")
 	headerLayout.FillDirection = Enum.FillDirection.Horizontal
 	headerLayout.Parent = headerFrame
@@ -395,14 +410,7 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	local medalIndex = 1
 
 	while medalIndex <= maxUsersToDisplayInContest do
-		local placeLabel = guiUtil.getTl(
-			string.format("%02d", 3 + medalIndex),
-			UDim2.new(widths.leads / leadCount, 0, 1, 0),
-			2,
-			headerFrame,
-			colors.blueDone,
-			1
-		)
+		local placeLabel = guiUtil.getTl(string.format("%02d", 3 + medalIndex), UDim2.new(widths.leads / leadCount, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
 		local text = tpUtil.getCardinalEmoji(medalIndex)
 		if medalIndex == 1 then
 			text = "Gold " .. tpUtil.getCardinalEmoji(1)
@@ -421,7 +429,7 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 	local warp = guiUtil.getTl("15", UDim2.new(widths.warp, 0, 1, 0), 2, headerFrame, colors.blueDone, 1)
 	warp.Text = "Warp"
 
-	--scrolling setting frame
+	--scrolling setting frame - uses scale-based height to fill remaining space
 	local frameName = "04ContestScrollingFrame"
 	local scrollingFrame = Instance.new("ScrollingFrame")
 	-- -- scrollingFrame.BorderMode = Enum.BorderMode.Inset
@@ -431,18 +439,16 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 
 	scrollingFrame.Name = frameName
 	scrollingFrame.ScrollingDirection = Enum.ScrollingDirection.Y
-	scrollingFrame.Parent = outerFrame
+	scrollingFrame.Parent = contentFrame
 	local maxYPixels = scrollingFrameRows * rowHeight
-	local windowScrollPanelHeight = maxYPixels
-	local showScrollbar = false
-	if maxYPixels > 400 then
-		windowScrollPanelHeight = 400
-		showScrollbar = true
-	end
-	scrollingFrame.Size = UDim2.new(1, 0, 0, windowScrollPanelHeight)
+	local showScrollbar = maxYPixels > 200 -- Show scrollbar if content would exceed reasonable height
+
+	-- Use scale-based sizing: fill remaining space between header and close button
+	scrollingFrame.Position = UDim2.new(0, 0, 0, FIXED_TOP_HEIGHT)
+	scrollingFrame.Size = UDim2.new(1, 0, 1, -(FIXED_TOP_HEIGHT + CLOSE_HEIGHT))
 	scrollingFrame.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
 	scrollingFrame.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Left
-	--TODO this scrollingness is kinda useless.
+	-- Initial canvas size; AutomaticCanvasSize will adjust as content is added
 	scrollingFrame.CanvasSize = UDim2.new(1, 0, 0, maxYPixels)
 	local scrollingLayout = Instance.new("UIListLayout")
 	scrollingLayout.FillDirection = Enum.FillDirection.Vertical
@@ -453,19 +459,39 @@ local function getContest(contest: ContestResponseTypes.Contest): ScreenGui
 		rowFrame.Parent = scrollingFrame
 	end
 
-	local tb = guiUtil.getTbSimple()
-	tb.Text = "Close"
-	tb.Name = "ZZZPopularCloseButton"
-	tb.Size = UDim2.new(1, 0, 0, 30)
-	tb.BackgroundColor3 = colors.redStop
-	tb.Parent = outerFrame
-	tb.Activated:Connect(function()
-		--store last scroll position
-		lastCanvasPosition = scrollingFrame.CanvasPosition
-		screenGui:Destroy()
-	end)
+	local closeButton = standardButton.CreateCloseButton({
+		onClick = function()
+			--store last scroll position
+			lastCanvasPosition = scrollingFrame.CanvasPosition
+			screenGui:Destroy()
+		end,
+		size = UDim2.new(1, 0, 0, CLOSE_HEIGHT),
+		parent = contentFrame,
+	})
+	closeButton.Name = "ZZZPopularCloseButton"
+	closeButton.Position = UDim2.new(0, 0, 1, -CLOSE_HEIGHT)
 	scrollingFrame.CanvasPosition = lastCanvasPosition
-	
+
+	-- Force layout recalculation when contentFrame resizes (UIListLayout scale children don't always auto-update)
+	contentFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		-- Re-apply scrollingFrame size to ensure it recalculates (Scale-based sizing can be sticky)
+		scrollingFrame.Size = UDim2.new(1, 0, 1, -(FIXED_TOP_HEIGHT + CLOSE_HEIGHT))
+
+		-- Touch the canvas to force children to recalculate their scale-based sizes
+		local currentCanvas = scrollingFrame.CanvasSize
+		scrollingFrame.CanvasSize = UDim2.new(1, 0, currentCanvas.Y.Scale, currentCanvas.Y.Offset)
+
+		-- Update close button position (should be automatic but let's ensure it)
+		closeButton.Position = UDim2.new(0, 0, 1, -CLOSE_HEIGHT)
+
+		-- Force UIListLayouts in header and leader summary rows to recalculate
+		for _, descendant in ipairs(contentFrame:GetDescendants()) do
+			if descendant:IsA("UIListLayout") then
+				descendant.Padding = descendant.Padding
+			end
+		end
+	end)
+
 	-- Prevent camera scroll when hovering over contest scrolling frame
 	scrollingFrameUtils.PreventCameraScrollOnHover(scrollingFrame)
 
@@ -480,6 +506,183 @@ local function makeGetter(contest: Contest): (Player) -> ScreenGui
 	return f
 end
 module.contestButton = nil
+
+-- UI for viewing archived (past) contests
+function module.getArchivedContestsUI(_player: Player): ScreenGui
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "ArchivedContestsGui"
+	screenGui.IgnoreGuiInset = true
+
+	-- Use modern window frame for drag/resize/persistence
+	local persistenceConfig: windowFunctions.PositionPersistenceConfig = {
+		settingName = "ARCHIVED_CONTESTS_GUI_LAYOUT",
+		settingKey = "position",
+		saveSize = true,
+		sizeKey = "size",
+		clampOnLoad = true,
+		defaultPosition = UDim2.new(0.3, 0, 0.25, 0),
+	}
+
+	local frameResult = windowFunctions.SetupFrame(
+		"ArchivedContestsFrame",
+		true, -- draggable
+		true, -- resizable
+		false, -- minimizable
+		false, -- pinnable
+		UDim2.new(0.4, 0, 0.5, 0), -- size
+		false, -- maintainAspectRatio
+		persistenceConfig,
+		nil, -- resizeConfig
+		nil, -- guiSpec
+		nil, -- contentOptions
+		nil -- popupOptions
+	)
+
+	local outerFrame = frameResult.outerFrame
+	outerFrame.Parent = screenGui
+
+	local contentFrame = frameResult.contentFrame
+	contentFrame.BackgroundColor3 = colors.defaultGrey
+	-- Ensure contentFrame fills outerFrame (scale-based sizing for proper resize behavior)
+	contentFrame.Size = UDim2.new(1, 0, 1, 0)
+	contentFrame.Position = UDim2.new(0, 0, 0, 0)
+
+	-- Enable clipping to prevent overflow during resize
+	task.defer(function()
+		if outerFrame and outerFrame.Parent then
+			outerFrame.ClipsDescendants = true
+		end
+	end)
+
+	-- Fixed heights for layout (use absolute positioning for proper resize behavior)
+	local TITLE_HEIGHT = 40
+	local MESSAGE_HEIGHT = 30
+	local CLOSE_BTN_HEIGHT = 30
+	local FIXED_TOP = TITLE_HEIGHT + MESSAGE_HEIGHT
+
+	-- Title
+	local title = guiUtil.getTl("00.Title", UDim2.new(1, 0, 0, TITLE_HEIGHT), 1, contentFrame, colors.signColor, 1)
+	title.Position = UDim2.new(0, 0, 0, 0)
+	title.Text = "Past Contests"
+	title.TextColor3 = colors.white
+	title.Font = Enum.Font.GothamBold
+
+	-- Message row
+	local messageRow = guiUtil.getTl("01.Message", UDim2.new(1, 0, 0, MESSAGE_HEIGHT), 1, contentFrame, colors.defaultGrey, 1)
+	messageRow.Position = UDim2.new(0, 0, 0, TITLE_HEIGHT)
+	messageRow.Text = "No active contest. Browse past contests below:"
+	messageRow.TextColor3 = colors.black
+
+	-- Scrolling frame for archived contests (fills remaining space)
+	local scrollingFrame = Instance.new("ScrollingFrame")
+	scrollingFrame.Name = "02.ScrollingFrame"
+	scrollingFrame.Position = UDim2.new(0, 0, 0, FIXED_TOP)
+	scrollingFrame.Size = UDim2.new(1, 0, 1, -(FIXED_TOP + CLOSE_BTN_HEIGHT))
+	scrollingFrame.BackgroundColor3 = colors.defaultGrey
+	scrollingFrame.BorderSizePixel = 0
+	scrollingFrame.ScrollBarThickness = 8
+	scrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scrollingFrame.Parent = contentFrame
+
+	local scrollLayout = Instance.new("UIListLayout")
+	scrollLayout.FillDirection = Enum.FillDirection.Vertical
+	scrollLayout.SortOrder = Enum.SortOrder.Name
+	scrollLayout.Padding = UDim.new(0, 2)
+	scrollLayout.Parent = scrollingFrame
+
+	-- Fetch archived contests
+	local archivedContests = GetArchivedContestsFunction:InvokeServer()
+
+	if archivedContests == nil or #archivedContests == 0 then
+		local noContests = guiUtil.getTl("01.NoContests", UDim2.new(1, 0, 0, 40), 1, scrollingFrame, colors.defaultGrey, 1)
+		noContests.Text = "No past contests found."
+		noContests.TextColor3 = colors.black
+	else
+		for ii, archived: ContestResponseTypes.ArchivedContest in ipairs(archivedContests) do
+			local rowFrame = Instance.new("Frame")
+			rowFrame.Name = string.format("%02d.Contest_%d", ii, archived.contestId)
+			rowFrame.Size = UDim2.new(1, 0, 0, 50)
+			rowFrame.BackgroundColor3 = colors.lightGrey
+			rowFrame.BorderSizePixel = 0
+			rowFrame.Parent = scrollingFrame
+
+			local rowLayout = Instance.new("UIListLayout")
+			rowLayout.FillDirection = Enum.FillDirection.Horizontal
+			rowLayout.SortOrder = Enum.SortOrder.Name
+			rowLayout.Parent = rowFrame
+
+			-- Contest info
+			local infoFrame = Instance.new("Frame")
+			infoFrame.Name = "01.Info"
+			infoFrame.Size = UDim2.new(0.7, 0, 1, 0)
+			infoFrame.BackgroundTransparency = 1
+			infoFrame.Parent = rowFrame
+
+			local infoLayout = Instance.new("UIListLayout")
+			infoLayout.FillDirection = Enum.FillDirection.Vertical
+			infoLayout.Parent = infoFrame
+
+			local nameTl = guiUtil.getTl("01.Name", UDim2.new(1, 0, 0.5, 0), 1, infoFrame, colors.lightGrey, 1)
+			nameTl.Text = archived.name
+			nameTl.TextColor3 = colors.black
+			nameTl.Font = Enum.Font.GothamBold
+			nameTl.TextXAlignment = Enum.TextXAlignment.Left
+
+			local dateTl = guiUtil.getTl("02.Date", UDim2.new(1, 0, 0.5, 0), 1, infoFrame, colors.lightGrey, 1)
+			dateTl.Text = string.format("%s to %s (%d races)", archived.startDate, archived.endDate, archived.raceCount)
+			dateTl.TextColor3 = colors.black
+			dateTl.TextXAlignment = Enum.TextXAlignment.Left
+
+			-- View button
+			local viewBtn = guiUtil.getPaddedButton("02.View", UDim2.new(0.3, 0, 1, 0), 1, rowFrame, colors.warpColor, 1)
+			viewBtn.Text = "View Results"
+			viewBtn.Activated:Connect(function()
+				-- Fetch full contest data and display it
+				local contest = GetSingleContestFunction:InvokeServer(archived.contestId)
+				if contest then
+					screenGui:Destroy()
+					local contestGui = getContest(contest)
+					contestGui.Parent = localPlayer:WaitForChild("PlayerGui")
+				end
+			end)
+		end
+	end
+
+	-- Close button (positioned at bottom)
+	local closeButton = standardButton.CreateCloseButton({
+		onClick = function()
+			screenGui:Destroy()
+		end,
+		size = UDim2.new(1, 0, 0, CLOSE_BTN_HEIGHT),
+		parent = contentFrame,
+	})
+	closeButton.Name = "ZZZCloseButton"
+	closeButton.Position = UDim2.new(0, 0, 1, -CLOSE_BTN_HEIGHT)
+
+	-- Force layout recalculation when contentFrame resizes
+	contentFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		-- Re-apply scrollingFrame size to ensure it recalculates
+		scrollingFrame.Size = UDim2.new(1, 0, 1, -(FIXED_TOP + CLOSE_BTN_HEIGHT))
+
+		-- Touch the canvas to force children to recalculate
+		local currentCanvas = scrollingFrame.CanvasSize
+		scrollingFrame.CanvasSize = UDim2.new(1, 0, currentCanvas.Y.Scale, currentCanvas.Y.Offset)
+
+		-- Update close button position
+		closeButton.Position = UDim2.new(0, 0, 1, -CLOSE_BTN_HEIGHT)
+
+		for _, descendant in ipairs(contentFrame:GetDescendants()) do
+			if descendant:IsA("UIListLayout") then
+				descendant.Padding = descendant.Padding
+			end
+		end
+	end)
+
+	-- Prevent camera scroll on hover
+	scrollingFrameUtils.PreventCameraScrollOnHover(scrollingFrame)
+
+	return screenGui
+end
 
 local contestLoadInProgress = false
 
@@ -510,13 +713,13 @@ local function refreshContestButtonAsync()
 		end)
 
 		if not ok then
-			warn(string.format("[contestButtonGetter] failed to load contests: %s", tostring(result)))
+			warn(string.format(" failed to load contests: %s", tostring(result)))
 			contestLoadInProgress = false
 			return
 		end
 
 		if typeof(result) ~= "table" then
-			warn("[contestButtonGetter] GetContestsFunction returned non-table result")
+			warn("GetContestsFunction returned non-table result")
 			contestLoadInProgress = false
 			return
 		end
@@ -543,15 +746,9 @@ end
 
 module.Init = function()
 	_annotate("init")
-	settings.RegisterFunctionToListenForSettingName(
-		handleUserSettingChanged,
-		settingEnums.settingDefinitions.SHORTEN_CONTEST_DIGIT_DISPLAY.name,
-		"contestButton"
-	)
+	settings.RegisterFunctionToListenForSettingName(handleUserSettingChanged, settingEnums.settingDefinitions.SHORTEN_CONTEST_DIGIT_DISPLAY.name, "contestButton")
 
-	handleUserSettingChanged(
-		settings.GetSettingByName(settingEnums.settingDefinitions.SHORTEN_CONTEST_DIGIT_DISPLAY.name)
-	)
+	handleUserSettingChanged(settings.GetSettingByName(settingEnums.settingDefinitions.SHORTEN_CONTEST_DIGIT_DISPLAY.name))
 
 	refreshContestButtonAsync()
 

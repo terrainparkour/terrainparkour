@@ -11,7 +11,6 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
 local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
-local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 ----------- GLOBALS -----------
 
@@ -23,7 +22,6 @@ end
 specialSign.InformRunStarting = function()
 	_annotate("Player shranken.")
 	character = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
-	humanoid = character:WaitForChild("Humanoid") :: Humanoid
 	character:ScaleTo(1 / 2)
 end
 

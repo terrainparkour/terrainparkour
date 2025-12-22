@@ -22,6 +22,7 @@ local aet = require(game.ReplicatedStorage.avatarEventTypes)
 --HUMANOID
 
 local module = {}
+local eventSequence = 0
 
 module.EventIsATypeWeCareAbout = function(ev: aet.avatarEvent, eventsWeCareAbout: { number }): boolean
 	for _, value in pairs(eventsWeCareAbout) do
@@ -137,7 +138,8 @@ module.FireEvent = function(avatarEventType: number, details: aet.avatarEventDet
 		id = math.random(1, 1000000), -- Generate a random number between 1 and 1,000,000
 	}
 
-	_annotate(string.format("Firing: %s", module.DescribeEvent(actualEv)))
+	eventSequence += 1
+	_annotate(string.format("Firing[%d]: %s", eventSequence, module.DescribeEvent(actualEv)))
 
 	local remotes = require(game.ReplicatedStorage.util.remotes)
 	local AvatarEventBindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")

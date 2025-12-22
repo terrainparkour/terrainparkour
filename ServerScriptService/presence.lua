@@ -10,11 +10,12 @@ local playerMonitoring = require(game.ServerScriptService.playerStateMonitoringF
 local badgeCheckers = require(game.ServerScriptService.badgeCheckersSecret)
 local nomesh = require(game.ServerScriptService.noMesh)
 local playerData2 = require(game.ServerScriptService.playerData2)
+local setupPlayerNames = require(game.ServerScriptService.setupPlayerNames)
 local PlayersService = game:GetService("Players")
 local joiningServer = require(game.ServerScriptService.joiningServer)
 
 local module = {}
-type storedFunc = { func: (player: Player) -> nil, name: string }
+type storedFunc = { func: (player: any) -> nil, name: string }
 
 local playerAddFuncs: { storedFunc } = {}
 local playerRemovingFuncs: { storedFunc } = {}
@@ -79,6 +80,7 @@ module.Init = function()
 	table.insert(playerAddFuncs, { func = playerMonitoring.LogJoin, name = "logJoin" })
 	table.insert(playerAddFuncs, { func = playerMonitoring.BackfillBadges, name = "BackfillBadges" })
 	table.insert(playerAddFuncs, { func = nomesh.StandardizeCharacter, name = "NoMesh" })
+	table.insert(playerAddFuncs, { func = setupPlayerNames.SetupPlayerNameplates, name = "SetupPlayerNameplates" })
 	table.insert(playerAddFuncs, { func = badgeCheckers.JoinerCheckers, name = "badgeChecksWhileJoining" })
 	table.insert(playerAddFuncs, { func = playerMonitoring.LogLocationOnDeath, name = "logLocationOnDeath" })
 	table.insert(

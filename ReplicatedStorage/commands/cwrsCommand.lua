@@ -36,17 +36,10 @@ function module.Execute(player: Player, _parts: { string }): boolean
 		error("getCWRLeaders returned non-table response")
 	end
 
-	local a = data.totalCwrCountA
-	local b = data.totalCwrCountB
-	local message = ""
-	if a and b then
-		if a == b then
-			message = string.format("%d total", a)
-		else
-			message = string.format("%d total, or maybe %d?", a, b)
-		end
+	local totalCwrCount = data.totalCwrCount
+	if totalCwrCount then
+		commandUtils.SendMessage(string.format("%d total competitive races", totalCwrCount), player)
 	end
-	commandUtils.SendMessage(message, player)
 
 	local playersInServer = {}
 	for _, serverPlayer in ipairs(PlayersService:GetPlayers()) do
@@ -68,9 +61,8 @@ function module.Execute(player: Player, _parts: { string }): boolean
 		error("generateTextForRankedList returned non-table for cwrs command")
 	end
 	for _, el in ipairs((res :: any) :: { any }) do
-		local messageValue = if type(el) == "table" then el.message else nil
-		if type(messageValue) == "string" then
-			commandUtils.SendMessage(messageValue, player)
+		if type(el) == "table" and type(el.message) == "string" then
+			commandUtils.SendMessage(el.message, player, el.options)
 		end
 	end
 
@@ -80,4 +72,3 @@ end
 
 _annotate("end")
 return module
-

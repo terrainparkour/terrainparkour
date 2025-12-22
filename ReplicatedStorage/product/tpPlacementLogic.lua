@@ -8,7 +8,7 @@ local _annotate = annotater.getAnnotater(script)
 local module = {}
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local colors = require(game.ReplicatedStorage.util.colors)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 
 -- a generic type that takes in information about a run we are evaluating, and the current top list for a race, and then returns human-scoped informational values
 -- which describe how the person did generally on this run.

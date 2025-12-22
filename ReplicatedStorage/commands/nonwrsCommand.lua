@@ -12,7 +12,7 @@ local commandUtils = require(game.ReplicatedStorage.ChatSystem.commandUtils)
 
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local playerData2 = require(game.ServerScriptService.playerData2)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 
 local module: commandTypes.CommandModule = {
@@ -48,8 +48,11 @@ function module.Execute(player: Player, parts: { string }): boolean
 		totext = "to/from"
 	end
 	commandUtils.SendMessage("NonWR races " .. totext .. " " .. signNameFormatted .. " for: " .. player.Name, player)
-	local data: tt.getNonTop10RacesByUser =
-		playerData2.getNonWRsByToSignIdAndUserId(to, signId, player.UserId, "nonwr_command")
+	local data: tt.getNonTop10RacesByUser = playerData2.getNonWRsByToSignIdAndUserId(to, signId, player.UserId, "nonwr_command")
+	if not data or not data.raceDescriptions then
+		commandUtils.SendMessage("Failed to retrieve data from backend.", player)
+		return true
+	end
 	for _, runDesc in ipairs(data.raceDescriptions) do
 		local formatted = MessageFormatter.formatWithFont(" * " .. runDesc, "Code")
 		commandUtils.SendMessage(formatted, player)

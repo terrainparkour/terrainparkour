@@ -38,7 +38,7 @@ function module.Execute(player: Player, _parts: { string }): boolean
 	end
 	local res = text.generateTextForRankedList(finderLeaders, playersInServer, player.UserId, getter)
 	for _, el in ipairs(res) do
-		commandUtils.SendMessage(el.message, player)
+		commandUtils.SendMessage(el.message, player, el.options)
 	end
 
 	commandUtils.GrantCmdlineBadge(player.UserId)

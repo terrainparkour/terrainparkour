@@ -7,7 +7,7 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
 local enums = require(game.ReplicatedStorage.util.enums)
-local MessageFormatter = require(script.Parent.messageFormatter)
+local messageFormatter = require(game.ReplicatedStorage.ChatSystem.messageFormatter)
 
 export type ChannelDefinition = {
 	name: string,
@@ -73,15 +73,10 @@ local JOIN_MESSAGES = {
 	"Break limits, transcend mortal realm",
 }
 
+local environment = require(game.ReplicatedStorage.environment)
+
 local function useTestDatabase(): boolean
-	local identifier = game.ReplicatedStorage:FindFirstChild("doNotCheckInGameIdentifier")
-	if identifier and identifier:IsA("ModuleScript") then
-		local ok, result = pcall(require, identifier)
-		if ok and type(result) == "table" and result.useTestDb and result.useTestDb() then
-			return true
-		end
-	end
-	return false
+	return environment.UseTestDb()
 end
 
 local function buildJoinMessage(): string
@@ -116,7 +111,7 @@ local function buildDefinitions(): { ChannelDefinition }
 			name = "Data",
 			autoJoin = true,
 			allowUserMessages = false,
-			welcomeMessage = MessageFormatter.usageCommandDesc,
+			welcomeMessage = messageFormatter.usageCommandDesc,
 			showInChannelTabs = true,
 		},
 		{

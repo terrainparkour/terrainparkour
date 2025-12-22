@@ -43,11 +43,73 @@ local nextTouchLegalityMustBeGreaterThan = 0
 local bufferTimeAfterRunUntilYouCanTouchASignAgain = 0.8
 local lastMaterial = humanoid.FloorMaterial
 local lastEvaluatedMoveDirection = Vector3.new(1.2324532, -29034, 24390)
+local characterReady = false
+local swimmingCheckToken = 0
+local inputConnectionsInitialized = false
+
+local function formatTouchGateSeconds(targetTime: number): string
+	if targetTime == math.huge then
+		return "inf"
+	end
+	return string.format("%.2f", math.max(0, targetTime - tick()))
+end
+
+local function describeAvatarMonitorState(): string
+	local materialName = if lastMaterial then lastMaterial.Name else "unknown"
+	return string.format(
+		"avatarState{ready=%s,untilTouch=%s,buffer=%.1f,material=%s,swimToken=%d,inputHooks=%s}",
+		tostring(characterReady),
+		formatTouchGateSeconds(nextTouchLegalityMustBeGreaterThan),
+		bufferTimeAfterRunUntilYouCanTouchASignAgain,
+		materialName,
+		swimmingCheckToken,
+		tostring(inputConnectionsInitialized)
+	)
+end
+
+local function logAvatarMonitorState(context: string)
+	_annotate(string.format("%s %s", context, describeAvatarMonitorState()))
+end
+
+local function setCharacterReady(nextValue: boolean, context: string)
+	if characterReady == nextValue then
+		return
+	end
+	characterReady = nextValue
+	logAvatarMonitorState(string.format("characterReady -> %s (%s)", tostring(nextValue), context))
+end
+
+local function setNextTouchGate(nextValue: number, context: string)
+	if nextTouchLegalityMustBeGreaterThan == nextValue then
+		return
+	end
+	nextTouchLegalityMustBeGreaterThan = nextValue
+	logAvatarMonitorState(string.format("touchGate -> %s (%s)", formatTouchGateSeconds(nextValue), context))
+end
+
+local function disableTouchDetection(context: string)
+	setNextTouchGate(math.huge, string.format("disableTouchDetection (%s)", context))
+	setCharacterReady(false, string.format("disableTouchDetection (%s)", context))
+end
 
 ------------------- EVENTS --------------------------
 local AvatarEventBindableEvent: BindableEvent = remotes.getBindableEvent("AvatarEventBindableEvent")
+local characterConnections: { RBXScriptConnection } = {}
+local avatarEventConnection: RBXScriptConnection? = nil
+local characterAddedConnection: RBXScriptConnection? = nil
+local characterRemovingConnection: RBXScriptConnection? = nil
 
 ----------------- FUNCTIONS --------------------------------
+local function trackCharacterConnection(conn: RBXScriptConnection)
+	table.insert(characterConnections, conn)
+end
+
+local function clearCharacterConnections()
+	for _, conn in ipairs(characterConnections) do
+		conn:Disconnect()
+	end
+	table.clear(characterConnections)
+end
 
 -- also raycast for water. this has never been tested very thoroughly
 -- but towards the end of 2022 this improved water detection quite
@@ -70,9 +132,10 @@ local artificiallyCheckForSwimming = function(characterParam: Model)
 			local rootPart = characterParam:FindFirstChild("HumanoidRootPart") :: Part
 			if not rootPart or not rootPart.Position or not rootPart:IsA("BasePart") then
 			else
-			while ii < 4.8 do
-				local raycastResult = workspace:Raycast(rootPart.Position, Vector3.new(0, -1 * ii, 0), raycastParams)
-				if raycastResult and raycastResult.Material == Enum.Material.Water then
+				while ii < 4.8 do
+					local raycastResult =
+						workspace:Raycast(rootPart.Position, Vector3.new(0, -1 * ii, 0), raycastParams)
+					if raycastResult and raycastResult.Material == Enum.Material.Water then
 						_annotate("faking swimming changestate.")
 						foundSwim = true
 						break
@@ -89,6 +152,18 @@ local artificiallyCheckForSwimming = function(characterParam: Model)
 			}
 			fireEvent(aet.avatarEventTypes.STATE_CHANGED, details)
 			-- YES this will resent swim events with both old and new state being swimming.
+		end
+	end)
+end
+
+local function startSwimmingChecker()
+	swimmingCheckToken += 1
+	local token = swimmingCheckToken
+	task.spawn(function()
+		_annotate(string.format("avatarEventMonitor.Init: artificiallyCheckForSwimming for %s", localPlayer.Name))
+		while swimmingCheckToken == token do
+			artificiallyCheckForSwimming(character)
+			task.wait(1)
 		end
 	end)
 end
@@ -112,23 +187,47 @@ local InputChanged = function(input: InputObject, gameProcessedEvent: boolean, k
 	end
 end
 
+local function ensureUserInputHooks()
+	if inputConnectionsInitialized then
+		return
+	end
+	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessedEvent: boolean)
+		InputChanged(input, gameProcessedEvent, "began input")
+	end)
+	UserInputService.InputChanged:Connect(function(input: InputObject, gameProcessedEvent: boolean)
+		InputChanged(input, gameProcessedEvent, "changed input")
+	end)
+	UserInputService.InputEnded:Connect(function(input: InputObject, gameProcessedEvent: boolean)
+		InputChanged(input, gameProcessedEvent, "end input")
+	end)
+	inputConnectionsInitialized = true
+end
+
 ------------------ FIRE INITIAL CHAR ADDED EVENT ------------------
 
-local avatarEventConnection = nil
-module.Init = function()
+local function updateRunCompletionDebounce(ev: aet.avatarEvent)
+	if ev.eventType == aet.avatarEventTypes.RUN_COMPLETE then
+		setNextTouchGate(tick() + bufferTimeAfterRunUntilYouCanTouchASignAgain, "RUN_COMPLETE debounce buffer")
+	end
+end
+
+module.Init = function(optionalCharacter: Model?)
 	_annotate(string.format("Init of avatarEventMonitor for %s", localPlayer.Name))
 	localPlayer = Players.LocalPlayer
-	character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+	character = optionalCharacter or (localPlayer.Character or localPlayer.CharacterAdded:Wait())
 	humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
+	clearCharacterConnections()
+	setCharacterReady(false, "Init clearing character connections")
+
 	lastEvaluatedMoveDirection = Vector3.new(1.2324532, -29034, 24390)
-	nextTouchLegalityMustBeGreaterThan = 0
+	setNextTouchGate(0, "Init reset touch gate")
 	bufferTimeAfterRunUntilYouCanTouchASignAgain = 0.8
 	lastMaterial = humanoid.FloorMaterial
 
 	---------------------- FLOOR -------------------
 
-	humanoid:GetPropertyChangedSignal("FloorMaterial"):Connect(function()
+	trackCharacterConnection(humanoid:GetPropertyChangedSignal("FloorMaterial"):Connect(function()
 		local currentMaterial = humanoid.FloorMaterial
 		if currentMaterial ~= lastMaterial then
 			local details: aet.avatarEventDetails = {
@@ -136,11 +235,11 @@ module.Init = function()
 				sender = "avatarEventMonitor",
 			}
 
-			_annotate(string.format("Floor material changed from %s to %s", lastMaterial.Name, currentMaterial.Name))
+			_annotate(string.format("? from %s to %s", lastMaterial.Name, currentMaterial.Name))
 			fireEvent(aet.avatarEventTypes.FLOOR_CHANGED, details)
 			lastMaterial = currentMaterial
 		end
-	end)
+	end))
 
 	------------------ WE ALSO MONITOR RUN COMPLETION SO WE CAN DO DEBOUNCING+BUFFERING OF TOUCHES.------------------------
 	-- we implement a buffer so that if you end a race, there is a 0.8s gap
@@ -150,9 +249,7 @@ module.Init = function()
 	-- and then have the choice to do that yourself.
 	-- why handle it here rather than racing? unclear. The prior system was over there.
 	local handleAvatarEvent = function(ev: aet.avatarEvent)
-		if ev.eventType == aet.avatarEventTypes.RUN_COMPLETE then
-			nextTouchLegalityMustBeGreaterThan = tick() + bufferTimeAfterRunUntilYouCanTouchASignAgain
-		end
+		updateRunCompletionDebounce(ev)
 	end
 
 	if avatarEventConnection then
@@ -161,7 +258,18 @@ module.Init = function()
 	avatarEventConnection = AvatarEventBindableEvent.Event:Connect(handleAvatarEvent)
 
 	------- FIRE TOUCH SIGN ------------------
-	humanoid.Touched:Connect(function(hit: BasePart, limb: BasePart)
+	trackCharacterConnection(humanoid.Touched:Connect(function(hit: BasePart, limb: BasePart)
+		if not characterReady then
+			return
+		end
+		local humanoidState = humanoid:GetState()
+		if
+			humanoid.Health <= 0
+			or humanoidState == Enum.HumanoidStateType.Dead
+			or humanoidState == Enum.HumanoidStateType.None
+		then
+			return
+		end
 		if tick() < nextTouchLegalityMustBeGreaterThan then
 			_annotate(
 				"skipped sending out a touched event since it wasn't within the interval allowed (we avoid seindging out repeated quick touch events"
@@ -194,6 +302,12 @@ module.Init = function()
 			if signId == nil then
 				return
 			end
+
+			-- Skip disabled signs - they are untouchable
+			if enums.disabledSignNames[hit.Name:lower()] then
+				return
+			end
+
 			local details: aet.avatarEventDetails = {
 				touchedSignId = signId,
 				touchedSignName = hit.Name,
@@ -203,25 +317,18 @@ module.Init = function()
 			_annotate("accepted touch event with details", details)
 			fireEvent(aet.avatarEventTypes.TOUCH_SIGN, details)
 		end
-	end)
+	end))
 
 	------------------ AVATAR STATES ---------------
 
-	humanoid.Died:Connect(function()
+	trackCharacterConnection(humanoid.Died:Connect(function()
+		disableTouchDetection("Humanoid.Died")
 		fireEvent(aet.avatarEventTypes.AVATAR_DIED, { sender = "avatarEventMonitor" })
-	end)
-
-	localPlayer.CharacterRemoving:Connect(function(a0: Model)
-		fireEvent(aet.avatarEventTypes.CHARACTER_REMOVING, { sender = "avatarEventMonitor" })
-	end)
-
-	localPlayer.CharacterAdded:Connect(function(a0: Model)
-		fireEvent(aet.avatarEventTypes.CHARACTER_ADDED, { sender = "avatarEventMonitor" })
-	end)
+	end))
 
 	-- this has a different sensitivity than the general changestate.
 	-- so we coerce this up to just another state changed thingie, and don't store it directly.
-	humanoid.Swimming:Connect(function(active)
+	trackCharacterConnection(humanoid.Swimming:Connect(function(active)
 		-- we used to use this to somehow improve swim detection.
 		if false then
 			local currentState = humanoid:GetState()
@@ -247,9 +354,9 @@ module.Init = function()
 				return
 			end
 		end
-	end)
+	end))
 
-	humanoid.StateChanged:Connect(function(old, new)
+	trackCharacterConnection(humanoid.StateChanged:Connect(function(old, new)
 		if old == new then
 			warn("repeated statechanged in the call from roblox itself?")
 			return
@@ -272,8 +379,9 @@ module.Init = function()
 			newState = new,
 			sender = "avatarEventMonitor",
 		}
+		logAvatarMonitorState(string.format("Humanoid.StateChanged %s -> %s", old.Name, new.Name))
 		fireEvent(aet.avatarEventTypes.STATE_CHANGED, details)
-	end)
+	end))
 
 	-- The Roblox property `MoveDirection` of the `Humanoid` class represents the direction the character is moving in the world.
 	-- It is a Vector3 that indicates the direction the character is moving, with a magnitude that indicates the speed of movement.
@@ -289,7 +397,7 @@ module.Init = function()
 
 	-- so we allow you to move arouind quite a bit without aactually sending a start/stop. cause even the most
 	-- minute bump can trigger a change.
-	humanoid:GetPropertyChangedSignal("MoveDirection"):Connect(function()
+	trackCharacterConnection(humanoid:GetPropertyChangedSignal("MoveDirection"):Connect(function()
 		local currentMoveDirection = humanoid.MoveDirection
 		if currentMoveDirection ~= lastEvaluatedMoveDirection then
 			--if they have fully stopped, take that seriously.
@@ -326,31 +434,31 @@ module.Init = function()
 				-- fireEvent(mt.avatarEventTypes.AVATAR_CHANGED_DIRECTION, {})
 			end
 		end
-	end)
+	end))
 
-	----------------------- USER INPUT ----------------------
-
-	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessedEvent: boolean)
-		InputChanged(input, gameProcessedEvent, "began input")
-	end)
-	UserInputService.InputChanged:Connect(function(input: InputObject, gameProcessedEvent: boolean)
-		InputChanged(input, gameProcessedEvent, "changed input")
-	end)
-	UserInputService.InputEnded:Connect(function(input: InputObject, gameProcessedEvent: boolean)
-		InputChanged(input, gameProcessedEvent, "end input")
-	end)
-
-	-------- start artificial swimming check. -----------------
-	task.spawn(function()
-		_annotate(string.format("avatarEventMonitor.Init: artificiallyCheckForSwimming for %s", localPlayer.Name))
-		while true do
-			artificiallyCheckForSwimming(character)
-			wait(1)
-		end
-	end)
+	ensureUserInputHooks()
+	startSwimmingChecker()
+	setCharacterReady(true, "Init ready for touches")
 
 	_annotate(string.format("avatarEventMonitor.Init: done for %s", localPlayer.Name))
 end
+
+if not characterRemovingConnection then
+	characterRemovingConnection = localPlayer.CharacterRemoving:Connect(function()
+		disableTouchDetection("CharacterRemoving")
+		fireEvent(aet.avatarEventTypes.CHARACTER_REMOVING, { sender = "avatarEventMonitor" })
+	end)
+end
+
+if not characterAddedConnection then
+	characterAddedConnection = localPlayer.CharacterAdded:Connect(function(newCharacter: Model)
+		module.Init(newCharacter)
+		fireEvent(aet.avatarEventTypes.CHARACTER_ADDED, { sender = "avatarEventMonitor" })
+	end)
+end
+
+module.Init()
+fireEvent(aet.avatarEventTypes.CHARACTER_ADDED, { sender = "avatarEventMonitor" })
 
 _annotate("end")
 return module

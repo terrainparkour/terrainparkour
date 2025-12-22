@@ -13,15 +13,16 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 local guiUtil = require(game.ReplicatedStorage.gui.guiUtil)
 local colors = require(game.ReplicatedStorage.util.colors)
 local signProfileComponents = require(game.ReplicatedStorage.gui.signProfile.signProfileRows)
+local standardButton = require(game.ReplicatedStorage.gui.standardButton)
 
 local windowFunctions = require(game.StarterPlayer.StarterPlayerScripts.guis.windowFunctions)
 --------------- FUNCTIONS -------------------------
 module.CreateSignProfileSGui = function(localPlayer: Player, data: tt.playerSignProfileData)
 	local signProfileSgui = Instance.new("ScreenGui")
 	signProfileSgui.IgnoreGuiInset = true
+	signProfileSgui.DisplayOrder = windowFunctions.GetNextDisplayOrder()
 
-	local signProfileSystemFrames =
-		windowFunctions.SetupFrame("signProfile", true, true, false, true, UDim2.new(0, 200, 0, 200))
+	local signProfileSystemFrames = windowFunctions.SetupFrame("signProfile", true, true, false, true, UDim2.new(0, 200, 0, 200))
 
 	local signProfileOuterFrame = signProfileSystemFrames.outerFrame
 	local signStatusContentFrame = signProfileSystemFrames.contentFrame
@@ -53,8 +54,7 @@ module.CreateSignProfileSGui = function(localPlayer: Player, data: tt.playerSign
 
 	local img = Instance.new("ImageLabel")
 	img.Size = UDim2.new(0.2, 0, 1, 0)
-	local content =
-		thumbnails.getThumbnailContent(data.userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+	local content = thumbnails.getThumbnailContent(data.userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 	img.Image = content
 	img.BackgroundColor3 = bgcolor
 	img.Name = "01_SignProfile-headerRow-thumbnail."
@@ -63,26 +63,11 @@ module.CreateSignProfileSGui = function(localPlayer: Player, data: tt.playerSign
 	img.BackgroundTransparency = 0
 	img.BorderSizePixel = 1
 
-	local title = guiUtil.getTl(
-		"02.Description" .. data.signName,
-		UDim2.new(0.4, 0, 1, 0),
-		2,
-		signProfileHeaderRow,
-		colors.blueDone,
-		1,
-		0
-	)
+	local title = guiUtil.getTl("02.Description" .. data.signName, UDim2.new(0.4, 0, 1, 0), 2, signProfileHeaderRow, colors.blueDone, 1, 0)
 	title.Text = string.format("%s's Sign Profile for: ", data.username)
 
-	local signLabel = guiUtil.getTl(
-		"03.SignName" .. data.signName,
-		UDim2.new(0.4, 0, 1, 0),
-		2,
-		signProfileHeaderRow,
-		colors.signColor,
-		1,
-		0
-	)
+	local signLabel =
+		guiUtil.getTl("03.SignName" .. data.signName, UDim2.new(0.4, 0, 1, 0), 2, signProfileHeaderRow, colors.signColor, 1, 0)
 	signLabel.TextColor3 = colors.white
 	signLabel.Text = string.format("%s", data.signName)
 
@@ -98,9 +83,7 @@ module.CreateSignProfileSGui = function(localPlayer: Player, data: tt.playerSign
 	--content rows
 	local rowCount = #signProfileComponents.RowGenerators
 	local height = 1 / rowCount
-	for n, rowGenerator: (tt.playerSignProfileData) -> { TextLabel | TextButton } in
-		ipairs(signProfileComponents.RowGenerators)
-	do
+	for n, rowGenerator: (tt.playerSignProfileData) -> { TextLabel | TextButton } in ipairs(signProfileComponents.RowGenerators) do
 		local thisRow = Instance.new("Frame")
 		thisRow.Name = string.format("%02d-chiprow", n)
 		thisRow.Parent = signProfileContentFrame
@@ -113,18 +96,41 @@ module.CreateSignProfileSGui = function(localPlayer: Player, data: tt.playerSign
 		hh3.Parent = thisRow
 		hh3.Name = "signProfileDataRow-hh" .. tostring(n)
 		hh3.FillDirection = Enum.FillDirection.Horizontal
-		local labels: { TextLabel | TextButton } = rowGenerator(data)
-		for _, label in ipairs(labels) do
-			label.Parent = thisRow
+		local generated = rowGenerator(data)
+		local labels: { TextLabel | TextButton }
+		if typeof(generated) == "table" then
+			labels = generated :: { TextLabel | TextButton }
+		else
+			labels = { generated } :: { TextLabel | TextButton }
+		end
+
+		for _, labelInstance in ipairs(labels) do
+			(labelInstance :: GuiObject).Parent = thisRow
 		end
 	end
 
 	-------close button
-	local tb = guiUtil.getTb("ZZZCloseButton", UDim2.new(1, 0, 0, 40), 2, signStatusContentFrame, colors.redStop, 1, 0)
-	tb.Text = "Close"
-	tb.Activated:Connect(function()
-		signProfileSgui:Destroy()
-	end)
+	local closeButton = standardButton.CreateCloseButton({
+		onClick = function()
+			signProfileSgui:Destroy()
+		end,
+		size = UDim2.new(1, 0, 0, 40),
+		parent = signStatusContentFrame,
+	})
+	closeButton.Name = "ZZZCloseButton"
+end
+
+module.Reset = function()
+	_annotate("Resetting signProfile UIs")
+	local player = game:GetService("Players").LocalPlayer
+	if not player then
+		return
+	end
+	local pgui = player:WaitForChild("PlayerGui")
+	local existing = pgui:FindFirstChild("SignProfileSgui")
+	if existing then
+		existing:Destroy()
+	end
 end
 
 _annotate("end")

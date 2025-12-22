@@ -12,7 +12,7 @@ local module = {}
 local PlayersService = game:GetService("Players")
 local tt = require(game.ReplicatedStorage.types.gametypes)
 local rdb = require(game.ServerScriptService.rdb)
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local serverUtil = require(game.ServerScriptService.serverUtil)
 local textUtil = require(game.ReplicatedStorage.util.textUtil)
 local remotes = require(game.ReplicatedStorage.util.remotes)
@@ -47,10 +47,10 @@ local function getNearestSigns(pos: Vector3, userId: number, count: number)
 
 	-- yes it's dumb to do this entire thing, no it doesn't actually matter based on measurement
 	for _, signInstance in ipairs(signs:GetChildren()) do
-		if not signInstance:IsA("Part") then
+		if not signInstance:IsA("BasePart") then
 			continue
 		end
-		local sign: Part = signInstance
+		local sign: BasePart = signInstance
 		local signId = tpUtil.signName2SignId(sign.Name)
 
 		if not serverUtil.UserCanInteractWithSignId(userId, signId) then
@@ -102,7 +102,7 @@ local dynamicRunFrom = function(
 	}
 	local res = rdb.MakePostRequest(request)
 
-	if res == nil then
+	if res == nil or res.frames == nil then
 		return nil
 	end
 
@@ -214,13 +214,13 @@ local function dynamicControlServer(player: Player, input: tt.dynamicRunningCont
 						_annotate("player left during dynamic sending" .. tostring(userId))
 						break
 					end
-					local s, e = pcall(function()
+					local s2, e2 = pcall(function()
 						_annotate("fire frames to client.")
 						dynamicRunningEvent:FireClient(oPlayer, dynamicRunFromDataFrames)
 					end)
-					if not s then
+					if not s2 then
 						_annotate(
-							string.format("player left during dynamic sending, %s ,%s", tostring(userId), tostring(e))
+							string.format("player left during dynamic sending, %s ,%s", tostring(userId), tostring(e2))
 						)
 						break
 					end

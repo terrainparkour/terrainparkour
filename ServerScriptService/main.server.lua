@@ -10,6 +10,12 @@ local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 annotater.Init()
 
+do
+	local unixSeconds = os.time()
+	local formattedUtc = os.date("!%Y-%m-%d %H:%M:%S UTC", unixSeconds)
+	_annotate(string.format("Server startup UTC %s (UnixSeconds=%d)", formattedUtc, unixSeconds))
+end
+
 --IMPORTANT  this go first because it's where signs and everything are set up
 local workspaceRemoteSetup = require(game.ServerScriptService.workspaceRemoteSetup)
 annotater.Profile("workspaceRemoteSetup.CreateRemoteEventsAndRemoteFunctions", function()
@@ -45,6 +51,10 @@ local setupSignsServer = require(game.ServerScriptService.setupSignsServer)
 annotater.Profile("setupSignsServer.Init", function()
 	setupSignsServer.Init()
 end)
+
+-- One-time sign data export for backup/archival purposes
+-- Triggered on-demand from admin panel via receiveClientEventServer
+local _logSignData = require(game.ServerScriptService.logSignData)
 
 local receiveClientEventServer = require(game.ServerScriptService.receiveClientEventServer)
 annotater.Profile("receiveClientEventServer.Init", function()
@@ -102,6 +112,11 @@ annotater.Profile("userSettings.Init", function()
 	userSettings.Init()
 end)
 
+local settingBadgeListener = require(game.ServerScriptService.settingBadgeListener)
+annotater.Profile("settingBadgeListener.Init", function()
+	settingBadgeListener.Init()
+end)
+
 local newRaces = require(game.ServerScriptService.data.newRaces)
 annotater.Profile("newRaces.Init", function()
 	newRaces.Init()
@@ -127,7 +142,7 @@ annotater.Profile("serverEvents.Init", function()
 	serverEvents.Init()
 end)
 
-local serverWarping = require(game.ServerScriptService.serverWarping)
+local serverWarping = require(game.ServerScriptService.serverwarping)
 annotater.Profile("serverWarping.Init", function()
 	serverWarping.Init()
 end)
@@ -142,7 +157,6 @@ annotater.Profile("setupSpecialSigns.Init", function()
 	setupSpecialSigns.Init()
 end)
 
-local _playerData2 = require(game.ServerScriptService.playerData2)
 local signClicking = require(game.ServerScriptService.signClicking)
 annotater.Profile("signClicking.Init", function()
 	signClicking.Init()

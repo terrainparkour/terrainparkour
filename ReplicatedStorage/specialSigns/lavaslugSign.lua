@@ -8,21 +8,12 @@ local tt = require(game.ReplicatedStorage.types.gametypes)
 
 local specialSign = {}
 
-local tpUtil = require(game.ReplicatedStorage.util.tpUtil)
-local warper = require(game.StarterPlayer.StarterPlayerScripts.warper)
-local activeRunSGui = require(game.ReplicatedStorage.gui.activeRunSGui)
-local movementEnums = require(game.StarterPlayer.StarterPlayerScripts.movementEnums)
+local tpUtil: typeof(require(game.ReplicatedStorage.util.tpUtil)) = require(game.ReplicatedStorage.util.tpUtil)
 local Players = game:GetService("Players")
 local localPlayer: Player = Players.LocalPlayer
-local character: Model = localPlayer.Character or localPlayer.CharacterAdded:Wait() :: Model
-local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 ----------- GLOBALS -----------
-local signId = tpUtil.signName2SignId("🗯")
-local originalTexture
-local lastTerrain: Enum.Material? = nil
-local loopRunning = false
-local killLoop = false
+local _signId = tpUtil.signName2SignId("🗯")
 
 -------------- MAIN --------------
 

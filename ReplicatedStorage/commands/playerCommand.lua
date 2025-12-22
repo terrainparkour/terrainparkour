@@ -32,7 +32,7 @@ function module.Execute(player: Player, parts: { string }): boolean
 		commandUtils.GrantCmdlineBadge(player.UserId)
 		return true
 	end
-	commandUtils.SendMessage("Could not find player: " .. parts[1], player)
+	commandUtils.SendMessage("Could not find player with that name.", player)
 	return true
 end
 

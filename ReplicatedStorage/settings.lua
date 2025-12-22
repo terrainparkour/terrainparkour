@@ -50,16 +50,10 @@ module.RegisterFunctionToListenForDomain = function(func: (tt.userSettingValue) 
 	end
 
 	if not exi then
-		_annotate(
-			"trying to register a setting domain change receiver with a name that doesn't exist: "
-				.. listeningDomainName
-		)
+		_annotate("trying to register a setting domain change receiver with a name that doesn't exist: " .. listeningDomainName)
 
 		annotater.Error(
-			string.format(
-				"trying to register a setting domain change receiver with a name that doesn't exist: %s",
-				listeningDomainName
-			)
+			string.format("trying to register a setting domain change receiver with a name that doesn't exist: %s", listeningDomainName)
 		)
 
 		return
@@ -71,11 +65,7 @@ end
 -- when this setting changes, call this function.
 -- big problem: I think this can only have one handle listening per setting. Easy to fix, just haven't done it yet. watch out if things are confusing.
 -- source is your unique source id so we can muli-monitor.
-module.RegisterFunctionToListenForSettingName = function(
-	func: (tt.userSettingValue) -> nil,
-	name: string,
-	source: string
-)
+module.RegisterFunctionToListenForSettingName = function(func: (tt.userSettingValue) -> nil, name: string, source: string)
 	local exi = false
 	for _, setting in pairs(settingEnums.settingDefinitions) do
 		if setting.name == name then
@@ -110,9 +100,7 @@ end
 
 -- also just tell registered scripts this change happened
 local function LocalNotifySettingChange(setting: tt.userSettingValue)
-	for nameKey: string, funcWhichCaresAboutThisSettingChange: (tt.userSettingValue) -> nil in
-		pairs(settingChangeMonitoringFunctions)
-	do
+	for nameKey: string, funcWhichCaresAboutThisSettingChange: (tt.userSettingValue) -> nil in pairs(settingChangeMonitoringFunctions) do
 		local name = nameKey:split("|")[1]
 		if setting.name == name then
 			funcWhichCaresAboutThisSettingChange(setting)
@@ -129,47 +117,47 @@ end
 module.GetSettingByName = function(settingName: string): tt.userSettingValue
 	local startTime = tick()
 	_annotate(string.format("GetSettingByName START: %s", settingName))
-	
+
 	local req: settingEnums.settingRequest = { settingName = settingName }
 	local theSetting = GetUserSettingsFunction:InvokeServer(req)
-	
+
 	local elapsed = tick() - startTime
 	_annotate(string.format("GetSettingByName DONE: %s took %.3fs", settingName, elapsed))
-	
+
 	return theSetting
 end
 
 module.GetSettingByDomain = function(domain: string): { [string]: tt.userSettingValue }
 	local startTime = tick()
 	_annotate(string.format("GetSettingByDomain START: %s", domain))
-	
+
 	local req: settingEnums.settingRequest = { domain = domain }
 	local theSettings = GetUserSettingsFunction:InvokeServer(req)
-	
+
 	local elapsed = tick() - startTime
 	local count = 0
 	for _ in pairs(theSettings) do
 		count = count + 1
 	end
 	_annotate(string.format("GetSettingByDomain DONE: %s took %.3fs (%d settings)", domain, elapsed, count))
-	
+
 	return theSettings
 end
 
 module.GetSettingByDomainAndKind = function(domain: string, kind: string): { [string]: tt.userSettingValue }
 	local startTime = tick()
 	_annotate(string.format("GetSettingByDomainAndKind START: %s %s", domain, kind))
-	
+
 	local req: settingEnums.settingRequest = { domain = domain, kind = kind }
 	local theSettings = GetUserSettingsFunction:InvokeServer(req)
-	
+
 	local elapsed = tick() - startTime
 	local count = 0
 	for _ in pairs(theSettings) do
 		count = count + 1
 	end
 	_annotate(string.format("GetSettingByDomainAndKind DONE: %s %s took %.3fs (%d settings)", domain, kind, elapsed, count))
-	
+
 	return theSettings
 end
 
@@ -179,13 +167,19 @@ module.SetSetting = function(setting: tt.userSettingValue): tt.setSettingRespons
 		LocalNotifySettingChange(setting)
 	else
 		local error = serverRes and serverRes.error or "nothing returned at all.."
-		warn(
-			string.format("failed to set setting: %s %s %d %s", setting.name, setting.domain, localPlayer.UserId, error)
-		)
+		warn(string.format("failed to set setting: %s %s %d %s", setting.name, setting.domain, localPlayer.UserId, error))
 	end
 
 	return serverRes
 end
+
+-- Listen for settings changed by the server (e.g., via chat commands)
+-- This ensures the client updates immediately when server changes a setting
+local SettingChangedFromServerEvent = remotes.getRemoteEvent("SettingChangedFromServerEvent")
+SettingChangedFromServerEvent.OnClientEvent:Connect(function(setting: tt.userSettingValue)
+	_annotate(string.format("Received server-initiated setting change: %s", setting.name))
+	LocalNotifySettingChange(setting)
+end)
 
 _annotate("end")
 return module

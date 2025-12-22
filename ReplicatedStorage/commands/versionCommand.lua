@@ -6,12 +6,11 @@
 local annotater = require(game.ReplicatedStorage.util.annotater)
 local _annotate = annotater.getAnnotater(script)
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
 local commandUtils = require(game.ReplicatedStorage.ChatSystem.commandUtils)
 local commandTypes = require(game.ReplicatedStorage.ChatSystem.commandTypes)
 
 local enums = require(game.ReplicatedStorage.util.enums)
+local environment = require(game.ReplicatedStorage.environment)
 
 local module: commandTypes.CommandModule = {
 	Execute = function(_player: Player, _parts: { string }): boolean
@@ -22,25 +21,15 @@ local module: commandTypes.CommandModule = {
 	AutocompleteVisible = true,
 }
 
-local safeRequire = require
-
 function module.Execute(player: Player, _parts: { string }): boolean
 	local testMessage = ""
-	local moduleScript = ReplicatedStorage:FindFirstChild("doNotCheckInGameIdentifier")
-	if not moduleScript or not moduleScript:IsA("ModuleScript") then
-		error("doNotCheckInGameIdentifier ModuleScript missing; cannot determine environment")
-	end
-	local moduleValue = safeRequire(moduleScript :: ModuleScript)
-	local useTestDbFn = (moduleValue :: { useTestDb: () -> boolean }).useTestDb
-	if typeof(useTestDbFn) ~= "function" then
-		error("doNotCheckInGameIdentifier missing useTestDb()")
-	end
-	if useTestDbFn() then
+	if environment.UseTestDb() then
 		testMessage = " TEST VERSION, db will be wiped"
 	end
 
 	local message = string.format("Terrain Parkour - Version %s%s", enums.gameVersion, testMessage)
-	commandUtils.SendMessage(message, player)
+	local targetChannel = commandUtils.GetActiveCommandChannel(player)
+	commandUtils.SendMessage(message, player, { channel = targetChannel })
 	commandUtils.GrantUndocumentedCommandBadge(player.UserId)
 	return true
 end
